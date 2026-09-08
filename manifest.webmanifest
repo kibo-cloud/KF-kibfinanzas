@@ -1,0 +1,18 @@
+{
+  "name": "Kibo Finanzas",
+  "short_name": "Kibo",
+  "description": "Presupuesto personal: ingresos, gastos, ahorro, dólares y deudas.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "lang": "es-AR",
+  "background_color": "#f2f2f7",
+  "theme_color": "#1f9d55",
+  "icons": [
+    { "src": "./icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
