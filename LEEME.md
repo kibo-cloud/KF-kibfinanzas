@@ -31,6 +31,7 @@ el .apk. Del zip que te da, copiá assetlinks.json a una carpeta
 
 ## CHANGELOG
 
+v1.3 · 2026-09-09 — El ojo para tapar los montos pasa del encabezado a la fila del Disponible final (y suma un interruptor en Ajustes); al guardar un plan de deuda divide el total por la cantidad de cuotas y ofrece cargarlas solas mes a mes, y lo que no entra en el año se carga al crear el año siguiente.
 v1.2 · 2026-09-08 — Ojito en el encabezado para tapar todos los montos con puntos (modo privado); la elección queda guardada, los campos muestran el número real al editarlos, y copia, CSV e impresión salen siempre con los números reales.
 v1.1 · 2026-09-08 — La app pasa a llamarse kibFinanzas: nombre centrado en el encabezado, firma "Desarrollado por Kevin Vasquez" en Ajustes, número de versión visible y las copias se guardan como kibfinanzas-copia-AAAA-MM-DD.json (las copias viejas siguen abriendo).
 v1.0 — Primera versión publicada.

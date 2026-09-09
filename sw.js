@@ -2,7 +2,7 @@
    Deja la app entera en caché para que abra sin conexión y la actualiza
    en segundo plano cuando hay señal. Los datos no pasan por acá: viven
    en el almacenamiento del navegador. */
-var VERSION = 'kibfinanzas-offline-v3';
+var VERSION = 'kibfinanzas-offline-v4';
 var BASE = ['./', './index.html', './manifest.webmanifest',
             './icono-192.png', './icono-512.png', './maskable-512.png', './apple-180.png'];
 
