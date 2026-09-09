@@ -154,6 +154,13 @@ h2.tit{font-size:13px;font-weight:600;color:var(--txt2);margin:22px 4px 8px;lett
 .manual p{margin:0 0 10px;font-size:15px;line-height:1.5}
 .manual ul{margin:0 0 10px;padding-left:18px;font-size:15px;line-height:1.5}
 .manual li{margin-bottom:4px}
+.acciones .btnlink{display:block;background:var(--card);padding:15px 16px;text-align:left;font-size:16px;min-height:52px;line-height:22px;text-decoration:none;color:var(--txt)}
+.topein{width:130px;flex:0 0 auto;text-align:right;border:0;background:none;padding:8px 4px;font-size:16px;font-variant-numeric:tabular-nums;color:var(--txt);outline:none}
+.tinfo{padding:0 16px 10px;margin-top:-4px;border-bottom:1px solid var(--sep)}
+.tinfo small{display:block;font-size:12px;color:var(--txt2);margin-bottom:4px}
+.tinfo small.mal{color:var(--neg)}
+.tinfo .pista i{background:var(--acc)}
+.tinfo .pista i.mal{background:var(--neg)}
 .dinfo{display:block;width:100%;text-align:left;padding:0 16px 10px;margin-top:-2px;font-size:13px;color:var(--txt2);border-bottom:1px solid var(--sep);min-height:0}
 .dinfo.vacia{color:var(--acc);font-weight:600}
 .item.mov{gap:10px}
@@ -1366,15 +1373,16 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
 var M1 = '/*DATOS_' + 'INICIO*/';
 var M2 = '/*DATOS_' + 'FIN*/';
 
-var APPVER   = '1.5.5';               // versión visible en Ajustes
+var APPVER   = '1.10';               // versión visible en Ajustes
 var PREF     = 'kibo.datos.';       // kibo.datos.2026, kibo.datos.2027…
 var LSANIO   = 'kibo.anio';
 var LSCOPIA  = 'kibo.ultimaCopia';
 var LSOCULTO = 'kibo.oculto';         // '1' = montos tapados con puntos
+var LSBIENV  = 'kibo.bienvenida';     // '1' = ya vio la bienvenida de la primera vez
 var oculto = false;
 try{ oculto = localStorage.getItem(LSOCULTO) === '1'; }catch(e){}
 var PUNTOS = '\u2022\u2022\u2022\u2022';
-var DIAS_AVISO = 30;
+var DIAS_AVISO = 15;
 
 var MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 var CORTOS = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
@@ -1422,7 +1430,7 @@ function normalizar(d){
     for(var s=0;s<SECS.length;s++){
       var k = SECS[s].k;
       if(!Array.isArray(m[k])) m[k] = [];
-      m[k] = m[k].map(function(it){ return {nombre:String(it&&it.nombre||''),monto:num(it&&it.monto)}; });
+      m[k] = m[k].map(function(it){ return {nombre:String(it&&it.nombre||''),monto:num(it&&it.monto),tope:Math.max(0,num(it&&it.tope))}; });
     }
     m.ahorroMesARS = num(m.ahorroMesARS);
     m.ahorroMesUSD = num(m.ahorroMesUSD);
@@ -1685,6 +1693,8 @@ function renderMes(){
      +   '</div>'
      +   '<div class="nota mal" id="notaReponer" style="display:'+(serie(D)[mes].aReponer>0?'block':'none')+';margin-top:10px">'
      +     'A reponer al ahorro: <b>'+fARS(serie(D)[mes].aReponer)+'</b></div>'
+     +   '<div class="nota mal" id="notaTopes" style="display:'+(pasadas(m).length?'block':'none')+';margin-top:2px">'
+     +     textoTopes(m)+'</div>'
      + '</div>';
 
   h += seccion(SECS[0], m);
@@ -1704,6 +1714,64 @@ function barra(txt, pct, verde, id){
   return '<div class="barra"><small><span>'+txt+'</span><span id="'+id+'t">'+fPct(pct)+'</span></small>'
        + '<div class="pista"><i id="'+id+'" class="'+(verde?'verde':'')+'" style="width:'+w+'%"></i></div></div>';
 }
+var TOPEABLE = {gastosFijos:true, gastosVariables:true};
+function filaTope(k, i, it){
+  var tope = num(it.tope), gastado = num(it.monto), pct = tope > 0 ? gastado / tope : 0;
+  var pasado = gastado > tope;
+  var txt = pasado ? 'Te pasaste por ' + fARS(gastado - tope) + ' del tope de ' + fARS(tope)
+                   : fARS(gastado) + ' de ' + fARS(tope);
+  return '<div class="tinfo" data-k="'+k+'" data-i="'+i+'">'
+       +   '<small class="'+(pasado?'mal':'')+'" id="tt-'+k+'-'+i+'">'+txt+'</small>'
+       +   '<div class="pista"><i id="tb-'+k+'-'+i+'" class="'+(pasado?'mal':'')+'" style="width:'+Math.max(0,Math.min(100,pct*100))+'%"></i></div>'
+       + '</div>';
+}
+function textoTopes(m){
+  var l = pasadas(m);
+  if(!l.length) return '';
+  if(l.length === 1) return 'Te pasaste del tope en <b>'+esc(l[0])+'</b>.';
+  return 'Te pasaste del tope en <b>'+l.length+' categorías</b>: '+esc(l.join(', '))+'.';
+}
+function pasadas(m){
+  var out = [], s, k, l, i;
+  for(s=0;s<SECS.length;s++){
+    k = SECS[s].k; if(!TOPEABLE[k]) continue;
+    l = m[k];
+    for(i=0;i<l.length;i++){ if(num(l[i].tope) > 0 && num(l[i].monto) > num(l[i].tope)) out.push(l[i].nombre); }
+  }
+  return out;
+}
+function abrirTopes(k){
+  var S = SECS.filter(function(x){ return x.k === k; })[0], l = D.meses[mes][k], h = '', i;
+  h += '<h3>Topes de '+S.t.toLowerCase()+'</h3>'
+     + '<div class="texto" style="margin-bottom:12px">Cuánto querés gastar como máximo en cada una este mes. En cero, no se muestra ningún tope.</div>';
+  for(i=0;i<l.length;i++){
+    h += '<div class="item"><span class="nombre" style="padding:0 4px;font-size:15px">'+esc(l[i].nombre)+'</span>'
+       + '<input class="topein" inputmode="decimal" enterkeyhint="done" data-i="'+i+'" value="'+crudo(num(l[i].tope))+'" placeholder="Sin tope" aria-label="Tope"></div>';
+  }
+  h += '<div class="fila" style="margin-top:14px">'
+     + (mes < 11 ? '<button data-act="topesOk" data-k="'+k+'" data-v="mes">Solo '+MESES[mes]+'</button>'
+                 + '<button class="pri" data-act="topesOk" data-k="'+k+'" data-v="ade">De '+MESES[mes].toLowerCase()+' en adelante</button>'
+                 : '<button data-act="cerrarHoja">Cancelar</button><button class="pri" data-act="topesOk" data-k="'+k+'" data-v="mes">Guardar</button>')
+     + '</div>';
+  abrirHoja(h);
+}
+function guardarTopes(k, adelante){
+  var l = D.meses[mes][k], campos = document.querySelectorAll('#hoja input.topein'), i, j, q, cambiados = 0;
+  for(i=0;i<campos.length;i++){
+    var idx = +campos[i].getAttribute('data-i'), v = Math.max(0, parseNum(campos[i].value));
+    if(!l[idx]) continue;
+    if(num(l[idx].tope) !== v) cambiados++;
+    l[idx].tope = v;
+    if(adelante){
+      for(j=mes+1;j<12;j++){
+        var otra = D.meses[j][k];
+        for(q=0;q<otra.length;q++) if(otra[q].nombre === l[idx].nombre) otra[q].tope = v;
+      }
+    }
+  }
+  cerrarHoja(); tocar(); guardar(); renderMes();
+  toast(cambiados ? (adelante ? 'Topes guardados de ' + MESES[mes].toLowerCase() + ' en adelante' : 'Topes guardados en ' + MESES[mes].toLowerCase()) : 'Sin cambios');
+}
 function seccion(S, m){
   var lista = m[S.k], sub = suma(lista), h = '';
   h += '<div class="sec '+(abierta(S.k)?'':'cerrada')+'" data-sec="'+S.k+'">';
@@ -1716,6 +1784,9 @@ function seccion(S, m){
        +   '<input class="monto" inputmode="decimal" enterkeyhint="done" data-k="'+S.k+'" data-i="'+i+'" value="'+fARS(lista[i].monto)+'" aria-label="Monto">'
        +   '<button class="x" data-act="del" data-k="'+S.k+'" data-i="'+i+'" aria-label="Borrar">×</button>'
        + '</div>';
+    if(TOPEABLE[S.k] && num(lista[i].tope) > 0){
+      h += filaTope(S.k, i, lista[i]);
+    }
     if(S.k === 'deudas'){
       h += '<button class="dinfo'+(planDe(lista[i].nombre)?'':' vacia')+'" data-act="plan" data-i="'+i+'">'+textoDeuda(lista[i].nombre, mes)+'</button>';
     }
@@ -1725,6 +1796,7 @@ function seccion(S, m){
     h += '<button class="mas" data-act="copiar" data-k="'+S.k+'">Copiar los montos de '+MESES[mes-1].toLowerCase()+'</button>';
   }
   h += '<button class="mas" data-act="add" data-k="'+S.k+'">+ Agregar en '+S.t.toLowerCase()+'</button>';
+  if(TOPEABLE[S.k] && lista.length) h += '<button class="mas" data-act="topes" data-k="'+S.k+'">Poner topes</button>';
   h += '</div></div>';
   return h;
 }
@@ -1788,8 +1860,44 @@ function notaRetiro(m){
   return t;
 }
 
+function mesesCargados(s){
+  var out = [], i;
+  for(i=0;i<12;i++) if(s[i].totalIngresos || s[i].totalGastos) out.push(i);
+  return out;
+}
+function resumenAnio(s){
+  var act = mesesCargados(s), i, n = act.length;
+  if(n < 2) return '<h2 class="tit">En criollo</h2><div class="texto"><p>Con '
+    + (n === 0 ? 'el año sin cargar' : 'un solo mes cargado') + ' todavía no hay promedios. Cargá otro mes y acá te aparece el resumen.</p></div>';
+  var sumG = 0, sumI = 0, sumA = 0, peor = act[0], mejor = act[0], rojos = [];
+  for(i=0;i<n;i++){
+    var c = s[act[i]];
+    sumG += c.totalGastos; sumI += c.totalIngresos; sumA += c.ahorroMesARS;
+    if(c.totalGastos > s[peor].totalGastos) peor = act[i];
+    if(c.totalGastos < s[mejor].totalGastos) mejor = act[i];
+    if(c.disponibleFinal < 0) rojos.push(MESES[act[i]]);
+  }
+  var promG = Math.round(sumG/n), promI = Math.round(sumI/n), promA = Math.round(sumA/n);
+  var pctA = sumI > 0 ? sumA/sumI : 0;
+  var ultimo = act[n-1], faltan = 11 - ultimo;
+  var h = '<h2 class="tit">En criollo</h2><div class="texto">';
+  h += '<p>Tenés <b>'+n+'</b> '+(n===1?'mes cargado':'meses cargados')+'. Por mes entran <b>'+fARS(promI)
+     + '</b> y se van <b>'+fARS(promG)+'</b>.</p>';
+  h += '<p>Donde más gastaste fue en <b>'+MESES[peor]+'</b> ('+fARS(s[peor].totalGastos)+') y donde menos, en <b>'
+     + MESES[mejor]+'</b> ('+fARS(s[mejor].totalGastos)+').</p>';
+  if(sumI > 0) h += '<p>Estás ahorrando el <b>'+Math.round(pctA*100)+'%</b> de lo que entra: '+fARS(promA)+' por mes.</p>';
+  if(faltan > 0 && promA !== 0){
+    h += '<p>Si seguís a este ritmo, cerrás diciembre con <b>'+fARS(s[ultimo].ahorroAcumulado + promA*faltan)
+       + '</b> ahorrados.</p>';
+  }
+  if(rojos.length) h += '<p class="mal">En '+(rojos.length===1?'<b>'+rojos[0]+'</b> gastaste':'<b>'+rojos.length+' meses</b> gastaste')
+     + ' más de lo que entró'+(rojos.length>1?': '+rojos.join(', '):'')+'.</p>';
+  h += '</div>';
+  return h;
+}
 function renderAnio(){
   var s = serie(D), h = '', i;
+  h += resumenAnio(s);
   var T = {i:0,g:0,a:0,c:0,d:0,f:0,s:0,r:0};
   h += '<h2 class="tit">Los doce meses</h2><div class="tabla"><table><thead><tr>'
      + '<th>Mes</th><th>Ingresos</th><th>Gastos</th><th>Ahorro</th><th>A dólares</th><th>Saqué</th><th>Repuse</th><th>Deudas</th><th>Disponible</th><th>Acumulado</th>'
@@ -1975,6 +2083,10 @@ function manual(){
   h += bloque('rapido', 'Gasto rápido',
       '<p>El botón verde de abajo es para cargar un gasto en el momento, desde el celular: tocás, escribís el monto, tocás la categoría, y ya se sumó. Tres toques.</p>'
     + '<p>Cada gasto queda en la sección <b>Gastos rápidos</b> del mes, con fecha, y se puede deshacer con la ×. Apenas lo cargás también aparece un aviso con <b>Deshacer</b> durante unos segundos, por si tocaste mal.</p>');
+  h += bloque('topes', 'Topes por categoría',
+    '<p>En <b>Gastos fijos</b> y <b>Gastos variables</b>, abajo de todo, está <b>Poner topes</b>: cuánto querés gastar como máximo en cada categoría. La que tenga tope muestra una barrita con lo que llevás gastado, y se pone roja cuando te pasás. Arriba, abajo del disponible final, te avisa en cuántas te pasaste.</p>'
+    + '<p>Al guardar elegís <b>Solo este mes</b> o <b>de este mes en adelante</b>. Lo segundo es lo normal: ponés los topes una vez y valen para todo lo que queda del año. Cuando los precios se van para arriba, entrás de nuevo, subís el número y lo aplicás de ese mes en adelante. Los meses que ya pasaron quedan como estaban.</p>'
+    + '<p>Un tope en cero es lo mismo que no tener tope: la fila se ve igual que siempre. Los topes se arrastran al crear el año siguiente.</p>');
   h += bloque('ahorro', 'Ahorro y dólares',
       '<p><b>Ahorro del mes</b> son los pesos que apartás. Salen del disponible y se suman al ahorro acumulado del año.</p>'
     + '<p>Si pasás parte de eso a dólares, cargalo en <b>Pasé a dólares</b>: los pesos que usaste y los dólares que te dieron. Te calcula a cuánto lo pagaste, descuenta esos pesos del acumulado en pesos y suma los dólares al acumulado en dólares. Así no se cuenta dos veces.</p>'
@@ -1986,6 +2098,9 @@ function manual(){
     + '<p>Al guardar el plan te ofrece cargar solas las cuotas que faltan, de ese mes en adelante, con el total dividido por la cantidad de cuotas. Lo que no entra en el año se carga cuando creás el año siguiente.</p>'
     + '<p>Con eso te dice en qué cuota vas, cuántas quedan, cuánta plata falta y en qué mes terminás. Las cuotas se cuentan solas: cada mes con un monto cargado en esa deuda es una cuota paga. Si un mes la dejás en cero, lo toma como que no pagaste y corre la fecha de fin.</p>'
     + '<p>Una deuda con plan es la misma en todos los meses: si la renombrás, el nombre nuevo se aplica a todo el año.</p>');
+  h += bloque('criollo', 'El resumen en criollo',
+    '<p>Arriba de la pestaña <b>Año</b>, antes de la tabla, está <b>En criollo</b>: cuántos meses tenés cargados, cuánto entra y cuánto se va por mes en promedio, en qué mes gastaste más y en cuál menos, qué porcentaje de lo que entra estás ahorrando, y con cuánto cerrás diciembre si seguís al mismo ritmo.</p>'
+    + '<p>Los promedios salen solo de los meses que tienen algo cargado: los que están en cero no arrastran la cuenta para abajo. Con menos de dos meses cargados no muestra promedios, porque no significarían nada. Si algún mes gastaste más de lo que entró, te lo dice en rojo.</p>');
   h += bloque('anio', 'La pestaña Año',
       '<p>La tabla resume los doce meses. La columna <b>A dólares</b> son los pesos que pasaste a dólares ese mes, y <b>Acumulado</b> es el ahorro en pesos que tenés hasta ahí, ya descontadas esas compras.</p>'
     + '<p>Abajo: ingresos contra gastos mes a mes, el ahorro acumulado, el ranking de en qué se te va la plata en el año, y el panel de deudas con el mes en que quedás libre de todas.</p>'
@@ -1994,10 +2109,16 @@ function manual(){
       '<p>Arriba, la <b>cotización</b>: un dólar en pesos. Actualizala cada tanto; toda la app la usa para pasar dólares a pesos y compararlos con lo que pagaste.</p>'
     + '<p>La tabla muestra los dólares que entraron cada mes, a cuánto los pagaste, el acumulado y su valor en pesos hoy. Debajo te dice cuánto compraste en el año, el precio promedio, y si a la cotización de hoy valen más o menos de lo que te costaron.</p>'
     + '<p>En <b>Cripto</b> cargás activo, cantidad y precio en dólares. <b>Patrimonio total</b> junta los pesos ahorrados, los dólares y la cripto, en las dos monedas.</p>');
+  h += bloque('pc', 'La versión para PC',
+    '<p>En <b>Ajustes → Guardar la versión para PC</b> la app se arma a sí misma en un solo archivo <b>.html</b> con los datos del año abierto adentro. Lo pasás a la computadora, doble clic, y es la misma app: sin instalar nada, sin internet y sin cuenta.</p>'
+    + '<p>Sirve para mirar los números en pantalla grande o para imprimir cómodo. Ojo: es una foto del momento en que lo generaste, no se sincroniza. Si cargás cosas en el teléfono, volvé a generarlo. Los demás años no van adentro del archivo, pero desde ahí podés <b>Restaurar una copia</b> y aparecen todos.</p>');
+  h += bloque('privacidad', 'Privacidad',
+    '<p>La app no recolecta ningún dato. No hay servidor, ni cuenta, ni publicidad, ni estadísticas de uso. Tus números viven en este teléfono y la única forma de que salgan es que vos exportes una copia y elijas a dónde mandarla.</p>'
+    + '<p>En <b>Ajustes → Privacidad</b> está la política completa, y ahí mismo podés volver a ver la pantalla de bienvenida.</p>');
   h += bloque('guardar', 'Dónde viven los datos',
       '<p>Todo se guarda <b>en este teléfono</b>, al instante, cada vez que cambiás algo. No hay servidor ni cuenta: la app funciona sin conexión.</p>'
     + '<p>La contracara es que si perdés el teléfono, lo cambiás o borrás los datos del navegador, se pierde todo. Por eso existe la <b>copia de seguridad</b>: un archivo con todos los años que se manda a donde quieras (Drive, WhatsApp, mail) o se descarga, y guardás en la PC.</p>'
-    + '<p>Cada 30 días sin hacer copia te lo recuerda al abrir. Con <b>Restaurar una copia</b> volvés a cargar ese archivo en cualquier teléfono, con todos los años que traiga. El mismo archivo se abre también en la versión de PC.</p>'
+    + '<p>Cada 15 días sin hacer copia te lo recuerda al abrir. En <b>Ajustes → Dónde viven tus datos</b> te dice si el sistema se comprometió a conservarlos o si los puede borrar para hacer lugar. Con <b>Restaurar una copia</b> volvés a cargar ese archivo en cualquier teléfono, con todos los años que traiga. El mismo archivo se abre también en la versión de PC.</p>'
     + '<p>Los años se guardan por separado y no hay límite: cinco o diez años ocupan menos que una foto. En la pestaña Año, cuando hay más de uno, aparece la tabla <b>Año por año</b>.</p>');
   h += bloque('cierre', 'Cerrar el año',
       '<p>En diciembre, <b>Crear el año siguiente</b> arma el año siguiente con las mismas categorías, los meses en cero, y el ahorro y los dólares de cierre ya cargados como saldo inicial. Las cuotas pagadas de cada deuda también pasan solas.</p>'
@@ -2021,10 +2142,12 @@ function renderAjustes(){
   h += '<h2 class="tit">Copias de seguridad</h2><div class="acciones">'
      + '<button data-act="copia" class="acento">Hacer copia de seguridad</button>'
      + '<button data-act="restaurar">Restaurar una copia</button>'
+     + '<button data-act="verpc">Guardar la versión para PC</button>'
      + '<button data-act="expcsv">Exportar CSV del año</button>'
      + '<button data-act="imprimir">Imprimir resumen del año</button>'
      + '</div>'
      + '<div class="texto"><p>' + (dsc === -1 ? 'Todavía no hiciste ninguna copia.' : (dsc === 0 ? 'Última copia: hoy.' : 'Última copia: hace ' + dsc + (dsc === 1 ? ' día.' : ' días.'))) + '</p></div>';
+  h += '<h2 class="tit">Dónde viven tus datos</h2><div class="texto" id="almac"><p>Revisando…</p></div>';
   h += '<h2 class="tit">Años</h2><div class="acciones" style="margin-bottom:10px">'
      + '<button data-act="duplicar">Crear el a\u00f1o ' + (D.anio+1) + '</button></div>';
   h += '<div class="anios" id="anios"></div>';
@@ -2041,12 +2164,40 @@ function renderAjustes(){
   h += '<h2 class="tit">Este a\u00f1o</h2><div class="texto">'
      + '<p>A\u00f1o ' + D.anio + '. \u00daltimo cambio: '
      + (D.actualizado ? fechaCorta(D.actualizado) : 'todav\u00eda ninguno') + '.</p></div>';
+  h += '<h2 class="tit">Privacidad</h2><div class="texto">'
+     + '<p>kibFinanzas no recolecta ningún dato. No hay servidor, ni cuenta, ni publicidad, ni estadísticas. Tus números viven en este teléfono y solo salen si vos exportás una copia.</p></div>'
+     + '<div class="acciones">'
+     + '<button data-act="verBienvenida">Ver la pantalla de bienvenida</button>'
+     + '<a class="btnlink" href="./privacidad.html" target="_blank" rel="noopener">Política de privacidad</a>'
+     + '</div>';
   h += '<h2 class="tit">Acerca de</h2><div class="texto">'
      + '<p>kibFinanzas v' + APPVER + '</p>'
      + '<p>Desarrollado por Kevin Vasquez</p></div>'
      + '<div style="height:20px"></div>';
   document.getElementById('v-ajustes').innerHTML = h;
   listarAnios();
+  renderAlmacen();
+}
+function renderAlmacen(){
+  var c = document.getElementById('almac'); if(!c) return;
+  if(!hayLS){ c.innerHTML = '<p><b>Este navegador no está guardando nada.</b> Puede ser una ventana privada o el almacenamiento bloqueado. Lo que cargues se pierde al cerrar.</p>'; return; }
+  var base = '<p>Tus datos viven adentro de este navegador, en este teléfono. No hay servidor ni nube: nadie más los puede ver, y nadie más los puede recuperar.</p>';
+  var sinDato = base + '<p>Este navegador no informa si el sistema se compromete a conservarlos. Hacé copias seguido.</p>';
+  if(!(navigator.storage && navigator.storage.persisted)){ c.innerHTML = sinDato; return; }
+  navigator.storage.persisted().then(function(ok){
+    var h = base + (ok
+      ? '<p><b>El sistema se comprometió a conservarlos.</b> No los va a borrar para hacer lugar. Igual hacé copias: si limpiás los datos del navegador o sacás la app, se van.</p>'
+      : '<p><b>El sistema no garantiza conservarlos.</b> Si al teléfono le falta espacio los puede borrar sin avisar. Suele pasar cuando la app se agregó como acceso directo en vez de instalarse de verdad. Hacé copias seguido.</p>');
+    if(navigator.storage.estimate){
+      navigator.storage.estimate().then(function(e){
+        var kb = e && e.usage ? Math.round(e.usage/1024) : 0;
+        c.innerHTML = h + (kb ? '<p>Entre la app y tus datos ocupan unos ' + kb + ' KB.</p>' : '');
+      })['catch'](function(){ c.innerHTML = h; });
+    } else c.innerHTML = h;
+  })['catch'](function(){ c.innerHTML = sinDato; });
+}
+function avisoSinGuardado(){
+  aviso('<b>Este navegador no está guardando los cambios.</b> Puede ser una ventana privada o el almacenamiento bloqueado. Lo que cargues ahora se va a perder al cerrar.', false);
 }
 
 /* refresco puntual: no vuelve a dibujar los inputs, así no se pierde el foco */
@@ -2072,6 +2223,21 @@ function refrescar(){
   var ar = serie(D)[mes].aReponer;
   var nr = document.getElementById('notaRetiro');
   if(nr){ nr.textContent = notaRetiro(m); nr.className = 'nota' + (ar>0?' mal':''); }
+  for(i=0;i<SECS.length;i++){
+    var kk = SECS[i].k; if(!TOPEABLE[kk]) continue;
+    var ll = m[kk];
+    for(var z=0;z<ll.length;z++){
+      var bt = document.getElementById('tb-'+kk+'-'+z), tt = document.getElementById('tt-'+kk+'-'+z);
+      if(!bt || !tt) continue;
+      var tp = num(ll[z].tope), gs = num(ll[z].monto), ps = gs > tp;
+      bt.style.width = Math.max(0, Math.min(100, (tp>0?gs/tp:0)*100)) + '%';
+      bt.className = ps ? 'mal' : '';
+      tt.className = ps ? 'mal' : '';
+      tt.textContent = ps ? 'Te pasaste por ' + fARS(gs - tp) + ' del tope de ' + fARS(tp) : fARS(gs) + ' de ' + fARS(tp);
+    }
+  }
+  var nt = document.getElementById('notaTopes');
+  if(nt){ nt.style.display = pasadas(m).length ? 'block' : 'none'; nt.innerHTML = textoTopes(m); }
   var np = document.getElementById('notaReponer');
   if(np){ np.style.display = ar > 0 ? 'block' : 'none'; np.innerHTML = 'A reponer al ahorro: <b>' + fARS(ar) + '</b>'; }
 }
@@ -2145,7 +2311,9 @@ function cargar(){
   recordarAnio(D.anio);
   arrancado = true; sucio = false; mes = Math.min(mes, 11);
   aplicarTema(); render();
-  if(!hayDatos() && !aniosGuardados().length) avisoPrimeraVez(); else revisarCopia();
+  if(!hayLS) avisoSinGuardado();
+  else if(!hayDatos() && !aniosGuardados().length && !vioBienvenida()) bienvenida();
+  else if(!hayDatos() && !aniosGuardados().length) avisoPrimeraVez(); else revisarCopia();
   if(navigator.storage && navigator.storage.persist) navigator.storage.persist()['catch'](function(){});
 }
 function cambiarAnio(a){
@@ -2190,6 +2358,22 @@ function hacerCopia(){
     alerta('Copia descargada', 'Se guardó <b>' + nombre + '</b> en Descargas. Pasala a la PC y guardala con las demás.');
   }
 }
+function versionPC(){
+  if(sucio) guardar();
+  var nombre = 'kibfinanzas-' + D.anio + '.html';
+  var datos = JSON.stringify(D).replace(/</g, '\\u003c');   // que ningún nombre de categoría cierre el <script>
+  var listo = function(txt){
+    var i = txt.indexOf(M1), j = txt.indexOf(M2);
+    if(i < 0 || j < 0 || j < i){ alerta('No pude armarlo', 'El archivo de la app no tiene las marcas donde van los datos. Probá de nuevo después de actualizar.'); return; }
+    var salida = txt.slice(0, i + M1.length) + datos + txt.slice(j);
+    descargar(salida, nombre, 'text/html;charset=utf-8');
+    alerta('Listo', 'Se descargó <b>' + nombre + '</b>. Pasalo a la computadora y abrilo con doble clic: es la misma app con los datos de ' + D.anio + ' adentro, sin instalar nada. Los otros años están en la copia de seguridad, que también se puede restaurar ahí.');
+  };
+  if(!window.fetch){ alerta('No se puede acá', 'Este navegador no permite armar el archivo. Hacelo desde otro, o usá la copia de seguridad.'); return; }
+  fetch('./index.html', {cache:'force-cache'}).then(function(r){ return r.text(); }).then(listo)['catch'](function(){
+    alerta('No pude leer la app', 'Abrí la app una vez con internet para que quede guardada completa y probá de nuevo.');
+  });
+}
 function restaurarCopia(f){
   var r = new FileReader();
   r.onload = function(){
@@ -2227,6 +2411,23 @@ function diasSinCopia(){
 function hayDatos(){
   for(var i=0;i<12;i++){ var c = calc(D.meses[i]); if(c.totalIngresos || c.totalGastos || c.totalDeudas || c.ahorroMesARS) return true; }
   return false;
+}
+function vioBienvenida(){ try{ return localStorage.getItem(LSBIENV) === '1'; }catch(e){ return false; } }
+function cerrarBienvenida(){
+  try{ localStorage.setItem(LSBIENV, '1'); }catch(e){}
+  cerrarHoja();
+  if(!hayDatos() && !aniosGuardados().length) avisoPrimeraVez();
+}
+function bienvenida(){
+  abrirHoja('<h3>Bienvenido a kibFinanzas</h3>'
+    + '<div class="texto" style="margin-bottom:16px">'
+    +   '<p><b>Es tu presupuesto del mes, sin vueltas.</b> Cargás lo que entra, los gastos fijos, los variables y las deudas, y te dice con cuánto te quedás. También lleva el ahorro en pesos, en dólares y el patrimonio.</p>'
+    +   '<p><b>Todo vive en este teléfono.</b> No hay servidor, ni cuenta, ni clave, ni internet. Nadie más ve tus números, ni siquiera nosotros. Funciona igual en el subte o en el campo.</p>'
+    +   '<p><b>Por eso las copias son en serio.</b> Si limpiás los datos del navegador, cambiás de teléfono o lo perdés, no hay de dónde recuperarlos. En <b>Ajustes → Hacer copia de seguridad</b> se manda un archivo a Drive, mail o WhatsApp. Hacelo cada tanto: la app te lo recuerda.</p>'
+    +   '<p>Si venís de otro teléfono, restaurá tu copia y seguís donde estabas.</p>'
+    + '</div>'
+    + '<div class="fila"><button data-act="restaurar">Restaurar una copia</button>'
+    + '<button class="pri" data-act="bienvOk">Empezar</button></div>');
 }
 function avisoPrimeraVez(){
   document.getElementById('avisos').innerHTML =
@@ -2330,13 +2531,17 @@ var pendiente = null;
 
 function gastoRapido(){
   var m = D.meses[mes];
-  var cats = m.gastosVariables.concat(m.gastosFijos).slice(0, 12);
+  var todas = [], usos = {}, q;
+  for(q=0;q<m.gastosVariables.length;q++) todas.push({nombre:m.gastosVariables[q].nombre, sec:'gastosVariables', i:q, n:0});
+  for(q=0;q<m.gastosFijos.length;q++) todas.push({nombre:m.gastosFijos[q].nombre, sec:'gastosFijos', i:q, n:0});
+  for(q=0;q<m.movimientos.length;q++){ var nm = m.movimientos[q].nombre; usos[nm] = (usos[nm]||0) + 1; }
+  for(q=0;q<todas.length;q++) todas[q].n = usos[todas[q].nombre] || 0;
+  todas.sort(function(a,b){ return b.n - a.n; });   // las más usadas primero, el resto queda como estaba
+  var cats = todas.slice(0, 12);
   var h = '<h3>Gasto rápido · '+MESES[mes]+'</h3>'
         + '<div class="chips" id="grChips">';
   for(var i=0;i<cats.length;i++){
-    var sec = i < m.gastosVariables.length ? 'gastosVariables' : 'gastosFijos';
-    var idx = i < m.gastosVariables.length ? i : i - m.gastosVariables.length;
-    h += '<button data-act="chip" data-sec="'+sec+'" data-i="'+idx+'">'+esc(cats[i].nombre)+'</button>';
+    h += '<button data-act="chip" data-sec="'+cats[i].sec+'" data-i="'+cats[i].i+'">'+esc(cats[i].nombre)+'</button>';
   }
   h += '</div>'
      + '<input type="text" id="grMonto" class="grande" inputmode="decimal" placeholder="0" autocomplete="off" enterkeyhint="done">'
@@ -2484,6 +2689,7 @@ document.addEventListener('click', function(ev){
   if(a === 'ocultoSet'){ var q = b.getAttribute('data-v') === '1'; if(q !== oculto) alternarOculto(); return; }
   if(a === 'elegir'){ guardar(true); return; }
   if(a === 'expcsv'){ exportarCSV(); return; }
+  if(a === 'verpc'){ versionPC(); return; }
   if(a === 'duplicar'){ duplicar(); return; }
   if(a === 'tema'){ D.ui.tema = b.getAttribute('data-v'); aplicarTema(); tocar(); renderAjustes(); return; }
   if(a === 'copia'){ hacerCopia(); return; }
@@ -2492,6 +2698,8 @@ document.addEventListener('click', function(ev){
   if(a === 'anio'){ cambiarAnio(+b.getAttribute('data-v')); return; }
   if(a === 'cerrarAviso'){ document.getElementById('avisos').innerHTML = ''; return; }
   if(a === 'copiar'){ copiarAnterior(b.getAttribute('data-k')); return; }
+  if(a === 'topes'){ abrirTopes(b.getAttribute('data-k')); return; }
+  if(a === 'topesOk'){ guardarTopes(b.getAttribute('data-k'), b.getAttribute('data-v') === 'ade'); return; }
   if(a === 'quitarMov'){ quitarMov(b.getAttribute('data-id')); document.getElementById('toast').classList.remove('on'); return; }
   if(a === 'plan'){ abrirPlan(+b.getAttribute('data-i')); return; }
   if(a === 'guardarPlan'){ guardarPlan(false); return; }
@@ -2507,6 +2715,8 @@ document.addEventListener('click', function(ev){
   }
   if(a === 'confirmarGasto'){ sumarGasto(); return; }
   if(a === 'cerrarHoja'){ pendiente = null; cerrarHoja(); return; }
+  if(a === 'bienvOk'){ cerrarBienvenida(); return; }
+  if(a === 'verBienvenida'){ bienvenida(); return; }
   if(a === 'confirmar'){ var f = pendiente; pendiente = null; cerrarHoja(); if(f) f(); return; }
   if(a === 'nuevoNombre'){ crearItem(); return; }
   if(a === 'propagar'){ propagar(b.getAttribute('data-v') === 'si'); return; }
@@ -2679,6 +2889,8 @@ aplicarTema();
 aplicarOculto();
 render();
 cargar();
+
+if(location.search.indexOf('gasto=1') > -1) setTimeout(gastoRapido, 350);
 
 if('serviceWorker' in navigator && location.protocol === 'https:'){
   navigator.serviceWorker.register('./sw.js')['catch'](function(){});
