@@ -207,6 +207,26 @@ tr.tot td:first-child{background:var(--card2)}
 .seg{display:flex;gap:4px;background:var(--fill);border-radius:12px;padding:3px}
 .seg button{flex:1;padding:8px 10px;border-radius:9px;font-size:14px;font-weight:600;color:var(--txt2);min-height:38px}
 .seg button.on{background:var(--card);color:var(--txt);box-shadow:var(--shadow)}
+.lista{background:var(--card);border-radius:var(--r);border:1px solid var(--sep);box-shadow:var(--shadow);overflow:hidden}
+.faj{display:flex;align-items:center;gap:12px;width:100%;padding:11px 14px 11px 12px;min-height:56px;text-align:left;border-bottom:1px solid var(--sep);background:var(--card);color:var(--txt);text-decoration:none}
+.faj:last-child{border-bottom:0}
+.faj:active{background:var(--fill)}
+.faj .ico{flex:0 0 32px;width:32px;height:32px;border-radius:9px;background:var(--acc-soft);color:var(--acc);display:flex;align-items:center;justify-content:center}
+.faj .ico svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.faj .tx{flex:1;min-width:0}
+.faj .tx b{display:block;font-size:16px;font-weight:500;color:var(--txt)}
+.faj .tx small{display:block;font-size:13px;color:var(--txt2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.faj .tx small.mal{color:var(--neg)}
+.faj .tx small.ok{color:var(--acc)}
+.faj .chev{flex:0 0 auto;transform:rotate(-45deg);margin-right:4px}
+.faj.acento .tx b{color:var(--acc);font-weight:600}
+.faj .seg{flex:0 0 auto;width:52%;max-width:230px}
+.faj .seg button{min-height:32px;padding:5px 6px;font-size:13px}
+.volver{display:flex;align-items:center;gap:6px;color:var(--acc);font-size:16px;font-weight:500;padding:6px 0 2px;margin-top:4px}
+.volver i{width:10px;height:10px;border-left:2px solid var(--acc);border-bottom:2px solid var(--acc);transform:rotate(45deg);margin-left:4px}
+.subtit{font-size:24px;font-weight:700;letter-spacing:-.02em;margin:6px 4px 14px}
+.pie{font-size:13px;color:var(--txt2);text-align:center;padding:26px 0 8px}
+.lista .anios{padding:12px 14px}
 .acciones{display:flex;flex-direction:column;gap:1px;background:var(--sep);border-radius:var(--r);overflow:hidden;border:1px solid var(--sep)}
 .acciones button{background:var(--card);padding:15px 16px;text-align:left;font-size:16px;min-height:52px}
 .acciones button.acento{color:var(--acc);font-weight:600}
@@ -1373,7 +1393,7 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
 var M1 = '/*DATOS_' + 'INICIO*/';
 var M2 = '/*DATOS_' + 'FIN*/';
 
-var APPVER   = '1.10';               // versión visible en Ajustes
+var APPVER   = '1.11';               // versión visible en Ajustes
 var PREF     = 'kibo.datos.';       // kibo.datos.2026, kibo.datos.2027…
 var LSANIO   = 'kibo.anio';
 var LSCOPIA  = 'kibo.ultimaCopia';
@@ -2069,6 +2089,7 @@ function bloque(k, t, cuerpo){
        + '<span class="nom">'+t+'</span><i class="chev"></i></button><div class="cuerpo">'+cuerpo+'</div></div>';
 }
 var ayudaAbierta = {};
+var ajVista = '';   // '' = raíz de Ajustes · 'datos' · 'ayuda' · 'privacidad'
 function manual(){
   var h = '<div class="manual">';
   h += bloque('idea', 'La idea',
@@ -2109,6 +2130,9 @@ function manual(){
       '<p>Arriba, la <b>cotización</b>: un dólar en pesos. Actualizala cada tanto; toda la app la usa para pasar dólares a pesos y compararlos con lo que pagaste.</p>'
     + '<p>La tabla muestra los dólares que entraron cada mes, a cuánto los pagaste, el acumulado y su valor en pesos hoy. Debajo te dice cuánto compraste en el año, el precio promedio, y si a la cotización de hoy valen más o menos de lo que te costaron.</p>'
     + '<p>En <b>Cripto</b> cargás activo, cantidad y precio en dólares. <b>Patrimonio total</b> junta los pesos ahorrados, los dólares y la cripto, en las dos monedas.</p>');
+  h += bloque('ajustes', 'Cómo está ordenado Ajustes',
+    '<p>La pantalla de <b>Ajustes</b> arranca con una lista corta agrupada en cinco temas: <b>Copia de seguridad</b>, <b>Año</b>, <b>Exportar</b>, <b>Aspecto</b> y <b>Ayuda</b>. Cada renglón dice abajo, en chico, en qué estado está: cuándo fue la última copia, si el sistema se comprometió a conservar tus datos, qué hace cada exportación.</p>'
+    + '<p>Las cosas largas viven en su propia pantalla: <b>Dónde viven tus datos</b>, este mismo <b>Método de uso</b> y <b>Privacidad</b>. Se entra tocando el renglón y se vuelve con la flecha de arriba. Al salir de Ajustes siempre vuelve al principio.</p>');
   h += bloque('pc', 'La versión para PC',
     '<p>En <b>Ajustes → Guardar la versión para PC</b> la app se arma a sí misma en un solo archivo <b>.html</b> con los datos del año abierto adentro. Lo pasás a la computadora, doble clic, y es la misma app: sin instalar nada, sin internet y sin cuenta.</p>'
     + '<p>Sirve para mirar los números en pantalla grande o para imprimir cómodo. Ojo: es una foto del momento en que lo generaste, no se sincroniza. Si cargás cosas en el teléfono, volvé a generarlo. Los demás años no van adentro del archivo, pero desde ahí podés <b>Restaurar una copia</b> y aparecen todos.</p>');
@@ -2135,66 +2159,115 @@ function manual(){
   h += '</div>';
   return h;
 }
-function renderAjustes(){
-  var t = D.ui.tema;
-  var h = '';
+var ICO = {
+  copia:  '<svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>',
+  rest:   '<svg viewBox="0 0 24 24"><path d="M12 4v12M7 11l5 5 5-5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>',
+  datos:  '<svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18h2"/></svg>',
+  anio:   '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+  pc:     '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>',
+  csv:    '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16"/></svg>',
+  imp:    '<svg viewBox="0 0 24 24"><path d="M7 8V3h10v5"/><rect x="3" y="8" width="18" height="9" rx="2"/><path d="M7 14h10v7H7z"/></svg>',
+  ojo:    '<svg viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+  tema:   '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none"/></svg>',
+  libro:  '<svg viewBox="0 0 24 24"><path d="M4 4h6a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H4z"/><path d="M20 4h-6a3 3 0 0 0-3 3v13a2 2 0 0 1 2-2h7z"/></svg>',
+  hola:   '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 10h.01M15 10h.01M8.5 14.5s1.2 2 3.5 2 3.5-2 3.5-2"/></svg>',
+  escudo: '<svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>'
+};
+function filaAj(ico, titulo, sub, act, extra, clase){
+  var attrs = act ? ' data-act="' + act + '"' + (extra || '') : (extra || '');
+  return '<button class="faj' + (clase ? ' ' + clase : '') + '"' + attrs + '>'
+       +   '<span class="ico">' + ICO[ico] + '</span>'
+       +   '<span class="tx"><b>' + titulo + '</b>' + (sub ? '<small' + (sub.clase ? ' class="' + sub.clase + '"' : '') + (sub.id ? ' id="' + sub.id + '"' : '') + '>' + sub.t + '</small>' : '') + '</span>'
+       +   '<i class="chev"></i>'
+       + '</button>';
+}
+function textoUltimaCopia(){
   var dsc = diasSinCopia();
-  h += '<h2 class="tit">Copias de seguridad</h2><div class="acciones">'
-     + '<button data-act="copia" class="acento">Hacer copia de seguridad</button>'
-     + '<button data-act="restaurar">Restaurar una copia</button>'
-     + '<button data-act="verpc">Guardar la versión para PC</button>'
-     + '<button data-act="expcsv">Exportar CSV del año</button>'
-     + '<button data-act="imprimir">Imprimir resumen del año</button>'
-     + '</div>'
-     + '<div class="texto"><p>' + (dsc === -1 ? 'Todavía no hiciste ninguna copia.' : (dsc === 0 ? 'Última copia: hoy.' : 'Última copia: hace ' + dsc + (dsc === 1 ? ' día.' : ' días.'))) + '</p></div>';
-  h += '<h2 class="tit">Dónde viven tus datos</h2><div class="texto" id="almac"><p>Revisando…</p></div>';
-  h += '<h2 class="tit">Años</h2><div class="acciones" style="margin-bottom:10px">'
-     + '<button data-act="duplicar">Crear el a\u00f1o ' + (D.anio+1) + '</button></div>';
-  h += '<div class="anios" id="anios"></div>';
-  h += '<h2 class="tit">Montos</h2><div class="seg">'
-     + '<button data-act="ocultoSet" data-v="0" class="' + (oculto?'':'on') + '">A la vista</button>'
-     + '<button data-act="ocultoSet" data-v="1" class="' + (oculto?'on':'') + '">Ocultos</button>'
-     + '</div>';
-  h += '<h2 class="tit">Apariencia</h2><div class="seg">'
-     + '<button data-act="tema" data-v="auto" class="' + (t==='auto'?'on':'') + '">Autom\u00e1tico</button>'
-     + '<button data-act="tema" data-v="claro" class="' + (t==='claro'?'on':'') + '">Claro</button>'
-     + '<button data-act="tema" data-v="oscuro" class="' + (t==='oscuro'?'on':'') + '">Oscuro</button>'
-     + '</div>';
-  h += '<h2 class="tit">Método de uso</h2>' + manual();
-  h += '<h2 class="tit">Este a\u00f1o</h2><div class="texto">'
-     + '<p>A\u00f1o ' + D.anio + '. \u00daltimo cambio: '
-     + (D.actualizado ? fechaCorta(D.actualizado) : 'todav\u00eda ninguno') + '.</p></div>';
-  h += '<h2 class="tit">Privacidad</h2><div class="texto">'
-     + '<p>kibFinanzas no recolecta ningún dato. No hay servidor, ni cuenta, ni publicidad, ni estadísticas. Tus números viven en este teléfono y solo salen si vos exportás una copia.</p></div>'
-     + '<div class="acciones">'
-     + '<button data-act="verBienvenida">Ver la pantalla de bienvenida</button>'
-     + '<a class="btnlink" href="./privacidad.html" target="_blank" rel="noopener">Política de privacidad</a>'
-     + '</div>';
-  h += '<h2 class="tit">Acerca de</h2><div class="texto">'
-     + '<p>kibFinanzas v' + APPVER + '</p>'
-     + '<p>Desarrollado por Kevin Vasquez</p></div>'
-     + '<div style="height:20px"></div>';
+  return dsc === -1 ? {t:'Todavía no hiciste ninguna', clase:'mal'}
+       : dsc === 0 ? {t:'Última copia: hoy', clase:'ok'}
+       : {t:'Última copia: hace ' + dsc + (dsc === 1 ? ' día' : ' días'), clase: dsc >= DIAS_AVISO ? 'mal' : ''};
+}
+function renderAjustes(){
+  var h = '';
+  if(ajVista === 'ayuda'){
+    h += '<button class="volver" data-act="ajRaiz"><i></i>Ajustes</button><h2 class="subtit">Método de uso</h2>' + manual() + '<div style="height:20px"></div>';
+  } else if(ajVista === 'privacidad'){
+    h += '<button class="volver" data-act="ajRaiz"><i></i>Ajustes</button><h2 class="subtit">Privacidad</h2>'
+       + '<div class="texto"><p>kibFinanzas no recolecta ningún dato. No hay servidor, ni cuenta, ni publicidad, ni estadísticas. Tus números viven en este teléfono y solo salen si vos exportás una copia.</p>'
+       + '<p>La app no pide acceso a contactos, ubicación, cámara ni archivos. La única salida de datos es la que iniciás vos al hacer una copia de seguridad, y ese archivo lo controlás vos.</p></div>'
+       + '<div class="lista" style="margin-top:14px">'
+       + '<a class="faj" href="./privacidad.html" target="_blank" rel="noopener"><span class="ico">' + ICO.escudo + '</span><span class="tx"><b>Política de privacidad completa</b><small>Se abre en el navegador</small></span><i class="chev"></i></a>'
+       + '</div><div style="height:20px"></div>';
+  } else if(ajVista === 'datos'){
+    var uc = textoUltimaCopia();
+    h += '<button class="volver" data-act="ajRaiz"><i></i>Ajustes</button><h2 class="subtit">Dónde viven tus datos</h2>'
+       + '<div class="texto" id="almac"><p>Revisando…</p></div>'
+       + '<div class="lista" style="margin-top:14px">'
+       + filaAj('copia', 'Hacer copia de seguridad', uc, 'copia', '', 'acento')
+       + filaAj('rest', 'Restaurar una copia', {t:'De este u otro teléfono'}, 'restaurar')
+       + '</div>'
+       + '<div class="texto" style="margin-top:14px"><p>Año ' + D.anio + '. Último cambio: ' + (D.actualizado ? fechaCorta(D.actualizado) : 'todavía ninguno') + '.</p></div>'
+       + '<div style="height:20px"></div>';
+  } else {
+    var t = D.ui.tema, uc2 = textoUltimaCopia();
+    h += '<h2 class="tit">Copia de seguridad</h2><div class="lista">'
+       + filaAj('copia', 'Hacer copia de seguridad', uc2, 'copia', '', 'acento')
+       + filaAj('rest', 'Restaurar una copia', {t:'De este u otro teléfono'}, 'restaurar')
+       + filaAj('datos', 'Dónde viven tus datos', {t:'Revisando…', id:'almacMini'}, 'ajVista', ' data-v="datos"')
+       + '</div>';
+    h += '<h2 class="tit">Año</h2><div class="lista">'
+       + '<div class="anios" id="anios"></div>'
+       + filaAj('anio', 'Crear el año ' + (D.anio+1), {t:'Con las mismas categorías y el cierre de ' + D.anio + ' como saldo inicial'}, 'duplicar')
+       + '</div>';
+    h += '<h2 class="tit">Exportar</h2><div class="lista">'
+       + filaAj('pc', 'Versión para PC', {t:'La app entera en un archivo, con los datos de ' + D.anio}, 'verpc')
+       + filaAj('csv', 'CSV del año', {t:'Para abrir en Excel o Sheets'}, 'expcsv')
+       + filaAj('imp', 'Imprimir resumen del año', {t:'O guardarlo como PDF'}, 'imprimir')
+       + '</div>';
+    h += '<h2 class="tit">Aspecto</h2><div class="lista">'
+       + '<div class="faj"><span class="ico">' + ICO.ojo + '</span><span class="tx"><b>Montos</b></span>'
+       +   '<div class="seg"><button data-act="ocultoSet" data-v="0" class="' + (oculto?'':'on') + '">A la vista</button>'
+       +   '<button data-act="ocultoSet" data-v="1" class="' + (oculto?'on':'') + '">Ocultos</button></div></div>'
+       + '<div class="faj"><span class="ico">' + ICO.tema + '</span><span class="tx"><b>Tema</b></span>'
+       +   '<div class="seg"><button data-act="tema" data-v="auto" class="' + (t==='auto'?'on':'') + '">Auto</button>'
+       +   '<button data-act="tema" data-v="claro" class="' + (t==='claro'?'on':'') + '">Claro</button>'
+       +   '<button data-act="tema" data-v="oscuro" class="' + (t==='oscuro'?'on':'') + '">Oscuro</button></div></div>'
+       + '</div>';
+    h += '<h2 class="tit">Ayuda</h2><div class="lista">'
+       + filaAj('libro', 'Método de uso', {t:'Cómo se carga, cómo se calcula, qué hace cada cosa'}, 'ajVista', ' data-v="ayuda"')
+       + filaAj('hola', 'Pantalla de bienvenida', {t:'La que aparece la primera vez'}, 'verBienvenida')
+       + filaAj('escudo', 'Privacidad', {t:'No se recolecta ningún dato'}, 'ajVista', ' data-v="privacidad"')
+       + '</div>';
+    h += '<div class="pie">kibFinanzas v' + APPVER + '<br>Desarrollado por Kevin Vasquez</div>';
+  }
   document.getElementById('v-ajustes').innerHTML = h;
   listarAnios();
   renderAlmacen();
 }
 function renderAlmacen(){
-  var c = document.getElementById('almac'); if(!c) return;
-  if(!hayLS){ c.innerHTML = '<p><b>Este navegador no está guardando nada.</b> Puede ser una ventana privada o el almacenamiento bloqueado. Lo que cargues se pierde al cerrar.</p>'; return; }
+  var c = document.getElementById('almac'), mini = document.getElementById('almacMini');
+  if(!c && !mini) return;
+  function pinta(largo, corto, clase){
+    if(c) c.innerHTML = largo;
+    if(mini){ mini.textContent = corto; mini.className = clase || ''; }
+  }
+  if(!hayLS){ pinta('<p><b>Este navegador no está guardando nada.</b> Puede ser una ventana privada o el almacenamiento bloqueado. Lo que cargues se pierde al cerrar.</p>', 'Este navegador no está guardando nada', 'mal'); return; }
   var base = '<p>Tus datos viven adentro de este navegador, en este teléfono. No hay servidor ni nube: nadie más los puede ver, y nadie más los puede recuperar.</p>';
   var sinDato = base + '<p>Este navegador no informa si el sistema se compromete a conservarlos. Hacé copias seguido.</p>';
-  if(!(navigator.storage && navigator.storage.persisted)){ c.innerHTML = sinDato; return; }
+  if(!(navigator.storage && navigator.storage.persisted)){ pinta(sinDato, 'En este teléfono, sin garantía del sistema', ''); return; }
   navigator.storage.persisted().then(function(ok){
     var h = base + (ok
       ? '<p><b>El sistema se comprometió a conservarlos.</b> No los va a borrar para hacer lugar. Igual hacé copias: si limpiás los datos del navegador o sacás la app, se van.</p>'
       : '<p><b>El sistema no garantiza conservarlos.</b> Si al teléfono le falta espacio los puede borrar sin avisar. Suele pasar cuando la app se agregó como acceso directo en vez de instalarse de verdad. Hacé copias seguido.</p>');
+    var corto = ok ? 'El sistema se comprometió a conservarlos' : 'El sistema no garantiza conservarlos';
+    var clase = ok ? 'ok' : 'mal';
     if(navigator.storage.estimate){
       navigator.storage.estimate().then(function(e){
         var kb = e && e.usage ? Math.round(e.usage/1024) : 0;
-        c.innerHTML = h + (kb ? '<p>Entre la app y tus datos ocupan unos ' + kb + ' KB.</p>' : '');
-      })['catch'](function(){ c.innerHTML = h; });
-    } else c.innerHTML = h;
-  })['catch'](function(){ c.innerHTML = sinDato; });
+        pinta(h + (kb ? '<p>Entre la app y tus datos ocupan unos ' + kb + ' KB.</p>' : ''), corto, clase);
+      })['catch'](function(){ pinta(h, corto, clase); });
+    } else pinta(h, corto, clase);
+  })['catch'](function(){ pinta(sinDato, 'En este teléfono, sin garantía del sistema', ''); });
 }
 function avisoSinGuardado(){
   aviso('<b>Este navegador no está guardando los cambios.</b> Puede ser una ventana privada o el almacenamiento bloqueado. Lo que cargues ahora se va a perder al cerrar.', false);
@@ -2659,7 +2732,7 @@ document.addEventListener('click', function(ev){
   if(!b) { if(ev.target === velo) cerrarHoja(); return; }
   var a = b.getAttribute('data-act');
 
-  if(a === 'tab'){ tab = b.getAttribute('data-t');
+  if(a === 'tab'){ tab = b.getAttribute('data-t'); ajVista = '';
     var bs = document.querySelectorAll('#nav button');
     for(var i=0;i<bs.length;i++) bs[i].classList.toggle('on', bs[i] === b);
     var vs = document.querySelectorAll('.vista');
@@ -2690,6 +2763,8 @@ document.addEventListener('click', function(ev){
   if(a === 'elegir'){ guardar(true); return; }
   if(a === 'expcsv'){ exportarCSV(); return; }
   if(a === 'verpc'){ versionPC(); return; }
+  if(a === 'ajVista'){ ajVista = b.getAttribute('data-v') || ''; renderAjustes(); window.scrollTo(0,0); return; }
+  if(a === 'ajRaiz'){ ajVista = ''; renderAjustes(); window.scrollTo(0,0); return; }
   if(a === 'duplicar'){ duplicar(); return; }
   if(a === 'tema'){ D.ui.tema = b.getAttribute('data-v'); aplicarTema(); tocar(); renderAjustes(); return; }
   if(a === 'copia'){ hacerCopia(); return; }

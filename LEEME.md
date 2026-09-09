@@ -48,6 +48,7 @@ el .apk. Del zip que te da, copiá assetlinks.json a una carpeta
 
 ## CHANGELOG
 
+v1.11 · 2026-09-09 — Ajustes rehecho: en vez de una pared de texto, una lista agrupada en Copia de seguridad, Año, Exportar, Aspecto y Ayuda, con ícono en cada renglón y un subtítulo que dice el estado (cuándo fue la última copia, si el sistema garantiza conservar los datos). Lo largo —dónde viven tus datos, el método de uso y privacidad— pasa a su propia pantalla con botón de volver.
 v1.10 · 2026-09-09 — Ajustes → "Guardar la versión para PC": la app se arma a sí misma en un solo archivo .html con los datos del año adentro, para abrir en la computadora con doble clic, sin instalar nada. Ya no hace falta pedirla aparte.
 v1.9 · 2026-09-09 — Pantalla de bienvenida la primera vez que se abre la app: qué es, que los datos viven solo en ese teléfono y que las copias son la única red de seguridad; se puede volver a ver desde Ajustes. Nueva sección Privacidad en Ajustes y archivo privacidad.html publicado, que es lo que pide Google Play.
 v1.8 · 2026-09-09 — La pestaña Año abre con "En criollo": promedio de lo que entra y lo que se va, el mes de más y el de menos gasto, qué porcentaje estás ahorrando, con cuánto cerrás diciembre a ese ritmo y qué meses gastaste más de lo que entró. Los chips del gasto rápido se ordenan por lo que más usás, y el ícono de la app suma un atajo (mantener apretado) para abrir directo en gasto rápido.
