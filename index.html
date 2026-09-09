@@ -17,26 +17,26 @@
 :root{
   --bg:#f2f2f7; --card:#ffffff; --card2:#ffffff; --txt:#111114; --txt2:#8a8a8e;
   --sep:rgba(60,60,67,.13); --acc:#1f9d55; --acc-soft:rgba(31,157,85,.12);
-  --neg:#c0392b; --fill:#e9e9ee; --shadow:0 1px 2px rgba(0,0,0,.04),0 6px 18px rgba(0,0,0,.05);
+  --neg:#d0453a; --fill:#e9e9ee; --shadow:0 1px 2px rgba(0,0,0,.04),0 6px 18px rgba(0,0,0,.05);
   --nav:rgba(248,248,250,.88); --r:16px;
 }
 @media (prefers-color-scheme: dark){
   :root{
     --bg:#000000; --card:#161618; --card2:#1e1e21; --txt:#f4f4f6; --txt2:#8e8e93;
     --sep:rgba(255,255,255,.10); --acc:#34c17b; --acc-soft:rgba(52,193,123,.16);
-    --neg:#ff6b5e; --fill:#2a2a2e; --shadow:none; --nav:rgba(20,20,22,.86);
+    --neg:#f0655b; --fill:#2a2a2e; --shadow:none; --nav:rgba(20,20,22,.86);
   }
 }
 html[data-tema="claro"]{
   --bg:#f2f2f7; --card:#ffffff; --card2:#ffffff; --txt:#111114; --txt2:#8a8a8e;
   --sep:rgba(60,60,67,.13); --acc:#1f9d55; --acc-soft:rgba(31,157,85,.12);
-  --neg:#c0392b; --fill:#e9e9ee; --shadow:0 1px 2px rgba(0,0,0,.04),0 6px 18px rgba(0,0,0,.05);
+  --neg:#d0453a; --fill:#e9e9ee; --shadow:0 1px 2px rgba(0,0,0,.04),0 6px 18px rgba(0,0,0,.05);
   --nav:rgba(248,248,250,.88);
 }
 html[data-tema="oscuro"]{
   --bg:#000000; --card:#161618; --card2:#1e1e21; --txt:#f4f4f6; --txt2:#8e8e93;
   --sep:rgba(255,255,255,.10); --acc:#34c17b; --acc-soft:rgba(52,193,123,.16);
-  --neg:#ff6b5e; --fill:#2a2a2e; --shadow:none; --nav:rgba(20,20,22,.86);
+  --neg:#f0655b; --fill:#2a2a2e; --shadow:none; --nav:rgba(20,20,22,.86);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0;overflow-x:hidden}
@@ -64,7 +64,8 @@ header{
 html[data-oculto] .ojo{color:var(--acc)}
 html[data-oculto] .ojo .ojo-ver{display:none}
 html[data-oculto] .ojo .ojo-no{display:block}
-.hd h1 .anio{font-weight:500;color:var(--txt2);font-size:16px;margin-left:2px}
+.hd h1 .kf{font-weight:800;letter-spacing:.01em}
+.hd h1 .anio{font-weight:500;color:var(--txt2);font-size:16px;margin-left:6px}
 .estado{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt2);grid-column:1;grid-row:1;min-width:0;line-height:1.15}
 .estado span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--acc);flex:0 0 auto}
@@ -245,6 +246,7 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
 .hoja .fila button{flex:1;min-height:50px;border-radius:14px;font-size:16px;font-weight:600;background:var(--fill)}
 .hoja .fila button.pri{background:var(--acc);color:#fff}
 .hoja .fila button.mal{color:var(--neg)}
+.hoja .fila button.pri.mal{background:var(--neg);color:#fff}
 
 .neg{color:var(--neg)}
 .ok{color:var(--acc)}
@@ -283,7 +285,7 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
 
 <header>
   <div class="wrap hd">
-    <h1 id="titulo">kibFinanzas <span class="anio"></span></h1>
+    <h1 id="titulo" title="kibFinanzas"><span class="kf">KF</span><span class="anio"></span></h1>
     <div class="estado"><i class="dot" id="dot"></i><span id="txtEstado">Listo</span></div>
     <button class="btn-guardar" data-act="guardar">Guardar</button>
   </div>
@@ -327,6 +329,7 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
  "actualizado": "",
  "ahorroAnioAnterior": 0,
  "usdAnioAnterior": 0,
+ "aReponerAnterior": 0,
  "cotizacionUSD": 1499,
  "cotizacionFecha": "",
  "cripto": [
@@ -336,6 +339,11 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
    "precioUSD": 0
   }
  ],
+ "planDeudas": {},
+ "ui": {
+  "tema": "auto",
+  "col": {}
+ },
  "meses": [
   {
    "ingresos": [
@@ -344,21 +352,17 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
      "monto": 0
     },
     {
-     "nombre": "Horas extras",
+     "nombre": "Otros ingresos",
      "monto": 0
     }
    ],
    "gastosFijos": [
     {
+     "nombre": "Alquiler",
+     "monto": 0
+    },
+    {
      "nombre": "Luz",
-     "monto": 0
-    },
-    {
-     "nombre": "Internet",
-     "monto": 0
-    },
-    {
-     "nombre": "Gym",
      "monto": 0
     },
     {
@@ -366,65 +370,64 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
      "monto": 0
     },
     {
-     "nombre": "SUBE",
+     "nombre": "Internet",
      "monto": 0
     },
     {
-     "nombre": "Crédito celular",
+     "nombre": "Celular",
+     "monto": 0
+    },
+    {
+     "nombre": "Transporte",
      "monto": 0
     }
    ],
    "gastosVariables": [
     {
-     "nombre": "Compras insumos",
+     "nombre": "Supermercado",
      "monto": 0
     },
     {
-     "nombre": "Proteína",
+     "nombre": "Comida afuera",
      "monto": 0
     },
     {
-     "nombre": "Remis / Uber",
+     "nombre": "Salidas",
      "monto": 0
     },
     {
-     "nombre": "Arreglos hogar",
+     "nombre": "Ropa",
      "monto": 0
     },
     {
-     "nombre": "Home gym",
+     "nombre": "Salud",
      "monto": 0
     },
     {
-     "nombre": "Capricho",
-     "monto": 0
-    },
-    {
-     "nombre": "Gastos hormiga",
-     "monto": 0
-    },
-    {
-     "nombre": "Delivery",
+     "nombre": "Otros",
      "monto": 0
     }
    ],
    "deudas": [
     {
-     "nombre": "Préstamo novia",
+     "nombre": "Préstamo",
      "monto": 0
     },
     {
-     "nombre": "Préstamo Mercado Pago",
-     "monto": 0
-    },
-    {
-     "nombre": "Préstamo Tarjeta Naranja",
+     "nombre": "Tarjeta de crédito",
      "monto": 0
     }
    ],
    "ahorroMesARS": 0,
    "metaAhorroPct": 0.1,
-   "ahorroMesUSD": 0
+   "ahorroMesUSD": 0,
+   "compraARS": 0,
+   "compraUSD": 0,
+   "retiroARS": 0,
+   "ventaUSD": 0,
+   "ventaARS": 0,
+   "reposicionARS": 0,
+   "movimientos": []
   },
   {
    "ingresos": [
@@ -433,21 +436,17 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
      "monto": 0
     },
     {
-     "nombre": "Horas extras",
+     "nombre": "Otros ingresos",
      "monto": 0
     }
    ],
    "gastosFijos": [
     {
+     "nombre": "Alquiler",
+     "monto": 0
+    },
+    {
      "nombre": "Luz",
-     "monto": 0
-    },
-    {
-     "nombre": "Internet",
-     "monto": 0
-    },
-    {
-     "nombre": "Gym",
      "monto": 0
     },
     {
@@ -455,65 +454,64 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
      "monto": 0
     },
     {
-     "nombre": "SUBE",
+     "nombre": "Internet",
      "monto": 0
     },
     {
-     "nombre": "Crédito celular",
+     "nombre": "Celular",
+     "monto": 0
+    },
+    {
+     "nombre": "Transporte",
      "monto": 0
     }
    ],
    "gastosVariables": [
     {
-     "nombre": "Compras insumos",
+     "nombre": "Supermercado",
      "monto": 0
     },
     {
-     "nombre": "Proteína",
+     "nombre": "Comida afuera",
      "monto": 0
     },
     {
-     "nombre": "Remis / Uber",
+     "nombre": "Salidas",
      "monto": 0
     },
     {
-     "nombre": "Arreglos hogar",
+     "nombre": "Ropa",
      "monto": 0
     },
     {
-     "nombre": "Home gym",
+     "nombre": "Salud",
      "monto": 0
     },
     {
-     "nombre": "Capricho",
-     "monto": 0
-    },
-    {
-     "nombre": "Gastos hormiga",
-     "monto": 0
-    },
-    {
-     "nombre": "Delivery",
+     "nombre": "Otros",
      "monto": 0
     }
    ],
    "deudas": [
     {
-     "nombre": "Préstamo novia",
+     "nombre": "Préstamo",
      "monto": 0
     },
     {
-     "nombre": "Préstamo Mercado Pago",
-     "monto": 0
-    },
-    {
-     "nombre": "Préstamo Tarjeta Naranja",
+     "nombre": "Tarjeta de crédito",
      "monto": 0
     }
    ],
    "ahorroMesARS": 0,
    "metaAhorroPct": 0.1,
-   "ahorroMesUSD": 0
+   "ahorroMesUSD": 0,
+   "compraARS": 0,
+   "compraUSD": 0,
+   "retiroARS": 0,
+   "ventaUSD": 0,
+   "ventaARS": 0,
+   "reposicionARS": 0,
+   "movimientos": []
   },
   {
    "ingresos": [
@@ -522,21 +520,17 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
      "monto": 0
     },
     {
-     "nombre": "Horas extras",
+     "nombre": "Otros ingresos",
      "monto": 0
     }
    ],
    "gastosFijos": [
     {
+     "nombre": "Alquiler",
+     "monto": 0
+    },
+    {
      "nombre": "Luz",
-     "monto": 0
-    },
-    {
-     "nombre": "Internet",
-     "monto": 0
-    },
-    {
-     "nombre": "Gym",
      "monto": 0
     },
     {
@@ -544,65 +538,64 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
      "monto": 0
     },
     {
-     "nombre": "SUBE",
+     "nombre": "Internet",
      "monto": 0
     },
     {
-     "nombre": "Crédito celular",
+     "nombre": "Celular",
+     "monto": 0
+    },
+    {
+     "nombre": "Transporte",
      "monto": 0
     }
    ],
    "gastosVariables": [
     {
-     "nombre": "Compras insumos",
+     "nombre": "Supermercado",
      "monto": 0
     },
     {
-     "nombre": "Proteína",
+     "nombre": "Comida afuera",
      "monto": 0
     },
     {
-     "nombre": "Remis / Uber",
+     "nombre": "Salidas",
      "monto": 0
     },
     {
-     "nombre": "Arreglos hogar",
+     "nombre": "Ropa",
      "monto": 0
     },
     {
-     "nombre": "Home gym",
+     "nombre": "Salud",
      "monto": 0
     },
     {
-     "nombre": "Capricho",
-     "monto": 0
-    },
-    {
-     "nombre": "Gastos hormiga",
-     "monto": 0
-    },
-    {
-     "nombre": "Delivery",
+     "nombre": "Otros",
      "monto": 0
     }
    ],
    "deudas": [
     {
-     "nombre": "Préstamo novia",
+     "nombre": "Préstamo",
      "monto": 0
     },
     {
-     "nombre": "Préstamo Mercado Pago",
-     "monto": 0
-    },
-    {
-     "nombre": "Préstamo Tarjeta Naranja",
+     "nombre": "Tarjeta de crédito",
      "monto": 0
     }
    ],
    "ahorroMesARS": 0,
    "metaAhorroPct": 0.1,
-   "ahorroMesUSD": 0
+   "ahorroMesUSD": 0,
+   "compraARS": 0,
+   "compraUSD": 0,
+   "retiroARS": 0,
+   "ventaUSD": 0,
+   "ventaARS": 0,
+   "reposicionARS": 0,
+   "movimientos": []
   },
   {
    "ingresos": [
@@ -611,21 +604,17 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
      "monto": 0
     },
     {
-     "nombre": "Horas extras",
+     "nombre": "Otros ingresos",
      "monto": 0
     }
    ],
    "gastosFijos": [
     {
+     "nombre": "Alquiler",
+     "monto": 0
+    },
+    {
      "nombre": "Luz",
-     "monto": 0
-    },
-    {
-     "nombre": "Internet",
-     "monto": 0
-    },
-    {
-     "nombre": "Gym",
      "monto": 0
     },
     {
@@ -633,65 +622,64 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
      "monto": 0
     },
     {
-     "nombre": "SUBE",
+     "nombre": "Internet",
      "monto": 0
     },
     {
-     "nombre": "Crédito celular",
+     "nombre": "Celular",
+     "monto": 0
+    },
+    {
+     "nombre": "Transporte",
      "monto": 0
     }
    ],
    "gastosVariables": [
     {
-     "nombre": "Compras insumos",
+     "nombre": "Supermercado",
      "monto": 0
     },
     {
-     "nombre": "Proteína",
+     "nombre": "Comida afuera",
      "monto": 0
     },
     {
-     "nombre": "Remis / Uber",
+     "nombre": "Salidas",
      "monto": 0
     },
     {
-     "nombre": "Arreglos hogar",
+     "nombre": "Ropa",
      "monto": 0
     },
     {
-     "nombre": "Home gym",
+     "nombre": "Salud",
      "monto": 0
     },
     {
-     "nombre": "Capricho",
-     "monto": 0
-    },
-    {
-     "nombre": "Gastos hormiga",
-     "monto": 0
-    },
-    {
-     "nombre": "Delivery",
+     "nombre": "Otros",
      "monto": 0
     }
    ],
    "deudas": [
     {
-     "nombre": "Préstamo novia",
+     "nombre": "Préstamo",
      "monto": 0
     },
     {
-     "nombre": "Préstamo Mercado Pago",
-     "monto": 0
-    },
-    {
-     "nombre": "Préstamo Tarjeta Naranja",
+     "nombre": "Tarjeta de crédito",
      "monto": 0
     }
    ],
    "ahorroMesARS": 0,
    "metaAhorroPct": 0.1,
-   "ahorroMesUSD": 0
+   "ahorroMesUSD": 0,
+   "compraARS": 0,
+   "compraUSD": 0,
+   "retiroARS": 0,
+   "ventaUSD": 0,
+   "ventaARS": 0,
+   "reposicionARS": 0,
+   "movimientos": []
   },
   {
    "ingresos": [
@@ -700,21 +688,17 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
      "monto": 0
     },
     {
-     "nombre": "Horas extras",
+     "nombre": "Otros ingresos",
      "monto": 0
     }
    ],
    "gastosFijos": [
     {
+     "nombre": "Alquiler",
+     "monto": 0
+    },
+    {
      "nombre": "Luz",
-     "monto": 0
-    },
-    {
-     "nombre": "Internet",
-     "monto": 0
-    },
-    {
-     "nombre": "Gym",
      "monto": 0
     },
     {
@@ -722,65 +706,64 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
      "monto": 0
     },
     {
-     "nombre": "SUBE",
+     "nombre": "Internet",
      "monto": 0
     },
     {
-     "nombre": "Crédito celular",
+     "nombre": "Celular",
+     "monto": 0
+    },
+    {
+     "nombre": "Transporte",
      "monto": 0
     }
    ],
    "gastosVariables": [
     {
-     "nombre": "Compras insumos",
+     "nombre": "Supermercado",
      "monto": 0
     },
     {
-     "nombre": "Proteína",
+     "nombre": "Comida afuera",
      "monto": 0
     },
     {
-     "nombre": "Remis / Uber",
+     "nombre": "Salidas",
      "monto": 0
     },
     {
-     "nombre": "Arreglos hogar",
+     "nombre": "Ropa",
      "monto": 0
     },
     {
-     "nombre": "Home gym",
+     "nombre": "Salud",
      "monto": 0
     },
     {
-     "nombre": "Capricho",
-     "monto": 0
-    },
-    {
-     "nombre": "Gastos hormiga",
-     "monto": 0
-    },
-    {
-     "nombre": "Delivery",
+     "nombre": "Otros",
      "monto": 0
     }
    ],
    "deudas": [
     {
-     "nombre": "Préstamo novia",
+     "nombre": "Préstamo",
      "monto": 0
     },
     {
-     "nombre": "Préstamo Mercado Pago",
-     "monto": 0
-    },
-    {
-     "nombre": "Préstamo Tarjeta Naranja",
+     "nombre": "Tarjeta de crédito",
      "monto": 0
     }
    ],
    "ahorroMesARS": 0,
    "metaAhorroPct": 0.1,
-   "ahorroMesUSD": 0
+   "ahorroMesUSD": 0,
+   "compraARS": 0,
+   "compraUSD": 0,
+   "retiroARS": 0,
+   "ventaUSD": 0,
+   "ventaARS": 0,
+   "reposicionARS": 0,
+   "movimientos": []
   },
   {
    "ingresos": [
@@ -789,21 +772,17 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
      "monto": 0
     },
     {
-     "nombre": "Horas extras",
+     "nombre": "Otros ingresos",
      "monto": 0
     }
    ],
    "gastosFijos": [
     {
+     "nombre": "Alquiler",
+     "monto": 0
+    },
+    {
      "nombre": "Luz",
-     "monto": 0
-    },
-    {
-     "nombre": "Internet",
-     "monto": 0
-    },
-    {
-     "nombre": "Gym",
      "monto": 0
     },
     {
@@ -811,65 +790,64 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
      "monto": 0
     },
     {
-     "nombre": "SUBE",
+     "nombre": "Internet",
      "monto": 0
     },
     {
-     "nombre": "Crédito celular",
+     "nombre": "Celular",
+     "monto": 0
+    },
+    {
+     "nombre": "Transporte",
      "monto": 0
     }
    ],
    "gastosVariables": [
     {
-     "nombre": "Compras insumos",
+     "nombre": "Supermercado",
      "monto": 0
     },
     {
-     "nombre": "Proteína",
+     "nombre": "Comida afuera",
      "monto": 0
     },
     {
-     "nombre": "Remis / Uber",
+     "nombre": "Salidas",
      "monto": 0
     },
     {
-     "nombre": "Arreglos hogar",
+     "nombre": "Ropa",
      "monto": 0
     },
     {
-     "nombre": "Home gym",
+     "nombre": "Salud",
      "monto": 0
     },
     {
-     "nombre": "Capricho",
-     "monto": 0
-    },
-    {
-     "nombre": "Gastos hormiga",
-     "monto": 0
-    },
-    {
-     "nombre": "Delivery",
+     "nombre": "Otros",
      "monto": 0
     }
    ],
    "deudas": [
     {
-     "nombre": "Préstamo novia",
+     "nombre": "Préstamo",
      "monto": 0
     },
     {
-     "nombre": "Préstamo Mercado Pago",
-     "monto": 0
-    },
-    {
-     "nombre": "Préstamo Tarjeta Naranja",
+     "nombre": "Tarjeta de crédito",
      "monto": 0
     }
    ],
    "ahorroMesARS": 0,
    "metaAhorroPct": 0.1,
-   "ahorroMesUSD": 0
+   "ahorroMesUSD": 0,
+   "compraARS": 0,
+   "compraUSD": 0,
+   "retiroARS": 0,
+   "ventaUSD": 0,
+   "ventaARS": 0,
+   "reposicionARS": 0,
+   "movimientos": []
   },
   {
    "ingresos": [
@@ -878,21 +856,17 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
      "monto": 0
     },
     {
-     "nombre": "Horas extras",
+     "nombre": "Otros ingresos",
      "monto": 0
     }
    ],
    "gastosFijos": [
     {
+     "nombre": "Alquiler",
+     "monto": 0
+    },
+    {
      "nombre": "Luz",
-     "monto": 0
-    },
-    {
-     "nombre": "Internet",
-     "monto": 0
-    },
-    {
-     "nombre": "Gym",
      "monto": 0
     },
     {
@@ -900,65 +874,64 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
      "monto": 0
     },
     {
-     "nombre": "SUBE",
+     "nombre": "Internet",
      "monto": 0
     },
     {
-     "nombre": "Crédito celular",
+     "nombre": "Celular",
+     "monto": 0
+    },
+    {
+     "nombre": "Transporte",
      "monto": 0
     }
    ],
    "gastosVariables": [
     {
-     "nombre": "Compras insumos",
+     "nombre": "Supermercado",
      "monto": 0
     },
     {
-     "nombre": "Proteína",
+     "nombre": "Comida afuera",
      "monto": 0
     },
     {
-     "nombre": "Remis / Uber",
+     "nombre": "Salidas",
      "monto": 0
     },
     {
-     "nombre": "Arreglos hogar",
+     "nombre": "Ropa",
      "monto": 0
     },
     {
-     "nombre": "Home gym",
+     "nombre": "Salud",
      "monto": 0
     },
     {
-     "nombre": "Capricho",
-     "monto": 0
-    },
-    {
-     "nombre": "Gastos hormiga",
-     "monto": 0
-    },
-    {
-     "nombre": "Delivery",
+     "nombre": "Otros",
      "monto": 0
     }
    ],
    "deudas": [
     {
-     "nombre": "Préstamo novia",
+     "nombre": "Préstamo",
      "monto": 0
     },
     {
-     "nombre": "Préstamo Mercado Pago",
-     "monto": 0
-    },
-    {
-     "nombre": "Préstamo Tarjeta Naranja",
+     "nombre": "Tarjeta de crédito",
      "monto": 0
     }
    ],
    "ahorroMesARS": 0,
    "metaAhorroPct": 0.1,
-   "ahorroMesUSD": 0
+   "ahorroMesUSD": 0,
+   "compraARS": 0,
+   "compraUSD": 0,
+   "retiroARS": 0,
+   "ventaUSD": 0,
+   "ventaARS": 0,
+   "reposicionARS": 0,
+   "movimientos": []
   },
   {
    "ingresos": [
@@ -967,21 +940,17 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
      "monto": 0
     },
     {
-     "nombre": "Horas extras",
+     "nombre": "Otros ingresos",
      "monto": 0
     }
    ],
    "gastosFijos": [
     {
+     "nombre": "Alquiler",
+     "monto": 0
+    },
+    {
      "nombre": "Luz",
-     "monto": 0
-    },
-    {
-     "nombre": "Internet",
-     "monto": 0
-    },
-    {
-     "nombre": "Gym",
      "monto": 0
     },
     {
@@ -989,65 +958,64 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
      "monto": 0
     },
     {
-     "nombre": "SUBE",
+     "nombre": "Internet",
      "monto": 0
     },
     {
-     "nombre": "Crédito celular",
+     "nombre": "Celular",
+     "monto": 0
+    },
+    {
+     "nombre": "Transporte",
      "monto": 0
     }
    ],
    "gastosVariables": [
     {
-     "nombre": "Compras insumos",
+     "nombre": "Supermercado",
      "monto": 0
     },
     {
-     "nombre": "Proteína",
+     "nombre": "Comida afuera",
      "monto": 0
     },
     {
-     "nombre": "Remis / Uber",
+     "nombre": "Salidas",
      "monto": 0
     },
     {
-     "nombre": "Arreglos hogar",
+     "nombre": "Ropa",
      "monto": 0
     },
     {
-     "nombre": "Home gym",
+     "nombre": "Salud",
      "monto": 0
     },
     {
-     "nombre": "Capricho",
-     "monto": 0
-    },
-    {
-     "nombre": "Gastos hormiga",
-     "monto": 0
-    },
-    {
-     "nombre": "Delivery",
+     "nombre": "Otros",
      "monto": 0
     }
    ],
    "deudas": [
     {
-     "nombre": "Préstamo novia",
+     "nombre": "Préstamo",
      "monto": 0
     },
     {
-     "nombre": "Préstamo Mercado Pago",
-     "monto": 0
-    },
-    {
-     "nombre": "Préstamo Tarjeta Naranja",
+     "nombre": "Tarjeta de crédito",
      "monto": 0
     }
    ],
    "ahorroMesARS": 0,
    "metaAhorroPct": 0.1,
-   "ahorroMesUSD": 0
+   "ahorroMesUSD": 0,
+   "compraARS": 0,
+   "compraUSD": 0,
+   "retiroARS": 0,
+   "ventaUSD": 0,
+   "ventaARS": 0,
+   "reposicionARS": 0,
+   "movimientos": []
   },
   {
    "ingresos": [
@@ -1056,21 +1024,17 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
      "monto": 0
     },
     {
-     "nombre": "Horas extras",
+     "nombre": "Otros ingresos",
      "monto": 0
     }
    ],
    "gastosFijos": [
     {
+     "nombre": "Alquiler",
+     "monto": 0
+    },
+    {
      "nombre": "Luz",
-     "monto": 0
-    },
-    {
-     "nombre": "Internet",
-     "monto": 0
-    },
-    {
-     "nombre": "Gym",
      "monto": 0
     },
     {
@@ -1078,65 +1042,64 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
      "monto": 0
     },
     {
-     "nombre": "SUBE",
+     "nombre": "Internet",
      "monto": 0
     },
     {
-     "nombre": "Crédito celular",
+     "nombre": "Celular",
+     "monto": 0
+    },
+    {
+     "nombre": "Transporte",
      "monto": 0
     }
    ],
    "gastosVariables": [
     {
-     "nombre": "Compras insumos",
+     "nombre": "Supermercado",
      "monto": 0
     },
     {
-     "nombre": "Proteína",
+     "nombre": "Comida afuera",
      "monto": 0
     },
     {
-     "nombre": "Remis / Uber",
+     "nombre": "Salidas",
      "monto": 0
     },
     {
-     "nombre": "Arreglos hogar",
+     "nombre": "Ropa",
      "monto": 0
     },
     {
-     "nombre": "Home gym",
+     "nombre": "Salud",
      "monto": 0
     },
     {
-     "nombre": "Capricho",
-     "monto": 0
-    },
-    {
-     "nombre": "Gastos hormiga",
-     "monto": 0
-    },
-    {
-     "nombre": "Delivery",
+     "nombre": "Otros",
      "monto": 0
     }
    ],
    "deudas": [
     {
-     "nombre": "Préstamo novia",
+     "nombre": "Préstamo",
      "monto": 0
     },
     {
-     "nombre": "Préstamo Mercado Pago",
-     "monto": 0
-    },
-    {
-     "nombre": "Préstamo Tarjeta Naranja",
+     "nombre": "Tarjeta de crédito",
      "monto": 0
     }
    ],
    "ahorroMesARS": 0,
    "metaAhorroPct": 0.1,
-   "ahorroMesUSD": 0
+   "ahorroMesUSD": 0,
+   "compraARS": 0,
+   "compraUSD": 0,
+   "retiroARS": 0,
+   "ventaUSD": 0,
+   "ventaARS": 0,
+   "reposicionARS": 0,
+   "movimientos": []
   },
   {
    "ingresos": [
@@ -1145,21 +1108,17 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
      "monto": 0
     },
     {
-     "nombre": "Horas extras",
+     "nombre": "Otros ingresos",
      "monto": 0
     }
    ],
    "gastosFijos": [
     {
+     "nombre": "Alquiler",
+     "monto": 0
+    },
+    {
      "nombre": "Luz",
-     "monto": 0
-    },
-    {
-     "nombre": "Internet",
-     "monto": 0
-    },
-    {
-     "nombre": "Gym",
      "monto": 0
     },
     {
@@ -1167,65 +1126,64 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
      "monto": 0
     },
     {
-     "nombre": "SUBE",
+     "nombre": "Internet",
      "monto": 0
     },
     {
-     "nombre": "Crédito celular",
+     "nombre": "Celular",
+     "monto": 0
+    },
+    {
+     "nombre": "Transporte",
      "monto": 0
     }
    ],
    "gastosVariables": [
     {
-     "nombre": "Compras insumos",
+     "nombre": "Supermercado",
      "monto": 0
     },
     {
-     "nombre": "Proteína",
+     "nombre": "Comida afuera",
      "monto": 0
     },
     {
-     "nombre": "Remis / Uber",
+     "nombre": "Salidas",
      "monto": 0
     },
     {
-     "nombre": "Arreglos hogar",
+     "nombre": "Ropa",
      "monto": 0
     },
     {
-     "nombre": "Home gym",
+     "nombre": "Salud",
      "monto": 0
     },
     {
-     "nombre": "Capricho",
-     "monto": 0
-    },
-    {
-     "nombre": "Gastos hormiga",
-     "monto": 0
-    },
-    {
-     "nombre": "Delivery",
+     "nombre": "Otros",
      "monto": 0
     }
    ],
    "deudas": [
     {
-     "nombre": "Préstamo novia",
+     "nombre": "Préstamo",
      "monto": 0
     },
     {
-     "nombre": "Préstamo Mercado Pago",
-     "monto": 0
-    },
-    {
-     "nombre": "Préstamo Tarjeta Naranja",
+     "nombre": "Tarjeta de crédito",
      "monto": 0
     }
    ],
    "ahorroMesARS": 0,
    "metaAhorroPct": 0.1,
-   "ahorroMesUSD": 0
+   "ahorroMesUSD": 0,
+   "compraARS": 0,
+   "compraUSD": 0,
+   "retiroARS": 0,
+   "ventaUSD": 0,
+   "ventaARS": 0,
+   "reposicionARS": 0,
+   "movimientos": []
   },
   {
    "ingresos": [
@@ -1234,21 +1192,17 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
      "monto": 0
     },
     {
-     "nombre": "Horas extras",
+     "nombre": "Otros ingresos",
      "monto": 0
     }
    ],
    "gastosFijos": [
     {
+     "nombre": "Alquiler",
+     "monto": 0
+    },
+    {
      "nombre": "Luz",
-     "monto": 0
-    },
-    {
-     "nombre": "Internet",
-     "monto": 0
-    },
-    {
-     "nombre": "Gym",
      "monto": 0
     },
     {
@@ -1256,65 +1210,64 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
      "monto": 0
     },
     {
-     "nombre": "SUBE",
+     "nombre": "Internet",
      "monto": 0
     },
     {
-     "nombre": "Crédito celular",
+     "nombre": "Celular",
+     "monto": 0
+    },
+    {
+     "nombre": "Transporte",
      "monto": 0
     }
    ],
    "gastosVariables": [
     {
-     "nombre": "Compras insumos",
+     "nombre": "Supermercado",
      "monto": 0
     },
     {
-     "nombre": "Proteína",
+     "nombre": "Comida afuera",
      "monto": 0
     },
     {
-     "nombre": "Remis / Uber",
+     "nombre": "Salidas",
      "monto": 0
     },
     {
-     "nombre": "Arreglos hogar",
+     "nombre": "Ropa",
      "monto": 0
     },
     {
-     "nombre": "Home gym",
+     "nombre": "Salud",
      "monto": 0
     },
     {
-     "nombre": "Capricho",
-     "monto": 0
-    },
-    {
-     "nombre": "Gastos hormiga",
-     "monto": 0
-    },
-    {
-     "nombre": "Delivery",
+     "nombre": "Otros",
      "monto": 0
     }
    ],
    "deudas": [
     {
-     "nombre": "Préstamo novia",
+     "nombre": "Préstamo",
      "monto": 0
     },
     {
-     "nombre": "Préstamo Mercado Pago",
-     "monto": 0
-    },
-    {
-     "nombre": "Préstamo Tarjeta Naranja",
+     "nombre": "Tarjeta de crédito",
      "monto": 0
     }
    ],
    "ahorroMesARS": 0,
    "metaAhorroPct": 0.1,
-   "ahorroMesUSD": 0
+   "ahorroMesUSD": 0,
+   "compraARS": 0,
+   "compraUSD": 0,
+   "retiroARS": 0,
+   "ventaUSD": 0,
+   "ventaARS": 0,
+   "reposicionARS": 0,
+   "movimientos": []
   },
   {
    "ingresos": [
@@ -1323,21 +1276,17 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
      "monto": 0
     },
     {
-     "nombre": "Horas extras",
+     "nombre": "Otros ingresos",
      "monto": 0
     }
    ],
    "gastosFijos": [
     {
+     "nombre": "Alquiler",
+     "monto": 0
+    },
+    {
      "nombre": "Luz",
-     "monto": 0
-    },
-    {
-     "nombre": "Internet",
-     "monto": 0
-    },
-    {
-     "nombre": "Gym",
      "monto": 0
     },
     {
@@ -1345,71 +1294,66 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
      "monto": 0
     },
     {
-     "nombre": "SUBE",
+     "nombre": "Internet",
      "monto": 0
     },
     {
-     "nombre": "Crédito celular",
+     "nombre": "Celular",
+     "monto": 0
+    },
+    {
+     "nombre": "Transporte",
      "monto": 0
     }
    ],
    "gastosVariables": [
     {
-     "nombre": "Compras insumos",
+     "nombre": "Supermercado",
      "monto": 0
     },
     {
-     "nombre": "Proteína",
+     "nombre": "Comida afuera",
      "monto": 0
     },
     {
-     "nombre": "Remis / Uber",
+     "nombre": "Salidas",
      "monto": 0
     },
     {
-     "nombre": "Arreglos hogar",
+     "nombre": "Ropa",
      "monto": 0
     },
     {
-     "nombre": "Home gym",
+     "nombre": "Salud",
      "monto": 0
     },
     {
-     "nombre": "Capricho",
-     "monto": 0
-    },
-    {
-     "nombre": "Gastos hormiga",
-     "monto": 0
-    },
-    {
-     "nombre": "Delivery",
+     "nombre": "Otros",
      "monto": 0
     }
    ],
    "deudas": [
     {
-     "nombre": "Préstamo novia",
+     "nombre": "Préstamo",
      "monto": 0
     },
     {
-     "nombre": "Préstamo Mercado Pago",
-     "monto": 0
-    },
-    {
-     "nombre": "Préstamo Tarjeta Naranja",
+     "nombre": "Tarjeta de crédito",
      "monto": 0
     }
    ],
    "ahorroMesARS": 0,
    "metaAhorroPct": 0.1,
-   "ahorroMesUSD": 0
+   "ahorroMesUSD": 0,
+   "compraARS": 0,
+   "compraUSD": 0,
+   "retiroARS": 0,
+   "ventaUSD": 0,
+   "ventaARS": 0,
+   "reposicionARS": 0,
+   "movimientos": []
   }
- ],
- "ui": {
-  "tema": "auto",
-  "col": {}
- }
+ ]
 }
 /*DATOS_FIN*/
 </script>
@@ -1422,7 +1366,7 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
 var M1 = '/*DATOS_' + 'INICIO*/';
 var M2 = '/*DATOS_' + 'FIN*/';
 
-var APPVER   = '1.3';               // versión visible en Ajustes
+var APPVER   = '1.5.5';               // versión visible en Ajustes
 var PREF     = 'kibo.datos.';       // kibo.datos.2026, kibo.datos.2027…
 var LSANIO   = 'kibo.anio';
 var LSCOPIA  = 'kibo.ultimaCopia';
@@ -1450,14 +1394,14 @@ var gr = {monto:0, cat:null, sec:'gastosVariables'};
 /* ═══ 1 · datos por defecto ══════════════════════════════════════ */
 function mesVacio(){
   return {
-    ingresos:[{nombre:'Sueldo',monto:0},{nombre:'Horas extras',monto:0}],
-    gastosFijos:[{nombre:'Luz',monto:0},{nombre:'Internet',monto:0},{nombre:'Gym',monto:0},
-                 {nombre:'Gas',monto:0},{nombre:'SUBE',monto:0},{nombre:'Crédito celular',monto:0}],
-    gastosVariables:[{nombre:'Compras insumos',monto:0},{nombre:'Proteína',monto:0},{nombre:'Remis / Uber',monto:0},
-                     {nombre:'Arreglos hogar',monto:0},{nombre:'Home gym',monto:0},{nombre:'Capricho',monto:0},
-                     {nombre:'Gastos hormiga',monto:0},{nombre:'Delivery',monto:0}],
-    deudas:[{nombre:'Préstamo novia',monto:0},{nombre:'Préstamo Mercado Pago',monto:0},{nombre:'Préstamo Tarjeta Naranja',monto:0}],
-    ahorroMesARS:0, metaAhorroPct:0.10, ahorroMesUSD:0, compraARS:0, compraUSD:0, movimientos:[]
+    ingresos:[{nombre:'Sueldo',monto:0},{nombre:'Otros ingresos',monto:0}],
+    gastosFijos:[{nombre:'Alquiler',monto:0},{nombre:'Luz',monto:0},{nombre:'Gas',monto:0},
+                 {nombre:'Internet',monto:0},{nombre:'Celular',monto:0},{nombre:'Transporte',monto:0}],
+    gastosVariables:[{nombre:'Supermercado',monto:0},{nombre:'Comida afuera',monto:0},{nombre:'Salidas',monto:0},
+                     {nombre:'Ropa',monto:0},{nombre:'Salud',monto:0},{nombre:'Otros',monto:0}],
+    deudas:[{nombre:'Préstamo',monto:0},{nombre:'Tarjeta de crédito',monto:0}],
+    ahorroMesARS:0, metaAhorroPct:0.10, ahorroMesUSD:0, compraARS:0, compraUSD:0,
+    retiroARS:0, ventaUSD:0, ventaARS:0, reposicionARS:0, movimientos:[]
   };
 }
 function normalizar(d){
@@ -1467,6 +1411,7 @@ function normalizar(d){
   d.actualizado = d.actualizado || '';
   d.ahorroAnioAnterior = num(d.ahorroAnioAnterior);
   d.usdAnioAnterior = num(d.usdAnioAnterior);
+  d.aReponerAnterior = num(d.aReponerAnterior);   // lo que quedó por reponer al ahorro al cerrar el año anterior
   d.cotizacionUSD = num(d.cotizacionUSD) || 1499;
   d.cotizacionFecha = d.cotizacionFecha || '';
   if(!Array.isArray(d.cripto)) d.cripto = [{activo:'BTC',cantidad:0,precioUSD:0}];
@@ -1483,6 +1428,10 @@ function normalizar(d){
     m.ahorroMesUSD = num(m.ahorroMesUSD);
     m.compraARS = num(m.compraARS);
     m.compraUSD = num(m.compraUSD);
+    m.retiroARS = num(m.retiroARS);       // pesos que saqué del ahorro
+    m.ventaUSD = num(m.ventaUSD);         // dólares que vendí
+    m.ventaARS = num(m.ventaARS);         // pesos que me dieron por esos dólares
+    m.reposicionARS = num(m.reposicionARS); // pesos que devolví al ahorro
     if(!Array.isArray(m.movimientos)) m.movimientos = [];
     m.movimientos = m.movimientos.filter(function(x){ return x && typeof x==='object'; }).map(function(x){
       return {id:String(x.id||''), fecha:String(x.fecha||''), sec:String(x.sec||'gastosVariables'), nombre:String(x.nombre||''), monto:num(x.monto)};
@@ -1552,10 +1501,13 @@ function suma(a){ var t=0; for(var i=0;i<(a||[]).length;i++) t += num(a[i].monto
 function calc(m){
   var ti = suma(m.ingresos), sf = suma(m.gastosFijos), sv = suma(m.gastosVariables);
   var tg = sf + sv, td = suma(m.deudas), ah = num(m.ahorroMesARS);
-  var libre = ti - tg - ah;
+  var sacado = num(m.retiroARS) + num(m.ventaARS), repuesto = num(m.reposicionARS);
+  var libre = ti - tg - ah + sacado - repuesto;
   return {
     totalIngresos: ti, subtotalFijos: sf, subtotalVariables: sv,
     totalGastos: tg, totalDeudas: td, ahorroMesARS: ah,
+    retiroARS: num(m.retiroARS), ventaUSD: num(m.ventaUSD), ventaARS: num(m.ventaARS),
+    reposicionARS: repuesto, sacadoARS: sacado,
     disponibleLibre: libre, disponibleFinal: libre - td,
     ahorroSugerido: ti * num(m.metaAhorroPct),
     pctGastos: ti > 0 ? tg/ti : 0,
@@ -1563,17 +1515,19 @@ function calc(m){
   };
 }
 function serie(d){
-  var out = [], accA = num(d.ahorroAnioAnterior), accU = num(d.usdAnioAnterior);
+  var out = [], accA = num(d.ahorroAnioAnterior), accU = num(d.usdAnioAnterior), accR = num(d.aReponerAnterior);
   for(var i=0;i<12;i++){
     var c = calc(d.meses[i]);
     var m = d.meses[i];
     c.compraARS = num(m.compraARS);
     c.compraUSD = num(m.compraUSD);
     c.cotizacionPagada = c.compraUSD > 0 ? c.compraARS / c.compraUSD : 0;
-    accA += c.ahorroMesARS - c.compraARS;
-    accU += num(m.ahorroMesUSD) + c.compraUSD;
+    accA += c.ahorroMesARS - c.compraARS - c.retiroARS + c.reposicionARS;
+    accU += num(m.ahorroMesUSD) + c.compraUSD - c.ventaUSD;
+    accR = Math.max(0, accR + c.sacadoARS - c.reposicionARS);
     c.ahorroAcumulado = accA;
-    c.usdMes = num(m.ahorroMesUSD) + c.compraUSD;
+    c.aReponer = accR;
+    c.usdMes = num(m.ahorroMesUSD) + c.compraUSD - c.ventaUSD;
     c.usdAcumulado = accU;
     c.equivalenteARS = accU * num(d.cotizacionUSD);
     out.push(c);
@@ -1729,6 +1683,8 @@ function renderMes(){
      +     barra('Gastos sobre ingresos', c.pctGastos, false, 'bGa')
      +     barra('Ahorro sobre ingresos', c.pctAhorro, true, 'bAh')
      +   '</div>'
+     +   '<div class="nota mal" id="notaReponer" style="display:'+(serie(D)[mes].aReponer>0?'block':'none')+';margin-top:10px">'
+     +     'A reponer al ahorro: <b>'+fARS(serie(D)[mes].aReponer)+'</b></div>'
      + '</div>';
 
   h += seccion(SECS[0], m);
@@ -1809,26 +1765,46 @@ function secAhorro(m, c){
      +   '<div class="fila-in"><label>Dólares que entraron aparte</label>'
      +     '<input class="monto usd" inputmode="decimal" data-campo="ahorroMesUSD" value="'+fUSD(m.ahorroMesUSD)+'"></div>'
      +   '<div class="nota">Plata que ya llegó en dólares, sin pasar por pesos.</div>'
+     +   '<div class="subtit">Saqué del ahorro</div>'
+     +   '<div class="fila-in"><label>Pesos que saqué</label>'
+     +     '<input class="monto" inputmode="decimal" data-campo="retiroARS" value="'+fARS(m.retiroARS)+'"></div>'
+     +   '<div class="fila-in"><label>Dólares que vendí</label>'
+     +     '<input class="monto usd" inputmode="decimal" data-campo="ventaUSD" value="'+fUSD(m.ventaUSD)+'"></div>'
+     +   '<div class="fila-in"><label>Pesos que te dieron</label>'
+     +     '<input class="monto" inputmode="decimal" data-campo="ventaARS" value="'+fARS(m.ventaARS)+'"></div>'
+     +   '<div class="nota">Lo que sacás se suma al disponible de este mes, para dirigirlo a lo que necesites.</div>'
+     +   '<div class="subtit">Repuse al ahorro</div>'
+     +   '<div class="fila-in"><label>Pesos que devolví</label>'
+     +     '<input class="monto" inputmode="decimal" data-campo="reposicionARS" value="'+fARS(m.reposicionARS)+'"></div>'
+     +   '<div class="nota'+(serie(D)[mes].aReponer>0?' mal':'')+'" id="notaRetiro">'+notaRetiro(m)+'</div>'
      + '</div></div>';
   return h;
+}
+function notaRetiro(m){
+  var r = serie(D)[mes].aReponer, v = num(m.ventaUSD), a = num(m.ventaARS), t = '';
+  if(v > 0 && a > 0) t = 'Vendiste a ' + fARS(a/v) + ' por d\u00f3lar. ';
+  if(r > 0) t += 'Te falta reponer ' + fARS(r) + ' al ahorro.';
+  else t += 'No le deb\u00e9s nada al ahorro.';
+  return t;
 }
 
 function renderAnio(){
   var s = serie(D), h = '', i;
-  var T = {i:0,g:0,a:0,c:0,d:0,f:0};
+  var T = {i:0,g:0,a:0,c:0,d:0,f:0,s:0,r:0};
   h += '<h2 class="tit">Los doce meses</h2><div class="tabla"><table><thead><tr>'
-     + '<th>Mes</th><th>Ingresos</th><th>Gastos</th><th>Ahorro</th><th>A dólares</th><th>Deudas</th><th>Disponible</th><th>Acumulado</th>'
+     + '<th>Mes</th><th>Ingresos</th><th>Gastos</th><th>Ahorro</th><th>A dólares</th><th>Saqué</th><th>Repuse</th><th>Deudas</th><th>Disponible</th><th>Acumulado</th>'
      + '</tr></thead><tbody>';
   for(i=0;i<12;i++){
     var c = s[i];
-    T.i+=c.totalIngresos; T.g+=c.totalGastos; T.a+=c.ahorroMesARS; T.c+=c.compraARS; T.d+=c.totalDeudas; T.f+=c.disponibleFinal;
+    T.i+=c.totalIngresos; T.g+=c.totalGastos; T.a+=c.ahorroMesARS; T.c+=c.compraARS; T.d+=c.totalDeudas; T.f+=c.disponibleFinal; T.s+=c.sacadoARS; T.r+=c.reposicionARS;
     h += '<tr><td>'+MESES[i]+'</td><td>'+hARS(c.totalIngresos)+'</td><td>'+hARS(c.totalGastos)+'</td>'
-       + '<td>'+hARS(c.ahorroMesARS)+'</td><td>'+hARS(c.compraARS)+'</td><td>'+hARS(c.totalDeudas)+'</td><td>'+hARS(c.disponibleFinal)+'</td>'
+       + '<td>'+hARS(c.ahorroMesARS)+'</td><td>'+hARS(c.compraARS)+'</td><td>'+hARS(c.sacadoARS)+'</td><td>'+hARS(c.reposicionARS)+'</td><td>'+hARS(c.totalDeudas)+'</td><td>'+hARS(c.disponibleFinal)+'</td>'
        + '<td>'+hARS(c.ahorroAcumulado)+'</td></tr>';
   }
   h += '<tr class="tot"><td>Total</td><td>'+hARS(T.i)+'</td><td>'+hARS(T.g)+'</td><td>'+hARS(T.a)+'</td><td>'+hARS(T.c)+'</td>'
-     + '<td>'+hARS(T.d)+'</td><td>'+hARS(T.f)+'</td><td>'+hARS(s[11].ahorroAcumulado)+'</td></tr>';
+     + '<td>'+hARS(T.s)+'</td><td>'+hARS(T.r)+'</td><td>'+hARS(T.d)+'</td><td>'+hARS(T.f)+'</td><td>'+hARS(s[11].ahorroAcumulado)+'</td></tr>';
   h += '</tbody></table></div>';
+  if(s[11].aReponer > 0) h += '<div class="nota mal" style="padding:0 4px 12px">Al cierre del año te falta reponer ' + fARS(s[11].aReponer) + ' al ahorro.</div>';
 
   h += '<h2 class="tit">Ingresos y gastos</h2><div class="chart">'
      + lineas(s.map(function(c){return c.totalIngresos;}), s.map(function(c){return c.totalGastos;}))
@@ -2003,6 +1979,7 @@ function manual(){
       '<p><b>Ahorro del mes</b> son los pesos que apartás. Salen del disponible y se suman al ahorro acumulado del año.</p>'
     + '<p>Si pasás parte de eso a dólares, cargalo en <b>Pasé a dólares</b>: los pesos que usaste y los dólares que te dieron. Te calcula a cuánto lo pagaste, descuenta esos pesos del acumulado en pesos y suma los dólares al acumulado en dólares. Así no se cuenta dos veces.</p>'
     + '<p><b>Otros dólares</b> es para plata que ya te llegó en dólares, sin comprarla.</p>'
+    + '<p><b>Saqué del ahorro</b> es para cuando necesitás usar plata ahorrada: pesos que sacaste, o dólares que vendiste y los pesos que te dieron. Eso baja el acumulado y se suma al disponible del mes, para que lo dirijas a lo que haga falta. Queda anotado como <b>a reponer</b>; cuando devolvés plata cargala en <b>Repuse al ahorro</b> y el pendiente baja solo. Se arrastra entre meses y al año siguiente.</p>'
     + '<p>La <b>meta de ahorro</b> es un porcentaje del ingreso; abajo te dice cuánto te tocaría apartar para cumplirla.</p>');
   h += bloque('deudas', 'Deudas con cuotas',
       '<p>Cada deuda tiene un monto mensual, como cualquier gasto. Debajo, la línea <b>Cargar cuotas</b> te deja ponerle el total, la cantidad de cuotas y cuántas ya pagaste antes de este año.</p>'
@@ -2027,9 +2004,10 @@ function manual(){
     + '<p><b>Exportar CSV</b> es la tabla anual para abrir en Excel; <b>Imprimir resumen del año</b> manda la pestaña Año a la impresora o a PDF.</p>');
   h += bloque('calculos', 'Cómo se calcula',
       '<ul><li>Gastos = fijos + variables</li>'
-    + '<li>Disponible final = ingresos − gastos − ahorro del mes − deudas</li>'
-    + '<li>Ahorro acumulado = el del mes anterior + ahorro del mes − pesos pasados a dólares</li>'
-    + '<li>Dólares acumulados = los del mes anterior + dólares comprados + otros dólares</li>'
+    + '<li>Disponible final = ingresos − gastos − ahorro del mes − deudas + lo que saqué del ahorro − lo que repuse</li>'
+    + '<li>Ahorro acumulado = el del mes anterior + ahorro del mes − pesos pasados a dólares − pesos sacados + pesos repuestos</li>'
+    + '<li>Dólares acumulados = los del mes anterior + dólares comprados + otros dólares − dólares vendidos</li>'
+    + '<li>A reponer = lo que saqué (pesos y venta de dólares) − lo que repuse, arrastrado mes a mes y año a año</li>'
     + '<li>Cotización pagada = pesos usados ÷ dólares obtenidos</li>'
     + '<li>Patrimonio = ahorro en pesos ÷ cotización + dólares + cripto</li></ul>'
     + '<p>Los ceros se muestran como "—". Los negativos van entre paréntesis y en rojo.</p>');
@@ -2091,6 +2069,11 @@ function refrescar(){
   for(i=0;i<dis.length;i++){ var di = D.meses[mes].deudas[+dis[i].getAttribute('data-i')]; if(di) dis[i].textContent = textoDeuda(di.nombre, mes); }
   var nc = document.getElementById('notaCompra');
   if(nc){ var ac = serie(D)[mes].ahorroAcumulado; nc.textContent = notaCompra(m, ac); nc.className = 'nota' + (ac<0?' mal':''); }
+  var ar = serie(D)[mes].aReponer;
+  var nr = document.getElementById('notaRetiro');
+  if(nr){ nr.textContent = notaRetiro(m); nr.className = 'nota' + (ar>0?' mal':''); }
+  var np = document.getElementById('notaReponer');
+  if(np){ np.style.display = ar > 0 ? 'block' : 'none'; np.innerHTML = 'A reponer al ahorro: <b>' + fARS(ar) + '</b>'; }
 }
 function puntual(id, pct){
   var b = document.getElementById(id), t = document.getElementById(id+'t');
@@ -2280,11 +2263,11 @@ function imprimir(){
 function exportarCSV(){
   var s = serie(D), l = [], i;
   function c(v){ return String(v).replace(/[;\n]/g,' '); }
-  l.push(['Mes','Ingresos','Gastos fijos','Gastos variables','Gastos','Ahorro ARS','Pesos a dólares','Dólares comprados','Pagado a','Deudas','Disponible final','Ahorro acumulado','USD del mes','USD acumulado'].join(';'));
+  l.push(['Mes','Ingresos','Gastos fijos','Gastos variables','Gastos','Ahorro ARS','Pesos a dólares','Dólares comprados','Pagado a','Saqué del ahorro','Dólares vendidos','Repuse','A reponer','Deudas','Disponible final','Ahorro acumulado','USD del mes','USD acumulado'].join(';'));
   for(i=0;i<12;i++){
     var x = s[i];
     l.push([MESES[i], x.totalIngresos, x.subtotalFijos, x.subtotalVariables, x.totalGastos,
-            x.ahorroMesARS, x.compraARS, x.compraUSD, Math.round(x.cotizacionPagada*100)/100, x.totalDeudas, x.disponibleFinal, x.ahorroAcumulado, x.usdMes, x.usdAcumulado]
+            x.ahorroMesARS, x.compraARS, x.compraUSD, Math.round(x.cotizacionPagada*100)/100, x.sacadoARS, x.ventaUSD, x.reposicionARS, x.aReponer, x.totalDeudas, x.disponibleFinal, x.ahorroAcumulado, x.usdMes, x.usdAcumulado]
            .map(function(v,k){ return k===0 ? c(v) : String(v).replace('.',','); }).join(';'));
   }
   descargar('\ufeff' + l.join('\r\n'), 'kibfinanzas-'+D.anio+'.csv', 'text/csv;charset=utf-8');
@@ -2295,6 +2278,7 @@ function duplicar(){
   n.ahorroAnioAnterior = s[11].ahorroAcumulado;
   Object.keys(n.planDeudas).forEach(function(k){ var e = estadoDeuda(k, 11); if(e) n.planDeudas[k].pagadasAntes = e.pagadas; });
   n.usdAnioAnterior = s[11].usdAcumulado;
+  n.aReponerAnterior = s[11].aReponer;
   n.actualizado = '';
   for(i=0;i<12;i++){
     var m = n.meses[i];
@@ -2302,7 +2286,8 @@ function duplicar(){
       k = SECS[j].k;
       for(var q=0;q<m[k].length;q++) m[k][q].monto = 0;
     }
-    m.ahorroMesARS = 0; m.ahorroMesUSD = 0; m.compraARS = 0; m.compraUSD = 0; m.movimientos = [];
+    m.ahorroMesARS = 0; m.ahorroMesUSD = 0; m.compraARS = 0; m.compraUSD = 0;
+    m.retiroARS = 0; m.ventaUSD = 0; m.ventaARS = 0; m.reposicionARS = 0; m.movimientos = [];
   }
   if(sucio) guardar();
   if(leerAnio(n.anio)){ alerta('Ese año ya existe', 'El ' + n.anio + ' ya está guardado en este teléfono. Cambiá de año desde Ajustes en vez de crearlo de nuevo.'); return; }
