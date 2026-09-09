@@ -1,6 +1,6 @@
 {
-  "name": "Kibo Finanzas",
-  "short_name": "Kibo",
+  "name": "kibFinanzas",
+  "short_name": "kibFinanzas",
   "description": "Presupuesto personal: ingresos, gastos, ahorro, dólares y deudas.",
   "id": "./",
   "start_url": "./",
