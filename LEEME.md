@@ -48,6 +48,8 @@ el .apk. Del zip que te da, copiá assetlinks.json a una carpeta
 
 ## CHANGELOG
 
+v1.20 · 2026-09-09 — Arregla el hueco vacío arriba de la tarjeta principal: la tarjeta del mes y la del año compartían la clase "resumen" desde la v1.17, así que el mes quedó pegajoso bajo el encabezado, con el relleno y el círculo decorativo de la otra. Ahora cada una tiene lo suyo.
+v1.19 · 2026-09-09 — Menos aire muerto arriba: encabezado más compacto, las vistas arrancan pegadas y el primer bloque de cada pestaña ya no suma margen propio. El halo de color pasa de 320 a 240 px para que no se lea como una franja vacía.
 v1.18 · 2026-09-09 — Pasada de aspecto: el disponible final pasa a ser el saldo centrado de la pantalla, con cuatro accesos redondos abajo (gasto, copia, el año, dólares). Cada sección lleva su ícono en un cuadradito tintado, la pestaña activa de la barra de abajo se marca con una píldora, las tarjetas tienen esquinas más redondeadas y hay un halo verde suave detrás del encabezado.
 v1.17 · 2026-09-09 — El resumen del año pasa a ser una tarjeta con anillo animado de porcentaje ahorrado, letra más grande y solo lo esencial en pocas líneas. Se pueden reordenar las categorías con "Cambiar el orden", para ese mes o de ese mes en adelante. Borrar una categoría ahora ofrece Deshacer, y borrar un activo de cripto pregunta antes en vez de borrarlo de una.
 v1.16 · 2026-09-09 — Píldora de confirmación: un cartelito chico baja desde el encabezado, con un tilde que se dibuja, cuando terminás de cargar y quedó guardado ("Cambios guardados") y cuando hacés la copia de seguridad ("Copia de seguridad hecha"). No sale en cada tecla: espera a que termines y no se repite antes de siete segundos. Si el navegador no pudo guardar, sale en rojo.
