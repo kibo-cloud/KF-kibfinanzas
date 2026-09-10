@@ -48,6 +48,8 @@ el .apk. Del zip que te da, copiá assetlinks.json a una carpeta
 
 ## CHANGELOG
 
+v1.27 · 2026-09-09 — La app guarda sus propias copias: cada vez que hacés una, se archiva también adentro de la app. En Ajustes aparecen las últimas cinco con fecha, y cada una se puede restaurar o compartir de un toque. Son una red contra errores de carga, no contra perder el teléfono.
+v1.26 · 2026-09-09 — Cuando compartir la copia falla, la app ya no lo esconde: descarga igual y avisa con el motivo exacto del navegador. Alternativa nueva: "Copiar la copia al portapapeles", en Ajustes, para pegarla en un mail, una nota o un documento de Drive cuando el menú de compartir no funciona.
 v1.25 · 2026-09-09 — Diagnóstico de compartir: Ajustes → Dónde viven tus datos ahora dice qué tipos de archivo acepta compartir este navegador. Y cuando la copia cae en Descargas, el aviso suma un botón "Probar compartir" que reintenta con un .txt y, si el navegador lo rechaza, informa el motivo exacto.
 v1.24 · 2026-09-09 — La copia intenta compartirse de tres formas antes de rendirse a Descargas: Chrome en Android bloquea el envío de archivos .json, así que ahora se prueba también como texto y como .txt. Si igual no se puede, el aviso explica cómo compartirla a mano desde la app Archivos. Restaurar acepta también .txt.
 v1.23 · 2026-09-09 — Arregla la fecha de fin de las deudas: se proyectaba desde el mes que estabas mirando, así que en el panel del año (que mira diciembre) las cuotas se corrían meses o hasta un año entero. Ahora la proyección arranca siempre en el primer mes sin pagar, así que Mes y Año dan la misma fecha y cambiar de año no la estira.

@@ -158,6 +158,7 @@ h2.tit{font-size:13px;font-weight:600;color:var(--txt2);margin:22px 4px 8px;lett
 .manual ul{margin:0 0 10px;padding-left:18px;font-size:15px;line-height:1.5}
 .manual li{margin-bottom:4px}
 .acciones .btnlink{display:block;background:var(--card);padding:15px 16px;text-align:left;font-size:16px;min-height:52px;line-height:22px;text-decoration:none;color:var(--txt)}
+.faj .mini{flex:0 0 auto;padding:7px 10px;border-radius:9px;background:var(--fill);color:var(--acc);font-size:13px;font-weight:600;min-height:36px}
 .chk{width:23px;height:23px;flex:0 0 auto;border-radius:50%;border:2px solid var(--sep);
   display:flex;align-items:center;justify-content:center;color:transparent;transition:background .18s,border-color .18s,color .18s,transform .12s}
 .chk svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
@@ -1515,7 +1516,7 @@ nav button.on .np{background:var(--acc-soft)}
 var M1 = '/*DATOS_' + 'INICIO*/';
 var M2 = '/*DATOS_' + 'FIN*/';
 
-var APPVER   = '1.25';               // versión visible en Ajustes
+var APPVER   = '1.27';               // versión visible en Ajustes
 var PREF     = 'kibo.datos.';       // kibo.datos.2026, kibo.datos.2027…
 var LSANIO   = 'kibo.anio';
 var LSCOPIA  = 'kibo.ultimaCopia';
@@ -2409,6 +2410,13 @@ function manual(){
     + '<p>Al guardar elegís <b>Solo este mes</b> o <b>de este mes en adelante</b>. Lo segundo es lo normal: ponés los topes una vez y valen para todo lo que queda del año. Cuando los precios se van para arriba, entrás de nuevo, subís el número y lo aplicás de ese mes en adelante. Los meses que ya pasaron quedan como estaban.</p>'
     + '<p>Un tope en cero es lo mismo que no tener tope: la fila se ve igual que siempre. Los topes se arrastran al crear el año siguiente.</p>');
 
+  h += bloque('historial', 'Las copias que guarda la app',
+    '<p>Cada vez que hacés una copia, la app se guarda una <b>adentro suyo</b>, además de la que compartís o descargás. En <b>Ajustes → Dónde viven tus datos</b> aparecen las últimas cinco, con su fecha, y cada una se puede <b>restaurar</b> de un toque o <b>compartir</b>.</p>'
+    + '<p>Sirven para volver atrás si te equivocaste cargando o si restauraste la copia equivocada. <b>No reemplazan mandar la copia afuera</b>: viven en el mismo teléfono, así que si lo perdés o borrás los datos del navegador, se van con todo lo demás.</p>'
+    + '<p>La app no puede elegir en qué carpeta del teléfono guardar ni decirte la ruta: los navegadores no se lo permiten. Lo que descarga va siempre a <b>Descargas</b>.</p>');
+  h += bloque('portapapeles', 'Si no se puede compartir',
+    '<p>Cuando el navegador no deja mandar el archivo, tenés dos salidas. Una: la copia igual quedó en <b>Descargas</b>, así que abrís la app Archivos, mantenés apretado el archivo y lo compartís desde ahí.</p>'
+    + '<p>La otra: <b>Copiar la copia al portapapeles</b>, en Ajustes. Copia todo el contenido como texto y lo pegás donde quieras: un mail para vos mismo, una nota, un documento de Drive. Para volver a usarlo, guardá ese texto en un archivo terminado en <b>.json</b> o <b>.txt</b> y restauralo desde Ajustes.</p>');
   h += bloque('copias', 'Dónde guardar las copias',
     '<p>Al tocar <b>Hacer copia de seguridad</b>, la app intenta abrir el menú de compartir del teléfono para que la mandes a Drive, al mail o a WhatsApp. Algunos navegadores no permiten compartir este tipo de archivo: en ese caso la copia se descarga a la carpeta <b>Descargas</b> y te avisa.</p>'
     + '<p>Si te pasa eso, abrí la app <b>Archivos</b>, mantené apretado el archivo y compartilo desde ahí. <b>Una copia que queda solo en el teléfono no es una copia</b>: si perdés el teléfono, se va con él.</p>'
@@ -2531,7 +2539,9 @@ function renderAjustes(){
        + '<div class="lista" style="margin-top:14px">'
        + filaAj('copia', 'Hacer copia de seguridad', uc, 'copia', '', 'acento')
        + filaAj('rest', 'Restaurar una copia', {t:'De este u otro teléfono'}, 'restaurar')
+       + filaAj('csv', 'Copiar la copia al portapapeles', {t:'Para pegarla en un mail o una nota'}, 'copiarAhora')
        + '</div>'
+       + listaHistorial()
        + '<div class="texto" style="margin-top:14px"><p>Año ' + D.anio + '. Último cambio: ' + (D.actualizado ? fechaCorta(D.actualizado) : 'todavía ninguno') + '.</p></div>'
        + '<div style="height:20px"></div>';
   } else {
@@ -2799,10 +2809,15 @@ function hacerCopia(){
     if(tab === 'ajustes') renderAjustes();
     pildora('Copia de seguridad hecha');
   };
+  guardarEnCarpeta(texto, nombre);
+  ultimaCopiaTexto = texto; ultimaCopiaNombre = nombre;
   if(puedeCompartir){
     navigator.share({files:[f], title:'Copia de kibFinanzas'}).then(listo)['catch'](function(e){
       if(e && e.name === 'AbortError') return;
       descargar(texto, nombre, 'application/json'); listo();
+      alertaCompartir('La copia quedó en Descargas',
+        'Tu navegador aceptó el archivo pero rechazó el env\u00edo (<b>' + ((e && e.name) || 'sin nombre') + '</b>). '
+      + 'La copia est\u00e1 a salvo en <b>Descargas</b>.<br><br>Prob\u00e1 de nuevo, o copiala al portapapeles y pegala donde la guardes.');
     });
   } else {
     descargar(texto, nombre, 'application/json'); listo();
@@ -2828,9 +2843,13 @@ function versionPC(){
 }
 function restaurarCopia(f){
   var r = new FileReader();
-  r.onload = function(){
+  r.onload = function(){ restaurarTexto(r.result); };
+  r.readAsText(f);
+}
+function restaurarTexto(txt){
+  (function(){
     var j;
-    try{ j = JSON.parse(r.result); }catch(e){ alerta('Ese archivo no se pudo leer', 'No parece una copia de kibFinanzas.'); return; }
+    try{ j = JSON.parse(txt); }catch(e){ alerta('Ese archivo no se pudo leer', 'No parece una copia de kibFinanzas.'); return; }
     var anios = j && j.anios && typeof j.anios === 'object' ? j.anios
               : (j && Array.isArray(j.meses) ? (function(o){ var t = {}; t[num(j.anio)||new Date().getFullYear()] = j; return t; })() : null);
     if(!anios){ alerta('Ese archivo no se pudo leer', 'No parece una copia de kibFinanzas.'); return; }
@@ -2852,8 +2871,7 @@ function restaurarCopia(f){
     abrirHoja('<h3>Restaurar copia</h3><div class="texto" style="margin-bottom:16px">La copia trae ' + claves.length + (claves.length === 1 ? ' año: ' : ' años: ')
       + '<b>' + claves.join(', ') + '</b>. Va a <b>reemplazar</b> lo que tengas guardado de esos años en este teléfono.</div>'
       + '<div class="fila"><button data-act="cerrarHoja">Cancelar</button><button class="pri mal" data-act="confirmar">Reemplazar</button></div>');
-  };
-  r.readAsText(f);
+  })();
 }
 function ultimaCopia(){ try{ return localStorage.getItem(LSCOPIA) || ''; }catch(e){ return ''; } }
 function diasSinCopia(){
@@ -3002,10 +3020,95 @@ hoja.addEventListener('touchend', function(){
   setTimeout(function(){ hoja.className = 'hoja'; }, 270);
 });
 var ultimaCopiaTexto = '', ultimaCopiaNombre = '';
+var LSHIST = 'kibo.historial';
+function hayCarpeta(){ return !!(navigator.storage && navigator.storage.getDirectory && window.File); }
+function leerHist(){ try{ var v = JSON.parse(localStorage.getItem(LSHIST) || '[]'); return Array.isArray(v) ? v : []; }catch(e){ return []; } }
+function escribirHist(l){ try{ localStorage.setItem(LSHIST, JSON.stringify(l)); }catch(e){} }
+function carpetaCopias(){
+  return navigator.storage.getDirectory().then(function(root){ return root.getDirectoryHandle('copias', {create:true}); });
+}
+function guardarEnCarpeta(texto, nombre){
+  if(!hayCarpeta()) return;
+  carpetaCopias().then(function(dir){
+    return dir.getFileHandle(nombre, {create:true}).then(function(fh){
+      return fh.createWritable().then(function(w){
+        return w.write(texto).then(function(){ return w.close(); });
+      });
+    }).then(function(){
+      var l = leerHist();
+      l = l.filter(function(x){ return x.n !== nombre; });
+      l.unshift({n:nombre, f:new Date().toISOString(), kb:Math.round(texto.length/1024)});
+      var sobran = l.slice(5);
+      l = l.slice(0, 5);
+      escribirHist(l);
+      for(var i=0;i<sobran.length;i++){ try{ dir.removeEntry(sobran[i].n); }catch(e){} }
+      if(tab === 'ajustes') renderAjustes();
+    });
+  })['catch'](function(){});
+}
+function abrirDelHistorial(nombre){
+  if(!hayCarpeta()) return;
+  carpetaCopias().then(function(dir){ return dir.getFileHandle(nombre); })
+    .then(function(fh){ return fh.getFile(); })
+    .then(function(f){ return f.text ? f.text() : new Response(f).text(); })
+    .then(function(txt){ restaurarTexto(txt); })
+    ['catch'](function(){ alerta('No la encontré', 'Esa copia ya no está guardada en el teléfono.'); });
+}
+function compartirDelHistorial(nombre){
+  if(!hayCarpeta()) return;
+  carpetaCopias().then(function(dir){ return dir.getFileHandle(nombre); })
+    .then(function(fh){ return fh.getFile(); })
+    .then(function(f){ return f.text ? f.text() : new Response(f).text(); })
+    .then(function(txt){ ultimaCopiaTexto = txt; ultimaCopiaNombre = nombre; probarCompartir(); })
+    ['catch'](function(){ alerta('No la encontré', 'Esa copia ya no está guardada en el teléfono.'); });
+}
+function listaHistorial(){
+  var l = leerHist(), h = '', i;
+  if(!hayCarpeta()) return '';
+  h += '<h2 class="tit">Copias guardadas en la app</h2>';
+  if(!l.length) return h + '<div class="texto"><p>Todavía no hay ninguna. Cada vez que hagas una copia, la app se guarda una acá adentro.</p></div>';
+  h += '<div class="lista">';
+  for(i=0;i<l.length;i++){
+    h += '<div class="faj" style="gap:8px">'
+       +   '<span class="ico">' + ICO.copia + '</span>'
+       +   '<span class="tx"><b>' + fechaCorta(l[i].f) + '</b><small>' + l[i].kb + ' KB</small></span>'
+       +   '<button class="mini" data-act="histCompartir" data-n="' + esc(l[i].n) + '">Compartir</button>'
+       +   '<button class="mini" data-act="histAbrir" data-n="' + esc(l[i].n) + '">Restaurar</button>'
+       + '</div>';
+  }
+  h += '</div><div class="texto" style="margin-top:8px"><p>Se guardan las últimas cinco. <b>Viven adentro de la app</b>, así que sirven si te equivocaste con los datos, pero no si perdés el teléfono. Para eso mandá la copia afuera.</p></div>';
+  return h;
+}
 function alertaCompartir(t, cuerpo){
   abrirHoja('<h3>'+t+'</h3><div class="texto" style="margin-bottom:16px">'+cuerpo+'</div>'
-          + '<div class="fila"><button data-act="cerrarHoja">Entendido</button>'
+          + '<div class="fila"><button data-act="copiarPortapapeles">Copiar</button>'
           + '<button class="pri" data-act="probarCompartir">Probar compartir</button></div>');
+}
+function copiarPortapapeles(){
+  var txt = ultimaCopiaTexto;
+  if(!txt){ alerta('No hay nada para copiar', 'Hacé primero una copia de seguridad.'); return; }
+  var listo = function(){
+    cerrarHoja();
+    pildora('Copia en el portapapeles');
+    setTimeout(function(){
+      alerta('Copiada al portapapeles', 'Ahora abrí donde la quieras guardar (un mail para vos mismo, una nota, un documento de Drive) y pegala.<br><br>Para volver a usarla, guardá ese texto en un archivo <b>.json</b> o <b>.txt</b> y restauralo desde Ajustes.');
+    }, 250);
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(listo)['catch'](function(){ copiarAlaVieja(txt, listo); });
+  } else copiarAlaVieja(txt, listo);
+}
+function copiarAlaVieja(txt, ok){
+  var ta = document.createElement('textarea');
+  ta.value = txt;
+  ta.style.position = 'fixed'; ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  var bien = false;
+  try{ bien = document.execCommand('copy'); }catch(e){}
+  document.body.removeChild(ta);
+  if(bien) ok();
+  else alerta('No se pudo copiar', 'Este navegador no dejó copiar al portapapeles. La copia igual está en Descargas.');
 }
 function probarCompartir(){
   if(!navigator.share){ alerta('No se puede', 'Este navegador no tiene menú de compartir. La copia quedó en Descargas.'); return; }
@@ -3235,6 +3338,10 @@ document.addEventListener('click', function(ev){
   if(a === 'expcsv'){ exportarCSV(); return; }
   if(a === 'verpc'){ versionPC(); return; }
   if(a === 'probarCompartir'){ cerrarHoja(); probarCompartir(); return; }
+  if(a === 'copiarPortapapeles'){ copiarPortapapeles(); return; }
+  if(a === 'histAbrir'){ abrirDelHistorial(b.getAttribute('data-n')); return; }
+  if(a === 'histCompartir'){ compartirDelHistorial(b.getAttribute('data-n')); return; }
+  if(a === 'copiarAhora'){ ultimaCopiaTexto = JSON.stringify(armarCopia(), null, 1); copiarPortapapeles(); return; }
   if(a === 'ajVista'){ ajVista = b.getAttribute('data-v') || ''; renderAjustes(); window.scrollTo(0,0); return; }
   if(a === 'ajRaiz'){ ajVista = ''; renderAjustes(); window.scrollTo(0,0); return; }
   if(a === 'duplicar'){ duplicar(); return; }
