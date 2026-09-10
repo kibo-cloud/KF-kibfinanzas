@@ -301,6 +301,22 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
 .hoja.vuelve{transition:transform .26s cubic-bezier(.2,.9,.3,1)}
 .hoja.yendo{transition:transform .24s cubic-bezier(.4,0,.8,.3)}
 .big.contando{font-variant-numeric:tabular-nums}
+@keyframes kfTick{from{stroke-dashoffset:26}to{stroke-dashoffset:0}}
+.pild{
+  position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 66px);z-index:58;
+  display:flex;align-items:center;gap:8px;max-width:calc(100% - 40px);
+  padding:9px 15px 9px 12px;border-radius:22px;
+  background:var(--card);border:1px solid var(--sep);box-shadow:0 4px 20px rgba(0,0,0,.16);
+  font-size:14px;font-weight:500;color:var(--txt);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;pointer-events:none;
+  opacity:0;transform:translate(-50%,-14px) scale(.94);
+  transition:opacity .24s ease,transform .3s cubic-bezier(.2,.9,.3,1);
+}
+.pild.on{opacity:1;transform:translate(-50%,0) scale(1)}
+.pild svg{width:17px;height:17px;flex:0 0 auto;fill:none;stroke:var(--acc);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.pild.on svg path{stroke-dasharray:26;animation:kfTick .4s cubic-bezier(.4,0,.2,1) .06s both}
+.pild.aviso svg{stroke:var(--neg)}
+@media print{ .pild{display:none!important} }
 .velo.on .hoja{animation:kfSube .24s cubic-bezier(.2,.8,.3,1)}
 .toast.on{animation:kfSube .24s ease-out}
 @keyframes kfBarra{from{width:0}}
@@ -397,6 +413,7 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7.5 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 15.9H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9.5l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 10 6V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1.3z"/></svg>Ajustes</button>
 </nav>
 
+<div class="pild" id="pild" role="status" aria-live="polite"></div>
 <div class="toast" id="toast"></div>
 <div class="velo" id="velo"><div class="hoja" id="hoja"></div></div>
 <input type="file" id="fileJson" accept="application/json,.json" style="position:absolute;left:-9999px">
@@ -1446,7 +1463,7 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
 var M1 = '/*DATOS_' + 'INICIO*/';
 var M2 = '/*DATOS_' + 'FIN*/';
 
-var APPVER   = '1.15';               // versión visible en Ajustes
+var APPVER   = '1.16';               // versión visible en Ajustes
 var PREF     = 'kibo.datos.';       // kibo.datos.2026, kibo.datos.2027…
 var LSANIO   = 'kibo.anio';
 var LSCOPIA  = 'kibo.ultimaCopia';
@@ -2240,6 +2257,10 @@ function manual(){
     + '<p>Al guardar el plan te ofrece cargar solas las cuotas que faltan, de ese mes en adelante, con el total dividido por la cantidad de cuotas. Lo que no entra en el año se carga cuando creás el año siguiente.</p>'
     + '<p>Con eso te dice en qué cuota vas, cuántas quedan, cuánta plata falta y en qué mes terminás. Las cuotas se cuentan solas: cada mes con un monto cargado en esa deuda es una cuota paga. Si un mes la dejás en cero, lo toma como que no pagaste y corre la fecha de fin.</p>'
     + '<p>Una deuda con plan es la misma en todos los meses: si la renombrás, el nombre nuevo se aplica a todo el año.</p>');
+  h += bloque('avisos', 'Cómo sabés que quedó guardado',
+    '<p>Cuando terminás de cargar, baja un cartelito desde arriba con un tilde que dice <b>Cambios guardados</b>. Al hacer una copia de seguridad dice <b>Copia de seguridad hecha</b>. Desaparece solo a los dos segundos.</p>'
+    + '<p>No sale en cada tecla: espera a que dejes de escribir, y no se repite si ya avisó hace poco. Para el detalle fino está el punto verde del encabezado, que dice la hora exacta del último guardado.</p>'
+    + '<p>Si algún día ves el cartelito en rojo diciendo que no se pudo guardar, es que el navegador está bloqueando el almacenamiento. Ahí lo que cargues se pierde al cerrar.</p>');
   h += bloque('gestos', 'Gestos y movimiento',
     '<p>Las hojas que suben desde abajo se cierran <b>arrastrándolas para abajo</b>, además del botón. Si la arrastrás poco, vuelve sola a su lugar.</p>'
     + '<p>Al cambiar de pestaña la pantalla entra desde el costado, según para dónde vayas. Y los números grandes suben hasta el valor nuevo en vez de saltar, así ves cuánto se movió.</p>'
@@ -2488,6 +2509,9 @@ function guardar(){
   try{ localStorage.setItem(PREF + D.anio, JSON.stringify(D)); sucio = false; }
   catch(e){ hayLS = false; }
   estado(eraSucio && hayLS);
+  // la píldora aparece cuando terminaste de escribir, no en cada tecla
+  if(eraSucio && hayLS && Date.now() - ultPild > 7000) pildora('Cambios guardados');
+  if(eraSucio && !hayLS) pildora('No se pudo guardar', true);
 }
 function leerAnio(a){
   try{ var s = localStorage.getItem(PREF + a); return s ? normalizar(JSON.parse(s)) : null; }
@@ -2568,6 +2592,7 @@ function hacerCopia(){
     try{ localStorage.setItem(LSCOPIA, new Date().toISOString()); }catch(e){}
     document.getElementById('avisos').innerHTML = '';
     if(tab === 'ajustes') renderAjustes();
+    pildora('Copia de seguridad hecha');
   };
   if(puedeCompartir){
     navigator.share({files:[f], title:'Copia de kibFinanzas'}).then(listo)['catch'](function(e){
@@ -2835,6 +2860,16 @@ function quitarMov(id){
   tocar(); conScroll(renderMes); toast('Deshecho');
 }
 var tToast = null;
+var tPild = null, ultPild = 0;
+function pildora(txt, mal){
+  var p = document.getElementById('pild');
+  if(!p) return;
+  p.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4.5 12.5l5 5.2L19.5 7"/></svg><span>' + txt + '</span>';
+  p.className = 'pild on' + (mal ? ' aviso' : '');
+  ultPild = Date.now();
+  if(tPild) clearTimeout(tPild);
+  tPild = setTimeout(function(){ p.className = 'pild' + (mal ? ' aviso' : ''); }, 1900);
+}
 function toast(txt, accion, act, id){
   var t = document.getElementById('toast');
   t.innerHTML = '<span>' + txt + '</span>' + (accion ? '<button data-act="'+act+'" data-id="'+esc(id)+'">'+accion+'</button>' : '');

@@ -48,6 +48,7 @@ el .apk. Del zip que te da, copiá assetlinks.json a una carpeta
 
 ## CHANGELOG
 
+v1.16 · 2026-09-09 — Píldora de confirmación: un cartelito chico baja desde el encabezado, con un tilde que se dibuja, cuando terminás de cargar y quedó guardado ("Cambios guardados") y cuando hacés la copia de seguridad ("Copia de seguridad hecha"). No sale en cada tecla: espera a que termines y no se repite antes de siete segundos. Si el navegador no pudo guardar, sale en rojo.
 v1.15 · 2026-09-09 — Movimiento con más carácter: al cambiar de pestaña la pantalla entra desde el costado según la dirección, las hojas se cierran arrastrándolas para abajo (con vuelta elástica si el arrastre es corto) y los números grandes suben hasta su valor nuevo en vez de saltar.
 v1.14 · 2026-09-09 — Segunda tanda de animaciones: las secciones se pliegan y despliegan con la altura animada en vez de aparecer y desaparecer de golpe, los bloques entran escalonados al cambiar de pestaña, el gráfico de líneas se dibuja solo, las barras del ranking crecen desde cero y los meses, las pestañas y los encabezados responden al toque. Todo se apaga con "reducir movimiento" del sistema.
 v1.13 · 2026-09-09 — Año y USD pasan a secciones plegables, como Mes y Ajustes: cada bloque se abre y cierra tocando el encabezado, que muestra al costado el número que lo resume. Las tablas anchas arrancan cerradas. Lo que abrís o cerrás queda guardado.
