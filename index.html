@@ -138,17 +138,18 @@ h2.tit{font-size:13px;font-weight:600;color:var(--txt2);margin:22px 4px 8px;lett
 .sec.cerrada .chev{transform:rotate(-45deg)}
 .sec.cerrada .cuerpo{display:none}
 .cuerpo{border-top:1px solid var(--sep)}
-.item{display:flex;align-items:center;gap:8px;padding:6px 8px 6px 16px;border-bottom:1px solid var(--sep);min-height:48px}
+.item{display:flex;align-items:center;gap:6px;padding:6px 4px 6px 12px;border-bottom:1px solid var(--sep);min-height:48px}
 .item:last-child{border-bottom:0}
 .item input.nombre{
-  flex:1;min-width:0;border:0;background:none;padding:8px 0;font-size:16px;outline:none;
+  flex:1;min-width:60px;border:0;background:none;padding:8px 0;font-size:16px;outline:none;
+  text-overflow:ellipsis;
 }
 .item input.monto{
-  width:130px;flex:0 0 auto;text-align:right;border:0;background:none;padding:8px 4px;
+  width:112px;flex:0 0 auto;text-align:right;border:0;background:none;padding:8px 2px;
   font-size:16px;font-weight:600;outline:none;font-variant-numeric:tabular-nums;
 }
 .item input.monto:focus,.item input.nombre:focus{background:var(--fill);border-radius:8px}
-.item .x{width:44px;height:44px;flex:0 0 auto;color:var(--txt2);font-size:20px;line-height:1}
+.item .x{width:36px;height:44px;flex:0 0 auto;color:var(--txt2);font-size:20px;line-height:1}
 .mas{display:block;width:100%;padding:14px 16px;text-align:left;color:var(--acc);font-weight:600;font-size:15px;min-height:48px}
 .nota{padding:10px 16px 14px;font-size:13px;color:var(--txt2)}
 .nota.mal{color:var(--neg)}
@@ -157,9 +158,9 @@ h2.tit{font-size:13px;font-weight:600;color:var(--txt2);margin:22px 4px 8px;lett
 .manual ul{margin:0 0 10px;padding-left:18px;font-size:15px;line-height:1.5}
 .manual li{margin-bottom:4px}
 .acciones .btnlink{display:block;background:var(--card);padding:15px 16px;text-align:left;font-size:16px;min-height:52px;line-height:22px;text-decoration:none;color:var(--txt)}
-.chk{width:26px;height:26px;flex:0 0 auto;border-radius:50%;border:2px solid var(--sep);
+.chk{width:23px;height:23px;flex:0 0 auto;border-radius:50%;border:2px solid var(--sep);
   display:flex;align-items:center;justify-content:center;color:transparent;transition:background .18s,border-color .18s,color .18s,transform .12s}
-.chk svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.chk svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
 .chk.on{background:var(--acc);border-color:var(--acc);color:#fff}
 .chk:active{transform:scale(.88)}
 .item.pago input.nombre{color:var(--txt2)}
@@ -1514,7 +1515,7 @@ nav button.on .np{background:var(--acc-soft)}
 var M1 = '/*DATOS_' + 'INICIO*/';
 var M2 = '/*DATOS_' + 'FIN*/';
 
-var APPVER   = '1.21';               // versión visible en Ajustes
+var APPVER   = '1.22';               // versión visible en Ajustes
 var PREF     = 'kibo.datos.';       // kibo.datos.2026, kibo.datos.2027…
 var LSANIO   = 'kibo.anio';
 var LSCOPIA  = 'kibo.ultimaCopia';
