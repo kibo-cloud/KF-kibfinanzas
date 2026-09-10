@@ -468,7 +468,7 @@ nav button.on .np{background:var(--acc-soft)}
 <div class="pild" id="pild" role="status" aria-live="polite"></div>
 <div class="toast" id="toast"></div>
 <div class="velo" id="velo"><div class="hoja" id="hoja"></div></div>
-<input type="file" id="fileJson" accept="application/json,.json" style="position:absolute;left:-9999px">
+<input type="file" id="fileJson" accept="application/json,text/plain,.json,.txt" style="position:absolute;left:-9999px">
 
 <script id="datos" type="application/json">
 /*DATOS_INICIO*/
@@ -1515,7 +1515,7 @@ nav button.on .np{background:var(--acc-soft)}
 var M1 = '/*DATOS_' + 'INICIO*/';
 var M2 = '/*DATOS_' + 'FIN*/';
 
-var APPVER   = '1.22';               // versión visible en Ajustes
+var APPVER   = '1.24';               // versión visible en Ajustes
 var PREF     = 'kibo.datos.';       // kibo.datos.2026, kibo.datos.2027…
 var LSANIO   = 'kibo.anio';
 var LSCOPIA  = 'kibo.ultimaCopia';
@@ -1729,7 +1729,17 @@ function estadoDeuda(nombre, i){
     if(pagoMes){ pag++; if(j < i) antes++; }
   }
   var esteMes = pag > antes, restantes = Math.max(0, p.cuotas - pag);
-  var k = i + restantes, fin = restantes > 0 ? {mes:k%12, anio:D.anio + Math.floor(k/12)} : null;
+  // la proyección arranca en el primer mes sin pagar, no en el mes que estés mirando
+  var primero = 0, jj;
+  for(jj=0;jj<12;jj++){
+    var lz = D.meses[jj].deudas, hay = false;
+    for(var qz=0;qz<lz.length;qz++) if(String(lz[qz].nombre||'').trim() === n && estaPagado(jj, lz[qz])) hay = true;
+    if(hay) primero = jj + 1;
+  }
+  if(primero < mesTope() + 1) primero = mesTope() + 1;
+  if(primero < 0) primero = 0;
+  var k = primero + restantes - 1;
+  var fin = restantes > 0 ? {mes:((k % 12) + 12) % 12, anio:D.anio + Math.floor(k/12)} : null;
   var valor = p.cuotas ? p.total/p.cuotas : 0;
   return {plan:p, pagadas:pag, restantes:restantes, esteMes:esteMes, cuotaN:esteMes ? pag : antes + 1,
           fin:fin, saldo:restantes*valor, pct:Math.min(1, pag/p.cuotas)};
@@ -2399,6 +2409,13 @@ function manual(){
     + '<p>Al guardar elegís <b>Solo este mes</b> o <b>de este mes en adelante</b>. Lo segundo es lo normal: ponés los topes una vez y valen para todo lo que queda del año. Cuando los precios se van para arriba, entrás de nuevo, subís el número y lo aplicás de ese mes en adelante. Los meses que ya pasaron quedan como estaban.</p>'
     + '<p>Un tope en cero es lo mismo que no tener tope: la fila se ve igual que siempre. Los topes se arrastran al crear el año siguiente.</p>');
 
+  h += bloque('copias', 'Dónde guardar las copias',
+    '<p>Al tocar <b>Hacer copia de seguridad</b>, la app intenta abrir el menú de compartir del teléfono para que la mandes a Drive, al mail o a WhatsApp. Algunos navegadores no permiten compartir este tipo de archivo: en ese caso la copia se descarga a la carpeta <b>Descargas</b> y te avisa.</p>'
+    + '<p>Si te pasa eso, abrí la app <b>Archivos</b>, mantené apretado el archivo y compartilo desde ahí. <b>Una copia que queda solo en el teléfono no es una copia</b>: si perdés el teléfono, se va con él.</p>'
+    + '<p>Y una vez cada tanto, entrá a Drive y confirmá que el archivo está de verdad. La app se entera de que se lo pasaste a otra aplicación, pero no de si esa aplicación lo terminó de guardar.</p>');
+  h += bloque('proyeccion', 'Cuándo terminás de pagar',
+    '<p>El renglón gris de cada deuda y el panel de <b>Deudas</b> del año proyectan desde el <b>primer mes que todavía no pagaste</b>, sumando una cuota por mes. No importa qué mes estés mirando: la fecha de fin es siempre la misma.</p>'
+    + '<p>Al crear el año siguiente, la app anota cuántas cuotas llevabas pagadas en ese momento. Si todavía no marcaste como pagadas las cuotas que faltan del año actual, el año nuevo arranca con esa cuenta y la proyección se corre. Por eso conviene tener los checks al día antes de crear el año.</p>');
   h += bloque('pagado', 'Marcar lo que ya pagaste',
     '<p>En <b>Gastos fijos</b> y en <b>Deudas</b> cada fila tiene un círculo a la izquierda. Tocalo y queda tildado en verde: eso significa que esa cuota o ese gasto ya está pagado, y la fila se ve apagada.</p>'
     + '<p>La app lo tilda sola en los meses que ya pasaron y en el que estás. Los meses que todavía no llegaron quedan sin tildar, aunque tengas la cuota cargada, porque cargarla no es lo mismo que pagarla. Si pagaste una cuota adelantada, tildala a mano; si un mes que ya pasó quedó sin pagar, destildalo.</p>'
@@ -2743,11 +2760,27 @@ function armarCopia(){
   return {app:'kibFinanzas', version:1, creada:new Date().toISOString(), anios:anios};
 }
 function fechaArchivo(){ var d = new Date(); function p(x){ return (x<10?'0':'')+x; } return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
+function archivoCompartible(texto, base){
+  // Chrome en Android no deja compartir cualquier tipo de archivo: se prueban varias combinaciones
+  var intentos = [
+    [base + '.json', 'application/json'],
+    [base + '.json', 'text/plain'],
+    [base + '.txt',  'text/plain']
+  ], i, f;
+  if(!(navigator.share && navigator.canShare)) return null;
+  for(i=0;i<intentos.length;i++){
+    try{
+      f = new File([texto], intentos[i][0], {type:intentos[i][1]});
+      if(navigator.canShare({files:[f]})) return f;
+    }catch(e){}
+  }
+  return null;
+}
 function hacerCopia(){
-  var texto = JSON.stringify(armarCopia(), null, 1), nombre = 'kibfinanzas-copia-' + fechaArchivo() + '.json';
-  var f = null;
-  try{ f = new File([texto], nombre, {type:'application/json'}); }catch(e){}
-  var puedeCompartir = f && navigator.share && navigator.canShare && navigator.canShare({files:[f]});
+  var texto = JSON.stringify(armarCopia(), null, 1), base = 'kibfinanzas-copia-' + fechaArchivo();
+  var nombre = base + '.json';
+  var f = archivoCompartible(texto, base);
+  var puedeCompartir = !!f;
   var listo = function(){
     try{ localStorage.setItem(LSCOPIA, new Date().toISOString()); }catch(e){}
     document.getElementById('avisos').innerHTML = '';
@@ -2761,7 +2794,7 @@ function hacerCopia(){
     });
   } else {
     descargar(texto, nombre, 'application/json'); listo();
-    alerta('Copia descargada', 'Se guardó <b>' + nombre + '</b> en Descargas. Pasala a la PC y guardala con las demás.');
+    alerta('Copia descargada', 'Se guardó <b>' + nombre + '</b> en la carpeta <b>Descargas</b>. Este navegador no deja compartir el archivo directamente desde la app.<br><br>Abrí la app <b>Archivos</b> o <b>Descargas</b> del teléfono, mantené apretado el archivo y usá <b>Compartir</b> para mandarlo a Drive, al mail o a donde lo guardes. Que quede solo en el teléfono no te sirve de red de seguridad.');
   }
 }
 function versionPC(){

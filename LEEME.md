@@ -48,6 +48,8 @@ el .apk. Del zip que te da, copiá assetlinks.json a una carpeta
 
 ## CHANGELOG
 
+v1.24 · 2026-09-09 — La copia intenta compartirse de tres formas antes de rendirse a Descargas: Chrome en Android bloquea el envío de archivos .json, así que ahora se prueba también como texto y como .txt. Si igual no se puede, el aviso explica cómo compartirla a mano desde la app Archivos. Restaurar acepta también .txt.
+v1.23 · 2026-09-09 — Arregla la fecha de fin de las deudas: se proyectaba desde el mes que estabas mirando, así que en el panel del año (que mira diciembre) las cuotas se corrían meses o hasta un año entero. Ahora la proyección arranca siempre en el primer mes sin pagar, así que Mes y Año dan la misma fecha y cambiar de año no la estira.
 v1.22 · 2026-09-09 — El check de la v1.21 le comía lugar al nombre y se cortaban las palabras. Se recupera espacio: check y cruz más chicos, menos relleno y separación en la fila, y la columna del monto más angosta. El nombre gana unos 30 píxeles respecto de antes de los checks.
 v1.21 · 2026-09-09 — Check de pagado en gastos fijos y deudas, y arregla la incoherencia entre Mes y Año: el panel de Deudas del año contaba como pagadas las cuotas de meses futuros que ya estaban cargadas. Ahora se tildan solas las de los meses que ya pasaron y el actual, las futuras quedan sin tildar, y se puede corregir a mano en los dos sentidos.
 v1.20 · 2026-09-09 — Arregla el hueco vacío arriba de la tarjeta principal: la tarjeta del mes y la del año compartían la clase "resumen" desde la v1.17, así que el mes quedó pegajoso bajo el encabezado, con el relleno y el círculo decorativo de la otra. Ahora cada una tiene lo suyo.
