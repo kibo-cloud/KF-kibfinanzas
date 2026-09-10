@@ -48,6 +48,7 @@ el .apk. Del zip que te da, copiá assetlinks.json a una carpeta
 
 ## CHANGELOG
 
+v1.28 · 2026-09-09 — Se cambia de pestaña deslizando el dedo para los costados, sin tocar los botones de abajo. El gesto respeta lo que ya se mueve al costado (la tira de meses, las tablas anchas) y no actúa con una hoja abierta. Dentro de una subpantalla de Ajustes, deslizar a la derecha vuelve al principio.
 v1.27 · 2026-09-09 — La app guarda sus propias copias: cada vez que hacés una, se archiva también adentro de la app. En Ajustes aparecen las últimas cinco con fecha, y cada una se puede restaurar o compartir de un toque. Son una red contra errores de carga, no contra perder el teléfono.
 v1.26 · 2026-09-09 — Cuando compartir la copia falla, la app ya no lo esconde: descarga igual y avisa con el motivo exacto del navegador. Alternativa nueva: "Copiar la copia al portapapeles", en Ajustes, para pegarla en un mail, una nota o un documento de Drive cuando el menú de compartir no funciona.
 v1.25 · 2026-09-09 — Diagnóstico de compartir: Ajustes → Dónde viven tus datos ahora dice qué tipos de archivo acepta compartir este navegador. Y cuando la copia cae en Descargas, el aviso suma un botón "Probar compartir" que reintenta con un .txt y, si el navegador lo rechaza, informa el motivo exacto.

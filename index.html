@@ -1516,7 +1516,7 @@ nav button.on .np{background:var(--acc-soft)}
 var M1 = '/*DATOS_' + 'INICIO*/';
 var M2 = '/*DATOS_' + 'FIN*/';
 
-var APPVER   = '1.27';               // versión visible en Ajustes
+var APPVER   = '1.28';               // versión visible en Ajustes
 var PREF     = 'kibo.datos.';       // kibo.datos.2026, kibo.datos.2027…
 var LSANIO   = 'kibo.anio';
 var LSCOPIA  = 'kibo.ultimaCopia';
@@ -1864,6 +1864,33 @@ function contar(id, hasta, fmt){
     if(p < 1) requestAnimationFrame(paso);
   };
   if(window.requestAnimationFrame) requestAnimationFrame(paso);
+}
+var TABS = ['mes','anio','usd','ajustes'];
+function irATab(destino){
+  if(!destino || destino === tab && !ajVista) return;
+  var antes = TABS.indexOf(tab), i;
+  tab = destino; ajVista = '';
+  var haciaDer = TABS.indexOf(tab) > antes;
+  var bs = document.querySelectorAll('#nav button');
+  for(i=0;i<bs.length;i++) bs[i].classList.toggle('on', bs[i].getAttribute('data-t') === tab);
+  var vs = document.querySelectorAll('.vista');
+  for(i=0;i<vs.length;i++) vs[i].classList.toggle('on', vs[i].id === 'v-' + tab);
+  render(); window.scrollTo(0,0);
+  var vv = document.getElementById('v-' + tab);
+  if(vv && !menosMovimiento()){
+    vv.classList.remove('der','izq'); void vv.offsetWidth;
+    vv.classList.add(haciaDer ? 'der' : 'izq');
+  }
+}
+function seDeslizaAlCostado(el){
+  // no robarle el gesto a lo que ya se mueve para los costados
+  while(el && el !== document.body){
+    if(el.className && typeof el.className === 'string' &&
+       /\b(meses|tabla|chart|hoja|orden|velo)\b/.test(el.className)) return true;
+    if(el.scrollWidth > el.clientWidth + 4) return true;
+    el = el.parentNode;
+  }
+  return false;
 }
 function menosMovimiento(){
   try{ return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
@@ -2447,8 +2474,10 @@ function manual(){
     + '<p>No sale en cada tecla: espera a que dejes de escribir, y no se repite si ya avisó hace poco. Para el detalle fino está el punto verde del encabezado, que dice la hora exacta del último guardado.</p>'
     + '<p>Si algún día ves el cartelito en rojo diciendo que no se pudo guardar, es que el navegador está bloqueando el almacenamiento. Ahí lo que cargues se pierde al cerrar.</p>');
   h += bloque('gestos', 'Gestos y movimiento',
-    '<p>Las hojas que suben desde abajo se cierran <b>arrastrándolas para abajo</b>, además del botón. Si la arrastrás poco, vuelve sola a su lugar.</p>'
-    + '<p>Al cambiar de pestaña la pantalla entra desde el costado, según para dónde vayas. Y los números grandes suben hasta el valor nuevo en vez de saltar, así ves cuánto se movió.</p>'
+    '<p><b>Deslizá el dedo para los costados</b> para cambiar de pestaña, sin tocar los botones de abajo: hacia la izquierda avanzás (Mes → Año → USD → Ajustes) y hacia la derecha volvés. Adentro de una subpantalla de Ajustes, deslizar a la derecha te devuelve al principio.</p>'
+    + '<p>El gesto no molesta a lo que ya se mueve al costado: la tira de meses y las tablas anchas se siguen scrolleando normal, y con una hoja abierta no pasa nada.</p>'
+    + '<p>Las hojas que suben desde abajo se cierran <b>arrastrándolas para abajo</b>, además del botón. Si la arrastrás poco, vuelve sola a su lugar.</p>'
+    + '<p>Al cambiar de pestaña la pantalla entra desde el costado, según para dónde vayas. Y los números grandes suben hasta el valor nuevo en vez de saltar.</p>'
     + '<p>Si tenés activado <b>reducir movimiento</b> en el teléfono, la app no anima nada y todo aparece de una.</p>');
   h += bloque('plegar', 'Plegar y desplegar',
     '<p>En <b>Mes</b>, <b>Año</b> y <b>USD</b> cada bloque se pliega tocando su encabezado. Ahí al costado, en gris, está el número que resume lo que hay adentro: el total de la sección, el cierre del año, el patrimonio. Así ves lo importante sin abrir nada.</p>'
@@ -3287,21 +3316,7 @@ document.addEventListener('click', function(ev){
   if(!b) { if(ev.target === velo) cerrarHoja(); return; }
   var a = b.getAttribute('data-act');
 
-  if(a === 'tab'){
-    var TABS = ['mes','anio','usd','ajustes'], antes = TABS.indexOf(tab);
-    tab = b.getAttribute('data-t'); ajVista = '';
-    var haciaDer = TABS.indexOf(tab) > antes;
-    var bs = document.querySelectorAll('#nav button');
-    for(var i=0;i<bs.length;i++) bs[i].classList.toggle('on', bs[i] === b);
-    var vs = document.querySelectorAll('.vista');
-    for(i=0;i<vs.length;i++) vs[i].classList.toggle('on', vs[i].id === 'v'+'-'+tab);
-    render(); window.scrollTo(0,0);
-    var vv = document.getElementById('v-'+tab);
-    if(vv && !menosMovimiento()){
-      vv.classList.remove('der','izq'); void vv.offsetWidth;
-      vv.classList.add(haciaDer ? 'der' : 'izq');
-    }
-    return;
+  if(a === 'tab'){ irATab(b.getAttribute('data-t')); return;
   }
   if(a === 'mes'){ mes = +b.getAttribute('data-m'); renderMes(); return; }
   if(a === 'col'){
@@ -3552,6 +3567,30 @@ aplicarTema();
 aplicarOculto();
 render();
 cargar();
+
+var desl = {vivo:false, x0:0, y0:0, t0:0};
+document.addEventListener('touchstart', function(e){
+  desl.vivo = false;
+  if(!e.touches || e.touches.length !== 1) return;
+  if(velo.classList.contains('on')) return;              // hay una hoja abierta
+  if(seDeslizaAlCostado(e.target)) return;
+  desl.vivo = true;
+  desl.x0 = e.touches[0].clientX; desl.y0 = e.touches[0].clientY; desl.t0 = Date.now();
+}, {passive:true});
+document.addEventListener('touchend', function(e){
+  if(!desl.vivo) return;
+  desl.vivo = false;
+  var t = e.changedTouches && e.changedTouches[0];
+  if(!t) return;
+  var dx = t.clientX - desl.x0, dy = t.clientY - desl.y0;
+  if(Date.now() - desl.t0 > 700) return;                  // muy lento, no es un deslizamiento
+  if(Math.abs(dx) < 70) return;                           // muy corto
+  if(Math.abs(dx) < Math.abs(dy) * 1.7) return;           // iba más para arriba o abajo
+  if(ajVista){ ajVista = ''; renderAjustes(); window.scrollTo(0,0); return; }   // salir de una subpantalla
+  var i = TABS.indexOf(tab) + (dx < 0 ? 1 : -1);
+  if(i < 0 || i > TABS.length - 1) return;
+  irATab(TABS[i]);
+}, {passive:true});
 
 if(location.search.indexOf('gasto=1') > -1) setTimeout(gastoRapido, 350);
 
