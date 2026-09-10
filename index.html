@@ -1515,7 +1515,7 @@ nav button.on .np{background:var(--acc-soft)}
 var M1 = '/*DATOS_' + 'INICIO*/';
 var M2 = '/*DATOS_' + 'FIN*/';
 
-var APPVER   = '1.24';               // versión visible en Ajustes
+var APPVER   = '1.25';               // versión visible en Ajustes
 var PREF     = 'kibo.datos.';       // kibo.datos.2026, kibo.datos.2027…
 var LSANIO   = 'kibo.anio';
 var LSCOPIA  = 'kibo.ultimaCopia';
@@ -2574,7 +2574,7 @@ function renderAlmacen(){
   var c = document.getElementById('almac'), mini = document.getElementById('almacMini');
   if(!c && !mini) return;
   function pinta(largo, corto, clase){
-    if(c) c.innerHTML = largo;
+    if(c) c.innerHTML = largo + '<p style="opacity:.7">Compartir archivos en este navegador \u2192 ' + diagCompartir() + '</p>';
     if(mini){ mini.textContent = corto; mini.className = clase || ''; }
   }
   if(!hayLS){ pinta('<p><b>Este navegador no está guardando nada.</b> Puede ser una ventana privada o el almacenamiento bloqueado. Lo que cargues se pierde al cerrar.</p>', 'Este navegador no está guardando nada', 'mal'); return; }
@@ -2760,6 +2760,18 @@ function armarCopia(){
   return {app:'kibFinanzas', version:1, creada:new Date().toISOString(), anios:anios};
 }
 function fechaArchivo(){ var d = new Date(); function p(x){ return (x<10?'0':'')+x; } return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
+function diagCompartir(){
+  var out = [];
+  if(!navigator.share) return 'este navegador no tiene menú de compartir';
+  if(!navigator.canShare) return 'comparte, pero no deja consultar si acepta archivos';
+  var intentos = [['.json','application/json','json'],['.json','text/plain','json como texto'],['.txt','text/plain','txt']], i, f;
+  for(i=0;i<intentos.length;i++){
+    var ok = false;
+    try{ f = new File(['{}'], 'x'+intentos[i][0], {type:intentos[i][1]}); ok = navigator.canShare({files:[f]}); }catch(e){ ok = false; }
+    out.push(intentos[i][2] + ': ' + (ok ? 'sí' : 'no'));
+  }
+  return out.join(' · ');
+}
 function archivoCompartible(texto, base){
   // Chrome en Android no deja compartir cualquier tipo de archivo: se prueban varias combinaciones
   var intentos = [
@@ -2794,7 +2806,8 @@ function hacerCopia(){
     });
   } else {
     descargar(texto, nombre, 'application/json'); listo();
-    alerta('Copia descargada', 'Se guardó <b>' + nombre + '</b> en la carpeta <b>Descargas</b>. Este navegador no deja compartir el archivo directamente desde la app.<br><br>Abrí la app <b>Archivos</b> o <b>Descargas</b> del teléfono, mantené apretado el archivo y usá <b>Compartir</b> para mandarlo a Drive, al mail o a donde lo guardes. Que quede solo en el teléfono no te sirve de red de seguridad.');
+    ultimaCopiaTexto = texto; ultimaCopiaNombre = nombre;
+    alertaCompartir('Copia descargada', 'Se guardó <b>' + nombre + '</b> en la carpeta <b>Descargas</b>. Este navegador no deja compartir el archivo directamente desde la app.<br><br>Abrí la app <b>Archivos</b> o <b>Descargas</b> del teléfono, mantené apretado el archivo y usá <b>Compartir</b> para mandarlo a Drive, al mail o a donde lo guardes. Que quede solo en el teléfono no te sirve de red de seguridad.');
   }
 }
 function versionPC(){
@@ -2988,6 +3001,22 @@ hoja.addEventListener('touchend', function(){
   hoja.style.transform = '';
   setTimeout(function(){ hoja.className = 'hoja'; }, 270);
 });
+var ultimaCopiaTexto = '', ultimaCopiaNombre = '';
+function alertaCompartir(t, cuerpo){
+  abrirHoja('<h3>'+t+'</h3><div class="texto" style="margin-bottom:16px">'+cuerpo+'</div>'
+          + '<div class="fila"><button data-act="cerrarHoja">Entendido</button>'
+          + '<button class="pri" data-act="probarCompartir">Probar compartir</button></div>');
+}
+function probarCompartir(){
+  if(!navigator.share){ alerta('No se puede', 'Este navegador no tiene menú de compartir. La copia quedó en Descargas.'); return; }
+  var f = null;
+  try{ f = new File([ultimaCopiaTexto], ultimaCopiaNombre.replace(/\.json$/, '.txt'), {type:'text/plain'}); }catch(e){}
+  var envio = f ? {files:[f], title:'Copia de kibFinanzas'} : {title:'Copia de kibFinanzas', text:ultimaCopiaTexto};
+  navigator.share(envio)['catch'](function(e){
+    if(e && e.name === 'AbortError') return;
+    alerta('No dejó compartir', 'Tu navegador rechazó el envío (<b>' + ((e && e.name) || 'sin nombre') + '</b>). La copia igual está en Descargas: compartila desde la app Archivos.');
+  });
+}
 function alerta(t, cuerpo){
   abrirHoja('<h3>'+t+'</h3><div class="texto" style="margin-bottom:16px">'+cuerpo+'</div>'
           + '<div class="fila"><button class="pri" data-act="cerrarHoja">Entendido</button></div>');
@@ -3205,6 +3234,7 @@ document.addEventListener('click', function(ev){
   if(a === 'elegir'){ guardar(true); return; }
   if(a === 'expcsv'){ exportarCSV(); return; }
   if(a === 'verpc'){ versionPC(); return; }
+  if(a === 'probarCompartir'){ cerrarHoja(); probarCompartir(); return; }
   if(a === 'ajVista'){ ajVista = b.getAttribute('data-v') || ''; renderAjustes(); window.scrollTo(0,0); return; }
   if(a === 'ajRaiz'){ ajVista = ''; renderAjustes(); window.scrollTo(0,0); return; }
   if(a === 'duplicar'){ duplicar(); return; }
