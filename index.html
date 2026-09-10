@@ -279,6 +279,59 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
 .ok{color:var(--acc)}
 .mudo{color:var(--txt2)}
 :focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+@keyframes kfPop{0%{transform:scale(.4);opacity:0}60%{transform:scale(1.18)}100%{transform:scale(1);opacity:1}}
+@keyframes kfEntra{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes kfSube{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes kfLatido{0%{transform:scale(1)}40%{transform:scale(1.05)}100%{transform:scale(1)}}
+.dot{transition:background .25s}
+.dot.ok{animation:kfPop .34s ease-out}
+.estado span{transition:color .25s}
+.estado.recien span{color:var(--acc)}
+@keyframes kfDer{from{opacity:0;transform:translateX(26px)}to{opacity:1;transform:none}}
+@keyframes kfIzq{from{opacity:0;transform:translateX(-26px)}to{opacity:1;transform:none}}
+.vista.on{animation:kfEntra .2s ease-out}
+.vista.der{animation:kfDer .3s cubic-bezier(.22,.9,.26,1)}
+.vista.izq{animation:kfIzq .3s cubic-bezier(.22,.9,.26,1)}
+.velo{transition:background .22s ease}
+.velo.on{background:rgba(0,0,0,.4)}
+.velo.yendo{background:rgba(0,0,0,0)}
+.tirador{width:38px;height:4px;border-radius:3px;background:var(--sep);margin:-8px auto 14px;flex:0 0 auto}
+.hoja{touch-action:pan-y}
+.hoja.arrastrando{transition:none}
+.hoja.vuelve{transition:transform .26s cubic-bezier(.2,.9,.3,1)}
+.hoja.yendo{transition:transform .24s cubic-bezier(.4,0,.8,.3)}
+.big.contando{font-variant-numeric:tabular-nums}
+.velo.on .hoja{animation:kfSube .24s cubic-bezier(.2,.8,.3,1)}
+.toast.on{animation:kfSube .24s ease-out}
+@keyframes kfBarra{from{width:0}}
+@keyframes kfTrazo{from{stroke-dashoffset:1300}to{stroke-dashoffset:0}}
+.vista.on>.sec,.vista.on>.lista,.vista.on>.tabla,.vista.on>.manual>.sec{animation:kfEntra .26s ease-out both}
+.vista.on>.sec:nth-of-type(2){animation-delay:.035s}
+.vista.on>.sec:nth-of-type(3){animation-delay:.07s}
+.vista.on>.sec:nth-of-type(4){animation-delay:.105s}
+.vista.on>.sec:nth-of-type(5){animation-delay:.14s}
+.vista.on>.sec:nth-of-type(n+6){animation-delay:.175s}
+.rank .pista i{animation:kfBarra .55s cubic-bezier(.2,.8,.3,1)}
+.chart svg{animation:kfEntra .4s ease-out}
+.chart path.trazo{stroke-dasharray:1300;animation:kfTrazo 1.1s cubic-bezier(.3,.9,.3,1) forwards}
+.chart circle{animation:kfPop .3s ease-out both;animation-delay:.5s}
+.chart rect{animation:kfBrota .5s cubic-bezier(.2,.8,.3,1) both}
+@keyframes kfBrota{from{opacity:0;transform:translateY(6px)}to{opacity:inherit;transform:none}}
+.meses button{transition:background .18s,color .18s,transform .12s}
+.meses button:active{transform:scale(.94)}
+#nav button{transition:color .18s}
+#nav button.on{animation:kfPop .26s ease-out}
+.sechd{transition:background .15s}
+.sechd:active{background:var(--fill)}
+.cuerpo{will-change:height}
+.pista i{transition:width .3s ease-out,background .25s}
+.big{transition:color .25s}
+.big.latido{animation:kfLatido .3s ease-out}
+.faj .ico{transition:transform .15s}
+.faj:active .ico{transform:scale(.9)}
+.fab{transition:transform .12s}
+.fab:active{transform:scale(.92)}
+.mas:active,.acciones button:active{opacity:.55}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 .dot.off{background:var(--neg)}
 .puerta{position:fixed;inset:0;z-index:80;background:var(--bg);display:none;align-items:center;justify-content:center;padding:24px}
@@ -1393,7 +1446,7 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
 var M1 = '/*DATOS_' + 'INICIO*/';
 var M2 = '/*DATOS_' + 'FIN*/';
 
-var APPVER   = '1.11';               // versión visible en Ajustes
+var APPVER   = '1.15';               // versión visible en Ajustes
 var PREF     = 'kibo.datos.';       // kibo.datos.2026, kibo.datos.2027…
 var LSANIO   = 'kibo.anio';
 var LSCOPIA  = 'kibo.ultimaCopia';
@@ -1679,6 +1732,11 @@ function ranking(d){
 }
 
 /* ═══ 4 · render ════════════════════════════════════════════════ */
+function conScroll(fn){
+  var y = window.pageYOffset || document.documentElement.scrollTop || 0;
+  fn();
+  if(y > 0) window.scrollTo(0, y);
+}
 function render(){
   document.querySelector('#titulo .anio').textContent = D.anio;
   var pt = document.getElementById('printTit'); if(pt) pt.textContent = 'kibFinanzas · ' + D.anio + ' · impreso el ' + fechaCorta(new Date().toISOString());
@@ -1690,7 +1748,64 @@ function render(){
   document.getElementById('fab').style.display = tab === 'mes' ? 'flex' : 'none';
   estado();
 }
+var ultimos = {};
+function contar(id, hasta, fmt){
+  var el = document.getElementById(id);
+  if(!el) return;
+  var desde = ultimos[id];
+  ultimos[id] = hasta;
+  if(oculto || menosMovimiento() || desde === undefined || desde === hasta){ return; }
+  var t0 = 0, dur = 520;
+  var paso = function(t){
+    if(!t0) t0 = t;
+    var p = Math.min(1, (t - t0) / dur);
+    var e = 1 - Math.pow(1 - p, 3);           // desacelera al final
+    var vivo = document.getElementById(id);
+    if(!vivo) return;
+    vivo.textContent = fmt(desde + (hasta - desde) * e);
+    if(p < 1) requestAnimationFrame(paso);
+  };
+  if(window.requestAnimationFrame) requestAnimationFrame(paso);
+}
+function menosMovimiento(){
+  try{ return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+  catch(e){ return false; }
+}
+function limpiarAlto(cu){ cu.style.height = ''; cu.style.transition = ''; cu.style.opacity = ''; cu.style.overflow = ''; }
+function plegarAnim(sec, cerrar){
+  var cu = sec.querySelector('.cuerpo');
+  if(!cu || menosMovimiento()){ sec.classList.toggle('cerrada', cerrar); return; }
+  if(cu.getAttribute('data-anim') === '1') return;   // ya está en movimiento, no encimar
+  cu.setAttribute('data-anim', '1');
+  cu.style.overflow = 'hidden';
+  var fin = function(){ limpiarAlto(cu); cu.removeAttribute('data-anim'); };
+  if(cerrar){
+    cu.style.height = cu.scrollHeight + 'px';
+    void cu.offsetHeight;
+    cu.style.transition = 'height .22s ease, opacity .16s ease';
+    cu.style.height = '0px'; cu.style.opacity = '0';
+    setTimeout(function(){ sec.classList.add('cerrada'); fin(); }, 230);
+  } else {
+    sec.classList.remove('cerrada');
+    cu.style.height = '0px'; cu.style.opacity = '0';
+    void cu.offsetHeight;
+    cu.style.transition = 'height .26s cubic-bezier(.2,.8,.3,1), opacity .22s ease';
+    cu.style.height = cu.scrollHeight + 'px'; cu.style.opacity = '1';
+    setTimeout(fin, 280);
+  }
+}
 function abierta(k){ return !D.ui.col[k]; }
+function abiertaDef(k, porDefecto){
+  if(D.ui.col[k] === undefined && porDefecto === false) D.ui.col[k] = true;
+  return !D.ui.col[k];
+}
+function plegable(k, titulo, resumen, cuerpo, porDefecto){
+  return '<div class="sec '+(abiertaDef(k, porDefecto)?'':'cerrada')+'" data-sec="'+k+'">'
+       +   '<button class="sechd" data-act="col" data-k="'+k+'"><span class="nom">'+titulo+'</span>'
+       +     (resumen ? '<span class="sub">'+resumen+'</span>' : '') + '<i class="chev"></i></button>'
+       +   '<div class="cuerpo">'+cuerpo+'</div>'
+       + '</div>';
+}
 
 function renderMes(){
   var m = D.meses[mes], c = calc(m), h = '';
@@ -1726,6 +1841,7 @@ function renderMes(){
   h += '<div style="height:20px"></div>';
 
   document.getElementById('v-mes').innerHTML = h;
+  contar('bigFinal', c.disponibleFinal, function(v){ return fARS(Math.round(v)); });
   var act = document.querySelector('#selMes .on');
   if(act && act.scrollIntoView) act.scrollIntoView({block:'nearest', inline:'center'});
 }
@@ -1789,7 +1905,7 @@ function guardarTopes(k, adelante){
       }
     }
   }
-  cerrarHoja(); tocar(); guardar(); renderMes();
+  cerrarHoja(); tocar(); guardar(); conScroll(renderMes);
   toast(cambiados ? (adelante ? 'Topes guardados de ' + MESES[mes].toLowerCase() + ' en adelante' : 'Topes guardados en ' + MESES[mes].toLowerCase()) : 'Sin cambios');
 }
 function seccion(S, m){
@@ -1919,74 +2035,77 @@ function renderAnio(){
   var s = serie(D), h = '', i;
   h += resumenAnio(s);
   var T = {i:0,g:0,a:0,c:0,d:0,f:0,s:0,r:0};
-  h += '<h2 class="tit">Los doce meses</h2><div class="tabla"><table><thead><tr>'
+  var hT = '<div class="tabla"><table><thead><tr>'
      + '<th>Mes</th><th>Ingresos</th><th>Gastos</th><th>Ahorro</th><th>A dólares</th><th>Saqué</th><th>Repuse</th><th>Deudas</th><th>Disponible</th><th>Acumulado</th>'
      + '</tr></thead><tbody>';
   for(i=0;i<12;i++){
     var c = s[i];
     T.i+=c.totalIngresos; T.g+=c.totalGastos; T.a+=c.ahorroMesARS; T.c+=c.compraARS; T.d+=c.totalDeudas; T.f+=c.disponibleFinal; T.s+=c.sacadoARS; T.r+=c.reposicionARS;
-    h += '<tr><td>'+MESES[i]+'</td><td>'+hARS(c.totalIngresos)+'</td><td>'+hARS(c.totalGastos)+'</td>'
+    hT += '<tr><td>'+MESES[i]+'</td><td>'+hARS(c.totalIngresos)+'</td><td>'+hARS(c.totalGastos)+'</td>'
        + '<td>'+hARS(c.ahorroMesARS)+'</td><td>'+hARS(c.compraARS)+'</td><td>'+hARS(c.sacadoARS)+'</td><td>'+hARS(c.reposicionARS)+'</td><td>'+hARS(c.totalDeudas)+'</td><td>'+hARS(c.disponibleFinal)+'</td>'
        + '<td>'+hARS(c.ahorroAcumulado)+'</td></tr>';
   }
-  h += '<tr class="tot"><td>Total</td><td>'+hARS(T.i)+'</td><td>'+hARS(T.g)+'</td><td>'+hARS(T.a)+'</td><td>'+hARS(T.c)+'</td>'
+  hT += '<tr class="tot"><td>Total</td><td>'+hARS(T.i)+'</td><td>'+hARS(T.g)+'</td><td>'+hARS(T.a)+'</td><td>'+hARS(T.c)+'</td>'
      + '<td>'+hARS(T.s)+'</td><td>'+hARS(T.r)+'</td><td>'+hARS(T.d)+'</td><td>'+hARS(T.f)+'</td><td>'+hARS(s[11].ahorroAcumulado)+'</td></tr>';
-  h += '</tbody></table></div>';
-  if(s[11].aReponer > 0) h += '<div class="nota mal" style="padding:0 4px 12px">Al cierre del año te falta reponer ' + fARS(s[11].aReponer) + ' al ahorro.</div>';
+  hT += '</tbody></table></div>';
+  if(s[11].aReponer > 0) hT += '<div class="nota mal" style="padding:10px 16px">Al cierre del año te falta reponer ' + fARS(s[11].aReponer) + ' al ahorro.</div>';
+  h += plegable('anTabla', 'Los doce meses', 'Cierre ' + fARS(T.f), hT, false);
 
-  h += '<h2 class="tit">Ingresos y gastos</h2><div class="chart">'
-     + lineas(s.map(function(c){return c.totalIngresos;}), s.map(function(c){return c.totalGastos;}))
-     + '<div class="leyenda"><span><i style="background:var(--acc)"></i>Ingresos</span>'
-     + '<span><i style="background:var(--txt2)"></i>Gastos</span></div></div>';
+  h += plegable('anGraf', 'Ingresos y gastos', fARS(T.i) + ' · ' + fARS(T.g),
+        '<div class="chart">'
+      + lineas(s.map(function(c){return c.totalIngresos;}), s.map(function(c){return c.totalGastos;}))
+      + '<div class="leyenda"><span><i style="background:var(--acc)"></i>Ingresos</span>'
+      + '<span><i style="background:var(--txt2)"></i>Gastos</span></div></div>');
 
-  h += '<h2 class="tit">Ahorro acumulado</h2><div class="chart">'
-     + barras(s.map(function(c){return c.ahorroAcumulado;})) + '</div>';
+  h += plegable('anAhorro', 'Ahorro acumulado', fARS(s[11].ahorroAcumulado),
+        '<div class="chart">' + barras(s.map(function(c){return c.ahorroAcumulado;})) + '</div>');
 
-  var rk = ranking(D);
-  h += '<h2 class="tit">En qué se te fue la plata</h2><div class="rank">';
-  if(!rk.length) h += '<div class="nota" style="padding:14px 0">Cuando cargues gastos, acá vas a ver el ranking del año por categoría.</div>';
+  var rk = ranking(D), hR = '<div class="rank" style="padding:12px 16px">';
+  if(!rk.length) hR += '<div class="nota" style="padding:2px 0">Cuando cargues gastos, acá vas a ver el ranking del año por categoría.</div>';
   var max = rk.length ? rk[0].monto : 1;
   for(i=0;i<rk.length;i++){
-    h += '<div class="rk"><small><span>'+esc(rk[i].nombre)+'</span><span>'+fARS(rk[i].monto)+'</span></small>'
+    hR += '<div class="rk"><small><span>'+esc(rk[i].nombre)+'</span><span>'+fARS(rk[i].monto)+'</span></small>'
        + '<div class="pista"><i style="width:'+(rk[i].monto/max*100)+'%"></i></div></div>';
   }
-  h += '</div>';
+  hR += '</div>';
+  h += plegable('anRank', 'En qué se te fue la plata', rk.length ? esc(rk[0].nombre) : '', hR);
 
   var pd = proyeccionDeudas();
   if(pd.length){
-    var libre = null;
-    h += '<h2 class="tit">Deudas</h2><div class="rank">';
+    var libre = null, hD = '<div class="rank" style="padding:12px 16px">';
     for(i=0;i<pd.length;i++){
       var e = pd[i].e;
       if(e.fin && (!libre || e.fin.anio > libre.anio || (e.fin.anio === libre.anio && e.fin.mes > libre.mes))) libre = e.fin;
-      h += '<div class="rk"><small><span>'+esc(pd[i].nombre)+'</span><span>'+e.pagadas+' de '+e.plan.cuotas
+      hD += '<div class="rk"><small><span>'+esc(pd[i].nombre)+'</span><span>'+e.pagadas+' de '+e.plan.cuotas
          + (e.fin ? ' · ' + CORTOS[e.fin.mes].toLowerCase() + (e.fin.anio !== D.anio ? ' ' + e.fin.anio : '') : ' · lista') + '</span></small>'
          + '<div class="pista"><i class="'+(e.restantes?'':'verde')+'" style="width:'+(e.pct*100)+'%"></i></div></div>';
     }
-    h += '<div class="nota" style="padding:12px 0 4px">' + (libre
+    hD += '<div class="nota" style="padding:12px 0 0">' + (libre
          ? 'Si seguís pagando así, quedás sin deudas en <b>' + MESES[libre.mes].toLowerCase() + (libre.anio !== D.anio ? ' de ' + libre.anio : '') + '</b>.'
          : 'No te queda ninguna cuota pendiente.') + '</div></div>';
+    h += plegable('anDeudas', 'Deudas', libre ? CORTOS[libre.mes].toLowerCase() + (libre.anio !== D.anio ? ' ' + libre.anio : '') : 'al día', hD);
   }
   var anios = aniosGuardados();
   if(anios.indexOf(D.anio) < 0) anios.push(D.anio);
   anios.sort();
   if(anios.length > 1){
-    h += '<h2 class="tit">Año por año</h2><div class="tabla"><table><thead><tr>'
+    var hA = '<div class="tabla"><table><thead><tr>'
        + '<th>Año</th><th>Ingresos</th><th>Gastos</th><th>Deudas</th><th>Ahorrado</th><th>Cierre en pesos</th><th>Dólares al cierre</th></tr></thead><tbody>';
     for(i=0;i<anios.length;i++){
       var dA = anios[i] === D.anio ? D : leerAnio(anios[i]);
       if(!dA) continue;
       var sA = serie(dA), tI = 0, tG = 0, tD = 0, tA = 0, j;
       for(j=0;j<12;j++){ tI += sA[j].totalIngresos; tG += sA[j].totalGastos; tD += sA[j].totalDeudas; tA += sA[j].ahorroMesARS; }
-      h += '<tr' + (anios[i] === D.anio ? ' class="tot"' : '') + '><td>' + anios[i] + '</td><td>' + hARS(tI) + '</td><td>' + hARS(tG) + '</td><td>' + hARS(tD) + '</td>'
+      hA += '<tr' + (anios[i] === D.anio ? ' class="tot"' : '') + '><td>' + anios[i] + '</td><td>' + hARS(tI) + '</td><td>' + hARS(tG) + '</td><td>' + hARS(tD) + '</td>'
          + '<td>' + hARS(tA) + '</td><td>' + hARS(sA[11].ahorroAcumulado) + '</td><td>' + hUSD(sA[11].usdAcumulado) + '</td></tr>';
     }
-    h += '</tbody></table></div><div class="nota" style="padding:8px 4px 0">Ahorrado es lo que apartaste en el año; el cierre es lo que quedó en pesos después de pasar a dólares. Cambiás de año desde Ajustes.</div>';
+    hA += '</tbody></table></div><div class="nota">Ahorrado es lo que apartaste en el año; el cierre es lo que quedó en pesos después de pasar a dólares. Cambiás de año desde Ajustes.</div>';
+    h += plegable('anAnios', 'Año por año', anios.length + ' años', hA, false);
   }
-  h += '<h2 class="tit">Arranque del año</h2><div class="sec"><div class="cuerpo" style="border:0">'
-     + '<div class="fila-in"><label>Ahorro del año anterior</label>'
-     + '<input class="monto" inputmode="decimal" data-campo="ahorroAnioAnterior" value="'+fARS(D.ahorroAnioAnterior)+'"></div>'
-     + '</div></div><div style="height:20px"></div>';
+  h += plegable('anArranque', 'Arranque del año', fARS(D.ahorroAnioAnterior),
+        '<div class="fila-in"><label>Ahorro del año anterior</label>'
+      + '<input class="monto" inputmode="decimal" data-campo="ahorroAnioAnterior" value="'+fARS(D.ahorroAnioAnterior)+'"></div>', false)
+     + '<div style="height:20px"></div>';
   document.getElementById('v-anio').innerHTML = h;
 }
 
@@ -2004,8 +2123,8 @@ function lineas(a, b){
   }
   function path(arr){ var d=''; for(var i=0;i<12;i++) d += (i?'L':'M') + x(i).toFixed(1) + ' ' + y(arr[i]).toFixed(1) + ' '; return d; }
   for(i=0;i<12;i+=2) g += '<text x="'+x(i)+'" y="'+(H-6)+'" font-size="8.5" text-anchor="middle" fill="currentColor" opacity=".5">'+CORTOS[i]+'</text>';
-  g += '<path d="'+path(b)+'" fill="none" stroke="var(--txt2)" stroke-width="2" stroke-linejoin="round"/>';
-  g += '<path d="'+path(a)+'" fill="none" stroke="var(--acc)" stroke-width="2.4" stroke-linejoin="round"/>';
+  g += '<path class="trazo" d="'+path(b)+'" fill="none" stroke="var(--txt2)" stroke-width="2" stroke-linejoin="round"/>';
+  g += '<path class="trazo" d="'+path(a)+'" fill="none" stroke="var(--acc)" stroke-width="2.4" stroke-linejoin="round"/>';
   for(i=0;i<12;i++) if(a[i]) g += '<circle cx="'+x(i).toFixed(1)+'" cy="'+y(a[i]).toFixed(1)+'" r="2.4" fill="var(--acc)"/>';
   return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Ingresos contra gastos por mes">'+g+'</svg>';
 }
@@ -2030,34 +2149,34 @@ function barras(arr){
 
 function renderUSD(){
   var s = serie(D), p = patrimonio(D), h = '', i;
-  h += '<h2 class="tit">Cotización</h2><div class="sec"><div class="cuerpo" style="border:0">'
-     + '<div class="fila-in"><label>Un dólar en pesos</label>'
-     + '<input class="monto" inputmode="decimal" data-campo="cotizacionUSD" value="'+fARS(D.cotizacionUSD)+'"></div>'
-     + '<div class="nota">'+(D.cotizacionFecha ? 'Editada el '+fechaCorta(D.cotizacionFecha) : 'Todavía no la editaste en este archivo.')+'</div>'
-     + '</div></div>';
+  h += plegable('usdCotiz', 'Cotización', fARS(D.cotizacionUSD),
+        '<div class="fila-in"><label>Un dólar en pesos</label>'
+      + '<input class="monto" inputmode="decimal" data-campo="cotizacionUSD" value="'+fARS(D.cotizacionUSD)+'"></div>'
+      + '<div class="nota">'+(D.cotizacionFecha ? 'Editada el '+fechaCorta(D.cotizacionFecha) : 'Todavía no la editaste en este archivo.')+'</div>');
 
-  h += '<h2 class="tit">Dólares mes a mes</h2><div class="tabla"><table><thead><tr>'
+  var hM = '<div class="tabla"><table><thead><tr>'
      + '<th>Mes</th><th>Entraron</th><th>Pagados a</th><th>Acumulado</th><th>En pesos hoy</th></tr></thead><tbody>';
   var cd = costoDolares(D);
   for(i=0;i<12;i++){
-    h += '<tr><td>'+MESES[i]+'</td><td>'+hUSD(s[i].usdMes)+'</td><td>'+(s[i].cotizacionPagada ? fARS(s[i].cotizacionPagada) : '—')+'</td>'
+    hM += '<tr><td>'+MESES[i]+'</td><td>'+hUSD(s[i].usdMes)+'</td><td>'+(s[i].cotizacionPagada ? fARS(s[i].cotizacionPagada) : '—')+'</td>'
        + '<td>'+hUSD(s[i].usdAcumulado)+'</td><td>'+hARS(s[i].equivalenteARS)+'</td></tr>';
   }
-  h += '<tr class="tot"><td>Cierre</td><td>'+hUSD(s[11].usdAcumulado - num(D.usdAnioAnterior))+'</td><td>'+(cd.promedio ? fARS(cd.promedio) : '—')+'</td>'
+  hM += '<tr class="tot"><td>Cierre</td><td>'+hUSD(s[11].usdAcumulado - num(D.usdAnioAnterior))+'</td><td>'+(cd.promedio ? fARS(cd.promedio) : '—')+'</td>'
      + '<td>'+hUSD(s[11].usdAcumulado)+'</td><td>'+hARS(s[11].equivalenteARS)+'</td></tr></tbody></table></div>';
   if(cd.usd > 0){
     var hoy = cd.usd * num(D.cotizacionUSD), dif = hoy - cd.ars;
-    h += '<div class="sec" style="margin-top:12px"><div style="padding:14px 16px">'
+    hM += '<div style="padding:14px 16px;border-top:1px solid var(--sep)">'
        + '<div>Este año compraste <b>'+fUSD(cd.usd)+'</b> con <b>'+fARS(cd.ars)+'</b>, a <b>'+fARS(cd.promedio)+'</b> por dólar en promedio.</div>'
        + '<div class="mudo" style="font-size:14px;margin-top:6px">A la cotización de hoy valen '+fARS(hoy)+': '
        + (Math.abs(dif) < 1 ? 'ni ganaste ni perdiste.' : (dif > 0 ? '<span class="ok">'+fARS(dif)+' más</span> de lo que pagaste.' : '<span class="neg">'+fARS(-dif)+' menos</span> de lo que pagaste.'))
-       + '</div></div></div>';
+       + '</div></div>';
   }
+  h += plegable('usdMeses', 'Dólares mes a mes', fUSD(s[11].usdAcumulado), hM, false);
 
-  h += '<h2 class="tit">Cripto</h2><div class="sec"><div class="cuerpo" style="border:0">';
+  var hC = '';
   for(i=0;i<D.cripto.length;i++){
     var c = D.cripto[i], vu = num(c.cantidad)*num(c.precioUSD);
-    h += '<div class="item">'
+    hC += '<div class="item">'
        +   '<input class="nombre" data-cripto="'+i+'" data-campo="activo" value="'+esc(c.activo)+'" aria-label="Activo">'
        +   '<input class="monto cant" inputmode="decimal" data-cripto="'+i+'" data-campo="cantidad" value="'+crudo(c.cantidad)+'" placeholder="cantidad" aria-label="Cantidad">'
        +   '<button class="x" data-act="delCripto" data-i="'+i+'" aria-label="Borrar">×</button>'
@@ -2066,21 +2185,23 @@ function renderUSD(){
        +   '<input class="monto usd" inputmode="decimal" data-cripto="'+i+'" data-campo="precioUSD" value="'+fUSD(c.precioUSD)+'"></div>'
        + '<div class="nota">Vale '+fUSD(vu)+' · '+fARS(vu*num(D.cotizacionUSD))+'</div>';
   }
-  h += '<button class="mas" data-act="addCripto">+ Agregar activo</button></div></div>';
+  hC += '<button class="mas" data-act="addCripto">+ Agregar activo</button>';
+  h += plegable('usdCripto', 'Cripto', D.cripto.length ? fUSD(p.criptoUSD) : 'sin activos', hC, D.cripto.length > 0);
 
-  h += '<h2 class="tit">Patrimonio total</h2><div class="sec"><div class="cuerpo" style="border:0">'
-     + '<div class="fila-in"><label>Ahorro líquido en pesos</label><span class="mudo">'+hARS(p.ahorroARS)+'</span></div>'
-     + '<div class="fila-in"><label>Dólares guardados</label><span class="mudo">'+hUSD(p.usd)+'</span></div>'
-     + '<div class="fila-in"><label>Cripto</label><span class="mudo">'+hUSD(p.criptoUSD)+'</span></div>'
-     + '<div class="fila-in"><label>Dólares del año anterior</label>'
-     +   '<input class="monto usd" inputmode="decimal" data-campo="usdAnioAnterior" value="'+fUSD(D.usdAnioAnterior)+'"></div>'
-     + '</div>'
-     + '<div style="padding:16px;border-top:1px solid var(--sep)">'
-     +   '<small class="mudo" style="font-size:12px">Todo junto</small>'
-     +   '<div class="big ok" style="font-size:30px;font-weight:700;letter-spacing:-.03em">'+fUSD(p.patrimonioUSD)+'</div>'
-     +   '<div class="mudo" style="font-size:15px">'+fARS(p.patrimonioARS)+'</div>'
-     + '</div></div><div style="height:20px"></div>';
+  h += plegable('usdPatri', 'Patrimonio total', fUSD(p.patrimonioUSD),
+        '<div class="fila-in"><label>Ahorro líquido en pesos</label><span class="mudo">'+hARS(p.ahorroARS)+'</span></div>'
+      + '<div class="fila-in"><label>Dólares guardados</label><span class="mudo">'+hUSD(p.usd)+'</span></div>'
+      + '<div class="fila-in"><label>Cripto</label><span class="mudo">'+hUSD(p.criptoUSD)+'</span></div>'
+      + '<div class="fila-in"><label>Dólares del año anterior</label>'
+      +   '<input class="monto usd" inputmode="decimal" data-campo="usdAnioAnterior" value="'+fUSD(D.usdAnioAnterior)+'"></div>'
+      + '<div style="padding:16px;border-top:1px solid var(--sep)">'
+      +   '<small class="mudo" style="font-size:12px">Todo junto</small>'
+      +   '<div class="big ok" id="bigPatri" style="font-size:30px;font-weight:700;letter-spacing:-.03em">'+fUSD(p.patrimonioUSD)+'</div>'
+      +   '<div class="mudo" style="font-size:15px">'+fARS(p.patrimonioARS)+'</div>'
+      + '</div>')
+     + '<div style="height:20px"></div>';
   document.getElementById('v-usd').innerHTML = h;
+  contar('bigPatri', p.patrimonioUSD, function(v){ return fUSD(v); });
 }
 
 
@@ -2119,6 +2240,13 @@ function manual(){
     + '<p>Al guardar el plan te ofrece cargar solas las cuotas que faltan, de ese mes en adelante, con el total dividido por la cantidad de cuotas. Lo que no entra en el año se carga cuando creás el año siguiente.</p>'
     + '<p>Con eso te dice en qué cuota vas, cuántas quedan, cuánta plata falta y en qué mes terminás. Las cuotas se cuentan solas: cada mes con un monto cargado en esa deuda es una cuota paga. Si un mes la dejás en cero, lo toma como que no pagaste y corre la fecha de fin.</p>'
     + '<p>Una deuda con plan es la misma en todos los meses: si la renombrás, el nombre nuevo se aplica a todo el año.</p>');
+  h += bloque('gestos', 'Gestos y movimiento',
+    '<p>Las hojas que suben desde abajo se cierran <b>arrastrándolas para abajo</b>, además del botón. Si la arrastrás poco, vuelve sola a su lugar.</p>'
+    + '<p>Al cambiar de pestaña la pantalla entra desde el costado, según para dónde vayas. Y los números grandes suben hasta el valor nuevo en vez de saltar, así ves cuánto se movió.</p>'
+    + '<p>Si tenés activado <b>reducir movimiento</b> en el teléfono, la app no anima nada y todo aparece de una.</p>');
+  h += bloque('plegar', 'Plegar y desplegar',
+    '<p>En <b>Mes</b>, <b>Año</b> y <b>USD</b> cada bloque se pliega tocando su encabezado. Ahí al costado, en gris, está el número que resume lo que hay adentro: el total de la sección, el cierre del año, el patrimonio. Así ves lo importante sin abrir nada.</p>'
+    + '<p>Lo que abrís o cerrás queda guardado, así que la próxima vez la app se abre como la dejaste. Las tablas anchas —los doce meses, dólares mes a mes, año por año— arrancan cerradas a propósito, porque en un celular obligan a scrollear al costado.</p>');
   h += bloque('criollo', 'El resumen en criollo',
     '<p>Arriba de la pestaña <b>Año</b>, antes de la tabla, está <b>En criollo</b>: cuántos meses tenés cargados, cuánto entra y cuánto se va por mes en promedio, en qué mes gastaste más y en cuál menos, qué porcentaje de lo que entra estás ahorrando, y con cuánto cerrás diciembre si seguís al mismo ritmo.</p>'
     + '<p>Los promedios salen solo de los meses que tienen algo cargado: los que están en cero no arrastran la cuenta para abajo. Con menos de dos meses cargados no muestra promedios, porque no significarían nada. Si algún mes gastaste más de lo que entró, te lo dice en rojo.</p>');
@@ -2311,6 +2439,14 @@ function refrescar(){
   }
   var nt = document.getElementById('notaTopes');
   if(nt){ nt.style.display = pasadas(m).length ? 'block' : 'none'; nt.innerHTML = textoTopes(m); }
+  var bf = document.getElementById('bigFinal');
+  if(bf){
+    var nuevoTxt = fARS(c.disponibleFinal);
+    if(bf.getAttribute('data-v') !== null && bf.getAttribute('data-v') !== nuevoTxt){
+      bf.classList.remove('latido'); void bf.offsetWidth; bf.classList.add('latido');
+    }
+    bf.setAttribute('data-v', nuevoTxt);
+  }
   var np = document.getElementById('notaReponer');
   if(np){ np.style.display = ar > 0 ? 'block' : 'none'; np.innerHTML = 'A reponer al ahorro: <b>' + fARS(ar) + '</b>'; }
 }
@@ -2321,12 +2457,23 @@ function puntual(id, pct){
 }
 
 /* ═══ 5 · estado de guardado (en el teléfono) ═══════════════════ */
-function estado(){
+var tRecien = null;
+function estado(reciente){
   var d = document.getElementById('dot'), t = document.getElementById('txtEstado');
+  var caja = d ? d.parentNode : null;
   if(!hayLS){ d.className = 'dot off'; t.textContent = 'Este navegador no deja guardar'; return; }
   if(sucio){ d.className = 'dot sucio'; t.textContent = 'Guardando…'; return; }
   d.className = 'dot';
   t.textContent = D.actualizado ? 'Guardado ' + fechaCorta(D.actualizado) : 'Año nuevo, sin datos todavía';
+  if(reciente){
+    // el puntito hace pop y el texto se pone verde un rato: se ve que quedó guardado
+    d.className = 'dot';
+    void d.offsetWidth;
+    d.className = 'dot ok';
+    if(caja) caja.classList.add('recien');
+    if(tRecien) clearTimeout(tRecien);
+    tRecien = setTimeout(function(){ if(caja) caja.classList.remove('recien'); }, 1400);
+  }
 }
 function tocar(){
   sucio = true; estado();
@@ -2337,9 +2484,10 @@ function guardar(){
   if(!arrancado || !D) return;
   if(tGuardar){ clearTimeout(tGuardar); tGuardar = null; }
   D.actualizado = new Date().toISOString();
+  var eraSucio = sucio;
   try{ localStorage.setItem(PREF + D.anio, JSON.stringify(D)); sucio = false; }
   catch(e){ hayLS = false; }
-  estado();
+  estado(eraSucio && hayLS);
 }
 function leerAnio(a){
   try{ var s = localStorage.getItem(PREF + a); return s ? normalizar(JSON.parse(s)) : null; }
@@ -2582,8 +2730,46 @@ function duplicar(){
 
 /* ═══ 10 · modales ══════════════════════════════════════════════ */
 var velo = document.getElementById('velo'), hoja = document.getElementById('hoja');
-function abrirHoja(html){ hoja.innerHTML = html; velo.classList.add('on'); }
-function cerrarHoja(){ velo.classList.remove('on'); hoja.innerHTML = ''; }
+function abrirHoja(html){
+  hoja.innerHTML = '<div class="tirador"></div>' + html;
+  hoja.className = 'hoja';
+  hoja.style.transform = '';
+  velo.className = 'velo on';
+}
+function cerrarHoja(){
+  hoja.className = 'hoja'; hoja.style.transform = '';
+  velo.className = 'velo'; hoja.innerHTML = '';
+}
+function cerrarHojaDeslizando(){
+  if(menosMovimiento()){ cerrarHoja(); return; }
+  hoja.className = 'hoja yendo';
+  hoja.style.transform = 'translateY(' + (hoja.offsetHeight + 40) + 'px)';
+  velo.classList.add('yendo');
+  setTimeout(cerrarHoja, 240);
+}
+var arr = {activo:false, y0:0, dy:0};
+hoja.addEventListener('touchstart', function(e){
+  if(!e.touches || e.touches.length !== 1) return;
+  if(hoja.scrollTop > 0) return;             // si está scrolleada, primero se scrollea
+  arr.activo = true; arr.y0 = e.touches[0].clientY; arr.dy = 0;
+  hoja.className = 'hoja arrastrando';
+}, {passive:true});
+hoja.addEventListener('touchmove', function(e){
+  if(!arr.activo || !e.touches) return;
+  arr.dy = e.touches[0].clientY - arr.y0;
+  if(arr.dy < 0) arr.dy = arr.dy / 6;         // hacia arriba casi no se mueve
+  hoja.style.transform = 'translateY(' + arr.dy + 'px)';
+  velo.style.background = 'rgba(0,0,0,' + Math.max(0, .4 - Math.max(0, arr.dy)/700) + ')';
+}, {passive:true});
+hoja.addEventListener('touchend', function(){
+  if(!arr.activo) return;
+  arr.activo = false;
+  velo.style.background = '';
+  if(arr.dy > 90){ pendiente = null; cerrarHojaDeslizando(); return; }
+  hoja.className = 'hoja vuelve';
+  hoja.style.transform = '';
+  setTimeout(function(){ hoja.className = 'hoja'; }, 270);
+});
 function alerta(t, cuerpo){
   abrirHoja('<h3>'+t+'</h3><div class="texto" style="margin-bottom:16px">'+cuerpo+'</div>'
           + '<div class="fila"><button class="pri" data-act="cerrarHoja">Entendido</button></div>');
@@ -2634,7 +2820,7 @@ function sumarGasto(){
   it.monto = num(it.monto) + gr.monto;
   var id = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
   D.meses[mes].movimientos.push({id:id, fecha:new Date().toISOString(), sec:gr.sec, nombre:it.nombre, monto:gr.monto});
-  cerrarHoja(); tocar(); renderMes();
+  cerrarHoja(); tocar(); conScroll(renderMes);
   toast('Sumé ' + fARS(gr.monto) + ' a ' + esc(it.nombre), 'Deshacer', 'quitarMov', id);
 }
 function quitarMov(id){
@@ -2646,7 +2832,7 @@ function quitarMov(id){
     if(ls[i].nombre === mv.nombre){ ls[i].monto = Math.max(0, num(ls[i].monto) - mv.monto); break; }
   }
   m.movimientos.splice(k, 1);
-  tocar(); renderMes(); toast('Deshecho');
+  tocar(); conScroll(renderMes); toast('Deshecho');
 }
 var tToast = null;
 function toast(txt, accion, act, id){
@@ -2732,18 +2918,28 @@ document.addEventListener('click', function(ev){
   if(!b) { if(ev.target === velo) cerrarHoja(); return; }
   var a = b.getAttribute('data-act');
 
-  if(a === 'tab'){ tab = b.getAttribute('data-t'); ajVista = '';
+  if(a === 'tab'){
+    var TABS = ['mes','anio','usd','ajustes'], antes = TABS.indexOf(tab);
+    tab = b.getAttribute('data-t'); ajVista = '';
+    var haciaDer = TABS.indexOf(tab) > antes;
     var bs = document.querySelectorAll('#nav button');
     for(var i=0;i<bs.length;i++) bs[i].classList.toggle('on', bs[i] === b);
     var vs = document.querySelectorAll('.vista');
     for(i=0;i<vs.length;i++) vs[i].classList.toggle('on', vs[i].id === 'v'+'-'+tab);
-    render(); window.scrollTo(0,0); return;
+    render(); window.scrollTo(0,0);
+    var vv = document.getElementById('v-'+tab);
+    if(vv && !menosMovimiento()){
+      vv.classList.remove('der','izq'); void vv.offsetWidth;
+      vv.classList.add(haciaDer ? 'der' : 'izq');
+    }
+    return;
   }
   if(a === 'mes'){ mes = +b.getAttribute('data-m'); renderMes(); return; }
   if(a === 'col'){
     var k = b.getAttribute('data-k');
     D.ui.col[k] = !D.ui.col[k];
-    b.parentNode.classList.toggle('cerrada', !!D.ui.col[k]);
+    plegarAnim(b.parentNode, !!D.ui.col[k]);
+    tocar();
     return;
   }
   if(a === 'add'){ pedirNombre(b.getAttribute('data-k')); return; }
@@ -2779,7 +2975,7 @@ document.addEventListener('click', function(ev){
   if(a === 'plan'){ abrirPlan(+b.getAttribute('data-i')); return; }
   if(a === 'guardarPlan'){ guardarPlan(false); return; }
   if(a === 'quitarPlan'){ guardarPlan(true); return; }
-  if(a === 'colAyuda'){ var ka = b.getAttribute('data-k'); ayudaAbierta[ka] = !ayudaAbierta[ka]; b.parentNode.classList.toggle('cerrada', !ayudaAbierta[ka]); return; }
+  if(a === 'colAyuda'){ var ka = b.getAttribute('data-k'); ayudaAbierta[ka] = !ayudaAbierta[ka]; plegarAnim(b.parentNode, !ayudaAbierta[ka]); return; }
   if(a === 'gastoRapido'){ gastoRapido(); return; }
   if(a === 'chip'){
     var cs = document.querySelectorAll('#grChips button');
@@ -2855,7 +3051,7 @@ function aplicarInput(t, final){
     else if(D.meses[mes][campo] !== v){ D.meses[mes][campo] = v; cambio = true; }
     if(cambio) tocar();
     refrescar();
-    if(final && (tab === 'anio' || tab === 'usd')) render();
+    if(final && (tab === 'anio' || tab === 'usd')) conScroll(render);
     return;
   }
   var it = D.meses[mes][t.getAttribute('data-k')][+t.getAttribute('data-i')];
