@@ -157,6 +157,13 @@ h2.tit{font-size:13px;font-weight:600;color:var(--txt2);margin:22px 4px 8px;lett
 .manual ul{margin:0 0 10px;padding-left:18px;font-size:15px;line-height:1.5}
 .manual li{margin-bottom:4px}
 .acciones .btnlink{display:block;background:var(--card);padding:15px 16px;text-align:left;font-size:16px;min-height:52px;line-height:22px;text-decoration:none;color:var(--txt)}
+.chk{width:26px;height:26px;flex:0 0 auto;border-radius:50%;border:2px solid var(--sep);
+  display:flex;align-items:center;justify-content:center;color:transparent;transition:background .18s,border-color .18s,color .18s,transform .12s}
+.chk svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.chk.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.chk:active{transform:scale(.88)}
+.item.pago input.nombre{color:var(--txt2)}
+.item.pago input.monto{color:var(--txt2)}
 .orden{border:1px solid var(--sep);border-radius:12px;overflow:hidden}
 .ofila{display:flex;align-items:center;gap:6px;padding:6px 6px 6px 14px;min-height:50px;border-bottom:1px solid var(--sep);background:var(--card)}
 .ofila:last-child{border-bottom:0}
@@ -1507,7 +1514,7 @@ nav button.on .np{background:var(--acc-soft)}
 var M1 = '/*DATOS_' + 'INICIO*/';
 var M2 = '/*DATOS_' + 'FIN*/';
 
-var APPVER   = '1.20';               // versión visible en Ajustes
+var APPVER   = '1.21';               // versión visible en Ajustes
 var PREF     = 'kibo.datos.';       // kibo.datos.2026, kibo.datos.2027…
 var LSANIO   = 'kibo.anio';
 var LSCOPIA  = 'kibo.ultimaCopia';
@@ -1564,7 +1571,12 @@ function normalizar(d){
     for(var s=0;s<SECS.length;s++){
       var k = SECS[s].k;
       if(!Array.isArray(m[k])) m[k] = [];
-      m[k] = m[k].map(function(it){ return {nombre:String(it&&it.nombre||''),monto:num(it&&it.monto),tope:Math.max(0,num(it&&it.tope))}; });
+      m[k] = m[k].map(function(it){
+        var o = {nombre:String(it&&it.nombre||''),monto:num(it&&it.monto),tope:Math.max(0,num(it&&it.tope))};
+        if(it && it.pagado === true) o.pagado = true;
+        if(it && it.pagado === false) o.pagado = false;
+        return o;
+      });
     }
     m.ahorroMesARS = num(m.ahorroMesARS);
     m.ahorroMesUSD = num(m.ahorroMesUSD);
@@ -1693,13 +1705,26 @@ function notaCompra(m, acum){
   if(a > 0 || u > 0) return 'Complet\u00e1 los dos campos para calcular a cu\u00e1nto lo pagaste.';
   return 'Si pas\u00e1s parte del ahorro a d\u00f3lares, cargalo ac\u00e1: se descuenta de los pesos y se suma a los d\u00f3lares.';
 }
+var MARCABLE = {gastosFijos:true, deudas:true};
+function mesTope(){
+  var hoy = new Date();
+  if(D.anio < hoy.getFullYear()) return 11;
+  if(D.anio > hoy.getFullYear()) return -1;
+  return hoy.getMonth();
+}
+function estaPagado(j, it){
+  if(!it) return false;
+  if(it.pagado === true) return true;
+  if(it.pagado === false) return false;
+  return num(it.monto) > 0 && j <= mesTope();   // los meses que ya pasaron se dan por pagados
+}
 function planDe(nombre){ return D.planDeudas[String(nombre||'').trim()] || null; }
 function estadoDeuda(nombre, i){
   var p = planDe(nombre); if(!p || !p.cuotas) return null;
   var n = String(nombre||'').trim(), pag = p.pagadasAntes, antes = p.pagadasAntes;
   for(var j=0;j<=i;j++){
     var ls = D.meses[j].deudas, pagoMes = false;
-    for(var q=0;q<ls.length;q++) if(String(ls[q].nombre||'').trim() === n && num(ls[q].monto) > 0) pagoMes = true;
+    for(var q=0;q<ls.length;q++) if(String(ls[q].nombre||'').trim() === n && estaPagado(j, ls[q])) pagoMes = true;
     if(pagoMes){ pag++; if(j < i) antes++; }
   }
   var esteMes = pag > antes, restantes = Math.max(0, p.cuotas - pag);
@@ -1713,7 +1738,7 @@ function pagadasHasta(nombre, hasta){
   var n = String(nombre||'').trim(), c = 0, j, q;
   for(j=0;j<hasta && j<12;j++){
     var ls = D.meses[j].deudas;
-    for(q=0;q<ls.length;q++) if(String(ls[q].nombre||'').trim() === n && num(ls[q].monto) > 0){ c++; break; }
+    for(q=0;q<ls.length;q++) if(String(ls[q].nombre||'').trim() === n && estaPagado(j, ls[q])){ c++; break; }
   }
   return c;
 }
@@ -2050,7 +2075,9 @@ function seccion(S, m){
      + '<span class="sub" id="sub-'+S.k+'">'+fARS(sub)+'</span><i class="chev"></i></button>';
   h += '<div class="cuerpo">';
   for(var i=0;i<lista.length;i++){
-    h += '<div class="item">'
+    var pg = MARCABLE[S.k] && estaPagado(mes, lista[i]);
+    h += '<div class="item'+(pg?' pago':'')+'">'
+       +   (MARCABLE[S.k] ? '<button class="chk'+(pg?' on':'')+'" data-act="pagar" data-k="'+S.k+'" data-i="'+i+'" aria-label="'+(pg?'Marcar como no pagado':'Marcar como pagado')+'"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>' : '')
        +   '<input class="nombre" data-k="'+S.k+'" data-i="'+i+'" value="'+esc(lista[i].nombre)+'" aria-label="Nombre">'
        +   '<input class="monto" inputmode="decimal" enterkeyhint="done" data-k="'+S.k+'" data-i="'+i+'" value="'+fARS(lista[i].monto)+'" aria-label="Monto">'
        +   '<button class="x" data-act="del" data-k="'+S.k+'" data-i="'+i+'" aria-label="Borrar">×</button>'
@@ -2371,6 +2398,10 @@ function manual(){
     + '<p>Al guardar elegís <b>Solo este mes</b> o <b>de este mes en adelante</b>. Lo segundo es lo normal: ponés los topes una vez y valen para todo lo que queda del año. Cuando los precios se van para arriba, entrás de nuevo, subís el número y lo aplicás de ese mes en adelante. Los meses que ya pasaron quedan como estaban.</p>'
     + '<p>Un tope en cero es lo mismo que no tener tope: la fila se ve igual que siempre. Los topes se arrastran al crear el año siguiente.</p>');
 
+  h += bloque('pagado', 'Marcar lo que ya pagaste',
+    '<p>En <b>Gastos fijos</b> y en <b>Deudas</b> cada fila tiene un círculo a la izquierda. Tocalo y queda tildado en verde: eso significa que esa cuota o ese gasto ya está pagado, y la fila se ve apagada.</p>'
+    + '<p>La app lo tilda sola en los meses que ya pasaron y en el que estás. Los meses que todavía no llegaron quedan sin tildar, aunque tengas la cuota cargada, porque cargarla no es lo mismo que pagarla. Si pagaste una cuota adelantada, tildala a mano; si un mes que ya pasó quedó sin pagar, destildalo.</p>'
+    + '<p>De ahí sale la cuenta de <b>cuántas cuotas llevás</b>, tanto en el mes como en el panel de Deudas de la pestaña Año. Por eso los dos dicen siempre lo mismo.</p>');
   h += bloque('orden', 'Ordenar y borrar categorías',
     '<p>Abajo de cada sección está <b>Cambiar el orden</b>: subís o bajás cada categoría hasta dejarlas como las querés ver. Se aplica solo a ese mes o de ese mes en adelante, igual que los topes. Los montos viajan con la categoría, no se mezclan.</p>'
     + '<p>La <b>×</b> de cada fila borra la categoría de ese mes, y siempre pregunta antes. Si le errás, el cartelito de abajo te deja <b>Deshacer</b> y la devuelve a su lugar con el monto que tenía.</p>');
@@ -3151,6 +3182,11 @@ document.addEventListener('click', function(ev){
   if(a === 'cerrarAviso'){ document.getElementById('avisos').innerHTML = ''; return; }
   if(a === 'copiar'){ copiarAnterior(b.getAttribute('data-k')); return; }
   if(a === 'topes'){ abrirTopes(b.getAttribute('data-k')); return; }
+  if(a === 'pagar'){
+    var kp = b.getAttribute('data-k'), ip = +b.getAttribute('data-i'), itp = D.meses[mes][kp][ip];
+    if(itp){ itp.pagado = !estaPagado(mes, itp); tocar(); guardar(); conScroll(renderMes); }
+    return;
+  }
   if(a === 'ordenar'){ abrirOrden(b.getAttribute('data-k')); return; }
   if(a === 'subir'){ moverOrden(+b.getAttribute('data-i'), -1); return; }
   if(a === 'bajar'){ moverOrden(+b.getAttribute('data-i'), 1); return; }

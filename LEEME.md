@@ -48,6 +48,7 @@ el .apk. Del zip que te da, copiá assetlinks.json a una carpeta
 
 ## CHANGELOG
 
+v1.21 · 2026-09-09 — Check de pagado en gastos fijos y deudas, y arregla la incoherencia entre Mes y Año: el panel de Deudas del año contaba como pagadas las cuotas de meses futuros que ya estaban cargadas. Ahora se tildan solas las de los meses que ya pasaron y el actual, las futuras quedan sin tildar, y se puede corregir a mano en los dos sentidos.
 v1.20 · 2026-09-09 — Arregla el hueco vacío arriba de la tarjeta principal: la tarjeta del mes y la del año compartían la clase "resumen" desde la v1.17, así que el mes quedó pegajoso bajo el encabezado, con el relleno y el círculo decorativo de la otra. Ahora cada una tiene lo suyo.
 v1.19 · 2026-09-09 — Menos aire muerto arriba: encabezado más compacto, las vistas arrancan pegadas y el primer bloque de cada pestaña ya no suma margen propio. El halo de color pasa de 320 a 240 px para que no se lea como una franja vacía.
 v1.18 · 2026-09-09 — Pasada de aspecto: el disponible final pasa a ser el saldo centrado de la pantalla, con cuatro accesos redondos abajo (gasto, copia, el año, dólares). Cada sección lleva su ícono en un cuadradito tintado, la pestaña activa de la barra de abajo se marca con una píldora, las tarjetas tienen esquinas más redondeadas y hay un halo verde suave detrás del encabezado.
