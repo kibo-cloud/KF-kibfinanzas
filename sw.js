@@ -2,7 +2,8 @@
    Deja la app entera en caché para que abra sin conexión y la actualiza
    en segundo plano cuando hay señal. Los datos no pasan por acá: viven
    en el almacenamiento del navegador. */
-var VERSION = 'kibfinanzas-offline-v30';
+var VERSION = 'kibfinanzas-offline-v31';
+var PREFIJO = 'kibfinanzas-offline-';   // solo borra cachés que empiecen con esto: la app real vive en la misma dirección base
 var BASE = ['./', './index.html', './manifest.webmanifest', './favicon-64.png', './privacidad.html',
             './icono-192.png', './icono-512.png', './maskable-512.png', './apple-180.png'];
 
@@ -11,7 +12,7 @@ self.addEventListener('install', function(e){
 });
 self.addEventListener('activate', function(e){
   e.waitUntil(caches.keys().then(function(ks){
-    return Promise.all(ks.filter(function(k){ return k !== VERSION; }).map(function(k){ return caches.delete(k); }));
+    return Promise.all(ks.filter(function(k){ return k !== VERSION && k.indexOf(PREFIJO) === 0; }).map(function(k){ return caches.delete(k); }));
   }).then(function(){ return self.clients.claim(); }));
 });
 self.addEventListener('fetch', function(e){

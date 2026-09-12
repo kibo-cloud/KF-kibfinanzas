@@ -29,7 +29,7 @@ una app vacía.
 
 ## Versión para PC
 
-Ajustes → **Guardar la versión para PC** genera un `kibfinanzas-AAAA.html`: la app
+Ajustes → **Guardar la versión para PC** genera un `kibfinanzas-lab-AAAA.html`: la app
 entera en un archivo, con los datos del año abierto embebidos entre
 `/*DATOS_INICIO*/` y `/*DATOS_FIN*/`. Se abre con doble clic en cualquier
 computadora, sin instalar nada. Es una foto del momento: no se sincroniza.
@@ -48,6 +48,7 @@ el .apk. Del zip que te da, copiá assetlinks.json a una carpeta
 
 ## CHANGELOG
 
+v1.30 · 2026-09-12 — Llega la pestaña Trabajo para quien vende o factura por su cuenta: se prende en Ajustes y trae dos modos. Simple: ventas sueltas, productos rápidos de un toque con costo y ganancia, e ingresos por semana o quincena de plataformas y changas. Profesional: facturas con cliente y plazo, cobros con sugerencia automática, retenciones, echeqs, cobranza de la semana con recordatorio por el menú de compartir, abonos que se repiten solos, tope del monotributo y CSV para el contador. Lo cobrado se pasa a Ingresos del mes en el renglón "Del trabajo". En Mes aparece el ritmo del mes: cuánto te alcanza por día y aviso si a ese ritmo no llegás. Arreglos de la base: el service worker ya no borra cachés ajenas y el gesto para cambiar de pestaña no se traba sobre renglones cortados. Al actualizar se guarda una copia de tus datos por 30 días, por si querés volver atrás.
 v1.28 · 2026-09-09 — Se cambia de pestaña deslizando el dedo para los costados, sin tocar los botones de abajo. El gesto respeta lo que ya se mueve al costado (la tira de meses, las tablas anchas) y no actúa con una hoja abierta. Dentro de una subpantalla de Ajustes, deslizar a la derecha vuelve al principio.
 v1.27 · 2026-09-09 — La app guarda sus propias copias: cada vez que hacés una, se archiva también adentro de la app. En Ajustes aparecen las últimas cinco con fecha, y cada una se puede restaurar o compartir de un toque. Son una red contra errores de carga, no contra perder el teléfono.
 v1.26 · 2026-09-09 — Cuando compartir la copia falla, la app ya no lo esconde: descarga igual y avisa con el motivo exacto del navegador. Alternativa nueva: "Copiar la copia al portapapeles", en Ajustes, para pegarla en un mail, una nota o un documento de Drive cuando el menú de compartir no funciona.
