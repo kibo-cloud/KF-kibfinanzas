@@ -321,6 +321,14 @@ button.tj-f:active{background:var(--fill)}
 .tj-vacio{padding:16px;font-size:14px;color:var(--txt2);line-height:1.45}
 .tj-det{margin-bottom:10px}
 .tj-dos{display:flex;gap:8px}
+.seg.seg4 button{font-size:13px;padding:0 4px}
+.grilla-dias{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:14px}
+.grilla-dias button{min-height:38px;border-radius:10px;background:var(--fill);color:var(--txt);font-size:14px;font-weight:500;font-variant-numeric:tabular-nums}
+.grilla-dias button.on{background:var(--acc);color:#fff;font-weight:700}
+.grilla-sem{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:14px}
+.grilla-sem button{min-height:44px;border-radius:12px;background:var(--fill);color:var(--txt);font-size:15px;font-weight:600}
+.grilla-sem button.on{background:var(--acc);color:#fff}
+.grilla-dias button:active,.grilla-sem button:active{transform:scale(.9);transition-duration:var(--toque)}
 .tj-modo{margin-bottom:6px}
 .tj-prods{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
 .tj-prod{min-height:58px;padding:9px 12px;border-radius:14px;text-align:left;background:var(--card);border:1px solid var(--sep);box-shadow:var(--shadow);color:var(--txt)}
@@ -335,8 +343,6 @@ button.tj-f:active{background:var(--fill)}
 .tj-det .muted{opacity:.6}
 .tj-det .muted div{border-bottom:0}
 .tj-prod:active{background:var(--acc-soft);border-color:var(--acc)}
-.ritmo{margin-top:8px;font-size:13px;line-height:1.35;color:var(--txt2)}
-.ritmo.mal{color:var(--neg)}
 .tj-hoy{font-size:13px;color:var(--txt2);text-align:center;margin:10px 0 0}
 .tj-cz{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:12px;row-gap:5px;align-items:center}
 .tj-cz .czn{font-size:16px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1678,7 +1684,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--acc);outline-offset
 var M1 = '/*DATOS_' + 'INICIO*/';
 var M2 = '/*DATOS_' + 'FIN*/';
 
-var APPVER   = '1.30';    // versión visible en Ajustes (LAB)
+var APPVER   = '1.30.2';    // versión visible en Ajustes (LAB)
 var PREF     = 'kibo.datos.';        // kibo.datos.2026, kibo.datos.2027…
 var LSANIO   = 'kibo.anio';
 var LSCOPIA  = 'kibo.ultimaCopia';
@@ -1737,6 +1743,8 @@ function normalizar(d){
       if(!Array.isArray(m[k])) m[k] = [];
       m[k] = m[k].map(function(it){
         var o = {nombre:String(it&&it.nombre||''),monto:num(it&&it.monto),tope:Math.max(0,num(it&&it.tope))};
+        var fr = it && it.frec; o.frec = (fr==='semanal'||fr==='quincenal'||fr==='dias'||fr==='mensual') ? fr : '';
+        o.dias = []; if(it && Object.prototype.toString.call(it.dias)==='[object Array]'){ for(var qd=0;qd<it.dias.length;qd++){ var vd=Math.round(num(it.dias[qd])); if(vd>=0&&vd<=31&&o.dias.length<31) o.dias.push(vd); } }
         if(it && it.pagado === true) o.pagado = true;
         if(it && it.pagado === false) o.pagado = false;
         return o;
@@ -1761,7 +1769,7 @@ function normalizar(d){
   if(!d.planDeudas || typeof d.planDeudas!=='object') d.planDeudas = {};
   Object.keys(d.planDeudas).forEach(function(k){
     var p = d.planDeudas[k] || {};
-    d.planDeudas[k] = {total:num(p.total), cuotas:Math.max(0, Math.round(num(p.cuotas))), pagadasAntes:Math.max(0, Math.round(num(p.pagadasAntes)))};
+    d.planDeudas[k] = {recargo:num(p.recargo), total:num(p.total), cuotas:Math.max(0, Math.round(num(p.cuotas))), pagadasAntes:Math.max(0, Math.round(num(p.pagadasAntes)))};
   });
   if(!d.ui || typeof d.ui!=='object') d.ui = {};
   if(['auto','claro','oscuro'].indexOf(d.ui.tema)<0) d.ui.tema = 'auto';
@@ -1882,6 +1890,34 @@ function estaPagado(j, it){
   if(it.pagado === false) return false;
   return num(it.monto) > 0 && j <= mesTope();   // los meses que ya pasaron se dan por pagados
 }
+var DIASEM = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+var DIASEMC = ['D','L','M','M','J','V','S'];
+function diasDelMes(anio, m){ return new Date(anio, m + 1, 0).getDate(); }
+function cuantosPagos(it, anio, m){
+  if(it.frec === 'semanal'){
+    var d = it.dias.length ? it.dias[0] : 5, n = 0, dim = diasDelMes(anio, m), q;
+    for(q=1;q<=dim;q++) if(new Date(anio, m, q).getDay() === d) n++;
+    return n;
+  }
+  if(it.frec === 'quincenal' || it.frec === 'dias' || it.frec === 'mensual'){
+    var dim2 = diasDelMes(anio, m), c = 0, w;
+    for(w=0;w<it.dias.length;w++) if(it.dias[w] >= 1 && it.dias[w] <= dim2) c++;
+    return c || (it.frec === 'mensual' ? 1 : 0);
+  }
+  return 1;
+}
+function cobroTxt(it){
+  if(!it.frec) return '';
+  var n = cuantosPagos(it, D.anio, mes), cada = n > 0 ? Math.round(num(it.monto) / n) : 0, det;
+  if(it.frec === 'semanal') det = 'Todos los ' + DIASEM[it.dias.length ? it.dias[0] : 5];
+  else if(it.frec === 'mensual') det = it.dias.length ? 'El día ' + it.dias[0] + ' de cada mes' : 'Una vez por mes';
+  else {
+    var l = it.dias.slice().sort(function(a,b){ return a-b; });
+    det = l.length ? 'Los días ' + (l.length > 3 ? l.slice(0,3).join(', ') + ' y ' + (l.length-3) + ' más' : l.join(l.length===2?' y ':', ')) : (it.frec === 'quincenal' ? 'Cada quincena' : 'Días a elegir');
+  }
+  if(n > 1) det += ' · ' + n + ' pagos de ' + fARS(cada);
+  return det;
+}
 function planDe(nombre){ return D.planDeudas[String(nombre||'').trim()] || null; }
 function estadoDeuda(nombre, i){
   var p = planDe(nombre); if(!p || !p.cuotas) return null;
@@ -1903,11 +1939,12 @@ function estadoDeuda(nombre, i){
   if(primero < 0) primero = 0;
   var k = primero + restantes - 1;
   var fin = restantes > 0 ? {mes:((k % 12) + 12) % 12, anio:D.anio + Math.floor(k/12)} : null;
-  var valor = p.cuotas ? p.total/p.cuotas : 0;
+  var valor = p.cuotas ? totalConRecargo(p)/p.cuotas : 0;
   return {plan:p, pagadas:pag, restantes:restantes, esteMes:esteMes, cuotaN:esteMes ? pag : antes + 1,
           fin:fin, saldo:restantes*valor, pct:Math.min(1, pag/p.cuotas)};
 }
-function valorCuota(p){ return p && p.cuotas ? Math.round(num(p.total)/p.cuotas) : 0; }
+function totalConRecargo(p){ return p ? num(p.total) * (1 + num(p.recargo)/100) : 0; }   // sin recargo cargado, es el total tal cual
+function valorCuota(p){ return p && p.cuotas ? Math.round(totalConRecargo(p)/p.cuotas) : 0; }
 function pagadasHasta(nombre, hasta){
   var n = String(nombre||'').trim(), c = 0, j, q;
   for(j=0;j<hasta && j<12;j++){
@@ -2134,7 +2171,7 @@ function renderMes(){
      +   '</div>'
      +   '<div class="final"><small>Disponible final · '+MESES[mes]+'</small>'
      +     '<div class="final-fila"><div class="big '+(c.disponibleFinal<0?'mal':'ok')+'" id="bigFinal">'+fARS(c.disponibleFinal)+'</div>'
-     +     botonOjo() + '</div>' + lineaRitmo(c) + '</div>'
+     +     botonOjo() + '</div></div>'
      +   '<div class="barras">'
      +     barra('Gastos sobre ingresos', c.pctGastos, false, 'bGa')
      +     barra('Ahorro sobre ingresos', c.pctAhorro, true, 'bAh')
@@ -2292,6 +2329,10 @@ function seccion(S, m){
     if(vt) h += '<div class="nota tj-vienede">Viene de Trabajo: lo que pasaste a lo personal este mes. Se cambia desde esa pestaña.</div>';
     if(TOPEABLE[S.k] && num(lista[i].tope) > 0){
       h += filaTope(S.k, i, lista[i]);
+    }
+    if(S.k === 'ingresos' && !vt){
+      h += '<button class="dinfo' + (lista[i].frec ? '' : ' vacia') + '" data-act="cobro" data-i="' + i + '">'
+         + (lista[i].frec ? esc(cobroTxt(lista[i])) : '¿Cada cuánto lo cobrás?') + '</button>';
     }
     if(S.k === 'deudas'){
       h += '<button class="dinfo'+(planDe(lista[i].nombre)?'':' vacia')+'" data-act="plan" data-i="'+i+'">'+textoDeuda(lista[i].nombre, mes)+'</button>';
@@ -2597,8 +2638,8 @@ function manual(){
     + '<ul><li>Tocá un monto para editarlo. Podés escribir 12000 o 12.000, da lo mismo.</li>'
     + '<li>Tocá el nombre para renombrar la categoría. La × la borra solo de ese mes.</li>'
     + '<li>El botón + agrega una categoría y te pregunta si querés tenerla también en los meses que siguen.</li>'
-    + '<li>Cuando un mes nuevo tiene los fijos, los ingresos o las deudas en cero, aparece <b>Copiar los montos</b> del mes anterior. Un toque y listo. Las variables no se copian porque cambian cada mes.</li></ul>'
-    + '<p>En el mes de hoy, debajo del disponible, la app te dice <b>cuánto te alcanza por día</b> hasta fin de mes. Si venís gastando más rápido de lo que te da el mes, te avisa en rojo cómo terminarías a ese ritmo, para que lo corrijas a tiempo.</p>');
+    + '<li>En Ingresos, debajo de cada renglón, podés decir <b>cada cuánto lo cobrás</b>: mensual, semanal, quincenal o los días que elijas. Ponés el total del mes o cuánto es cada pago y la app hace la otra cuenta. El renglón sigue valiendo el total del mes.</li>'
+    + '<li>Cuando un mes nuevo tiene los fijos, los ingresos o las deudas en cero, aparece <b>Copiar los montos</b> del mes anterior. Un toque y listo. Las variables no se copian porque cambian cada mes.</li></ul>');
   h += bloque('rapido', 'Gasto rápido',
       '<p>El botón verde de abajo es para cargar un gasto en el momento, desde el celular: tocás, escribís el monto, tocás la categoría, y ya se sumó. Tres toques.</p>'
     + '<p>Cada gasto queda en la sección <b>Gastos rápidos</b> del mes, con fecha, y se puede deshacer con la ×. Apenas lo cargás también aparece un aviso con <b>Deshacer</b> durante unos segundos, por si tocaste mal.</p>');
@@ -2706,6 +2747,7 @@ function manual(){
 var ICO = {
   copia:  '<svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>',
   rest:   '<svg viewBox="0 0 24 24"><path d="M12 4v12M7 11l5 5 5-5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>',
+  volver: '<svg viewBox="0 0 24 24"><path d="M4 5v5h5"/><path d="M4.5 10.5a8 8 0 1 1 .7 5.5"/><path d="M12 8v4.5l3 1.8"/></svg>',
   datos:  '<svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18h2"/></svg>',
   anio:   '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
   pc:     '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>',
@@ -2720,7 +2762,7 @@ var ICO = {
 function filaAj(ico, titulo, sub, act, extra, clase){
   var attrs = act ? ' data-act="' + act + '"' + (extra || '') : (extra || '');
   return '<button class="faj' + (clase ? ' ' + clase : '') + '"' + attrs + '>'
-       +   '<span class="ico">' + ICO[ico] + '</span>'
+       +   '<span class="ico">' + (ICO[ico] || '') + '</span>'
        +   '<span class="tx"><b>' + titulo + '</b>' + (sub ? '<small' + (sub.clase ? ' class="' + sub.clase + '"' : '') + (sub.id ? ' id="' + sub.id + '"' : '') + '>' + sub.t + '</small>' : '') + '</span>'
        +   '<i class="chev"></i>'
        + '</button>';
@@ -2836,7 +2878,6 @@ function refrescar(){
   var sa = document.getElementById('sub-ahorro'); if(sa) sa.textContent = fARS(c.ahorroMesARS);
   var big = document.getElementById('bigFinal');
   if(big){ big.textContent = fARS(c.disponibleFinal); big.className = 'big ' + (c.disponibleFinal<0?'mal':'ok'); }
-  refrescarRitmo(c);
   var tri = document.querySelectorAll('#v-mes .tri b');
   if(tri.length === 3){ tri[0].textContent = fARS(c.totalIngresos); tri[1].textContent = fARS(c.totalGastos); tri[2].textContent = fARS(c.ahorroMesARS); }
   puntual('bGa', c.pctGastos); puntual('bAh', c.pctAhorro);
@@ -3458,12 +3499,81 @@ function copiarAnterior(k){
   tocar(); renderMes();
   toast('Copié ' + MESES[mes-1].toLowerCase() + ' en ' + MESES[mes].toLowerCase());
 }
+var cbx = null, cobroIdx = -1;
+function abrirComoCobras(i){
+  var it = D.meses[mes].ingresos[i]; if(!it) return;
+  cobroIdx = i;
+  cbx = {frec: it.frec || 'mensual', dias: it.dias.slice()};
+  if(cbx.frec === 'semanal' && !cbx.dias.length) cbx.dias = [5];
+  var seg = '', o = [['mensual','Mensual'],['semanal','Semanal'],['quincenal','Quincenal'],['dias','Días elegidos']], q;
+  for(q=0;q<o.length;q++) seg += '<button data-act="icFrec" data-v="' + o[q][0] + '" class="' + (cbx.frec === o[q][0] ? 'on' : '') + '">' + o[q][1] + '</button>';
+  abrirHoja('<h3>' + esc(it.nombre || 'Ingreso') + '</h3>'
+    + '<label class="tj-lb">¿Cada cuánto lo cobrás?</label><div class="seg seg4" id="icFrec" style="margin-bottom:14px">' + seg + '</div>'
+    + '<label class="tj-lb" id="icLbl"></label><div id="icGrilla"></div>'
+    + '<div class="tj-dos">'
+    +   '<div class="campo"><label>Total del mes</label><input type="text" id="icTotal" inputmode="decimal" autocomplete="off" value="' + (num(it.monto) ? fARS(it.monto) : '') + '"></div>'
+    +   '<div class="campo"><label>Cada pago</label><input type="text" id="icCada" inputmode="decimal" autocomplete="off"></div>'
+    + '</div>'
+    + '<div class="nota" id="icNota" style="padding:0 0 14px"></div>'
+    + '<div class="fila">' + (it.frec ? '<button class="mal" data-act="quitarCobroIng">Quitar</button>' : '<button data-act="cerrarHoja">Cancelar</button>')
+    + '<button class="pri" data-act="guardarCobroIng">Guardar</button></div>');
+  document.getElementById('icTotal').addEventListener('input', function(){ cbx.ult = 'total'; pintarNotaCobras(); });
+  document.getElementById('icCada').addEventListener('input', function(){ cbx.ult = 'cada'; pintarNotaCobras(); });
+  pintarComoCobras();
+}
+function pintarComoCobras(){
+  var g = document.getElementById('icGrilla'), l = document.getElementById('icLbl'); if(!g) return;
+  var h = '', q;
+  if(cbx.frec === 'semanal'){
+    l.textContent = '¿Qué día de la semana?';
+    h = '<div class="grilla-sem">';
+    for(q=1;q<=6;q++) h += '<button data-act="icDia" data-v="' + q + '" class="' + (cbx.dias[0] === q ? 'on' : '') + '">' + DIASEMC[q] + '</button>';
+    h += '<button data-act="icDia" data-v="0" class="' + (cbx.dias[0] === 0 ? 'on' : '') + '">D</button></div>';
+  } else {
+    l.textContent = cbx.frec === 'mensual' ? '¿Qué día del mes? (si querés)' : cbx.frec === 'quincenal' ? 'Elegí los dos días del mes' : 'Elegí los días del mes';
+    var dim = diasDelMes(D.anio, mes);
+    h = '<div class="grilla-dias">';
+    for(q=1;q<=dim;q++) h += '<button data-act="icDia" data-v="' + q + '" class="' + (cbx.dias.indexOf(q) >= 0 ? 'on' : '') + '">' + q + '</button>';
+    h += '</div>';
+  }
+  g.innerHTML = h;
+  pintarNotaCobras();
+}
+function pintarNotaCobras(){
+  var e = document.getElementById('icNota'); if(!e) return;
+  var it = {frec:cbx.frec, dias:cbx.dias, monto:0}, n = cuantosPagos(it, D.anio, mes);
+  var tot = document.getElementById('icTotal'), cada = document.getElementById('icCada');
+  if(cbx.ult === 'cada'){ var vc = parseNum(cada.value); tot.value = n > 0 && vc > 0 ? fARS(Math.round(vc * n)) : ''; }
+  else { var vt = parseNum(tot.value); cada.value = n > 0 && vt > 0 ? fARS(Math.round(vt / n)) : ''; }
+  e.className = 'nota';
+  if(!n){ e.className = 'nota mal'; e.innerHTML = 'Elegí al menos un día.'; return; }
+  var t2 = parseNum(tot.value);
+  it.monto = t2;
+  e.innerHTML = t2 > 0 ? cobroTxt(it) + '. En el mes suman <b>' + fARS(t2) + '</b>.'
+                       : 'Poné el total del mes o cuánto es cada pago, y hago la otra cuenta.';
+}
+function guardarComoCobras(quitar){
+  var it = D.meses[mes].ingresos[cobroIdx]; if(!it) return;
+  if(quitar){ it.frec = ''; it.dias = []; }
+  else {
+    var n = cuantosPagos({frec:cbx.frec, dias:cbx.dias}, D.anio, mes);
+    if(!n){ errorEn('icNota', 'Elegí al menos un día.'); return; }
+    var t = Math.round(parseNum(document.getElementById('icTotal').value));
+    if(!(t > 0)){ errorEn('icNota', 'Falta el total del mes o cuánto es cada pago.'); return; }
+    it.frec = cbx.frec; it.dias = cbx.dias.slice(); it.monto = t;
+  }
+  cerrarHoja(); tocar(); renderMes();
+  pildora(quitar ? 'Listo' : 'Guardado');
+}
 function abrirPlan(i){
   var it = D.meses[mes].deudas[i], p = planDe(it.nombre) || {total:0, cuotas:0, pagadasAntes:0};
   planIdx = i;
   abrirHoja('<h3>' + esc(it.nombre || 'Deuda') + '</h3>'
     + '<div class="campo"><label>Total del préstamo</label><input type="text" id="plTotal" inputmode="decimal" value="'+(p.total?fARS(p.total):'')+'"></div>'
-    + '<div class="campo"><label>Cantidad de cuotas</label><input type="text" id="plCuotas" inputmode="numeric" value="'+(p.cuotas||'')+'"></div>'
+    + '<div class="tj-dos">'
+    +   '<div class="campo"><label>Cantidad de cuotas</label><input type="text" id="plCuotas" inputmode="numeric" value="'+(p.cuotas||'')+'"></div>'
+    +   '<div class="campo"><label>Recargo % (opcional)</label><input type="text" id="plRec" inputmode="decimal" placeholder="sin recargo" value="'+(num(p.recargo)?String(p.recargo).replace('.',','):'')+'"></div>'
+    + '</div>'
     + '<div class="nota" id="plCuota" style="padding:0 0 12px"></div>'
     + '<div class="campo"><label>Cuotas que ya pagué antes de '+D.anio+'</label><input type="text" id="plAntes" inputmode="numeric" value="'+(p.pagadasAntes||'')+'"></div>'
     + '<div class="nota" style="padding:0 0 14px">Al guardar te ofrezco cargar las cuotas que faltan, de '+MESES[mes].toLowerCase()+' en adelante.</div>'
@@ -3472,13 +3582,17 @@ function abrirPlan(i){
   var refrescarCuota = function(){
     var t = parseNum(document.getElementById('plTotal').value);
     var c = Math.round(parseNum(document.getElementById('plCuotas').value));
+    var r = parseNum(document.getElementById('plRec').value);
     var e = document.getElementById('plCuota');
     if(!e) return;
-    e.innerHTML = (t > 0 && c > 0) ? 'Cada cuota queda en <b>' + fARS(Math.round(t/c)) + '</b>.'
-                                   : 'Poné el total y la cantidad de cuotas y te digo cuánto queda cada una.';
+    var tc = t * (1 + r/100);
+    e.innerHTML = (t > 0 && c > 0)
+      ? 'Cada cuota queda en <b>' + fARS(Math.round(tc/c)) + '</b>' + (r ? ', con el ' + String(r).replace('.', ',') + ' % ya sumado (' + fARS(Math.round(tc)) + ' en total)' : ', sin recargo') + '.'
+      : 'Poné el total y la cantidad de cuotas y te digo cuánto queda cada una. El recargo es opcional.';
   };
   document.getElementById('plTotal').addEventListener('input', refrescarCuota);
   document.getElementById('plCuotas').addEventListener('input', refrescarCuota);
+  document.getElementById('plRec').addEventListener('input', refrescarCuota);
   refrescarCuota();
   var f = document.getElementById('plTotal'); if(f) f.focus();
 }
@@ -3491,6 +3605,7 @@ function guardarPlan(quitar){
     var c = Math.round(parseNum(document.getElementById('plCuotas').value));
     if(!n || c <= 0){ alerta('Falta la cantidad de cuotas', 'Necesito al menos saber en cuántas cuotas es la deuda.'); return; }
     D.planDeudas[n] = {total:parseNum(document.getElementById('plTotal').value), cuotas:c,
+                       recargo:parseNum(document.getElementById('plRec').value),
                        pagadasAntes:Math.max(0, Math.round(parseNum(document.getElementById('plAntes').value)))};
   }
   cerrarHoja(); tocar(); renderMes();
@@ -3590,6 +3705,21 @@ document.addEventListener('click', function(ev){
   if(a === 'topesOk'){ guardarTopes(b.getAttribute('data-k'), b.getAttribute('data-v') === 'ade'); return; }
   if(a === 'quitarMov'){ quitarMov(b.getAttribute('data-id')); document.getElementById('toast').classList.remove('on'); return; }
   if(a === 'plan'){ abrirPlan(+b.getAttribute('data-i')); return; }
+  if(a === 'cobro'){ abrirComoCobras(+b.getAttribute('data-i')); return; }
+  if(a === 'icFrec'){
+    var nf = b.getAttribute('data-v'), eraSem = cbx.frec === 'semanal', esSem = nf === 'semanal';
+    cbx.frec = nf; marcarChips('icFrec', b);
+    if(esSem && !eraSem) cbx.dias = [5];                 // viernes, que es lo más común
+    else if(!esSem && eraSem) cbx.dias = [];             // un día de la semana no sirve como día del mes
+    else if(nf === 'mensual' && cbx.dias.length > 1) cbx.dias = [cbx.dias[0]];
+    pintarComoCobras(); return; }
+  if(a === 'icDia'){ var vd = +b.getAttribute('data-v');
+    if(cbx.frec === 'semanal'){ cbx.dias = [vd]; }
+    else if(cbx.frec === 'mensual'){ cbx.dias = cbx.dias.length === 1 && cbx.dias[0] === vd ? [] : [vd]; }
+    else { var p = cbx.dias.indexOf(vd); if(p >= 0) cbx.dias.splice(p, 1); else cbx.dias.push(vd); }
+    pintarComoCobras(); return; }
+  if(a === 'guardarCobroIng'){ guardarComoCobras(false); return; }
+  if(a === 'quitarCobroIng'){ guardarComoCobras(true); return; }
   if(a === 'guardarPlan'){ guardarPlan(false); return; }
   if(a === 'quitarPlan'){ guardarPlan(true); return; }
   if(a === 'colAyuda'){ var ka = b.getAttribute('data-k'); ayudaAbierta[ka] = !ayudaAbierta[ka]; plegarAnim(b.parentNode, !ayudaAbierta[ka]); return; }
@@ -3864,19 +3994,6 @@ function siguienteNumero(){
   var n = String(max + 1); while(n.length < ancho) n = '0' + n;
   return pre + n;
 }
-function ritmoMes(c){
-  // solo en el mes de hoy: cuánto te alcanza por día y, si venís gastando rápido, cómo terminás
-  var h = hoyISO(), anio = +h.slice(0,4), m = +h.slice(5,7) - 1, dia = +h.slice(8,10);
-  if(D.anio !== anio || mes !== m || !(c.totalIngresos > 0)) return null;
-  var dim = new Date(anio, m + 1, 0).getDate(), resto = dim - dia, disp = c.disponibleFinal;
-  if(disp <= 0) return {cls:'mal', txt: disp < 0 ? 'Ya gastaste ' + fARS(-disp) + ' más de lo que te da ' + MESES[m].toLowerCase() + '.' : 'Ya usaste todo lo que te da ' + MESES[m].toLowerCase() + '.'};
-  var porDia = disp / (resto + 1), ritmo = c.subtotalVariables / dia, fin = disp - ritmo * resto;
-  if(dia >= 3 && ritmo > 0 && fin < 0)
-    return {cls:'mal', txt:'A este ritmo (' + fARS(ritmo) + ' por día) terminás el mes en ' + fARS(fin) + '. Para llegar: unos ' + fARS(porDia) + ' por día.'};
-  return {cls:'', txt:'Te alcanza para unos ' + fARS(porDia) + ' por día hasta fin de mes (' + (resto + 1) + (resto ? ' días' : ' día') + ').'};
-}
-function lineaRitmo(c){ var q = ritmoMes(c); return '<div class="ritmo' + (q && q.cls ? ' ' + q.cls : '') + '" id="ritmoMes"' + (q ? '' : ' style="display:none"') + '>' + (q ? q.txt : '') + '</div>'; }
-function refrescarRitmo(c){ var e = document.getElementById('ritmoMes'); if(!e) return; var q = ritmoMes(c); e.className = 'ritmo' + (q && q.cls ? ' ' + q.cls : ''); e.textContent = q ? q.txt : ''; e.style.display = q ? '' : 'none'; }
 function prodPorId(id){ for(var i=0;i<T.productos.length;i++) if(T.productos[i].id === id) return T.productos[i]; return null; }
 function nombrePeriodo(k){ for(var i=0;i<PERIODOS.length;i++) if(PERIODOS[i][0] === k) return PERIODOS[i][1]; return 'Un día'; }
 function largoPeriodo(k){ return k === 'quincena' ? 14 : 6; }   // días que se suman al "desde" para mostrar el hasta
@@ -3915,6 +4032,7 @@ function normTrab(t){
     o.facturas.push({id:String(f.id || tjId()), cliente:String(f.cliente || '').trim(), numero:String(f.numero || '').trim(),
       concepto:String(f.concepto || '').trim(), monto:mo, cantidad:ca, precio: num(f.precio) > 0 ? num(f.precio) : mo / ca,
       contado: f.contado === true, tipo: f.tipo === 'simple' || f.tipo === 'factura' ? f.tipo : (f.contado === true ? 'simple' : 'factura'),
+      ajuste: num(f.ajuste), base: num(f.base) > 0 ? num(f.base) : Math.max(0, num(f.monto)),
       abono: f.abono === true, abonoHasta: /^\d{4}-\d{2}$/.test(f.abonoHasta) ? f.abonoHasta : '', abonoDe: String(f.abonoDe || ''),
       fuente: String(f.fuente || '').trim(), periodo: f.periodo === 'semana' || f.periodo === 'quincena' ? f.periodo : '',
       desde: esISO(f.desde) ? f.desde : '', costo: Math.max(0, num(f.costo)),
@@ -4605,7 +4723,11 @@ function abrirFactura(id){
   var otro = PLAZOS.indexOf(fx.plazo) < 0;
   abrirHoja('<h3>' + (f ? 'Editar factura' : 'Nueva factura') + '</h3>'
     + campoTj('Cliente', '<input type="text" id="fxCliente" class="tj-in" list="tjClientes" autocomplete="off" placeholder="A quién le facturaste" value="' + (f ? esc(f.cliente) : '') + '">')
-    + campoTj('Monto', '<input type="text" id="fxMonto" class="tj-in" inputmode="decimal" autocomplete="off"' + attrMonto(f ? f.monto : 0) + '>')
+    + '<div class="tj-dos">'
+    +   campoTj('Monto', '<input type="text" id="fxMonto" class="tj-in" inputmode="decimal" autocomplete="off"' + attrMonto(f ? f.base : 0) + '>')
+    +   campoTj('Recargo o desc. % (opcional)', '<input type="text" id="fxAjuste" class="tj-in" inputmode="decimal" autocomplete="off" placeholder="sin recargo" value="' + (f && f.ajuste ? String(f.ajuste).replace('.', ',') : '') + '">')
+    + '</div>'
+    + '<div class="tj-total" id="fxTotalF"></div>'
     + campoTj(sug ? 'Número de factura (sigue a la anterior)' : 'Número de factura (si querés)', '<input type="text" id="fxNumero" class="tj-in" autocomplete="off" placeholder="0012" value="' + esc(f ? f.numero : sug) + '">')
     + campoTj('Qué es (si querés)', '<input type="text" id="fxConcepto" class="tj-in" autocomplete="off" placeholder="Placas, reparación, abono…" value="' + (f ? esc(f.concepto) : '') + '">')
     + campoTj('Fecha de la factura', '<input type="date" id="fxFecha" class="tj-in" value="' + (f ? f.fecha : hoyISO()) + '">')
@@ -4621,9 +4743,19 @@ function abrirFactura(id){
     + '<button class="pri" data-act="tjGuardarFac">Guardar</button></div>' + datalistClientes());
   var fe = document.getElementById('fxFecha'), di = document.getElementById('fxDias');
   fe.addEventListener('input', notaFx); fe.addEventListener('change', notaFx);
+  document.getElementById('fxMonto').addEventListener('input', totalFactura);
+  document.getElementById('fxAjuste').addEventListener('input', totalFactura);
+  totalFactura();
   di.addEventListener('input', function(){ fx.plazo = Math.max(0, Math.round(parseNum(di.value))); notaFx(); });
   notaFx();
   if(!f) document.getElementById('fxCliente').focus();
+}
+function totalFactura(){
+  var e = document.getElementById('fxTotalF'); if(!e) return;
+  var r = leerMonto('fxMonto'), a = parseNum(val('fxAjuste')), base = r.v, t = Math.round(base * (1 + a/100));
+  if(!(base > 0) || !a){ e.innerHTML = ''; e.style.display = 'none'; return; }
+  e.style.display = '';
+  e.innerHTML = fARS(Math.round(base)) + (a > 0 ? ' + ' : ' − ') + String(Math.abs(a)).replace('.', ',') + ' % = <b>' + fARS(t) + '</b>';
 }
 function notaFx(){
   var e = document.getElementById('fxNota'); if(!e || fx.tipo !== 'factura') return;
@@ -4660,7 +4792,9 @@ function guardarFac(){
              fuente:'', periodo:'', desde:'',
              costo: viejo && !viejo.periodo ? Math.min(viejo.costo, Math.round(pr)) : 0};   // lo que te costó no cambia porque cambies el precio
   } else {
-    var cli = val('fxCliente').trim(), rm = leerMonto('fxMonto'); m = Math.round(rm.v);
+    var cli = val('fxCliente').trim(), rm = leerMonto('fxMonto'), aj = parseNum(val('fxAjuste'));
+    if(aj < -100){ errorEn('fxNota', 'Un descuento no puede pasar del 100 %.'); document.getElementById('fxAjuste').focus(); return; }
+    m = Math.round(rm.v * (1 + aj/100));
     if(!cli){ errorEn('fxNota', 'Falta a quién le facturaste.'); document.getElementById('fxCliente').focus(); return; }
     if(rm.vacio){ errorEn('fxNota', 'Falta el monto de la factura.'); document.getElementById('fxMonto').focus(); return; }
     if(!rm.ok){ errorEn('fxNota', 'Monto: ' + rm.msg + '.'); document.getElementById('fxMonto').focus(); return; }
@@ -4673,8 +4807,10 @@ function guardarFac(){
     }
     // si no cambió el monto, se conserva la cantidad por precio que tuviera; si cambió, pasa a 1 × monto
     var mismo = viejo && Math.round(viejo.monto) === m;
+    var baseF = Math.round(rm.v);
     datos = {tipo:'factura', cliente:cli, numero:val('fxNumero').trim(), concepto:val('fxConcepto').trim(), monto:m,
-             cantidad: mismo ? viejo.cantidad : 1, precio: mismo ? viejo.precio : m, fecha:fe, contado:contado, plazo:fx.plazo, forma:fx.forma};
+             cantidad: mismo ? viejo.cantidad : 1, precio: mismo ? viejo.precio : m, fecha:fe, contado:contado, plazo:fx.plazo, forma:fx.forma,
+             base:baseF, ajuste:aj};
     if(!(viejo && viejo.abonoDe)){
       datos.abono = fx.abono;
       if(fx.abono && !(viejo && viejo.abono)){
@@ -4749,6 +4885,7 @@ function verFactura(id){
   }
   abrirHoja('<h3>' + esc(f.cliente || 'Sin cliente') + '</h3><div class="tj-det">'
     + renglon('Factura', esc(nomFac(f)))
+    + (f.ajuste ? renglon(f.ajuste > 0 ? 'Recargo' : 'Descuento', fARS(f.base) + (f.ajuste > 0 ? ' + ' : ' − ') + String(Math.abs(f.ajuste)).replace('.', ',') + ' %') : '')
     + (f.cantidad !== 1 ? renglon('Cantidad', cantTxt(f.cantidad) + ' × ' + fARS(f.precio)) : '')
     + renglon('Total', fARS(f.monto)) + renglon('Fecha', fDia(f.fecha))
     + renglon('Plazo', f.contado ? 'Contado' : f.plazo ? f.plazo + ' días · ' + fDia(venceFac(f)) : 'El mismo día')
