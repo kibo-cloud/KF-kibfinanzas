@@ -322,8 +322,8 @@ button.tj-f:active{background:var(--fill)}
 .tj-det{margin-bottom:10px}
 .tj-dos{display:flex;gap:8px}
 .carr{overflow:hidden;touch-action:pan-y}
-.carr-pista{display:flex;align-items:stretch;transition:transform .32s var(--curva);will-change:transform}
-.carr-slide{flex:0 0 100%;min-width:100%;display:flex}
+.carr-pista{display:flex;align-items:flex-start;transition:transform .32s var(--curva),height .28s var(--curva);will-change:transform}
+.carr-slide{flex:0 0 100%;min-width:100%;display:flex;align-items:flex-start}
 .carr-slide>.saldo{flex:1;margin:0}
 .carr-dots{display:flex;justify-content:center;gap:7px;margin:10px 0 2px}
 .carr-dots .dot{width:7px;height:7px;min-height:0;padding:0;border-radius:50%;background:var(--sep);transition:background .2s var(--curva),transform .2s var(--curva)}
@@ -1708,7 +1708,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--acc);outline-offset
 var M1 = '/*DATOS_' + 'INICIO*/';
 var M2 = '/*DATOS_' + 'FIN*/';
 
-var APPVER   = '1.30.3';    // versión visible en Ajustes (LAB)
+var APPVER   = '1.30.4';    // versión visible en Ajustes (LAB)
 var PREF     = 'kibo.datos.';        // kibo.datos.2026, kibo.datos.2027…
 var LSANIO   = 'kibo.anio';
 var LSCOPIA  = 'kibo.ultimaCopia';
@@ -2496,9 +2496,17 @@ function htmlTorta(m, c){
 function pintarTorta(){
   var e = document.getElementById('cardTorta'); if(!e) return;
   e.innerHTML = htmlTorta(D.meses[mes], calc(D.meses[mes]));
+  altoCarr();
 }
 /* carrusel: el deslizamiento se queda acá adentro y nunca cambia de pestaña */
 var carrIdx = 0;
+function altoCarr(){
+  // la tarjeta se achica o se agranda según la hoja que estás mirando, así no queda aire de más
+  var p = document.getElementById('carrPista'); if(!p) return;
+  var s = p.children[carrIdx]; if(!s) return;
+  var caja = s.firstChild && s.firstChild.offsetHeight ? s.firstChild : s;
+  p.style.height = caja.offsetHeight + 'px';
+}
 function irSlide(n, sinAnim){
   var c = document.getElementById('carrMes'), p = document.getElementById('carrPista');
   carrIdx = n < 0 ? 0 : n > 1 ? 1 : n;
@@ -2508,6 +2516,7 @@ function irSlide(n, sinAnim){
   if(sinAnim){ void p.offsetHeight; p.style.transition = ''; }
   var d = c.querySelectorAll('.carr-dots .dot'), i;
   for(i=0;i<d.length;i++) d[i].classList.toggle('on', i === carrIdx);
+  altoCarr();
 }
 function armarCarrusel(){
   var c = document.getElementById('carrMes'), p = document.getElementById('carrPista');
@@ -2539,6 +2548,7 @@ function armarCarrusel(){
     irSlide(n);
   }, {passive:true});
   c.addEventListener('touchcancel', function(e){ e.stopPropagation(); vivo = false; p.style.transition = ''; irSlide(carrIdx); }, {passive:true});
+  if(!window.__carrResize){ window.__carrResize = true; window.addEventListener('resize', function(){ altoCarr(); }); }
   irSlide(carrIdx, true);
 }
 function anillo(pct){

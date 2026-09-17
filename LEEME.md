@@ -48,6 +48,7 @@ el .apk. Del zip que te da, copiá assetlinks.json a una carpeta
 
 ## CHANGELOG
 
+v1.30.4 · 2026-09-17 — La tarjeta de arriba de Mes ya no queda estirada al alto del gráfico: toma el alto de la hoja que estás mirando y se acomoda sola al pasar de una a otra.
 v1.30.3 · 2026-09-12 — La tarjeta de arriba de Mes se desliza al costado y muestra una segunda hoja: un gráfico de anillo con en qué se te va la plata este mes, agrupando fijos, variables y deudas, con el porcentaje y el monto de cada uno y el resto juntado en "Otros". Está hecho con SVG a mano, sin librerías ni internet, y los colores salen de variables CSS, así que respeta el tema claro y el oscuro. El deslizamiento se queda dentro de la tarjeta y nunca cambia de pestaña; también se puede tocar los puntitos de abajo.
 v1.30.2 · 2026-09-12 — Se saca el renglón "te alcanza para X por día" de la vista del mes: confundía más de lo que ayudaba. En Ingresos, cada renglón puede decir cada cuánto lo cobrás (mensual, semanal, quincenal o los días que elijas, marcándolos en una grilla): ponés el total del mes o cuánto es cada pago y la app hace la otra cuenta. En el plan de cuotas y en las facturas, el porcentaje de recargo, interés o descuento pasa a ser opcional: si lo dejás vacío, las cuentas salen sin recargo, como hasta ahora.
 v1.30.1 · 2026-09-12 — Arregla el ícono roto de "Volver a como estaba antes de la 1.30" en Ajustes, que mostraba la palabra undefined.
