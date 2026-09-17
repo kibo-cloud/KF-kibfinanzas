@@ -321,6 +321,26 @@ button.tj-f:active{background:var(--fill)}
 .tj-vacio{padding:16px;font-size:14px;color:var(--txt2);line-height:1.45}
 .tj-det{margin-bottom:10px}
 .tj-dos{display:flex;gap:8px}
+.carr{overflow:hidden;touch-action:pan-y}
+.carr-pista{display:flex;align-items:stretch;transition:transform .32s var(--curva);will-change:transform}
+.carr-slide{flex:0 0 100%;min-width:100%;display:flex}
+.carr-slide>.saldo{flex:1;margin:0}
+.carr-dots{display:flex;justify-content:center;gap:7px;margin:10px 0 2px}
+.carr-dots .dot{width:7px;height:7px;min-height:0;padding:0;border-radius:50%;background:var(--sep);transition:background .2s var(--curva),transform .2s var(--curva)}
+.carr-dots .dot.on{background:var(--acc);transform:scale(1.35)}
+.tg-caja{position:relative;width:170px;margin:4px auto 2px}
+.torta{width:170px;height:170px;display:block;animation:kfTorta .45s var(--curva)}
+@keyframes kfTorta{from{opacity:0;transform:scale(.92)}}
+.tg-centro{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;pointer-events:none}
+.tg-centro small{display:block;font-size:12px;color:var(--txt2)}
+.tg-centro b{display:block;font-size:19px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.tg-ley{margin-top:10px}
+.tg-fila{display:flex;align-items:center;gap:8px;padding:6px 2px;border-bottom:1px solid var(--sep);font-size:14px}
+.tg-fila:last-child{border-bottom:0}
+.tg-fila i{flex:0 0 10px;width:10px;height:10px;border-radius:3px}
+.tg-n{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tg-p{flex:0 0 auto;font-size:13px;color:var(--txt2);font-variant-numeric:tabular-nums}
+.tg-m{flex:0 0 auto;font-weight:600;font-variant-numeric:tabular-nums}
 .seg.seg4 button{font-size:13px;padding:0 4px}
 .grilla-dias{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:14px}
 .grilla-dias button{min-height:38px;border-radius:10px;background:var(--fill);color:var(--txt);font-size:14px;font-weight:500;font-variant-numeric:tabular-nums}
@@ -500,15 +520,19 @@ nav button.on .np{background:var(--acc-soft)}
   --suelta:.24s;                             /* soltar vuelve despacio */
   --shadow:0 1px 1.5px rgba(16,18,27,.04),0 5px 14px -4px rgba(16,18,27,.07);
   --shadow-alto:0 2px 8px rgba(16,18,27,.07),0 18px 40px -12px rgba(16,18,27,.22);
+  --g1:var(--acc); --g2:#4a90a4; --g3:#d9534f; --g4:#8a7fa8; --g5:#e8a33d; --g6:#6bb8dd; --g7:#8e949c;
 }
 @media (prefers-color-scheme: dark){
-  :root{ --shadow:none; --shadow-alto:0 -1px 0 rgba(255,255,255,.07); }
+  :root{ --shadow:none; --shadow-alto:0 -1px 0 rgba(255,255,255,.07);
+  --g1:var(--acc); --g2:#5fb3c9; --g3:#ef6b66; --g4:#a99cd0; --g5:#f2b75a; --g6:#7fd0f0; --g7:#aab0b8; }
 }
 html[data-tema="claro"]{
   --shadow:0 1px 1.5px rgba(16,18,27,.04),0 5px 14px -4px rgba(16,18,27,.07);
   --shadow-alto:0 2px 8px rgba(16,18,27,.07),0 18px 40px -12px rgba(16,18,27,.22);
+  --g1:var(--acc); --g2:#4a90a4; --g3:#d9534f; --g4:#8a7fa8; --g5:#e8a33d; --g6:#6bb8dd; --g7:#8e949c;
 }
-html[data-tema="oscuro"]{ --shadow:none; --shadow-alto:0 -1px 0 rgba(255,255,255,.07); }
+html[data-tema="oscuro"]{ --shadow:none; --shadow-alto:0 -1px 0 rgba(255,255,255,.07);
+  --g1:var(--acc); --g2:#5fb3c9; --g3:#ef6b66; --g4:#a99cd0; --g5:#f2b75a; --g6:#7fd0f0; --g7:#aab0b8; }
 
 /* apretar: nunca resalta el recuadro gris de Android, nunca selecciona texto,
    nunca espera los 300 ms del doble toque */
@@ -1684,7 +1708,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--acc);outline-offset
 var M1 = '/*DATOS_' + 'INICIO*/';
 var M2 = '/*DATOS_' + 'FIN*/';
 
-var APPVER   = '1.30.2';    // versión visible en Ajustes (LAB)
+var APPVER   = '1.30.3';    // versión visible en Ajustes (LAB)
 var PREF     = 'kibo.datos.';        // kibo.datos.2026, kibo.datos.2027…
 var LSANIO   = 'kibo.anio';
 var LSCOPIA  = 'kibo.ultimaCopia';
@@ -2163,7 +2187,8 @@ function renderMes(){
   for(var i=0;i<12;i++) h += '<button data-act="mes" data-m="'+i+'" class="'+(i===mes?'on':'')+'">'+CORTOS[i]+'</button>';
   h += '</div>';
 
-  h += '<div class="saldo">'
+  h += '<div class="carr" id="carrMes"><div class="carr-pista" id="carrPista"><div class="carr-slide">'
+     +   '<div class="saldo">'
      +   '<div class="tri">'
      +     '<div><small>Ingresos</small><b class="ok">'+fARS(c.totalIngresos)+'</b></div>'
      +     '<div><small>Gastos</small><b>'+fARS(c.totalGastos)+'</b></div>'
@@ -2186,7 +2211,13 @@ function renderMes(){
      +     'A reponer al ahorro: <b>'+fARS(serie(D)[mes].aReponer)+'</b></div>'
      +   '<div class="nota mal" id="notaTopes" style="display:'+(pasadas(m).length?'block':'none')+';margin-top:2px">'
      +     textoTopes(m)+'</div>'
-     + '</div>';
+     + '</div></div>'
+     + '<div class="carr-slide"><div class="saldo" id="cardTorta">' + htmlTorta(m, c) + '</div></div>'
+     + '</div>'
+     + '<div class="carr-dots">'
+     +   '<button class="dot' + (carrIdx === 0 ? ' on' : '') + '" data-act="carrIr" data-v="0" aria-label="Ver el disponible"></button>'
+     +   '<button class="dot' + (carrIdx === 1 ? ' on' : '') + '" data-act="carrIr" data-v="1" aria-label="Ver el gráfico de gastos"></button>'
+     + '</div></div>';
 
   h += seccion(SECS[0], m);
   h += seccion(SECS[1], m);
@@ -2197,6 +2228,7 @@ function renderMes(){
   h += '<div style="height:20px"></div>';
 
   document.getElementById('v-mes').innerHTML = h;
+  armarCarrusel();
   contar('bigFinal', c.disponibleFinal, function(v){ return fARS(Math.round(v)); });
   var act = document.querySelector('#selMes .on');
   if(act && act.scrollIntoView) act.scrollIntoView({block:'nearest', inline:'center'});
@@ -2412,6 +2444,102 @@ function mesesCargados(s){
   var out = [], i;
   for(i=0;i<12;i++) if(s[i].totalIngresos || s[i].totalGastos) out.push(i);
   return out;
+}
+/* ═══ gráfico de gastos del mes ══════════════════════════════════════
+   Torta SVG hecha a mano, sin librerías. Los colores salen de variables CSS,
+   así que el tema claro y el oscuro se resuelven solos. */
+var TORTA_MAX = 6;   // arriba de esto, el resto se junta en "Otros"
+function datosTorta(m){
+  var l = [], secs = ['gastosFijos','gastosVariables','deudas'], k, i, arr, v;
+  for(k=0;k<secs.length;k++){
+    arr = m[secs[k]] || [];
+    for(i=0;i<arr.length;i++){
+      v = Math.round(num(arr[i].monto));
+      if(v > 0) l.push({n:String(arr[i].nombre || 'Sin nombre'), v:v, k:secs[k]});
+    }
+  }
+  l.sort(function(a, b){ return b.v - a.v; });
+  if(l.length > TORTA_MAX){
+    var otros = 0, cuantos = l.length - TORTA_MAX;
+    for(i=TORTA_MAX;i<l.length;i++) otros += l[i].v;
+    l = l.slice(0, TORTA_MAX);
+    l.push({n:'Otros (' + cuantos + ')', v:otros, k:'otros'});
+  }
+  return l;
+}
+function htmlTorta(m, c){
+  var l = datosTorta(m), total = 0, i;
+  for(i=0;i<l.length;i++) total += l[i].v;
+  if(!total){
+    return '<div class="final"><small>Gastos de ' + MESES[mes] + '</small>'
+         + '<div class="final-fila"><div class="big">' + fARS(0) + '</div></div></div>'
+         + '<div class="nota" style="text-align:center;padding:14px 10px 6px">Cuando cargues gastos, deudas o fijos, acá vas a ver en qué se te va la plata.</div>';
+  }
+  var r = 54, cir = 2 * Math.PI * r, acum = 0, svg = '', leyenda = '';
+  for(i=0;i<l.length;i++){
+    var frac = l[i].v / total, largo = cir * frac;
+    svg += '<circle cx="70" cy="70" r="' + r + '" fill="none" stroke="var(--g' + (i+1) + ')" stroke-width="21"'
+         + ' stroke-dasharray="' + largo.toFixed(2) + ' ' + (cir - largo).toFixed(2) + '"'
+         + ' stroke-dashoffset="' + (-acum).toFixed(2) + '" transform="rotate(-90 70 70)"></circle>';
+    acum += largo;
+    leyenda += '<div class="tg-fila"><i style="background:var(--g' + (i+1) + ')"></i>'
+             + '<span class="tg-n">' + esc(l[i].n) + '</span>'
+             + '<span class="tg-p">' + fPct(frac) + '</span>'
+             + '<span class="tg-m">' + fARS(l[i].v) + '</span></div>';
+  }
+  return '<div class="final"><small>En qué se te va · ' + MESES[mes] + '</small></div>'
+       + '<div class="tg-caja"><svg viewBox="0 0 140 140" class="torta" aria-hidden="true">' + svg + '</svg>'
+       + '<div class="tg-centro"><small>Total</small><b>' + fARS(total) + '</b></div></div>'
+       + '<div class="tg-ley">' + leyenda + '</div>'
+       + (num(c.totalIngresos) > 0 ? '<div class="nota" style="text-align:center;padding:10px 6px 0">Es el ' + fPct(total / c.totalIngresos) + ' de lo que entró este mes.</div>' : '');
+}
+function pintarTorta(){
+  var e = document.getElementById('cardTorta'); if(!e) return;
+  e.innerHTML = htmlTorta(D.meses[mes], calc(D.meses[mes]));
+}
+/* carrusel: el deslizamiento se queda acá adentro y nunca cambia de pestaña */
+var carrIdx = 0;
+function irSlide(n, sinAnim){
+  var c = document.getElementById('carrMes'), p = document.getElementById('carrPista');
+  carrIdx = n < 0 ? 0 : n > 1 ? 1 : n;
+  if(!c || !p) return;
+  if(sinAnim) p.style.transition = 'none';
+  p.style.transform = 'translateX(-' + (carrIdx * 100) + '%)';
+  if(sinAnim){ void p.offsetHeight; p.style.transition = ''; }
+  var d = c.querySelectorAll('.carr-dots .dot'), i;
+  for(i=0;i<d.length;i++) d[i].classList.toggle('on', i === carrIdx);
+}
+function armarCarrusel(){
+  var c = document.getElementById('carrMes'), p = document.getElementById('carrPista');
+  if(!c || !p || c.getAttribute('data-listo') === '1') return;
+  c.setAttribute('data-listo', '1');
+  var x0 = 0, y0 = 0, dx = 0, vivo = false;
+  c.addEventListener('touchstart', function(e){
+    e.stopPropagation();                                  // el gesto se queda en la tarjeta
+    if(!e.touches || e.touches.length !== 1) return;
+    vivo = true; dx = 0; x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+    p.style.transition = 'none';
+  }, {passive:true});
+  c.addEventListener('touchmove', function(e){
+    e.stopPropagation();
+    if(!vivo || !e.touches || !e.touches.length) return;
+    var mx = e.touches[0].clientX - x0, my = e.touches[0].clientY - y0;
+    if(Math.abs(my) > Math.abs(mx) + 6){ vivo = false; p.style.transition = ''; irSlide(carrIdx); return; }
+    dx = mx;
+    if((carrIdx === 0 && dx > 0) || (carrIdx === 1 && dx < 0)) dx = dx * 0.25;   // resistencia en los bordes
+    p.style.transform = 'translateX(calc(-' + (carrIdx * 100) + '% + ' + Math.round(dx) + 'px))';
+  }, {passive:true});
+  c.addEventListener('touchend', function(e){
+    e.stopPropagation();
+    if(!vivo) return;
+    vivo = false; p.style.transition = '';
+    var n = carrIdx;
+    if(dx < -45) n = carrIdx + 1;
+    if(dx > 45) n = carrIdx - 1;
+    irSlide(n);
+  }, {passive:true});
+  c.addEventListener('touchcancel', function(e){ e.stopPropagation(); vivo = false; p.style.transition = ''; irSlide(carrIdx); }, {passive:true});
+  irSlide(carrIdx, true);
 }
 function anillo(pct){
   var r = 26, c = 2*Math.PI*r, off = c * (1 - Math.max(0, Math.min(1, pct)));
@@ -2638,6 +2766,7 @@ function manual(){
     + '<ul><li>Tocá un monto para editarlo. Podés escribir 12000 o 12.000, da lo mismo.</li>'
     + '<li>Tocá el nombre para renombrar la categoría. La × la borra solo de ese mes.</li>'
     + '<li>El botón + agrega una categoría y te pregunta si querés tenerla también en los meses que siguen.</li>'
+    + '<li>La tarjeta de arriba se desliza al costado: en la segunda hoja hay un gráfico de <b>en qué se te va la plata</b> este mes, con el porcentaje y el monto de cada categoría. También podés tocar los puntitos de abajo.</li>'
     + '<li>En Ingresos, debajo de cada renglón, podés decir <b>cada cuánto lo cobrás</b>: mensual, semanal, quincenal o los días que elijas. Ponés el total del mes o cuánto es cada pago y la app hace la otra cuenta. El renglón sigue valiendo el total del mes.</li>'
     + '<li>Cuando un mes nuevo tiene los fijos, los ingresos o las deudas en cero, aparece <b>Copiar los montos</b> del mes anterior. Un toque y listo. Las variables no se copian porque cambian cada mes.</li></ul>');
   h += bloque('rapido', 'Gasto rápido',
@@ -2878,6 +3007,7 @@ function refrescar(){
   var sa = document.getElementById('sub-ahorro'); if(sa) sa.textContent = fARS(c.ahorroMesARS);
   var big = document.getElementById('bigFinal');
   if(big){ big.textContent = fARS(c.disponibleFinal); big.className = 'big ' + (c.disponibleFinal<0?'mal':'ok'); }
+  pintarTorta();
   var tri = document.querySelectorAll('#v-mes .tri b');
   if(tri.length === 3){ tri[0].textContent = fARS(c.totalIngresos); tri[1].textContent = fARS(c.totalGastos); tri[2].textContent = fARS(c.ahorroMesARS); }
   puntual('bGa', c.pctGastos); puntual('bAh', c.pctAhorro);
@@ -3706,6 +3836,7 @@ document.addEventListener('click', function(ev){
   if(a === 'quitarMov'){ quitarMov(b.getAttribute('data-id')); document.getElementById('toast').classList.remove('on'); return; }
   if(a === 'plan'){ abrirPlan(+b.getAttribute('data-i')); return; }
   if(a === 'cobro'){ abrirComoCobras(+b.getAttribute('data-i')); return; }
+  if(a === 'carrIr'){ irSlide(+b.getAttribute('data-v')); return; }
   if(a === 'icFrec'){
     var nf = b.getAttribute('data-v'), eraSem = cbx.frec === 'semanal', esSem = nf === 'semanal';
     cbx.frec = nf; marcarChips('icFrec', b);
