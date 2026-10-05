@@ -311,7 +311,10 @@ Final checks: `npm test` 275/275, `npm run test:e2e` 90/90, tree clean, no push,
 
 ## Next step
 
-R3 closed. Stop before R4: owner reviews the extracted engine (this document, `tests/motor.golden.test.js`) and the exact R4 migration plan.
+R3 closed. R4 design proposal written in `odd/tasks/repair-sprint-1-r4-design.md` (formal model,
+numeric chain cases, `hoy` injection, transfers, debts, net worth, "Del trabajo", reversible
+migration, golden procedure, multi-tab, R4.1-R4.6 plan, owner decisions Q1-Q15). Stop: no R4
+implementation until the owner approves the design and answers Q1-Q15.
 
 ## Consumer inventory (R1, current semantics)
 
