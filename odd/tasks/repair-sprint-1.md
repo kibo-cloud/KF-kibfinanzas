@@ -260,15 +260,58 @@ What R4 will need to add (not done): per-month opening balance and an explicit c
 - Assess since 6717964 (plan fix c6a9ca4 + R3): medium, 1064 lines, review due. Consent granted,
   but `review start` stopped with `lens_context_budget_exceeded`: no review authority was created.
   Probable cause (not confirmed): the ~1 MB golden fixture. Per the stop table: review as
-  smaller candidates (e.g. commit by commit) or disable review for this clone. Pending owner
-  decision.
+  smaller candidates (e.g. commit by commit) or disable review for this clone. Owner decided:
+  review commit by commit, never force the fixture.
 - Verified by the parent: fixture unchanged since f95a625; motor block has no references to
   D, T, document, window, innerHTML or localStorage (only comments/property names);
   `npm test` 273/273; `npm run test:e2e` 90/90.
 
+### R3 closure: per-commit native reviews (2026-10-05)
+
+Each candidate was isolated in a temporary detached `git worktree` (HEAD = the commit, base = its
+parent) because review targets are always base-to-HEAD. Worktrees removed afterwards.
+
+| Candidate | Lines | Lineage | Outcome |
+|---|---|---|---|
+| c6a9ca4 leerPlan fix | 48 | review-cfb4b893892a28bb | approved, acknowledged |
+| a6dd7a4 engine extraction | 708 | review-80af020722a3eb3c | approved, acknowledged |
+| 12d4a7c+3a8a7ae E2E + v1.31.4 | 31 | review-b0f456c2d1d32f86 | approved, acknowledged |
+| f95a625 golden fixture | 239 (+1 MB JSON line) | review-1f942402e7a6c21b | single attempt: `lens_context_budget_exceeded`, no authority; not forced |
+
+Findings:
+- c6a9ca4 WARNING (blank optional plan field now blocks save): FALSE POSITIVE. Verified with the
+  real functions: `parseMonto('')`, `parseEntero('')`, `parsePct('')` are 0; `leerPlan(true)` with
+  blank recargo/antes gives `{total:100000,cuotas:3,recargo:0,antes:0}`. Two test-quality
+  suggestions recorded, not changed.
+- a6dd7a4 WARNING (unaliased motor names used by the app): FALSE POSITIVE. Static scan: none of the
+  13 unaliased TGMotor exports is referenced by bare name in the app script; no `mesTope()` call
+  without argument.
+- a6dd7a4 WARNING (harness test cannot detect a missing alias): REAL test gap, introduced. Fixed:
+  tests/alias.test.js (e89ba91) statically checks the alias block, with a negative case proving it
+  reports a removed `calc` alias; misleading harness test title corrected (187dde0).
+- 3a8a7ae WARNING (PC-export E2E re-implemented the slicing instead of calling versionPC): REAL test
+  gap, introduced. Fixed in 6db11dd: E2E clicks a `data-act="verpc"` element (real delegation and
+  real `versionPC()`), captures the Blob and checks embedded data (year, 12 months), markers once,
+  motor before app (CRLF-tolerant regex, covers the CRLF suggestion), every inline script compiles.
+  Mutation proof: breaking the embed in versionPC made this check FAIL (89/90); restored.
+- 3a8a7ae SUGGESTION (alias-vs-motor calc comparison is tautological): recorded, not changed.
+
+f95a625 fixture without native review — evidence that it is covered:
+- At f95a625 (engine still inside the app IIFE, no motor block) `tests/motor.golden.test.js` passes
+  155/155: the JSON is exactly the pre-extraction engine output.
+- The JSON is byte-identical between f95a625 and HEAD (`git diff --quiet`).
+- Non-vacuity: a one-line mutation in `calc` (savings subtracted twice) fails 13 golden tests.
+- The 238 lines of executable test code in that commit (corpus, api, generator, test) were read by
+  the parent; the test compares the full canonical output byte for byte plus per dataset/field.
+
+Remaining unreviewed slice: 3a8a7ae..6db11dd (docs + the three test commits above), medium,
+191 lines, `under_budget` → stays pending in the slice and joins the first R4 review.
+
+Final checks: `npm test` 275/275, `npm run test:e2e` 90/90, tree clean, no push, no merge.
+
 ## Next step
 
-Stop before R4: review of the extracted engine (this document, `tests/motor.golden.test.js`) and the exact R4 migration plan.
+R3 closed. Stop before R4: owner reviews the extracted engine (this document, `tests/motor.golden.test.js`) and the exact R4 migration plan.
 
 ## Consumer inventory (R1, current semantics)
 
