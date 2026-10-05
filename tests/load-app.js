@@ -122,8 +122,14 @@ function newContext(opts){
 }
 
 // The motor evaluated as a whole in a bare context (no DOM, no storage, no app globals): real unit loading, no regex extraction.
+// The engine never reads the clock (R4.1), so by default Date is POISONED here: any leak throws. Pass {today} to install a fake
+// system clock instead (the determinism test does, to prove the clock is ignored).
 function loadMotor(opts){
-  var c = newContext(opts || {});
+  opts = opts || {};
+  var c = newContext(opts);
+  if(!opts.today){
+    c.ctx.Date = class { constructor(){ throw new Error('the motor must not read the system clock'); } static now(){ throw new Error('the motor must not read the system clock'); } };
+  }
   vm.runInContext(MOTOR_SRC, c.ctx);
   return c.ctx.TGMotor;
 }
@@ -146,6 +152,8 @@ function loadApp(opts){
   funcs.forEach(function(f){ code += extractFunction(f) + '\n'; });
   vm.runInContext(code, ctx);
   // vm arrays/objects belong to another realm: round-trip through JSON for deepStrictEqual
+  ctx.hoyApp = function(){ return motor.hoyDe(new ctx.Date()); };   // the app helper (extracted app functions call it): reads the fake system clock, like the real app
+  ctx.hoy = motor.hoyDe(today);   // the explicit `hoy` of this context's fake today, for tests that call temporal engine functions
   ctx.plain = function(x){ return JSON.parse(JSON.stringify(x)); };
   return ctx;
 }

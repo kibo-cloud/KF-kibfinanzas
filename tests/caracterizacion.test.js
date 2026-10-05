@@ -66,7 +66,7 @@ test('[R2 fixed] hayDatos E1: Trabajo data counts', function(){
 test('[R2 fixed] cargarCuotas E14: 100000 in 3 installments loads 33333, 33333, 33334 (sum 100000)', function(){
   app.D = freshD();
   app.D.planDeudas.Tarjeta = {total: 100000, recargo: 0, cuotas: 3, pagadasAntes: 0};
-  var pc = app.cargarCuotas(app.D, 'Tarjeta', 6);
+  var pc = app.cargarCuotas(app.D, 'Tarjeta', 6, app.hoy);
   assert.equal(pc.poner, 3);
   var vals = [6, 7, 8].map(function(j){ return app.D.meses[j].deudas.filter(function(x){ return x.nombre === 'Tarjeta'; })[0].monto; });
   assert.deepEqual(app.plain(vals), [33333, 33333, 33334]);
@@ -77,7 +77,7 @@ test('[R2 fixed] estadoDeuda E9: a ticked month with monto 0 does not count as a
   app.D = freshD();
   app.D.planDeudas.Tarjeta = {total: 30000, recargo: 0, cuotas: 3, pagadasAntes: 0};
   app.D.meses[0].deudas = [{nombre: 'Tarjeta', monto: 0, pagado: true}];
-  var e = app.estadoDeuda(app.D, 'Tarjeta', 0);
+  var e = app.estadoDeuda(app.D, 'Tarjeta', 0, app.hoy);
   assert.equal(e.pagadas, 0);
   assert.equal(e.restantes, 3);
 });

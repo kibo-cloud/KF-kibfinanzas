@@ -1798,7 +1798,7 @@ function mesVacio(){
     retiroARS:0, ventaUSD:0, ventaARS:0, reposicionARS:0, movimientos:[]
   };
 }
-function normalizar(d){
+function normalizar(d, hoy){
   d = d && typeof d === 'object' ? d : {};
   d.version = 1;
   d.anio = num(d.anio) || 2026;
@@ -1823,7 +1823,7 @@ function normalizar(d){
         if(it && it.pagado === true) o.pagado = true;
         if(it && it.pagado === false) o.pagado = false;
         // migración única por año: solo completa los pagado sin definir con la inferencia de antes (monto cargado y mes ya corrido)
-        if(!d.pagoExplicito && o.pagado === undefined) o.pagado = o.monto > 0 && i <= mesTope(d.anio);
+        if(!d.pagoExplicito && o.pagado === undefined) o.pagado = o.monto > 0 && i <= mesTope(d.anio, hoy);
         return o;
       });
     }
@@ -1950,17 +1950,23 @@ function costoDolares(d){
   for(var i=0;i<12;i++){ ars += num(d.meses[i].compraARS); usd += num(d.meses[i].compraUSD); }
   return {ars: ars, usd: usd, promedio: usd > 0 ? ars/usd : 0};
 }
-function mesTope(anio){
-  var hoy = new Date(), a = anio;
-  if(a < hoy.getFullYear()) return 11;
-  if(a > hoy.getFullYear()) return -1;
-  return hoy.getMonth();
+// `hoy` = {anio, mes, dia, iso} (mes 0-based): la fecha de evaluación, SIEMPRE inyectada. El motor nunca lee el reloj del sistema;
+// la app arma `hoy` con hoyDe(new Date()) y los tests con una fecha fija.
+function dos2(n){ return (n < 10 ? '0' : '') + n; }
+function hoyDe(f){
+  var a = f.getFullYear(), m = f.getMonth(), d = f.getDate();
+  return {anio:a, mes:m, dia:d, iso:a + '-' + dos2(m + 1) + '-' + dos2(d)};
 }
-function mesesCorridos(anio){   // cuántos meses de ese año ya pasaron del todo (el mes en curso no cuenta)
-  var hoy = new Date();
-  if(anio < hoy.getFullYear()) return 12;
-  if(anio > hoy.getFullYear()) return 0;
-  return hoy.getMonth();
+function mesTope(anio, hoy){
+  var a = anio;
+  if(a < hoy.anio) return 11;
+  if(a > hoy.anio) return -1;
+  return hoy.mes;
+}
+function mesesCorridos(anio, hoy){   // cuántos meses de ese año ya pasaron del todo (el mes en curso no cuenta)
+  if(anio < hoy.anio) return 12;
+  if(anio > hoy.anio) return 0;
+  return hoy.mes;
 }
 function estaPagado(j, it){
   return !!it && it.pagado === true;   // el estado es explícito; lo viejo sin definir lo completa normalizar
@@ -1975,7 +1981,7 @@ function clave(x){
 function esRenglonTrabajo(n){ return clave(n) === clave(RENGLON_TRABAJO); }
 function planDe(d, nombre){ return d.planDeudas[String(nombre||'').trim()] || null; }
 function cuotaPaga(j, it){ return estaPagado(j, it) && num(it.monto) > 0; }   // una cuota cuenta como paga si está tildada Y tiene monto
-function estadoDeuda(d, nombre, i){
+function estadoDeuda(d, nombre, i, hoy){
   var p = planDe(d, nombre); if(!p || !p.cuotas) return null;
   var n = String(nombre||'').trim(), pag = p.pagadasAntes, antes = p.pagadasAntes;
   for(var j=0;j<=i;j++){
@@ -1991,7 +1997,7 @@ function estadoDeuda(d, nombre, i){
     for(var qz=0;qz<lz.length;qz++) if(String(lz[qz].nombre||'').trim() === n && cuotaPaga(jj, lz[qz])) hay = true;
     if(hay) primero = jj + 1;
   }
-  if(primero < mesTope(d.anio) + 1) primero = mesTope(d.anio) + 1;
+  if(primero < mesTope(d.anio, hoy) + 1) primero = mesTope(d.anio, hoy) + 1;
   if(primero < 0) primero = 0;
   var k = primero + restantes - 1;
   var fin = restantes > 0 ? {mes:((k % 12) + 12) % 12, anio:d.anio + Math.floor(k/12)} : null;
@@ -2026,18 +2032,18 @@ function planDeCarga(d, nombre, desde){
   var rp = repartoCuotas(p);
   return {valor:rp.valor, ultima:caben > 0 && r - caben === 0 ? rp.ultima : rp.valor, poner:caben, hasta:desde + caben - 1, sobran:r - caben, desde:desde};
 }
-function cargarCuotas(d, nombre, desde){
+function cargarCuotas(d, nombre, desde, hoy){
   var n = String(nombre||'').trim(), pc = planDeCarga(d, n, desde), p = planDe(d, n), j, q, ls, hallado, mc;
   var num0 = p ? p.pagadasAntes + pagadasHasta(d, n, desde) : 0;   // cuántas cuotas hay antes de la primera que se carga
   for(j=desde;j<desde+pc.poner;j++){
     ls = d.meses[j].deudas; hallado = false;
     mc = num0 + (j - desde) + 1 >= p.cuotas ? pc.ultima : pc.valor;   // la cuota número "cuotas" es la última del plan
-    for(q=0;q<ls.length;q++) if(String(ls[q].nombre||'').trim() === n){ ls[q].monto = mc; if(typeof ls[q].pagado !== 'boolean') ls[q].pagado = j < mesesCorridos(d.anio); hallado = true; break; }
-    if(!hallado) ls.push({nombre:n, monto:mc, pagado:j < mesesCorridos(d.anio)});
+    for(q=0;q<ls.length;q++) if(String(ls[q].nombre||'').trim() === n){ ls[q].monto = mc; if(typeof ls[q].pagado !== 'boolean') ls[q].pagado = j < mesesCorridos(d.anio, hoy); hallado = true; break; }
+    if(!hallado) ls.push({nombre:n, monto:mc, pagado:j < mesesCorridos(d.anio, hoy)});
   }
   return pc;
 }
-function proyeccionDeudas(d){
+function proyeccionDeudas(d, hoy){
   var out = [], vistos = {};
   for(var i=0;i<12;i++){
     var ls = d.meses[i].deudas;
@@ -2051,7 +2057,7 @@ function proyeccionDeudas(d){
         for(var r=0;r<l2.length;r++) if(String(l2[r].nombre||'').trim()===n && num(l2[r].monto)>0) hay = true;
         if(hay){ ultimo = j; break; }
       }
-      var e = estadoDeuda(d, n, ultimo >= 0 ? ultimo : new Date().getMonth());
+      var e = estadoDeuda(d, n, ultimo >= 0 ? ultimo : hoy.mes, hoy);
       if(e) out.push({nombre:n, e:e});
     }
   }
@@ -2140,6 +2146,7 @@ return {
   calc: calc,
   serie: serie,
   costoDolares: costoDolares,
+  hoyDe: hoyDe,
   mesTope: mesTope,
   mesesCorridos: mesesCorridos,
   estaPagado: estaPagado,
@@ -2197,6 +2204,7 @@ var SECS = TGMotor.SECS,
     planDeCarga = TGMotor.planDeCarga,
     cargarCuotas = TGMotor.cargarCuotas,
     proyeccionDeudas = TGMotor.proyeccionDeudas,
+    hoyDe = TGMotor.hoyDe,
     criptoUSD = TGMotor.criptoUSD,
     patrimonio = TGMotor.patrimonio,
     ranking = TGMotor.ranking,
@@ -2204,6 +2212,9 @@ var SECS = TGMotor.SECS,
     datosTorta = TGMotor.datosTorta,
     hayDatos = TGMotor.hayDatos,
     sumarAItem = TGMotor.sumarAItem;
+
+// La única fuente de la fecha de evaluación en la app: el motor no lee el reloj, recibe `hoy` en cada llamada.
+function hoyApp(){ return hoyDe(new Date()); }
 
 /* ═══ 0 · estado global ═════════════════════════════════ */
 var M1 = '/*DATOS_' + 'INICIO*/';
@@ -2316,7 +2327,7 @@ function cobroTxt(it){
   return det;
 }
 function textoDeuda(nombre, i){
-  var e = estadoDeuda(D, nombre, i);
+  var e = estadoDeuda(D, nombre, i, hoyApp());
   if(!e) return 'Cargar cuotas';
   if(e.restantes === 0 && e.esteMes) return 'Última cuota: la ' + e.pagadas + ' de ' + e.plan.cuotas + '. Terminada.';
   if(e.restantes === 0) return 'Terminada: ' + e.plan.cuotas + ' cuotas pagas.';
@@ -2884,7 +2895,7 @@ function renderAnio(){
   hR += '</div>';
   h += plegable('anRank', 'En qué se te fue la plata', rk.length ? esc(rk[0].nombre) : '', hR);
 
-  var pd = proyeccionDeudas(D);
+  var pd = proyeccionDeudas(D, hoyApp());
   if(pd.length){
     var libre = null, hD = '<div class="rank" style="padding:12px 16px">';
     for(i=0;i<pd.length;i++){
@@ -3365,7 +3376,7 @@ function guardar(){
   if(eraSucio && !hayLS) pildora('No se pudo guardar', true);
 }
 function leerAnio(a){
-  try{ var s = localStorage.getItem(PREF + a); return s ? normalizar(JSON.parse(s)) : null; }
+  try{ var s = localStorage.getItem(PREF + a); return s ? normalizar(JSON.parse(s), hoyApp()) : null; }
   catch(e){ return null; }
 }
 function aniosGuardados(){
@@ -3380,8 +3391,8 @@ function leerEmbebido(){
   var t = document.getElementById('datos').textContent;
   var i = t.indexOf(M1), j = t.indexOf(M2);
   var s = (i > -1 && j > -1) ? t.slice(i + M1.length, j) : t;
-  try{ return normalizar(JSON.parse(s)); }
-  catch(e){ return normalizar({}); }
+  try{ return normalizar(JSON.parse(s), hoyApp()); }
+  catch(e){ return normalizar({}, hoyApp()); }
 }
 function descargar(texto, nombre, tipo){
   var b = new Blob([texto], {type: tipo || 'text/plain;charset=utf-8'});
@@ -3517,7 +3528,7 @@ function escribirAnios(anios, claves){
   var ultimo = 0, fallaron = [];
   for(var i=0;i<claves.length;i++){
     if(anios[claves[i]] && typeof anios[claves[i]] === 'object') anios[claves[i]].anio = +claves[i];   // la migración usa el año de la clave
-    var d = normalizar(anios[claves[i]]); d.anio = +claves[i];
+    var d = normalizar(anios[claves[i]], hoyApp()); d.anio = +claves[i];
     try{ localStorage.setItem(PREF + d.anio, JSON.stringify(d)); if(d.anio > ultimo) ultimo = d.anio; }
     catch(e){ fallaron.push(d.anio); }
   }
@@ -3635,7 +3646,7 @@ function duplicar(){
   var s = serie(D), n = JSON.parse(JSON.stringify(D)), i, j, k;
   n.anio = D.anio + 1;
   n.ahorroAnioAnterior = s[11].ahorroAcumulado;
-  Object.keys(n.planDeudas).forEach(function(k){ var e = estadoDeuda(D, k, 11); if(e) n.planDeudas[k].pagadasAntes = e.pagadas; });
+  Object.keys(n.planDeudas).forEach(function(k){ var e = estadoDeuda(D, k, 11, hoyApp()); if(e) n.planDeudas[k].pagadasAntes = e.pagadas; });
   n.usdAnioAnterior = s[11].usdAcumulado;
   n.aReponerAnterior = s[11].aReponer;
   n.actualizado = '';
@@ -3656,7 +3667,7 @@ function duplicar(){
   Object.keys(D.planDeudas).forEach(function(nn){
     var pp = D.planDeudas[nn];
     if(!pp.cuotas || !pp.total) return;
-    cargadas += cargarCuotas(D, nn, 0).poner;
+    cargadas += cargarCuotas(D, nn, 0, hoyApp()).poner;
   });
   guardar(); render();
   alerta('Listo el ' + D.anio, 'Creé el año con los meses en cero, las mismas categorías y el cierre de '
@@ -4078,7 +4089,7 @@ function ofrecerCarga(nombre, desde){
     + '. Lo que ya tengas cargado en esos meses en esta deuda se reemplaza.';
   if(pc.sobran > 0) cuerpo += '<br><br>Quedan ' + pc.sobran + ' para después: se cargan solas cuando crees el año ' + (D.anio+1) + '.';
   preguntar('Cargar las cuotas', cuerpo, 'Cargar', function(){
-    var r = cargarCuotas(D, nombre, desde);
+    var r = cargarCuotas(D, nombre, desde, hoyApp());
     tocar(); renderMes();
     toast('Cargué ' + r.poner + (r.poner === 1 ? ' cuota' : ' cuotas') + ' de ' + fARS(r.valor));
   });

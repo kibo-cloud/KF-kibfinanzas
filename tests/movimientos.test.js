@@ -72,7 +72,7 @@ test('E9: old movement entries without pp keep the previous behavior (pagado unt
 test('normalizar keeps pp on movements and drops non-boolean values', function(){
   var a = loadApp({funcs: ['normalizar'], vars: [], globals: {}});
   var d = a.normalizar({anio: 2026, pagoExplicito: true, meses: [{movimientos: [
-    {id: 'a', monto: 5, pp: false}, {id: 'b', monto: 5, pp: true}, {id: 'c', monto: 5}, {id: 'd', monto: 5, pp: 'x'}]}]});
+    {id: 'a', monto: 5, pp: false}, {id: 'b', monto: 5, pp: true}, {id: 'c', monto: 5}, {id: 'd', monto: 5, pp: 'x'}]}]}, a.hoy);
   var mv = d.meses[0].movimientos;
   assert.strictEqual(mv[0].pp, false);
   assert.strictEqual(mv[1].pp, true);

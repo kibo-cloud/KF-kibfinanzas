@@ -157,7 +157,7 @@ test('MARCABLE covers ingresos, fijos, variables and deudas', function(){
 });
 
 test('serie accumulations use realized values', function(){
-  var d = app.normalizar({anio: 2027});
+  var d = app.normalizar({anio: 2027}, app.hoy);
   d.meses[0].ingresos[0].monto = 1000;
   d.meses[0].gastosFijos[0].monto = 200;
   d.meses[0].ahorroMesARS = 100;
@@ -192,7 +192,7 @@ test('gasto rapido: empty target becomes paid, pending positive target keeps its
 test('legacy blob keeps its pre-fix totals through normalizar + calc (past and current months)', function(){
   var meses = [];
   for(var i = 0; i < 12; i++) meses.push({ingresos: [{nombre: 'Sueldo', monto: 1000}], gastosFijos: [{nombre: 'Alquiler', monto: 300}], gastosVariables: [{nombre: 'Super', monto: 100}], deudas: [{nombre: 'P', monto: 50}]});
-  var s = app.serie(app.normalizar({anio: 2026, meses: meses}));   // today = June 2026
+  var s = app.serie(app.normalizar({anio: 2026, meses: meses}, app.hoy));   // today = June 2026
   for(var j = 0; j <= 5; j++){
     assert.equal(s[j].totalIngresos, 1000, 'mes ' + j);
     assert.equal(s[j].totalGastos, 400);

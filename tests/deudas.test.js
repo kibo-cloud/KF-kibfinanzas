@@ -27,7 +27,7 @@ function suma(a){ return a.reduce(function(x, y){ return x + y; }, 0); }
 // ── E14 ──
 test('cargarCuotas E14: the last installment absorbs the rounding remainder (100000 / 3)', function(){
   app.D = freshD({total: 100000, recargo: 0, cuotas: 3, pagadasAntes: 0});
-  var pc = app.cargarCuotas(app.D, 'Tarjeta', 6);
+  var pc = app.cargarCuotas(app.D, 'Tarjeta', 6, app.hoy);
   assert.equal(pc.poner, 3);
   assert.deepEqual(montos(app.D, 6, 3), [33333, 33333, 33334]);
   assert.equal(suma(montos(app.D, 6, 3)), 100000);
@@ -35,14 +35,14 @@ test('cargarCuotas E14: the last installment absorbs the rounding remainder (100
 
 test('cargarCuotas E14: with recargo the sum is exactly the rounded total with recargo', function(){
   app.D = freshD({total: 100000, recargo: 10, cuotas: 3, pagadasAntes: 0});
-  app.cargarCuotas(app.D, 'Tarjeta', 0);
+  app.cargarCuotas(app.D, 'Tarjeta', 0, app.hoy);
   assert.deepEqual(montos(app.D, 0, 3), [36667, 36667, 36666]);
   assert.equal(suma(montos(app.D, 0, 3)), 110000);
 });
 
 test('cargarCuotas E14: only the plan\'s final installment is adjusted, not the last one that fits in the year', function(){
   app.D = freshD({total: 100000, recargo: 0, cuotas: 12, pagadasAntes: 0});
-  var pc = app.cargarCuotas(app.D, 'Tarjeta', 6);
+  var pc = app.cargarCuotas(app.D, 'Tarjeta', 6, app.hoy);
   assert.equal(pc.poner, 6);
   assert.equal(pc.sobran, 6);
   assert.deepEqual(montos(app.D, 6, 6), [8333, 8333, 8333, 8333, 8333, 8333]);   // installments 1..6 of 12: all regular
@@ -50,18 +50,18 @@ test('cargarCuotas E14: only the plan\'s final installment is adjusted, not the 
 
 test('cargarCuotas E14: installment numbers follow pagadasAntes and paid months before desde', function(){
   app.D = freshD({total: 100000, recargo: 0, cuotas: 3, pagadasAntes: 2});
-  app.cargarCuotas(app.D, 'Tarjeta', 0);                                 // only installment #3 is left: it is the last one
+  app.cargarCuotas(app.D, 'Tarjeta', 0, app.hoy);                                 // only installment #3 is left: it is the last one
   assert.deepEqual(montos(app.D, 0, 1), [33334]);
   app.D = freshD({total: 100000, recargo: 0, cuotas: 3, pagadasAntes: 0});
   fila(app.D, 5).monto = 33333; fila(app.D, 5).pagado = true;       // installment #1 paid in June
-  var pc = app.cargarCuotas(app.D, 'Tarjeta', 6);
+  var pc = app.cargarCuotas(app.D, 'Tarjeta', 6, app.hoy);
   assert.equal(pc.poner, 2);
   assert.deepEqual(montos(app.D, 6, 2), [33333, 33334]);            // #2 and #3
 });
 
 test('cargarCuotas E14: a single installment is the whole rounded total', function(){
   app.D = freshD({total: 12345.6, recargo: 0, cuotas: 1, pagadasAntes: 0});
-  app.cargarCuotas(app.D, 'Tarjeta', 3);
+  app.cargarCuotas(app.D, 'Tarjeta', 3, app.hoy);
   assert.deepEqual(montos(app.D, 3, 1), [12346]);
 });
 
@@ -85,18 +85,18 @@ test('valorCuota keeps the regular installment (what the editor shows)', functio
 test('estadoDeuda E14: saldo is the sum of the installments still to pay (last one adjusted)', function(){
   app.D = freshD({total: 100000, recargo: 0, cuotas: 3, pagadasAntes: 0});
   fila(app.D, 0).monto = 33333; fila(app.D, 0).pagado = true;
-  assert.equal(Math.round(app.estadoDeuda(app.D, 'Tarjeta', 0).saldo), 66667);       // 33333 + 33334
+  assert.equal(Math.round(app.estadoDeuda(app.D, 'Tarjeta', 0, app.hoy).saldo), 66667);       // 33333 + 33334
   fila(app.D, 1).monto = 33333; fila(app.D, 1).pagado = true;
-  assert.equal(Math.round(app.estadoDeuda(app.D, 'Tarjeta', 1).saldo), 33334);       // only the last one is left
+  assert.equal(Math.round(app.estadoDeuda(app.D, 'Tarjeta', 1, app.hoy).saldo), 33334);       // only the last one is left
   fila(app.D, 2).monto = 33334; fila(app.D, 2).pagado = true;
-  assert.equal(app.estadoDeuda(app.D, 'Tarjeta', 2).saldo, 0);
+  assert.equal(app.estadoDeuda(app.D, 'Tarjeta', 2, app.hoy).saldo, 0);
 });
 
 // ── E9(b) ──
 test('[R2 fixed] estadoDeuda E9: a ticked month with monto 0 is not a paid installment', function(){
   app.D = freshD({total: 30000, recargo: 0, cuotas: 3, pagadasAntes: 0});
   app.D.meses[0].deudas = [{nombre: 'Tarjeta', monto: 0, pagado: true}];
-  var e = app.estadoDeuda(app.D, 'Tarjeta', 0);
+  var e = app.estadoDeuda(app.D, 'Tarjeta', 0, app.hoy);
   assert.equal(e.pagadas, 0);
   assert.equal(e.restantes, 3);
   assert.equal(e.esteMes, false);
@@ -107,7 +107,7 @@ test('estadoDeuda E9: ticked with monto > 0 counts; unticked with monto does not
   app.D.meses[0].deudas = [{nombre: 'Tarjeta', monto: 10000, pagado: true}];
   app.D.meses[1].deudas = [{nombre: 'Tarjeta', monto: 10000, pagado: false}];
   app.D.meses[2].deudas = [{nombre: 'Tarjeta', monto: 0, pagado: true}];
-  var e = app.estadoDeuda(app.D, 'Tarjeta', 2);
+  var e = app.estadoDeuda(app.D, 'Tarjeta', 2, app.hoy);
   assert.equal(e.pagadas, 1);
   assert.equal(e.restantes, 2);
 });
@@ -123,6 +123,6 @@ test('pagadasHasta E9: ignores ticked rows without amount', function(){
 test('estadoDeuda E9: a ticked zero month does not move the projection start', function(){
   app.D = freshD({total: 30000, recargo: 0, cuotas: 3, pagadasAntes: 0});
   app.D.meses[8].deudas = [{nombre: 'Tarjeta', monto: 0, pagado: true}];   // far in the future, empty
-  var e = app.estadoDeuda(app.D, 'Tarjeta', 8);
+  var e = app.estadoDeuda(app.D, 'Tarjeta', 8, app.hoy);
   assert.equal(e.fin.mes, 8);   // starts after the current month (June = 5): 3 left => July, August, September (index 8)
 });

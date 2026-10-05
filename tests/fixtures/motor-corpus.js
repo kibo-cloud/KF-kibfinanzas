@@ -3,7 +3,8 @@
 // inputs and returns ONE plain object; `canon()` serializes it deterministically (NaN and -0 stay visible).
 // The same corpus is used before the extraction (functions read globals D / mes) and after it (TGMotor, explicit
 // arguments): `api` is an adapter exposing one uniform, explicit-argument signature per function.
-// Fake "today" for every run: 2026-10-04 (current month index 9).
+// "Today" for every run: 2026-10-04 (current month index 9), passed to every temporal function as an explicit `hoy` (R4.1: the engine
+// never reads the system clock). `api.hoyDe` builds it.
 
 var TODAY = '2026-10-04';
 
@@ -84,8 +85,8 @@ function copy(x){ return JSON.parse(JSON.stringify(x)); }
 function range(n){ var o = [], i; for(i = 0; i < n; i++) o.push(i); return o; }
 var SEC = ['ingresos', 'gastosFijos', 'gastosVariables', 'deudas'];
 
-function perDataset(api, raw){
-  var d = api.normalizar(copy(raw)), o = {}, names = {};
+function perDataset(api, raw, hoy){
+  var d = api.normalizar(copy(raw), hoy), o = {}, names = {};
   o.norm = copy(d);
   o.calc = d.meses.map(function(m){ return api.calc(m); });
   o.serie = api.serie(d);
@@ -98,19 +99,19 @@ function perDataset(api, raw){
   o.sumas = d.meses.map(function(m){ return SEC.map(function(s){ return [api.suma(m[s]), api.sumaPagado(m[s]), api.sumaPagado(m[s], true)]; }); });
   o.cuotaPaga = d.meses.map(function(m, j){ return m.deudas.map(function(x){ return [api.cuotaPaga(j, x), api.estaPagado(j, x)]; }); });
   o.hayDatos = [api.hayDatos(d, false), api.hayDatos(d, true)];
-  o.proyeccion = api.proyeccionDeudas(d);
+  o.proyeccion = api.proyeccionDeudas(d, hoy);
   Object.keys(d.planDeudas).forEach(function(n){ names[n] = true; });
   d.meses.forEach(function(m){ m.deudas.forEach(function(x){ names[String(x.nombre || '').trim()] = true; }); });
   names['No existe'] = true; names['  Tarjeta '] = true;
   o.deuda = {};
   Object.keys(names).forEach(function(n){
     var r = {plan: api.planDe(d, n)};
-    r.estado = range(12).map(function(i){ return api.estadoDeuda(d, n, i); });
+    r.estado = range(12).map(function(i){ return api.estadoDeuda(d, n, i, hoy); });
     r.pagadasHasta = range(14).map(function(h){ return api.pagadasHasta(d, n, h); });
     r.pendientesDesde = range(12).map(function(h){ return api.pendientesDesde(d, n, h); });
     r.planDeCarga = range(12).map(function(h){ return api.planDeCarga(d, n, h); });
     r.cargar = [0, 3, 6, 9, 11].map(function(desde){
-      var c = copy(d), pc = api.cargarCuotas(c, n, desde);
+      var c = copy(d), pc = api.cargarCuotas(c, n, desde, hoy);
       return {desde: desde, pc: pc, deudas: c.meses.map(function(m){ return m.deudas; })};
     });
     o.deuda[n] = r;
@@ -125,10 +126,10 @@ function perDataset(api, raw){
 }
 
 function compute(api){
-  var out = {datasets: {}, pure: {}}, p = out.pure;
-  datasets().forEach(function(e){ out.datasets[e[0]] = perDataset(api, e[1]); });
-  p.mesTope = [2023, 2024, 2025, 2026, 2027, 2028, 0].map(function(a){ return [a, api.mesTope(a)]; });
-  p.mesesCorridos = [2023, 2024, 2025, 2026, 2027, 2028, 0].map(function(a){ return [a, api.mesesCorridos(a)]; });
+  var out = {datasets: {}, pure: {}}, p = out.pure, hoy = api.hoyDe(new Date(TODAY + 'T12:00:00'));
+  datasets().forEach(function(e){ out.datasets[e[0]] = perDataset(api, e[1], hoy); });
+  p.mesTope = [2023, 2024, 2025, 2026, 2027, 2028, 0].map(function(a){ return [a, api.mesTope(a, hoy)]; });
+  p.mesesCorridos = [2023, 2024, 2025, 2026, 2027, 2028, 0].map(function(a){ return [a, api.mesesCorridos(a, hoy)]; });
   p.mesVacio = api.mesVacio();
   p.num = NUMS.map(function(v){ return api.num(v); });
   p.clave = CLAVES.map(function(v){ return [api.clave(v), api.esRenglonTrabajo(v)]; });
@@ -154,4 +155,4 @@ function canon(x){
   });
 }
 
-module.exports = {TODAY: TODAY, compute: compute, canon: canon};
+module.exports = {TODAY: TODAY, datasets: datasets, compute: compute, canon: canon};

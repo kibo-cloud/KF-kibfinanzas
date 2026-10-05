@@ -52,7 +52,7 @@ test('loadMotor evaluates the <script id="motor"> block as a whole and exports t
   ['calc', 'serie', 'patrimonio', 'ranking', 'datosTorta', 'gastadoTope', 'estadoDeuda', 'cargarCuotas', 'hayDatos', 'normalizar', 'parseMonto', 'mesTope'].forEach(function(n){
     assert.equal(typeof m[n], 'function', n);
   });
-  assert.equal(m.mesTope(2026), 9, 'uses the injected today');
+  assert.equal(m.mesTope(2026, m.hoyDe(new Date(2026, 9, 4, 12))), 9, 'mesTope follows the explicit hoy');
   assert.equal(m.RENGLON_TRABAJO, 'Del trabajo');
 });
 
