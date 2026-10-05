@@ -6,14 +6,15 @@
 //   registrado = counts every loaded amount, paid or not (suma)
 //   realizado  = counts only ticked/paid amounts (sumaPagado, estaPagado)
 //   mixto      = uses both (realized totals plus pending/registered totals, or a stock built from them)
+//   r4         = new financial model (R4.2): explicit realizado/pendiente/programado split by hoy, see odd/tasks/repair-sprint-1-r4-design.md
 //   otro       = no money aggregation of the monthly plan: editors/writers of one item, display of one
 //                row, the separate "Trabajo" ledger, or a false positive of the scanner
-var R = 'registrado', Z = 'realizado', M = 'mixto', O = 'otro';
+var R = 'registrado', Z = 'realizado', M = 'mixto', O = 'otro', N = 'r4';
 var EDIT = 'editor/writer of a single item amount; no aggregation';
 var TRAB = 'Trabajo ledger (facturas/cobros/gastos/pases): own date-based realization, outside the monthly plan semantics';
 
 module.exports = {
-  SEMANTICS: [R, Z, M, O],
+  SEMANTICS: [R, Z, M, O, N],
   INVENTORY: {
     normalizar:         [O, 'input normalization; migration default pagado = monto > 0 for past months'],
     suma:               [R, 'sums every loaded amount, paid or not'],
@@ -25,6 +26,10 @@ module.exports = {
     cargarCuotas:       [O, 'writes planned installment amounts into debt rows (E14 fixed in R2: the last installment of the plan takes the rounding remainder)'],
     proyeccionDeudas:   [R, 'last month with a debt row of monto > 0, paid or not'],
     patrimonio:         [M, 'accumulated savings and USD stock from serie() plus crypto'],
+    flujosMes:          [N, 'R4.2 pure: per-month realized / pending / scheduled flows and transfers split by hoy (not wired to the UI yet)'],
+    cadena:             [N, 'R4.2 pure: 12-month opening/closing chain over flujosMes, legacy months before arrastre.desde keep calc()'],
+    pasivos:            [N, 'R4.2 pure: liabilities a hoy: count-based plan saldo plus unticked rows of debts without a plan'],
+    patrimonioNeto:     [N, 'R4.2 pure: net worth a hoy from cadena, serie up to hoy, crypto, trabajo and pasivos (old patrimonio stays pinned)'],
     ranking:            [Z, 'yearly expense ranking, only paid rows'],
     renderMes:          [M, 'month view: calc() realized and pending, serie() savings'],
     gastadoTope:        [Z, 'budget cap consumption: only paid items'],
