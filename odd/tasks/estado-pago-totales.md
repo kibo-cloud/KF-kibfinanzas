@@ -52,7 +52,7 @@ R10. Income synced from Trabajo ("Del trabajo") is already cash-based and always
 - [x] T1 Test infrastructure + characterization of current `suma`/`calc`/`serie`.
 - [x] T2 Model: explicit flags at creation, legacy migration, `estaPagado`, `duplicar`, cuotas.
 - [x] T3 Engine + UI: status-aware `calc`, `MARCABLE` for ingresos/variables, gasto rápido, Trabajo row.
-- [ ] T4 Version bump (APPVER, sw cache), LEEME changelog, full suite + manual flow check.
+- [x] T4 Version bump (APPVER, sw cache), LEEME changelog, full suite + manual flow check.
 
 ## TDD
 
@@ -71,7 +71,9 @@ Delegated direct: one writer for `index.html` + test files (writer trigger: 2+ n
 - T2 done: R4-R8 in index.html (mesVacio, normalizar migration + marker `pagoExplicito`, mesTope(anio), mesesCorridos, estaPagado strict, cargarCuotas, crearItem/propagar/copiarAnterior, duplicar, restaurarTexto sets blob year before normalizar). tests/datos.test.js. Observed: 15 pass / 0 fail; inline script parses.
 - T2 commit: 0aac6cf.
 - T3 done: sumaPagado + calc realized totals and pendiente* (R1-R3), MARCABLE extended, alternarPago (pagar handler), sumarAItem (gasto rápido, R9), renglonTrabajo creates pagado:true and calc/seccion treat "Del trabajo" as always counted without checkbox (R10), aria text "cobrado" for ingresos, Ajustes help text updated. tests/totales.test.js. Observed: 30 pass / 0 fail; inline script parses.
+- T3 commit: fc9e168.
+- T4 done (this commit): APPVER 1.31.0, sw.js kibfinanzas-offline-v40, LEEME CHANGELOG entry. Final: 30 pass / 0 fail; inline script parses. Manual browser flow not executed.
 
 ## Next step
 
-T4.
+Done; ready for review and manual flow check in a browser (not run by the writer).
