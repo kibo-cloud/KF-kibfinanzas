@@ -1804,12 +1804,12 @@ var gr = {monto:0, cat:null, sec:'gastosVariables'};
 /* ═══ 1 · datos por defecto ══════════════════════════════════════ */
 function mesVacio(){
   return {
-    ingresos:[{nombre:'Sueldo',monto:0},{nombre:'Otros ingresos',monto:0}],
-    gastosFijos:[{nombre:'Alquiler',monto:0},{nombre:'Luz',monto:0},{nombre:'Gas',monto:0},
-                 {nombre:'Internet',monto:0},{nombre:'Celular',monto:0},{nombre:'Transporte',monto:0}],
-    gastosVariables:[{nombre:'Supermercado',monto:0},{nombre:'Comida afuera',monto:0},{nombre:'Salidas',monto:0},
-                     {nombre:'Ropa',monto:0},{nombre:'Salud',monto:0},{nombre:'Otros',monto:0}],
-    deudas:[{nombre:'Préstamo',monto:0},{nombre:'Tarjeta de crédito',monto:0}],
+    ingresos:[{nombre:'Sueldo',monto:0,pagado:false},{nombre:'Otros ingresos',monto:0,pagado:false}],
+    gastosFijos:[{nombre:'Alquiler',monto:0,pagado:false},{nombre:'Luz',monto:0,pagado:false},{nombre:'Gas',monto:0,pagado:false},
+                 {nombre:'Internet',monto:0,pagado:false},{nombre:'Celular',monto:0,pagado:false},{nombre:'Transporte',monto:0,pagado:false}],
+    gastosVariables:[{nombre:'Supermercado',monto:0,pagado:false},{nombre:'Comida afuera',monto:0,pagado:false},{nombre:'Salidas',monto:0,pagado:false},
+                     {nombre:'Ropa',monto:0,pagado:false},{nombre:'Salud',monto:0,pagado:false},{nombre:'Otros',monto:0,pagado:false}],
+    deudas:[{nombre:'Préstamo',monto:0,pagado:false},{nombre:'Tarjeta de crédito',monto:0,pagado:false}],
     ahorroMesARS:0, metaAhorroPct:0.10, ahorroMesUSD:0, compraARS:0, compraUSD:0,
     retiroARS:0, ventaUSD:0, ventaARS:0, reposicionARS:0, movimientos:[]
   };
@@ -1838,6 +1838,8 @@ function normalizar(d){
         o.dias = []; if(it && Object.prototype.toString.call(it.dias)==='[object Array]'){ for(var qd=0;qd<it.dias.length;qd++){ var vd=Math.round(num(it.dias[qd])); if(vd>=0&&vd<=31&&o.dias.length<31) o.dias.push(vd); } }
         if(it && it.pagado === true) o.pagado = true;
         if(it && it.pagado === false) o.pagado = false;
+        // migración única por año: solo completa los pagado sin definir con la inferencia de antes (monto cargado y mes ya corrido)
+        if(!d.pagoExplicito && o.pagado === undefined) o.pagado = o.monto > 0 && i <= mesTope(d.anio);
         return o;
       });
     }
@@ -1857,6 +1859,7 @@ function normalizar(d){
     d.meses[i] = m;
   }
   d.meses.length = 12;
+  d.pagoExplicito = true;   // marca: desde acá el estado de pago es siempre explícito
   if(!d.planDeudas || typeof d.planDeudas!=='object') d.planDeudas = {};
   Object.keys(d.planDeudas).forEach(function(k){
     var p = d.planDeudas[k] || {};
@@ -1969,17 +1972,20 @@ function notaCompra(m, acum){
   return 'Si pas\u00e1s parte del ahorro a d\u00f3lares, cargalo ac\u00e1: se descuenta de los pesos y se suma a los d\u00f3lares.';
 }
 var MARCABLE = {gastosFijos:true, deudas:true};
-function mesTope(){
+function mesTope(anio){
+  var hoy = new Date(), a = anio == null ? D.anio : anio;
+  if(a < hoy.getFullYear()) return 11;
+  if(a > hoy.getFullYear()) return -1;
+  return hoy.getMonth();
+}
+function mesesCorridos(anio){   // cuántos meses de ese año ya pasaron del todo (el mes en curso no cuenta)
   var hoy = new Date();
-  if(D.anio < hoy.getFullYear()) return 11;
-  if(D.anio > hoy.getFullYear()) return -1;
+  if(anio < hoy.getFullYear()) return 12;
+  if(anio > hoy.getFullYear()) return 0;
   return hoy.getMonth();
 }
 function estaPagado(j, it){
-  if(!it) return false;
-  if(it.pagado === true) return true;
-  if(it.pagado === false) return false;
-  return num(it.monto) > 0 && j <= mesTope();   // los meses que ya pasaron se dan por pagados
+  return !!it && it.pagado === true;   // el estado es explícito; lo viejo sin definir lo completa normalizar
 }
 var DIASEM = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
 var DIASEMC = ['D','L','M','M','J','V','S'];
@@ -2057,8 +2063,8 @@ function cargarCuotas(nombre, desde){
   var n = String(nombre||'').trim(), pc = planDeCarga(n, desde), j, q, ls, hallado;
   for(j=desde;j<desde+pc.poner;j++){
     ls = D.meses[j].deudas; hallado = false;
-    for(q=0;q<ls.length;q++) if(String(ls[q].nombre||'').trim() === n){ ls[q].monto = pc.valor; hallado = true; break; }
-    if(!hallado) ls.push({nombre:n, monto:pc.valor});
+    for(q=0;q<ls.length;q++) if(String(ls[q].nombre||'').trim() === n){ ls[q].monto = pc.valor; if(typeof ls[q].pagado !== 'boolean') ls[q].pagado = j < mesesCorridos(D.anio); hallado = true; break; }
+    if(!hallado) ls.push({nombre:n, monto:pc.valor, pagado:j < mesesCorridos(D.anio)});
   }
   return pc;
 }
@@ -3332,6 +3338,7 @@ function restaurarTexto(txt){
     pendiente = function(){
       var ultimo = 0;
       for(var i=0;i<claves.length;i++){
+        if(anios[claves[i]] && typeof anios[claves[i]] === 'object') anios[claves[i]].anio = +claves[i];   // la migración usa el año de la clave
         var d = normalizar(anios[claves[i]]); d.anio = +claves[i];
         try{ localStorage.setItem(PREF + d.anio, JSON.stringify(d)); }catch(e){}
         if(d.anio > ultimo) ultimo = d.anio;
@@ -3436,7 +3443,7 @@ function duplicar(){
     var m = n.meses[i];
     for(j=0;j<SECS.length;j++){
       k = SECS[j].k;
-      for(var q=0;q<m[k].length;q++) m[k][q].monto = 0;
+      for(var q=0;q<m[k].length;q++){ m[k][q].monto = 0; m[k][q].pagado = false; }
     }
     m.ahorroMesARS = 0; m.ahorroMesUSD = 0; m.compraARS = 0; m.compraUSD = 0;
     m.retiroARS = 0; m.ventaUSD = 0; m.ventaARS = 0; m.reposicionARS = 0; m.movimientos = [];
@@ -3700,8 +3707,8 @@ function copiarAnterior(k){
   for(i=0;i<ant.length;i++){
     if(k === 'ingresos' && esRenglonTrabajo(ant[i].nombre)) continue;
     var hallado = false;
-    for(j=0;j<act.length;j++) if(act[j].nombre === ant[i].nombre){ act[j].monto = num(ant[i].monto); hallado = true; break; }
-    if(!hallado) act.push({nombre:ant[i].nombre, monto:num(ant[i].monto)});
+    for(j=0;j<act.length;j++) if(act[j].nombre === ant[i].nombre){ act[j].monto = num(ant[i].monto); act[j].pagado = false; hallado = true; break; }
+    if(!hallado) act.push({nombre:ant[i].nombre, monto:num(ant[i].monto), pagado:false});
   }
   tocar(); renderMes();
   toast('Copié ' + MESES[mes-1].toLowerCase() + ' en ' + MESES[mes].toLowerCase());
@@ -4088,7 +4095,7 @@ function crearItem(){
   var nom = (i ? i.value : '').trim();
   if(!nom){ if(i) i.focus(); return; }
   alta.nombre = nom;
-  D.meses[mes][alta.k].push({nombre:nom, monto:0});
+  D.meses[mes][alta.k].push({nombre:nom, monto:0, pagado:false});
   tocar(); renderMes();
   if(mes < 11){
     abrirHoja('<h3>¿También en los meses que siguen?</h3>'
@@ -4102,7 +4109,7 @@ function propagar(si){
     for(var i=mes+1;i<12;i++){
       var ls = D.meses[i][alta.k], existe = false;
       for(var j=0;j<ls.length;j++) if(ls[j].nombre === alta.nombre) existe = true;
-      if(!existe) ls.push({nombre:alta.nombre, monto:0});
+      if(!existe) ls.push({nombre:alta.nombre, monto:0, pagado:false});
     }
     tocar();
   }

@@ -65,7 +65,7 @@ function extractVar(name){
 var DEFAULT_FUNCS = ['num', 'mesVacio', 'normalizar', 'suma', 'calc', 'serie', 'mesTope', 'estaPagado'];
 var DEFAULT_VARS = ['SECS', 'MARCABLE'];
 
-// opts: {today:'YYYY-MM-DD', funcs:[...extra], vars:[...extra]}
+// opts: {today:'YYYY-MM-DD', funcs:[...extra], vars:[...extra], globals:{name:value} injected before the code runs}
 function loadApp(opts){
   opts = opts || {};
   var today = new Date((opts.today || '2026-06-15') + 'T12:00:00');
@@ -75,6 +75,7 @@ function loadApp(opts){
     static now(){ return today.getTime(); }
   };
   var ctx = vm.createContext({Date: FakeDate, JSON: JSON, Math: Math, Object: Object, Array: Array, String: String, isFinite: isFinite, parseFloat: parseFloat});
+  Object.keys(opts.globals || {}).forEach(function(k){ ctx[k] = opts.globals[k]; });
   var funcs = DEFAULT_FUNCS.concat(opts.funcs || []);
   var vars = DEFAULT_VARS.concat(opts.vars || []);
   var code = 'var D = null, mes = ' + today.getMonth() + ';\n';
