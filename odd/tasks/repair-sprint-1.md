@@ -67,7 +67,7 @@ R1, R2, R3 only. **Stop before R4** for review of the extracted engine and the e
       into the repo (`npm run test:e2e`, no dependencies, system Edge/Chrome, temp dir outside the
       repo, test hook injected at serve time only); consumer inventory of every money-summing
       function with its current semantics, guarded by a test.
-- [ ] R2 Model-independent fixes: E1 `hayDatos` uses registered data; E4 parsing per field type
+- [x] R2 Model-independent fixes: E1 `hayDatos` uses registered data; E4 parsing per field type
       with visible errors (D9); U2 "Gasto" card button; S1 `toast` escapes by default; S6 `esc`
       escapes `'`; S2 CSV formula neutralization; S3 explicit own-key list instead of `kibo.`
       wildcard; S4/E12 restore reports failures and `hayLS` recovers; E9 quick-expense undo
@@ -100,9 +100,66 @@ Delegated direct: one writer per stage (writer trigger: 2+ non-trivial files per
 - R1 evidence: `npm test` 59/59; `npm run test:e2e` 62 pass / 0 fail; `git diff f3dbff3 -- index.html sw.js manifest.webmanifest privacidad.html LEEME.md` empty.
 - E2E notes: site copied to an OS temp dir, hook and Date pin (2026-10-04T12:00 local) injected into the copy only; browser via `TUGASTO_BROWSER` or system Edge/Chrome.
 
+## R2 evidence (v1.31.3, branch `fix/repair-sprint-1`)
+
+Commits: `58cee5a` E1 hayDatos · `ae134fb` E4 parsing · `8e3c947` U2 card button · `83d2b0e` S1/S2/S6 · `8e60385` S3 · `e6c5de8` S4/E12 · `56ec314` E9/E14 · `990c004` E2E hardening + checks · `5f82924` release v1.31.3 (APPVER 1.31.3, sw v43, LEEME).
+Final: `npm test` 111/111; `npm run test:e2e` 86 pass / 0 fail (3 consecutive runs); inline-script syntax check 0 errors.
+Baseline for the E2E RED: new run.mjs against a worktree of `98146d4` gives 13 FAIL (card Gasto sheet, 1e3 field mark/stored/message/restored value, crypto 0.001 stored as 1, 1,234.5 accepted, backup reminder missing for unticked data, toast XSS handler ran and an `<img>` was injected).
+
+| Item | RED (before) | GREEN (after) |
+|---|---|---|
+| E1 hayDatos (`58cee5a`) | `tests/caracterizacion.test.js`: "[R2 fixed] hayDatos E1: registered data counts even when nothing is ticked" and "...any month flow field is registered data" failed | 62/62 |
+| E4 parsing (`ae134fb`) | `tests/parseo.test.js` (13 tests) failed: `function not found: parseMonto` (parsers did not exist); old behavior pinned in R1: parseNum('1e3') = 13, '0.001' = 1, '12.5,3' = 125.3 | 13/13, 75/75 total |
+| U2 (`8e3c947`) | E2E "card Gasto button opens the quick-expense sheet" got=false (baseline run) | E2E pass |
+| S1/S6/S2 (`83d2b0e`) | `tests/seguridad.test.js`: "esc escapes single quotes too (S6)", "toast escapes its text by default (S1)", "toast escapes quotes and the action label" failed on assertions; csvTexto tests: `function not found: csvTexto` | 86/86 total |
+| S3 (`8e60385`) | `tests/claves.test.js`: `var not found: CLAVES_PROPIAS` (the `kibo.` wildcard snapshotted and deleted a foreign `kibo.otraApp`) | 4/4 |
+| S4/E12 (`e6c5de8`) | `tests/copias.test.js`: `function not found: escribirAnios` / `avisarRestauro`; "guardar: a later successful save sets hayLS back to true" failed (hayLS stayed false) | 7/7, 93 total |
+| E9/E14 (`56ec314`) | `tests/deudas.test.js`: `function not found: repartoCuotas`; `tests/movimientos.test.js`: "undo ... restores pagado=false", "undo on a paid item keeps it paid" (no `pp`) and "normalizar keeps pp" failed | 111/111 total |
+| E2E hardening (`990c004`) | baseline run above | `send` rejects after 15 s and on socket error/close; `nav` waits for `Page.loadEventFired` (+300 ms settle); two screen checks wait 1.3 s for the count-up animation |
+
+### R2 decisions and notes
+
+- Parsers (index.html ~1905-1955): `parseMonto`, `parseCantidad`, `parsePct`, `parseEntero` return NaN when the text is not understood and 0 when empty; `parseNum` was removed (no caller left). `crudo` no longer writes exponent notation (1e-8 becomes "0,00000001") because the parsers reject exponents.
+- UI contract: while typing, invalid text is never written to the model (last valid value kept) and the input gets class `err` (new CSS using `--neg`); partial text ending in "." or "," shows nothing until blur; on blur/commit a toast or inline note says "No entendí «X» como número" and the field is redrawn from the model. Forms with a Guardar button (topes, plan de deudas, cobro de ingresos, Trabajo) validate everything first and write nothing when one field is invalid.
+- Visible change: the cobro-de-ingresos and plan-de-deudas editors now prefill amounts as plain grouped digits (`1.500`) instead of `$1.500` (`montoInput`), so the "ojito" mode cannot put dots into an editable field.
+- E1: `hayDatos` = any item monto > 0 (paid or not) OR any non-zero month flow field OR Trabajo data. Callers re-checked: `cargar` (welcome / empty notice), `cerrarBienvenida`, `quitarAvisoVacia`, `revisarCopia` (the backup reminder now also fires for unticked data), `restaurarTexto.teniaDatos`.
+- E9a: movement entries get an optional boolean `pp` (previous pagado); `quitarMov` restores it only when the item is empty again after the undo; entries without `pp` behave as before.
+- E9b: `cuotaPaga(j, it)` = ticked AND monto > 0, used by `estadoDeuda` (both loops) and `pagadasHasta`. The help text ("cada mes con un monto cargado ... es una cuota paga") now mentions the tick.
+- E14: `repartoCuotas(p)` gives {valor: round(total with recargo / cuotas), ultima: round(total with recargo) - (cuotas-1)*valor} (floor fallback if that would be negative). `cargarCuotas` numbers installments as pagadasAntes + pagadasHasta(desde) + offset + 1; only installment number `cuotas` gets `ultima`. `estadoDeuda.saldo` = (restantes-1)*valor + ultima. The reposicion rule is untouched (R4).
+- S3 key list (explicit): `kibo.datos.<4 digits>`, `kibo.anio`, `kibo.ultimaCopia`, `kibo.oculto`, `kibo.bienvenida`, `kibo.historial`, `kibo.trabajo`, `kibo.vistaProd`. `kibo.esquema` is also deleted on restore (as before, so the boot re-records the schema); `kibo.respaldo.pre130` is the snapshot itself. `kibo.datos.test` (storage probe) is not an app key.
+- S1: `toast` escapes text and action label by default. No caller passes markup; the four callers that pre-escaped (`esc(it.nombre)`, `esc(nom)`, `esc(p.nombre)`, `esc(a)`) now pass plain text. No `toastHtml` was needed. `pildora` still takes HTML (callers pass constants; outside R2 scope).
+- S2: `csvTexto` prefixes `'` on text cells starting with = + - @ TAB CR; used by the year CSV (month names only) and the Trabajo CSV (cliente, numero, concepto, fuente, cobro cliente, facturas que paga, gasto concepto). Numeric cells go through `n()` or raw numbers and are never prefixed (tested with negative values).
+
+### Parse field-type inventory (every former parseNum caller)
+
+| Field | Where | Type | Negative |
+|---|---|---|---|
+| Item amount (ingresos / fijos / variables / deudas) | `aplicarInput` | money | no |
+| ahorroMesARS, compraARS, retiroARS, ventaARS, reposicionARS, ahorroAnioAnterior | `aplicarInput` | money | no |
+| ahorroMesUSD, compraUSD, ventaUSD, usdAnioAnterior | `aplicarInput` (class usd) | money | no |
+| cotizacionUSD | `aplicarInput` | money | no |
+| cripto precioUSD | `aplicarInput` | money | no |
+| cripto cantidad | `aplicarInput` (class cant) | quantity | no |
+| metaAhorroPct | `aplicarInput` (class pct) | percent | no |
+| Gasto rapido (grMonto) | `gastoRapido` + `sumarGasto` (revalidated on commit) | money | no |
+| Topes (topein) | `guardarTopes` | money | no |
+| Cobro de ingresos: total, cada pago | `pintarNotaCobras`, `guardarComoCobras` | money | no |
+| Plan de deudas: total | `leerPlan` | money | no |
+| Plan: cuotas, ya pagadas | `leerPlan` | integer | no |
+| Plan: recargo % | `leerPlan` | percent | no |
+| Trabajo: fxMonto, fxPrecio, fxMontoP, cbMonto, gxMonto (ARS or USD), gxCot, tpMonto, psMonto, pxPrecio, pxCosto | `leerMonto` | money | read only to say "no puede ser negativo" |
+| Trabajo: fxCant | `cantidadDe` | quantity (> 0) | read only to say "mayor que cero" |
+| Trabajo: fxAjuste (recargo o descuento %) | `totalFactura`, `guardarFac` | percent | YES (discount; the -100 floor is kept) |
+| Trabajo: fxDias (plazo) | input handler, chip "otro", `guardarFac` | integer | no |
+| Trabajo: pxStock | `guardarProducto` | integer | YES (stock can go negative) |
+
+### Toast caller inventory (S1)
+
+38 call sites. Plain constant text: ordering, topes, copy, restore and Trabajo messages. Text with user data (now escaped by `toast`, pre-escape removed): "Sumé $X a <categoria>", "Borré <nombre>", "<producto> · ...", "todo quedó a nombre de <cliente>", "Copié la factura ... con el número <numero>" (the known sink), "No entendí «<texto>» como número" (new). None passes markup.
+
 ## Next step
 
-R2.
+Stop before R3 for review. The new parsers, `cuotaPaga`, `repartoCuotas` and `hayDatos` are pure and extractable in R3.
 
 ## Consumer inventory (R1, current semantics)
 
@@ -116,7 +173,7 @@ Documentation of the CURRENT state (baseline `f3dbff3`; line numbers refer to in
 | calc | 1927 | mixto | realized totals (sumaPagado) plus pending totals (suma - sumaPagado) and savings flows |
 | serie | 1945 | mixto | calc() per month plus accumulated savings/USD/aReponer stock |
 | cobroTxt | 2015 | otro | displays one item amount split by number of payments |
-| cargarCuotas | 2071 | otro | writes planned installment amounts into debt rows (E14: 100000/3 loses 1 peso) |
+| cargarCuotas | 2071 | otro | writes planned installment amounts into debt rows (E14 fixed in R2: the plan's last installment takes the rounding remainder) |
 | proyeccionDeudas | 2090 | registrado | last month with a debt row of monto > 0, paid or not |
 | patrimonio | 2111 | mixto | accumulated savings and USD stock from serie() plus crypto |
 | ranking | 2122 | realizado | yearly expense ranking, only paid rows |
@@ -132,13 +189,14 @@ Documentation of the CURRENT state (baseline `f3dbff3`; line numbers refer to in
 | renderAnio | 2675 | mixto | year view: serie() realized totals, ranking realized |
 | renderUSD | 2791 | otro | USD stock/valuation from serie() and patrimonio() |
 | refrescar | 3096 | mixto | live refresh: calc() realized plus suma() section subtotals |
-| hayDatos | 3377 | realizado | E1: should be registrado, fixed in R2 (today false when data is registered but nothing is ticked) |
+| hayDatos | 3377 | registrado | E1 fixed in R2 (was realizado): any item with monto > 0, any month flow field or Trabajo data |
+| cuotaPaga | (new in R2) | realizado | E9: an installment is paid only when ticked AND monto > 0 |
 | exportarCSV | 3435 | realizado | exports serie() realized totals per month |
 | duplicar | 3447 | otro | copies the year: carries serie() stock, zeroes every monto/pagado |
 | gastoRapido | 3642 | otro | editor/writer of a single item amount; no aggregation |
 | sumarAItem | 3667 | otro | editor/writer of a single item amount; no aggregation; forces pagado when the previous monto was 0 |
 | sumarGasto | 3671 | otro | editor/writer of a single item amount; no aggregation; logs a movement |
-| quitarMov | 3690 | otro | editor/writer of a single item amount; no aggregation (E9: undo does not restore previous pagado) |
+| quitarMov | 3690 | otro | editor/writer of a single item amount; no aggregation (E9 fixed in R2: undo restores the previous pagado of an item left empty) |
 | copiarAnterior | 3719 | otro | copies previous-month amounts, resets pagado |
 | abrirComoCobras | 3734 | otro | opens the weekly/frequency charge editor for one item |
 | pintarNotaCobras | 3773 | otro | editor/writer of a single item amount; no aggregation |
@@ -174,4 +232,4 @@ Documentation of the CURRENT state (baseline `f3dbff3`; line numbers refer to in
 | verPase | 5735 | otro | Trabajo ledger (facturas/cobros/gastos/pases): own date-based realization, outside the monthly plan semantics |
 | accionTj | 5744 | otro | Trabajo ledger (facturas/cobros/gastos/pases): own date-based realization, outside the monthly plan semantics |
 
-Totals: {"otro":44,"registrado":4,"realizado":9,"mixto":6}. Characterization of functions R2 will change: `tests/caracterizacion.test.js` (names prefixed "[R2 will change]").
+Totals at R1: {"otro":44,"registrado":4,"realizado":9,"mixto":6}; R2 moved hayDatos to registrado and added cuotaPaga (realizado). Characterization of the R2 behaviors: `tests/caracterizacion.test.js` (names now prefixed "[R2 fixed]"). Line numbers in the table are the R1 baseline.
