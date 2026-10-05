@@ -28,8 +28,8 @@ test('[R2 fixed] parseMonto E4: ambiguous and exotic input is rejected, not gues
   assert.equal(app.parseMonto('1.234,56'), 1234.56);
 });
 
-test('[R2 will change] esc S6: single quote is not escaped', function(){
-  assert.equal(app.esc("'"), "'");
+test('[R2 fixed] esc S6: single quote is escaped', function(){
+  assert.equal(app.esc("'"), '&#39;');
   assert.equal(app.esc('<a href="x">&'), '&lt;a href=&quot;x&quot;&gt;&amp;');
 });
 

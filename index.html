@@ -1900,7 +1900,7 @@ function corto(n){
   if(n >= 1000) return Math.round(n/1000)+'k';
   return String(n);
 }
-function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 /* Lectura de números es-AR por tipo de campo (D9). Cada lector devuelve NaN si no entiende el texto
    (nunca adivina) y 0 si está vacío. Con neg=true acepta un "-" adelante. */
 function sinSigno(t, neg){   // {t:texto sin el "-", sg:1|-1} o null si el signo no corresponde
@@ -3484,9 +3484,13 @@ function imprimir(){
 
 /* ═══ 9 · exportar / importar / duplicar ════════════════════════ */
 
+function csvTexto(v){   // celda de texto: sin ; ni saltos, y con ' adelante si una planilla la leería como fórmula (= + - @ TAB CR). Los números no pasan por acá
+  var s = String(v == null ? '' : v);
+  return (/^[=+\-@\t\r]/.test(s) ? "'" : '') + s.replace(/[;\r\n]/g, ' ');
+}
 function exportarCSV(){
   var s = serie(D), l = [], i;
-  function c(v){ return String(v).replace(/[;\n]/g,' '); }
+  var c = csvTexto;
   l.push(['Mes','Ingresos','Gastos fijos','Gastos variables','Gastos','Ahorro ARS','Pesos a dólares','Dólares comprados','Pagado a','Saqué del ahorro','Dólares vendidos','Repuse','A reponer','Deudas','Disponible final','Ahorro acumulado','USD del mes','USD acumulado'].join(';'));
   for(i=0;i<12;i++){
     var x = s[i];
@@ -3736,7 +3740,7 @@ function sumarGasto(){
   var id = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
   D.meses[mes].movimientos.push({id:id, fecha:new Date().toISOString(), sec:gr.sec, nombre:it.nombre, monto:gr.monto});
   cerrarHoja(); tocar(); conScroll(renderMes);
-  toast('Sumé ' + fARS(gr.monto) + ' a ' + esc(it.nombre), 'Deshacer', 'quitarMov', id);
+  toast('Sumé ' + fARS(gr.monto) + ' a ' + it.nombre, 'Deshacer', 'quitarMov', id);
 }
 var borrado = null;
 function volverBorrado(){
@@ -3769,9 +3773,9 @@ function pildora(txt, mal){
   if(tPild) clearTimeout(tPild);
   tPild = setTimeout(function(){ p.className = 'pild' + (mal ? ' aviso' : ''); }, 1900);
 }
-function toast(txt, accion, act, id){
+function toast(txt, accion, act, id){   // texto plano: se escapa siempre (puede traer datos del usuario, como un número de factura)
   var t = document.getElementById('toast');
-  t.innerHTML = '<span>' + txt + '</span>' + (accion ? '<button data-act="'+act+'" data-id="'+esc(id)+'">'+accion+'</button>' : '');
+  t.innerHTML = '<span>' + esc(txt) + '</span>' + (accion ? '<button data-act="'+act+'" data-id="'+esc(id)+'">'+esc(accion)+'</button>' : '');
   t.classList.add('on');
   if(tToast) clearTimeout(tToast);
   tToast = setTimeout(function(){ t.classList.remove('on'); }, 5000);
@@ -4003,7 +4007,7 @@ document.addEventListener('click', function(ev){
     confirmar('Borrar '+esc(nom), 'Se borra solo de '+MESES[mes]+'. Los otros meses quedan como están.', 'Borrar', function(){
       borrado = {k:kk, i:ii, mes:mes, it:D.meses[mes][kk][ii]};
       D.meses[mes][kk].splice(ii,1); tocar(); conScroll(renderMes);
-      toast('Borré ' + esc(nom), 'Deshacer', 'volverBorrado');
+      toast('Borré ' + nom, 'Deshacer', 'volverBorrado');
     });
     return;
   }
@@ -5410,7 +5414,7 @@ function ofrecerRenombrar(de, a, salvo){
       for(var j=0;j<T.facturas.length;j++) if(mismoCliente(T.facturas[j].cliente, de)) T.facturas[j].cliente = a;
       for(j=0;j<T.cobros.length;j++) if(mismoCliente(T.cobros[j].cliente, de)) T.cobros[j].cliente = a;
       guardarTrab(true); renderTrabajo();
-      toast('Listo: todo quedó a nombre de ' + esc(a), 'Deshacer', 'tjDeshacer');
+      toast('Listo: todo quedó a nombre de ' + a, 'Deshacer', 'tjDeshacer');
     });
 }
 function borrarFac(id){
@@ -5706,7 +5710,7 @@ function guardarTope(quitar){
   toast(v ? 'Tope guardado' : 'Tope quitado', 'Deshacer', 'tjDeshacer');
 }
 function csvTrabajo(){
-  function c(v){ return String(v == null ? '' : v).replace(/[;\r\n]/g, ' '); }
+  var c = csvTexto;
   function n(v){ return String(Math.round(num(v) * 100) / 100).replace('.', ','); }
   var l = [], i, j, r = resumenTrab(), fs = T.facturas.slice(), cs = T.cobros.slice(), gs = T.gastos.slice(), ps = T.pases.slice();
   var porFecha = function(a, b){ return a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0; };
@@ -5939,6 +5943,11 @@ function accionTj(a, b){
    que había, por las dudas. No convierte ni reescribe nada: los años siguen
    exactamente como estaban, y los campos nuevos se leen con valor por defecto. */
 var LSESQ = 'kibo.esquema', LSPRE130 = 'kibo.respaldo.pre130', ESQUEMA = '1.30';
+// claves de esta app (la copia y la restauración solo tocan estas; otra app del mismo sitio puede usar "kibo.algo"): kibo.datos.AAAA + estas
+var CLAVES_PROPIAS = [LSANIO, LSCOPIA, LSOCULTO, LSBIENV, LSHIST, LSTRAB, LSVISTA];
+function claveMia(k){
+  return typeof k === 'string' && (CLAVES_PROPIAS.indexOf(k) >= 0 || (k.indexOf(PREF) === 0 && /^\d{4}$/.test(k.slice(PREF.length))));
+}
 function seguroActualizacion(){
   try{
     if(localStorage.getItem(LSESQ) === ESQUEMA) return false;
