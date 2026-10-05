@@ -57,7 +57,7 @@ R10. Income synced from Trabajo ("Del trabajo") is already cash-based and always
 ## TDD
 
 Mode: off (no project/session configuration). Tests are still required by the sprint brief.
-Runner: `node --test tests/` (Node 24, no dependencies).
+Runner: `npm test` (= `node --test "tests/**/*.test.js"`; Node 24, no dependencies).
 
 ## Route
 
@@ -72,8 +72,23 @@ Delegated direct: one writer for `index.html` + test files (writer trigger: 2+ n
 - T2 commit: 0aac6cf.
 - T3 done: sumaPagado + calc realized totals and pendiente* (R1-R3), MARCABLE extended, alternarPago (pagar handler), sumarAItem (gasto rápido, R9), renglonTrabajo creates pagado:true and calc/seccion treat "Del trabajo" as always counted without checkbox (R10), aria text "cobrado" for ingresos, Ajustes help text updated. tests/totales.test.js. Observed: 30 pass / 0 fail; inline script parses.
 - T3 commit: fc9e168.
-- T4 done (this commit): APPVER 1.31.0, sw.js kibfinanzas-offline-v40, LEEME CHANGELOG entry. Final: 30 pass / 0 fail; inline script parses. Manual browser flow not executed.
+- T4 done: APPVER 1.31.0, sw.js kibfinanzas-offline-v40, LEEME CHANGELOG entry. Final: 30 pass / 0 fail; inline script parses.
+- T4 commit: 1c56f92.
+- Native review (RDD on by default): assessed medium (executable change in index.html, 676 lines,
+  slice budget reached); consent granted; lens review-reliability; outcome approved and
+  acknowledged (lineage review-6094bb14733bbda9). Four non-blocking advisory findings:
+  copiarAnterior untick (verified harmless: copy button only renders when section subtotal is 0),
+  migration anio fallback (verified not reachable: normalizar sets `d.anio` before migrating),
+  gasto rápido into a pending positive target (known R9 limitation), render paths untested by unit
+  tests (covered by the browser check below).
+- Browser check (headless Edge via CDP on a scratch copy of HEAD with a test-only hook exposing
+  internals; repo untouched): 36 pass / 0 fail. Covered: legacy migration on load (past/current
+  ticked, explicit false kept, future pending, marker), realized vs pending totals, on-screen
+  balance, checkbox present on ingresos and gastos variables with "cobrado" label, toggle on/off,
+  4x toggle without accumulation, edit pending amount (no impact) and paid amount (difference),
+  persistence of ticked and pending state across reload, serie realized totals, no uncaught errors.
 
 ## Next step
 
-Done; ready for review and manual flow check in a browser (not run by the writer).
+Done. Open product decisions: whether the Año ranking and the pie chart (composition views)
+should also become realized-only.
