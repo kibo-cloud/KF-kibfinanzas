@@ -4069,7 +4069,7 @@ document.addEventListener('click', function(ev){
   if(a === 'guardarPlan'){ guardarPlan(false); return; }
   if(a === 'quitarPlan'){ guardarPlan(true); return; }
   if(a === 'colAyuda'){ var ka = b.getAttribute('data-k'); ayudaAbierta[ka] = !ayudaAbierta[ka]; plegarAnim(b.parentNode, !ayudaAbierta[ka]); return; }
-  if(a === 'gastoRapido'){ gastoRapido(); return; }
+  if(a === 'gastoRapido' || a === 'rapido'){ gastoRapido(); return; }   // el FAB y el botón "Gasto" de la tarjeta abren la misma hoja
   if(a === 'chip'){
     var cs = document.querySelectorAll('#grChips button');
     for(var j=0;j<cs.length;j++) cs[j].classList.toggle('on', cs[j] === b);
