@@ -33,13 +33,34 @@ test('[R2 will change] esc S6: single quote is not escaped', function(){
   assert.equal(app.esc('<a href="x">&'), '&lt;a href=&quot;x&quot;&gt;&amp;');
 });
 
-test('[R2 will change] hayDatos E1: false when data is registered but nothing is ticked', function(){
+test('[R2 fixed] hayDatos E1: registered data counts even when nothing is ticked', function(){
   app.D = freshD();
+  assert.equal(app.hayDatos(), false);
   app.D.meses[5].ingresos = [{nombre: 'Sueldo', monto: 100000, pagado: false}];
   app.D.meses[5].gastosFijos = [{nombre: 'Alquiler', monto: 30000, pagado: false}];
-  assert.equal(app.hayDatos(), false);
-  app.D.meses[5].ingresos[0].pagado = true;   // once ticked, it is data
   assert.equal(app.hayDatos(), true);
+  app.D.meses[5].ingresos[0].pagado = true;   // ticking does not change it
+  assert.equal(app.hayDatos(), true);
+});
+
+test('[R2 fixed] hayDatos E1: any month flow field is registered data', function(){
+  ['ahorroMesARS', 'ahorroMesUSD', 'compraARS', 'compraUSD', 'retiroARS', 'ventaUSD', 'ventaARS', 'reposicionARS'].forEach(function(f){
+    app.D = freshD();
+    app.D.meses[3][f] = 5;
+    assert.equal(app.hayDatos(), true, f);
+  });
+});
+
+test('[R2 fixed] hayDatos E1: empty year and zero amounts are not data', function(){
+  app.D = freshD();
+  app.D.meses[2].ingresos = [{nombre: 'Sueldo', monto: 0, pagado: true}];   // ticked but zero
+  assert.equal(app.hayDatos(), false);
+});
+
+test('[R2 fixed] hayDatos E1: Trabajo data counts', function(){
+  var a = loadApp({today: '2026-06-15', funcs: ['hayDatos'], globals: {tieneTrab: function(){ return true; }}});
+  a.D = {meses: []};
+  assert.equal(a.hayDatos(), true);
 });
 
 test('[R2 will change] cargarCuotas E14: 100000 in 3 installments loads 33333 x3 (sum 99999)', function(){

@@ -3374,9 +3374,14 @@ function diasSinCopia(){
   var u = ultimaCopia(); if(!u) return -1;
   return Math.floor((Date.now() - new Date(u).getTime()) / 86400000);
 }
-function hayDatos(){
+function hayDatos(){   // "hay datos" = hay algo REGISTRADO (cargado), esté tildado o no
   if(tieneTrab()) return true;
-  for(var i=0;i<12;i++){ var c = calc(D.meses[i]); if(c.totalIngresos || c.totalGastos || c.totalDeudas || c.ahorroMesARS) return true; }
+  var flujo = ['ahorroMesARS','ahorroMesUSD','compraARS','compraUSD','retiroARS','ventaUSD','ventaARS','reposicionARS'];
+  for(var i=0;i<12;i++){
+    var m = D.meses[i], s, q;
+    for(s=0;s<SECS.length;s++) for(q=0;q<m[SECS[s].k].length;q++) if(num(m[SECS[s].k][q].monto) > 0) return true;
+    for(q=0;q<flujo.length;q++) if(num(m[flujo[q]]) !== 0) return true;
+  }
   return false;
 }
 function vioBienvenida(){ try{ return localStorage.getItem(LSBIENV) === '1'; }catch(e){ return false; } }

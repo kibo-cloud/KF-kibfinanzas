@@ -36,7 +36,7 @@ module.exports = {
     renderAnio:         [M, 'year view: serie() realized totals, ranking realized'],
     renderUSD:          [O, 'USD stock/valuation from serie() and patrimonio()'],
     refrescar:          [M, 'live refresh: calc() realized plus suma() section subtotals'],
-    hayDatos:           [Z, 'E1: should be registrado, fixed in R2 (today false when data is registered but nothing is ticked)'],
+    hayDatos:           [R, 'E1 (fixed in R2): any item with monto > 0 (paid or not), any month flow field, or Trabajo data'],
     exportarCSV:        [Z, 'exports serie() realized totals per month'],
     duplicar:           [O, 'copies the year: carries serie() stock, zeroes every monto/pagado'],
     gastoRapido:        [O, EDIT],
