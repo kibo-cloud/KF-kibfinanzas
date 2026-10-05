@@ -54,6 +54,7 @@ R10. Income synced from Trabajo ("Del trabajo") is already cash-based and always
 - [x] T3 Engine + UI: status-aware `calc`, `MARCABLE` for ingresos/variables, gasto rápido, Trabajo row.
 - [x] T4 Version bump (APPVER, sw cache), LEEME changelog, full suite + manual flow check.
 - [x] T5 Composition views (yearly ranking, monthly pie) count only paid items.
+- [x] T6 Budget cap bars (topes) are consumed only by paid items.
 
 ## TDD
 
@@ -98,9 +99,16 @@ Delegated direct: one writer for `index.html` + test files (writer trigger: 2+ n
   49/49 (13 new: pie data and screen, pie center total, ranking data and screen, tick/untick,
   4x toggle, saldo unchanged, pending still exposed). Native assess since 1c56f92: medium,
   review_due false (`under_budget`, 138 lines) — stays pending in the slice.
-- Not changed by decision: per-category budget bars (`filaTope`, `pasadas`, refrescar topes)
-  compare registered amount against a budget cap, not realized money.
+- T6 (product decision: budget consumption = sum of paid expenses): `filaTope`, `pasadas` and
+  the live bar update in `refrescar` read `num(it.monto)` regardless of status. New helper
+  `gastadoTope(it)` delegates to `estaPagado` and is used at all three sites (no new status
+  logic). Route: direct inline. RED: tests/topes.test.js 6 fail / 4 pass with the helper wired
+  to the old semantics; GREEN after. Commits f13bad0 (fix) and d49fcf6 (v1.31.2, sw v42, LEEME).
+  `npm test` 49/49. Browser check 63/63 (14 new tope checks: pending over cap not consumed,
+  tick/untick, warning shown/hidden, live edit pending/paid, exact limit, over limit, 4x toggle,
+  saldo intact). Native assess since 1c56f92: medium, `under_budget` (264 lines) — still pending
+  in the slice.
 
 ## Next step
 
-Done. Open product question: should budget bars (topes) count only paid amounts?
+Done. No push, no merge (user decision).
