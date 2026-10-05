@@ -1768,41 +1768,24 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--acc);outline-offset
 /*DATOS_FIN*/
 </script>
 
-<script>
-(function(){
+<script id="motor">
+/* Motor financiero (TGMotor): funciones puras, sin DOM, sin localStorage y sin estado de la app (D, T, mes).
+   Vive en su propio bloque inline, antes de la app, para poder cargarlo y probarlo entero. No es un archivo aparte a propósito:
+   "Versión para PC" baja ./index.html y arma un único .html con los datos adentro, y la caché offline es una lista fija de archivos. */
+var TGMotor = (function(){
 'use strict';
 
-/* ═══ 0 · estado global ═════════════════════════════════ */
-var M1 = '/*DATOS_' + 'INICIO*/';
-var M2 = '/*DATOS_' + 'FIN*/';
-
-var APPVER   = '1.31.3';    // versión visible en Ajustes (LAB)
-var PREF     = 'kibo.datos.';        // kibo.datos.2026, kibo.datos.2027…
-var LSANIO   = 'kibo.anio';
-var LSCOPIA  = 'kibo.ultimaCopia';
-var LSOCULTO = 'kibo.oculto';         // '1' = montos tapados con puntos
-var LSBIENV  = 'kibo.bienvenida';     // '1' = ya vio la bienvenida de la primera vez
-var oculto = false;
-try{ oculto = localStorage.getItem(LSOCULTO) === '1'; }catch(e){}
-var PUNTOS = '\u2022\u2022\u2022\u2022';
-var DIAS_AVISO = 15;
-
-var MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-var CORTOS = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
 var SECS = [
   {k:'ingresos',        t:'Ingresos'},
   {k:'gastosFijos',     t:'Gastos fijos'},
   {k:'gastosVariables', t:'Gastos variables'},
   {k:'deudas',          t:'Deudas'}
 ];
+var MARCABLE = {ingresos:true, gastosFijos:true, gastosVariables:true, deudas:true};
+var RENGLON_TRABAJO = 'Del trabajo';
+var TORTA_MAX = 6;   // arriba de esto, el resto se junta en "Otros"
+var TOPEABLE = {gastosFijos:true, gastosVariables:true};
 
-var D = null, mes = new Date().getMonth(), tab = 'mes';
-var sucio = false, tBuffer = null, tServidor = null, hayLS = true;
-var arrancado = false, tGuardar = null;
-var conflictoDatos = null;
-var gr = {monto:0, cat:null, sec:'gastosVariables'};
-
-/* ═══ 1 · datos por defecto ══════════════════════════════════════ */
 function mesVacio(){
   return {
     ingresos:[{nombre:'Sueldo',monto:0,pagado:false},{nombre:'Otros ingresos',monto:0,pagado:false}],
@@ -1874,35 +1857,6 @@ function normalizar(d){
   return d;
 }
 function num(v){ var n = typeof v==='number' ? v : parseFloat(v); return isFinite(n) ? n : 0; }
-
-/* ═══ 2 · formato es-AR ═════════════════════════════════════════ */
-function grupos(s){ return s.replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
-function fARS(n){
-  if(oculto) return PUNTOS;
-  n = Math.round(num(n));
-  if(n === 0) return '—';
-  var s = '$' + grupos(String(Math.abs(n)));
-  return n < 0 ? '(' + s + ')' : s;
-}
-function fUSD(n){
-  if(oculto) return PUNTOS;
-  n = num(n);
-  if(Math.abs(n) < 0.005) return '—';
-  var p = Math.abs(n).toFixed(2).split('.');
-  var s = 'US$ ' + grupos(p[0]) + ',' + p[1];
-  return n < 0 ? '(' + s + ')' : s;
-}
-function hARS(n){ var t = fARS(n); return !oculto && num(n) < 0 ? '<span class="neg">'+t+'</span>' : t; }
-function hUSD(n){ var t = fUSD(n); return !oculto && num(n) < 0 ? '<span class="neg">'+t+'</span>' : t; }
-function fPct(p){ return (num(p)*100).toFixed(0).replace('.',',') + '%'; }
-function corto(n){
-  if(oculto) return '\u2022\u2022';
-  n = Math.abs(Math.round(num(n)));
-  if(n >= 1000000) return (n/1000000).toFixed(1).replace('.',',')+'M';
-  if(n >= 1000) return Math.round(n/1000)+'k';
-  return String(n);
-}
-function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 /* Lectura de números es-AR por tipo de campo (D9). Cada lector devuelve NaN si no entiende el texto
    (nunca adivina) y 0 si está vacío. Con neg=true acepta un "-" adelante. */
 function sinSigno(t, neg){   // {t:texto sin el "-", sg:1|-1} o null si el signo no corresponde
@@ -1946,22 +1900,6 @@ function parseEntero(s, neg){
 }
 // texto que todavía se está escribiendo ("1." o "1,"): no se marca error hasta que se suelta el campo
 function parcial(raw, lector){ var t = String(raw).trim(); return /[.,]$/.test(t) && !isNaN(lector(t.slice(0,-1))); }
-function marcarErr(t, mal){ if(t && t.classList){ if(mal) t.classList.add('err'); else t.classList.remove('err'); } }
-function crudo(n){
-  n = num(n); if(n === 0) return '';
-  var s = String(n);
-  if(/e/i.test(s)) s = n.toFixed(12).replace(/0+$/,'').replace(/\.$/,'');   // 1e-8 no se lee de vuelta: se escribe con todos sus decimales
-  return s.replace('.',',');
-}
-function fechaCorta(iso){
-  if(!iso) return '';
-  var d = new Date(iso);
-  if(isNaN(d)) return '';
-  function p(x){ return (x<10?'0':'')+x; }
-  return p(d.getDate())+'/'+p(d.getMonth()+1)+' '+p(d.getHours())+':'+p(d.getMinutes());
-}
-
-/* ═══ 3 · cálculos (funciones puras) ════════════════════════════ */
 function suma(a){ var t=0; for(var i=0;i<(a||[]).length;i++) t += num(a[i].monto); return t; }   // lo cargado, esté pagado o no
 // lo realizado: solo lo tildado (pagado/cobrado). "Del trabajo" viene de pases ya cobrados, siempre cuenta
 function sumaPagado(a, ing){
@@ -2012,21 +1950,8 @@ function costoDolares(d){
   for(var i=0;i<12;i++){ ars += num(d.meses[i].compraARS); usd += num(d.meses[i].compraUSD); }
   return {ars: ars, usd: usd, promedio: usd > 0 ? ars/usd : 0};
 }
-function notaCompra(m, acum){
-  var a = num(m.compraARS), u = num(m.compraUSD);
-  if(a > 0 && u > 0){
-    var t = 'Pagaste ' + fARS(a/u) + ' por d\u00f3lar. ';
-    t += acum < 0 ? 'Ojo: est\u00e1s pasando m\u00e1s pesos de los que ten\u00e9s ahorrados.'
-       : Math.round(acum) === 0 ? 'Pasaste todo el ahorro a d\u00f3lares; no te quedan pesos ahorrados.'
-       : 'Te quedan ' + fARS(acum) + ' ahorrados en pesos.';
-    return t;
-  }
-  if(a > 0 || u > 0) return 'Complet\u00e1 los dos campos para calcular a cu\u00e1nto lo pagaste.';
-  return 'Si pas\u00e1s parte del ahorro a d\u00f3lares, cargalo ac\u00e1: se descuenta de los pesos y se suma a los d\u00f3lares.';
-}
-var MARCABLE = {ingresos:true, gastosFijos:true, gastosVariables:true, deudas:true};
 function mesTope(anio){
-  var hoy = new Date(), a = anio == null ? D.anio : anio;
+  var hoy = new Date(), a = anio;
   if(a < hoy.getFullYear()) return 11;
   if(a > hoy.getFullYear()) return -1;
   return hoy.getMonth();
@@ -2041,41 +1966,20 @@ function estaPagado(j, it){
   return !!it && it.pagado === true;   // el estado es explícito; lo viejo sin definir lo completa normalizar
 }
 function alternarPago(j, it){ it.pagado = !estaPagado(j, it); return it.pagado; }
-var DIASEM = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
-var DIASEMC = ['D','L','M','M','J','V','S'];
-function diasDelMes(anio, m){ return new Date(anio, m + 1, 0).getDate(); }
-function cuantosPagos(it, anio, m){
-  if(it.frec === 'semanal'){
-    var d = it.dias.length ? it.dias[0] : 5, n = 0, dim = diasDelMes(anio, m), q;
-    for(q=1;q<=dim;q++) if(new Date(anio, m, q).getDay() === d) n++;
-    return n;
-  }
-  if(it.frec === 'quincenal' || it.frec === 'dias' || it.frec === 'mensual'){
-    var dim2 = diasDelMes(anio, m), c = 0, w;
-    for(w=0;w<it.dias.length;w++) if(it.dias[w] >= 1 && it.dias[w] <= dim2) c++;
-    return c || (it.frec === 'mensual' ? 1 : 0);
-  }
-  return 1;
+function clave(x){
+  // para comparar nombres: sin tildes, sin mayúsculas y sin espacios de más
+  var t = String(x || '').toLowerCase().replace(/\s+/g, ' ').trim(), a = 'áàäâéèëêíìïîóòöôúùüûñç', b = 'aaaaeeeeiiiioooouuuunc', o = '', i, k;
+  for(i=0;i<t.length;i++){ k = a.indexOf(t.charAt(i)); o += k < 0 ? t.charAt(i) : b.charAt(k); }
+  return o;
 }
-function cobroTxt(it){
-  if(!it.frec) return '';
-  var n = cuantosPagos(it, D.anio, mes), cada = n > 0 ? Math.round(num(it.monto) / n) : 0, det;
-  if(it.frec === 'semanal') det = 'Todos los ' + DIASEM[it.dias.length ? it.dias[0] : 5];
-  else if(it.frec === 'mensual') det = it.dias.length ? 'El día ' + it.dias[0] + ' de cada mes' : 'Una vez por mes';
-  else {
-    var l = it.dias.slice().sort(function(a,b){ return a-b; });
-    det = l.length ? 'Los días ' + (l.length > 3 ? l.slice(0,3).join(', ') + ' y ' + (l.length-3) + ' más' : l.join(l.length===2?' y ':', ')) : (it.frec === 'quincenal' ? 'Cada quincena' : 'Días a elegir');
-  }
-  if(n > 1) det += ' · ' + n + ' pagos de ' + fARS(cada);
-  return det;
-}
-function planDe(nombre){ return D.planDeudas[String(nombre||'').trim()] || null; }
+function esRenglonTrabajo(n){ return clave(n) === clave(RENGLON_TRABAJO); }
+function planDe(d, nombre){ return d.planDeudas[String(nombre||'').trim()] || null; }
 function cuotaPaga(j, it){ return estaPagado(j, it) && num(it.monto) > 0; }   // una cuota cuenta como paga si está tildada Y tiene monto
-function estadoDeuda(nombre, i){
-  var p = planDe(nombre); if(!p || !p.cuotas) return null;
+function estadoDeuda(d, nombre, i){
+  var p = planDe(d, nombre); if(!p || !p.cuotas) return null;
   var n = String(nombre||'').trim(), pag = p.pagadasAntes, antes = p.pagadasAntes;
   for(var j=0;j<=i;j++){
-    var ls = D.meses[j].deudas, pagoMes = false;
+    var ls = d.meses[j].deudas, pagoMes = false;
     for(var q=0;q<ls.length;q++) if(String(ls[q].nombre||'').trim() === n && cuotaPaga(j, ls[q])) pagoMes = true;
     if(pagoMes){ pag++; if(j < i) antes++; }
   }
@@ -2083,14 +1987,14 @@ function estadoDeuda(nombre, i){
   // la proyección arranca en el primer mes sin pagar, no en el mes que estés mirando
   var primero = 0, jj;
   for(jj=0;jj<12;jj++){
-    var lz = D.meses[jj].deudas, hay = false;
+    var lz = d.meses[jj].deudas, hay = false;
     for(var qz=0;qz<lz.length;qz++) if(String(lz[qz].nombre||'').trim() === n && cuotaPaga(jj, lz[qz])) hay = true;
     if(hay) primero = jj + 1;
   }
-  if(primero < mesTope() + 1) primero = mesTope() + 1;
+  if(primero < mesTope(d.anio) + 1) primero = mesTope(d.anio) + 1;
   if(primero < 0) primero = 0;
   var k = primero + restantes - 1;
-  var fin = restantes > 0 ? {mes:((k % 12) + 12) % 12, anio:D.anio + Math.floor(k/12)} : null;
+  var fin = restantes > 0 ? {mes:((k % 12) + 12) % 12, anio:d.anio + Math.floor(k/12)} : null;
   var rp = repartoCuotas(p);   // saldo = lo que suman las cuotas que faltan (la última lleva el resto del redondeo)
   return {plan:p, pagadas:pag, restantes:restantes, esteMes:esteMes, cuotaN:esteMes ? pag : antes + 1,
           fin:fin, saldo:restantes > 0 ? (restantes - 1)*rp.valor + rp.ultima : 0, pct:Math.min(1, pag/p.cuotas)};
@@ -2104,60 +2008,50 @@ function repartoCuotas(p){
   return {valor:v, ultima:u};
 }
 function valorCuota(p){ return repartoCuotas(p).valor; }
-function pagadasHasta(nombre, hasta){
+function pagadasHasta(d, nombre, hasta){
   var n = String(nombre||'').trim(), c = 0, j, q;
   for(j=0;j<hasta && j<12;j++){
-    var ls = D.meses[j].deudas;
+    var ls = d.meses[j].deudas;
     for(q=0;q<ls.length;q++) if(String(ls[q].nombre||'').trim() === n && cuotaPaga(j, ls[q])){ c++; break; }
   }
   return c;
 }
-function pendientesDesde(nombre, desde){
-  var p = planDe(nombre); if(!p || !p.cuotas) return 0;
-  return Math.max(0, p.cuotas - p.pagadasAntes - pagadasHasta(nombre, desde));
+function pendientesDesde(d, nombre, desde){
+  var p = planDe(d, nombre); if(!p || !p.cuotas) return 0;
+  return Math.max(0, p.cuotas - p.pagadasAntes - pagadasHasta(d, nombre, desde));
 }
-function planDeCarga(nombre, desde){
-  var p = planDe(nombre), r = pendientesDesde(nombre, desde);
+function planDeCarga(d, nombre, desde){
+  var p = planDe(d, nombre), r = pendientesDesde(d, nombre, desde);
   var caben = Math.min(r, 12 - desde);
   var rp = repartoCuotas(p);
   return {valor:rp.valor, ultima:caben > 0 && r - caben === 0 ? rp.ultima : rp.valor, poner:caben, hasta:desde + caben - 1, sobran:r - caben, desde:desde};
 }
-function cargarCuotas(nombre, desde){
-  var n = String(nombre||'').trim(), pc = planDeCarga(n, desde), p = planDe(n), j, q, ls, hallado, mc;
-  var num0 = p ? p.pagadasAntes + pagadasHasta(n, desde) : 0;   // cuántas cuotas hay antes de la primera que se carga
+function cargarCuotas(d, nombre, desde){
+  var n = String(nombre||'').trim(), pc = planDeCarga(d, n, desde), p = planDe(d, n), j, q, ls, hallado, mc;
+  var num0 = p ? p.pagadasAntes + pagadasHasta(d, n, desde) : 0;   // cuántas cuotas hay antes de la primera que se carga
   for(j=desde;j<desde+pc.poner;j++){
-    ls = D.meses[j].deudas; hallado = false;
+    ls = d.meses[j].deudas; hallado = false;
     mc = num0 + (j - desde) + 1 >= p.cuotas ? pc.ultima : pc.valor;   // la cuota número "cuotas" es la última del plan
-    for(q=0;q<ls.length;q++) if(String(ls[q].nombre||'').trim() === n){ ls[q].monto = mc; if(typeof ls[q].pagado !== 'boolean') ls[q].pagado = j < mesesCorridos(D.anio); hallado = true; break; }
-    if(!hallado) ls.push({nombre:n, monto:mc, pagado:j < mesesCorridos(D.anio)});
+    for(q=0;q<ls.length;q++) if(String(ls[q].nombre||'').trim() === n){ ls[q].monto = mc; if(typeof ls[q].pagado !== 'boolean') ls[q].pagado = j < mesesCorridos(d.anio); hallado = true; break; }
+    if(!hallado) ls.push({nombre:n, monto:mc, pagado:j < mesesCorridos(d.anio)});
   }
   return pc;
 }
-function textoDeuda(nombre, i){
-  var e = estadoDeuda(nombre, i);
-  if(!e) return 'Cargar cuotas';
-  if(e.restantes === 0 && e.esteMes) return 'Última cuota: la ' + e.pagadas + ' de ' + e.plan.cuotas + '. Terminada.';
-  if(e.restantes === 0) return 'Terminada: ' + e.plan.cuotas + ' cuotas pagas.';
-  var t = (e.esteMes ? 'Cuota ' + e.cuotaN : 'Sin pago este mes; va la ' + e.cuotaN) + ' de ' + e.plan.cuotas
-        + ' · quedan ' + e.restantes + (e.saldo ? ' (' + fARS(e.saldo) + ')' : '');
-  if(e.fin) t += ' · terminás en ' + MESES[e.fin.mes].toLowerCase() + (e.fin.anio !== D.anio ? ' ' + e.fin.anio : '');
-  return t;
-}
-function proyeccionDeudas(){
+function proyeccionDeudas(d){
   var out = [], vistos = {};
   for(var i=0;i<12;i++){
-    var ls = D.meses[i].deudas;
+    var ls = d.meses[i].deudas;
     for(var q=0;q<ls.length;q++){
       var n = String(ls[q].nombre||'').trim();
-      if(!n || vistos[n] || !planDe(n)) continue;
+      if(!n || vistos[n] || !planDe(d, n)) continue;
       vistos[n] = true;
       var ultimo = -1;
       for(var j=11;j>=0;j--){
-        var l2 = D.meses[j].deudas, hay = false;
+        var l2 = d.meses[j].deudas, hay = false;
         for(var r=0;r<l2.length;r++) if(String(l2[r].nombre||'').trim()===n && num(l2[r].monto)>0) hay = true;
         if(hay){ ultimo = j; break; }
       }
-      var e = estadoDeuda(n, ultimo >= 0 ? ultimo : new Date().getMonth());
+      var e = estadoDeuda(d, n, ultimo >= 0 ? ultimo : new Date().getMonth());
       if(e) out.push({nombre:n, e:e});
     }
   }
@@ -2189,6 +2083,247 @@ function ranking(d){
               .filter(function(x){ return x.monto > 0; });
   arr.sort(function(a,b){ return b.monto - a.monto; });
   return arr.slice(0, 12);
+}
+function gastadoTope(it, j){ return estaPagado(j, it) ? num(it.monto) : 0; }   // el tope lo consume solo lo ya pagado
+function datosTorta(m, j){
+  var l = [], secs = ['gastosFijos','gastosVariables','deudas'], k, i, arr, v;
+  for(k=0;k<secs.length;k++){
+    arr = m[secs[k]] || [];
+    for(i=0;i<arr.length;i++){
+      if(!estaPagado(j, arr[i])) continue;   // la torta muestra lo ya pagado, igual que los totales
+      v = Math.round(num(arr[i].monto));
+      if(v > 0) l.push({n:String(arr[i].nombre || 'Sin nombre'), v:v, k:secs[k]});
+    }
+  }
+  l.sort(function(a, b){ return b.v - a.v; });
+  if(l.length > TORTA_MAX){
+    var otros = 0, cuantos = l.length - TORTA_MAX;
+    for(i=TORTA_MAX;i<l.length;i++) otros += l[i].v;
+    l = l.slice(0, TORTA_MAX);
+    l.push({n:'Otros (' + cuantos + ')', v:otros, k:'otros'});
+  }
+  return l;
+}
+function hayDatos(d, conTrabajo){   // "hay datos" = hay algo REGISTRADO (cargado), esté tildado o no
+  if(conTrabajo) return true;
+  var flujo = ['ahorroMesARS','ahorroMesUSD','compraARS','compraUSD','retiroARS','ventaUSD','ventaARS','reposicionARS'];
+  for(var i=0;i<12;i++){
+    var m = d.meses[i], s, q;
+    for(s=0;s<SECS.length;s++) for(q=0;q<m[SECS[s].k].length;q++) if(num(m[SECS[s].k][q].monto) > 0) return true;
+    for(q=0;q<flujo.length;q++) if(num(m[flujo[q]]) !== 0) return true;
+  }
+  return false;
+}
+function sumarAItem(it, monto){   // gasto rápido es plata ya gastada: un ítem vacío queda pagado; con un monto pendiente conserva su estado
+  if(!num(it.monto)) it.pagado = true;
+  it.monto = num(it.monto) + monto;
+}
+
+return {
+  SECS: SECS,
+  MARCABLE: MARCABLE,
+  RENGLON_TRABAJO: RENGLON_TRABAJO,
+  TORTA_MAX: TORTA_MAX,
+  TOPEABLE: TOPEABLE,
+  mesVacio: mesVacio,
+  normalizar: normalizar,
+  num: num,
+  sinSigno: sinSigno,
+  cerosFuera: cerosFuera,
+  parseMonto: parseMonto,
+  parseCantidad: parseCantidad,
+  parsePct: parsePct,
+  parseEntero: parseEntero,
+  parcial: parcial,
+  suma: suma,
+  sumaPagado: sumaPagado,
+  calc: calc,
+  serie: serie,
+  costoDolares: costoDolares,
+  mesTope: mesTope,
+  mesesCorridos: mesesCorridos,
+  estaPagado: estaPagado,
+  alternarPago: alternarPago,
+  clave: clave,
+  esRenglonTrabajo: esRenglonTrabajo,
+  planDe: planDe,
+  cuotaPaga: cuotaPaga,
+  estadoDeuda: estadoDeuda,
+  totalConRecargo: totalConRecargo,
+  repartoCuotas: repartoCuotas,
+  valorCuota: valorCuota,
+  pagadasHasta: pagadasHasta,
+  pendientesDesde: pendientesDesde,
+  planDeCarga: planDeCarga,
+  cargarCuotas: cargarCuotas,
+  proyeccionDeudas: proyeccionDeudas,
+  criptoUSD: criptoUSD,
+  patrimonio: patrimonio,
+  ranking: ranking,
+  gastadoTope: gastadoTope,
+  datosTorta: datosTorta,
+  hayDatos: hayDatos,
+  sumarAItem: sumarAItem
+};
+})();
+</script>
+
+<script>
+(function(){
+'use strict';
+
+/* ═══ motor financiero: alias de TGMotor (ver <script id="motor"> arriba) ═══ */
+var SECS = TGMotor.SECS,
+    MARCABLE = TGMotor.MARCABLE,
+    RENGLON_TRABAJO = TGMotor.RENGLON_TRABAJO,
+    TOPEABLE = TGMotor.TOPEABLE,
+    normalizar = TGMotor.normalizar,
+    num = TGMotor.num,
+    parseMonto = TGMotor.parseMonto,
+    parseCantidad = TGMotor.parseCantidad,
+    parsePct = TGMotor.parsePct,
+    parseEntero = TGMotor.parseEntero,
+    parcial = TGMotor.parcial,
+    suma = TGMotor.suma,
+    calc = TGMotor.calc,
+    serie = TGMotor.serie,
+    costoDolares = TGMotor.costoDolares,
+    estaPagado = TGMotor.estaPagado,
+    alternarPago = TGMotor.alternarPago,
+    clave = TGMotor.clave,
+    esRenglonTrabajo = TGMotor.esRenglonTrabajo,
+    planDe = TGMotor.planDe,
+    estadoDeuda = TGMotor.estadoDeuda,
+    planDeCarga = TGMotor.planDeCarga,
+    cargarCuotas = TGMotor.cargarCuotas,
+    proyeccionDeudas = TGMotor.proyeccionDeudas,
+    criptoUSD = TGMotor.criptoUSD,
+    patrimonio = TGMotor.patrimonio,
+    ranking = TGMotor.ranking,
+    gastadoTope = TGMotor.gastadoTope,
+    datosTorta = TGMotor.datosTorta,
+    hayDatos = TGMotor.hayDatos,
+    sumarAItem = TGMotor.sumarAItem;
+
+/* ═══ 0 · estado global ═════════════════════════════════ */
+var M1 = '/*DATOS_' + 'INICIO*/';
+var M2 = '/*DATOS_' + 'FIN*/';
+
+var APPVER   = '1.31.3';    // versión visible en Ajustes (LAB)
+var PREF     = 'kibo.datos.';        // kibo.datos.2026, kibo.datos.2027…
+var LSANIO   = 'kibo.anio';
+var LSCOPIA  = 'kibo.ultimaCopia';
+var LSOCULTO = 'kibo.oculto';         // '1' = montos tapados con puntos
+var LSBIENV  = 'kibo.bienvenida';     // '1' = ya vio la bienvenida de la primera vez
+var oculto = false;
+try{ oculto = localStorage.getItem(LSOCULTO) === '1'; }catch(e){}
+var PUNTOS = '\u2022\u2022\u2022\u2022';
+var DIAS_AVISO = 15;
+
+var MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+var CORTOS = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+
+var D = null, mes = new Date().getMonth(), tab = 'mes';
+var sucio = false, tBuffer = null, tServidor = null, hayLS = true;
+var arrancado = false, tGuardar = null;
+var conflictoDatos = null;
+var gr = {monto:0, cat:null, sec:'gastosVariables'};
+
+/* ═══ 1 · datos por defecto: mesVacio y normalizar viven en el motor ═══ */
+
+/* ═══ 2 · formato es-AR ═════════════════════════════════════════ */
+function grupos(s){ return s.replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
+function fARS(n){
+  if(oculto) return PUNTOS;
+  n = Math.round(num(n));
+  if(n === 0) return '—';
+  var s = '$' + grupos(String(Math.abs(n)));
+  return n < 0 ? '(' + s + ')' : s;
+}
+function fUSD(n){
+  if(oculto) return PUNTOS;
+  n = num(n);
+  if(Math.abs(n) < 0.005) return '—';
+  var p = Math.abs(n).toFixed(2).split('.');
+  var s = 'US$ ' + grupos(p[0]) + ',' + p[1];
+  return n < 0 ? '(' + s + ')' : s;
+}
+function hARS(n){ var t = fARS(n); return !oculto && num(n) < 0 ? '<span class="neg">'+t+'</span>' : t; }
+function hUSD(n){ var t = fUSD(n); return !oculto && num(n) < 0 ? '<span class="neg">'+t+'</span>' : t; }
+function fPct(p){ return (num(p)*100).toFixed(0).replace('.',',') + '%'; }
+function corto(n){
+  if(oculto) return '\u2022\u2022';
+  n = Math.abs(Math.round(num(n)));
+  if(n >= 1000000) return (n/1000000).toFixed(1).replace('.',',')+'M';
+  if(n >= 1000) return Math.round(n/1000)+'k';
+  return String(n);
+}
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function marcarErr(t, mal){ if(t && t.classList){ if(mal) t.classList.add('err'); else t.classList.remove('err'); } }
+function crudo(n){
+  n = num(n); if(n === 0) return '';
+  var s = String(n);
+  if(/e/i.test(s)) s = n.toFixed(12).replace(/0+$/,'').replace(/\.$/,'');   // 1e-8 no se lee de vuelta: se escribe con todos sus decimales
+  return s.replace('.',',');
+}
+function fechaCorta(iso){
+  if(!iso) return '';
+  var d = new Date(iso);
+  if(isNaN(d)) return '';
+  function p(x){ return (x<10?'0':'')+x; }
+  return p(d.getDate())+'/'+p(d.getMonth()+1)+' '+p(d.getHours())+':'+p(d.getMinutes());
+}
+
+/* ═══ 3 · cálculos: viven en el motor (TGMotor); acá solo quedan los que dependen de la pantalla ═══ */
+function notaCompra(m, acum){
+  var a = num(m.compraARS), u = num(m.compraUSD);
+  if(a > 0 && u > 0){
+    var t = 'Pagaste ' + fARS(a/u) + ' por d\u00f3lar. ';
+    t += acum < 0 ? 'Ojo: est\u00e1s pasando m\u00e1s pesos de los que ten\u00e9s ahorrados.'
+       : Math.round(acum) === 0 ? 'Pasaste todo el ahorro a d\u00f3lares; no te quedan pesos ahorrados.'
+       : 'Te quedan ' + fARS(acum) + ' ahorrados en pesos.';
+    return t;
+  }
+  if(a > 0 || u > 0) return 'Complet\u00e1 los dos campos para calcular a cu\u00e1nto lo pagaste.';
+  return 'Si pas\u00e1s parte del ahorro a d\u00f3lares, cargalo ac\u00e1: se descuenta de los pesos y se suma a los d\u00f3lares.';
+}
+var DIASEM = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+var DIASEMC = ['D','L','M','M','J','V','S'];
+function diasDelMes(anio, m){ return new Date(anio, m + 1, 0).getDate(); }
+function cuantosPagos(it, anio, m){
+  if(it.frec === 'semanal'){
+    var d = it.dias.length ? it.dias[0] : 5, n = 0, dim = diasDelMes(anio, m), q;
+    for(q=1;q<=dim;q++) if(new Date(anio, m, q).getDay() === d) n++;
+    return n;
+  }
+  if(it.frec === 'quincenal' || it.frec === 'dias' || it.frec === 'mensual'){
+    var dim2 = diasDelMes(anio, m), c = 0, w;
+    for(w=0;w<it.dias.length;w++) if(it.dias[w] >= 1 && it.dias[w] <= dim2) c++;
+    return c || (it.frec === 'mensual' ? 1 : 0);
+  }
+  return 1;
+}
+function cobroTxt(it){
+  if(!it.frec) return '';
+  var n = cuantosPagos(it, D.anio, mes), cada = n > 0 ? Math.round(num(it.monto) / n) : 0, det;
+  if(it.frec === 'semanal') det = 'Todos los ' + DIASEM[it.dias.length ? it.dias[0] : 5];
+  else if(it.frec === 'mensual') det = it.dias.length ? 'El día ' + it.dias[0] + ' de cada mes' : 'Una vez por mes';
+  else {
+    var l = it.dias.slice().sort(function(a,b){ return a-b; });
+    det = l.length ? 'Los días ' + (l.length > 3 ? l.slice(0,3).join(', ') + ' y ' + (l.length-3) + ' más' : l.join(l.length===2?' y ':', ')) : (it.frec === 'quincenal' ? 'Cada quincena' : 'Días a elegir');
+  }
+  if(n > 1) det += ' · ' + n + ' pagos de ' + fARS(cada);
+  return det;
+}
+function textoDeuda(nombre, i){
+  var e = estadoDeuda(D, nombre, i);
+  if(!e) return 'Cargar cuotas';
+  if(e.restantes === 0 && e.esteMes) return 'Última cuota: la ' + e.pagadas + ' de ' + e.plan.cuotas + '. Terminada.';
+  if(e.restantes === 0) return 'Terminada: ' + e.plan.cuotas + ' cuotas pagas.';
+  var t = (e.esteMes ? 'Cuota ' + e.cuotaN : 'Sin pago este mes; va la ' + e.cuotaN) + ' de ' + e.plan.cuotas
+        + ' · quedan ' + e.restantes + (e.saldo ? ' (' + fARS(e.saldo) + ')' : '');
+  if(e.fin) t += ' · terminás en ' + MESES[e.fin.mes].toLowerCase() + (e.fin.anio !== D.anio ? ' ' + e.fin.anio : '');
+  return t;
 }
 
 /* ═══ 4 · render ════════════════════════════════════════════════ */
@@ -2377,10 +2512,8 @@ function barra(txt, pct, verde, id){
   return '<div class="barra"><small><span>'+txt+'</span><span id="'+id+'t">'+fPct(pct)+'</span></small>'
        + '<div class="pista"><i id="'+id+'" class="'+(verde?'verde':'')+'" style="width:'+w+'%"></i></div></div>';
 }
-var TOPEABLE = {gastosFijos:true, gastosVariables:true};
-function gastadoTope(it){ return estaPagado(mes, it) ? num(it.monto) : 0; }   // el tope lo consume solo lo ya pagado
 function filaTope(k, i, it){
-  var tope = num(it.tope), gastado = gastadoTope(it), pct = tope > 0 ? gastado / tope : 0;
+  var tope = num(it.tope), gastado = gastadoTope(it, mes), pct = tope > 0 ? gastado / tope : 0;
   var pasado = gastado > tope;
   var txt = pasado ? 'Te pasaste por ' + fARS(gastado - tope) + ' del tope de ' + fARS(tope)
                    : fARS(gastado) + ' de ' + fARS(tope);
@@ -2400,7 +2533,7 @@ function pasadas(m){
   for(s=0;s<SECS.length;s++){
     k = SECS[s].k; if(!TOPEABLE[k]) continue;
     l = m[k];
-    for(i=0;i<l.length;i++){ if(num(l[i].tope) > 0 && gastadoTope(l[i]) > num(l[i].tope)) out.push(l[i].nombre); }
+    for(i=0;i<l.length;i++){ if(num(l[i].tope) > 0 && gastadoTope(l[i], mes) > num(l[i].tope)) out.push(l[i].nombre); }
   }
   return out;
 }
@@ -2512,7 +2645,7 @@ function seccion(S, m){
          + (lista[i].frec ? esc(cobroTxt(lista[i])) : '¿Cada cuánto lo cobrás?') + '</button>';
     }
     if(S.k === 'deudas'){
-      h += '<button class="dinfo'+(planDe(lista[i].nombre)?'':' vacia')+'" data-act="plan" data-i="'+i+'">'+textoDeuda(lista[i].nombre, mes)+'</button>';
+      h += '<button class="dinfo'+(planDe(D, lista[i].nombre)?'':' vacia')+'" data-act="plan" data-i="'+i+'">'+textoDeuda(lista[i].nombre, mes)+'</button>';
     }
   }
   if(!lista.length) h += '<div class="nota">Todavía no hay ítems acá. Agregá el primero.</div>';
@@ -2593,28 +2726,8 @@ function mesesCargados(s){
 /* ═══ gráfico de gastos del mes ══════════════════════════════════════
    Torta SVG hecha a mano, sin librerías. Los colores salen de variables CSS,
    así que el tema claro y el oscuro se resuelven solos. */
-var TORTA_MAX = 6;   // arriba de esto, el resto se junta en "Otros"
-function datosTorta(m){
-  var l = [], secs = ['gastosFijos','gastosVariables','deudas'], k, i, arr, v;
-  for(k=0;k<secs.length;k++){
-    arr = m[secs[k]] || [];
-    for(i=0;i<arr.length;i++){
-      if(!estaPagado(mes, arr[i])) continue;   // la torta muestra lo ya pagado, igual que los totales
-      v = Math.round(num(arr[i].monto));
-      if(v > 0) l.push({n:String(arr[i].nombre || 'Sin nombre'), v:v, k:secs[k]});
-    }
-  }
-  l.sort(function(a, b){ return b.v - a.v; });
-  if(l.length > TORTA_MAX){
-    var otros = 0, cuantos = l.length - TORTA_MAX;
-    for(i=TORTA_MAX;i<l.length;i++) otros += l[i].v;
-    l = l.slice(0, TORTA_MAX);
-    l.push({n:'Otros (' + cuantos + ')', v:otros, k:'otros'});
-  }
-  return l;
-}
 function htmlTorta(m, c){
-  var l = datosTorta(m), total = 0, i;
+  var l = datosTorta(m, mes), total = 0, i;
   for(i=0;i<l.length;i++) total += l[i].v;
   if(!total){
     return '<div class="final"><small>Gastos de ' + MESES[mes] + '</small>'
@@ -2771,7 +2884,7 @@ function renderAnio(){
   hR += '</div>';
   h += plegable('anRank', 'En qué se te fue la plata', rk.length ? esc(rk[0].nombre) : '', hR);
 
-  var pd = proyeccionDeudas();
+  var pd = proyeccionDeudas(D);
   if(pd.length){
     var libre = null, hD = '<div class="rank" style="padding:12px 16px">';
     for(i=0;i<pd.length;i++){
@@ -3182,7 +3295,7 @@ function refrescar(){
     for(var z=0;z<ll.length;z++){
       var bt = document.getElementById('tb-'+kk+'-'+z), tt = document.getElementById('tt-'+kk+'-'+z);
       if(!bt || !tt) continue;
-      var tp = num(ll[z].tope), gs = gastadoTope(ll[z]), ps = gs > tp;
+      var tp = num(ll[z].tope), gs = gastadoTope(ll[z], mes), ps = gs > tp;
       bt.style.width = Math.max(0, Math.min(100, (tp>0?gs/tp:0)*100)) + '%';
       bt.className = ps ? 'mal' : '';
       tt.className = ps ? 'mal' : '';
@@ -3295,8 +3408,8 @@ function cargar(){
   arrancado = true; sucio = false; mes = Math.min(mes, 11);
   aplicarTema(); render();
   if(!hayLS) avisoSinGuardado();
-  else if(!hayDatos() && !aniosGuardados().length && !vioBienvenida()) bienvenida();
-  else if(!hayDatos() && !aniosGuardados().length) avisoPrimeraVez(); else revisarCopia();
+  else if(!hayDatos(D, tieneTrab()) && !aniosGuardados().length && !vioBienvenida()) bienvenida();
+  else if(!hayDatos(D, tieneTrab()) && !aniosGuardados().length) avisoPrimeraVez(); else revisarCopia();
   if(navigator.storage && navigator.storage.persist) navigator.storage.persist()['catch'](function(){});
 }
 function cambiarAnio(a){
@@ -3427,7 +3540,7 @@ function restaurarTexto(txt){
     if(!anios){ alerta('Ese archivo no se pudo leer', 'No parece una copia de kibFinanzas.'); return; }
     var claves = Object.keys(anios).filter(function(k){ return /^\d{4}$/.test(k); });
     if(!claves.length){ alerta('Copia vacía', 'El archivo no tiene ningún año adentro.'); return; }
-    var teniaDatos = hayDatos();
+    var teniaDatos = hayDatos(D, tieneTrab());
     pendiente = function(){
       var r = escribirAnios(anios, claves), trabajoFallo = false;
       if(j.trabajo && typeof j.trabajo === 'object'){ T = normTrab(j.trabajo); trabajoFallo = !guardarTrab(true); aplicarModo(); }
@@ -3449,21 +3562,11 @@ function diasSinCopia(){
   var u = ultimaCopia(); if(!u) return -1;
   return Math.floor((Date.now() - new Date(u).getTime()) / 86400000);
 }
-function hayDatos(){   // "hay datos" = hay algo REGISTRADO (cargado), esté tildado o no
-  if(tieneTrab()) return true;
-  var flujo = ['ahorroMesARS','ahorroMesUSD','compraARS','compraUSD','retiroARS','ventaUSD','ventaARS','reposicionARS'];
-  for(var i=0;i<12;i++){
-    var m = D.meses[i], s, q;
-    for(s=0;s<SECS.length;s++) for(q=0;q<m[SECS[s].k].length;q++) if(num(m[SECS[s].k][q].monto) > 0) return true;
-    for(q=0;q<flujo.length;q++) if(num(m[flujo[q]]) !== 0) return true;
-  }
-  return false;
-}
 function vioBienvenida(){ try{ return localStorage.getItem(LSBIENV) === '1'; }catch(e){ return false; } }
 function cerrarBienvenida(){
   try{ localStorage.setItem(LSBIENV, '1'); }catch(e){}
   cerrarHoja();
-  if(!hayDatos() && !aniosGuardados().length) avisoPrimeraVez();
+  if(!hayDatos(D, tieneTrab()) && !aniosGuardados().length) avisoPrimeraVez();
 }
 function bienvenida(){
   abrirHoja('<h3>Bienvenido a kibFinanzas</h3>'
@@ -3484,10 +3587,10 @@ function avisoPrimeraVez(){
 }
 function quitarAvisoVacia(){
   var e = document.getElementById('avisos');
-  if(e && e.querySelector('[data-av="vacia"]') && hayDatos()) e.innerHTML = '';
+  if(e && e.querySelector('[data-av="vacia"]') && hayDatos(D, tieneTrab())) e.innerHTML = '';
 }
 function revisarCopia(){
-  if(!hayDatos()) return;
+  if(!hayDatos(D, tieneTrab())) return;
   var d = diasSinCopia();
   if(d === -1 || d >= DIAS_AVISO){
     document.getElementById('avisos').innerHTML =
@@ -3532,7 +3635,7 @@ function duplicar(){
   var s = serie(D), n = JSON.parse(JSON.stringify(D)), i, j, k;
   n.anio = D.anio + 1;
   n.ahorroAnioAnterior = s[11].ahorroAcumulado;
-  Object.keys(n.planDeudas).forEach(function(k){ var e = estadoDeuda(k, 11); if(e) n.planDeudas[k].pagadasAntes = e.pagadas; });
+  Object.keys(n.planDeudas).forEach(function(k){ var e = estadoDeuda(D, k, 11); if(e) n.planDeudas[k].pagadasAntes = e.pagadas; });
   n.usdAnioAnterior = s[11].usdAcumulado;
   n.aReponerAnterior = s[11].aReponer;
   n.actualizado = '';
@@ -3553,7 +3656,7 @@ function duplicar(){
   Object.keys(D.planDeudas).forEach(function(nn){
     var pp = D.planDeudas[nn];
     if(!pp.cuotas || !pp.total) return;
-    cargadas += cargarCuotas(nn, 0).poner;
+    cargadas += cargarCuotas(D, nn, 0).poner;
   });
   guardar(); render();
   alerta('Listo el ' + D.anio, 'Creé el año con los meses en cero, las mismas categorías y el cierre de '
@@ -3752,10 +3855,6 @@ function gastoRapido(){
   });
   inp.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); sumarGasto(); } });
 }
-function sumarAItem(it, monto){   // gasto rápido es plata ya gastada: un ítem vacío queda pagado; con un monto pendiente conserva su estado
-  if(!num(it.monto)) it.pagado = true;
-  it.monto = num(it.monto) + monto;
-}
 function sumarGasto(){
   var inp = document.getElementById('grMonto');
   if(inp && isNaN(parseMonto(inp.value))){   // el último valor válido no vale si lo que se ve no se entiende
@@ -3901,7 +4000,7 @@ function guardarComoCobras(quitar){
   pildora(quitar ? 'Listo' : 'Guardado');
 }
 function abrirPlan(i){
-  var it = D.meses[mes].deudas[i], p = planDe(it.nombre) || {total:0, cuotas:0, pagadasAntes:0};
+  var it = D.meses[mes].deudas[i], p = planDe(D, it.nombre) || {total:0, cuotas:0, pagadasAntes:0};
   planIdx = i;
   abrirHoja('<h3>' + esc(it.nombre || 'Deuda') + '</h3>'
     + '<div class="campo"><label>Total del préstamo</label><input type="text" id="plTotal" inputmode="decimal" value="'+montoInput(p.total)+'"></div>'
@@ -3912,7 +4011,7 @@ function abrirPlan(i){
     + '<div class="nota" id="plCuota" style="padding:0 0 12px"></div>'
     + '<div class="campo"><label>Cuotas que ya pagué antes de '+D.anio+'</label><input type="text" id="plAntes" inputmode="numeric" value="'+(p.pagadasAntes||'')+'"></div>'
     + '<div class="nota" style="padding:0 0 14px">Al guardar te ofrezco cargar las cuotas que faltan, de '+MESES[mes].toLowerCase()+' en adelante.</div>'
-    + '<div class="fila">' + (planDe(it.nombre) ? '<button class="mal" data-act="quitarPlan">Quitar</button>' : '<button data-act="cerrarHoja">Cancelar</button>')
+    + '<div class="fila">' + (planDe(D, it.nombre) ? '<button class="mal" data-act="quitarPlan">Quitar</button>' : '<button data-act="cerrarHoja">Cancelar</button>')
     + '<button class="pri" data-act="guardarPlan">Guardar</button></div>');
   var refrescarCuota = function(){
     var e = document.getElementById('plCuota');
@@ -3964,8 +4063,8 @@ function guardarPlan(quitar){
   if(!quitar) ofrecerCarga(n, mes);
 }
 function ofrecerCarga(nombre, desde){
-  var p = planDe(nombre); if(!p || !p.cuotas || !p.total) return;
-  var pc = planDeCarga(nombre, desde);
+  var p = planDe(D, nombre); if(!p || !p.cuotas || !p.total) return;
+  var pc = planDeCarga(D, nombre, desde);
   if(pc.poner <= 0){
     if(pc.sobran > 0) alerta('No entran en ' + D.anio,
       'Faltan ' + pc.sobran + ' cuotas de <b>' + esc(nombre) + '</b>, pero ya no quedan meses en ' + D.anio
@@ -3979,7 +4078,7 @@ function ofrecerCarga(nombre, desde){
     + '. Lo que ya tengas cargado en esos meses en esta deuda se reemplaza.';
   if(pc.sobran > 0) cuerpo += '<br><br>Quedan ' + pc.sobran + ' para después: se cargan solas cuando crees el año ' + (D.anio+1) + '.';
   preguntar('Cargar las cuotas', cuerpo, 'Cargar', function(){
-    var r = cargarCuotas(nombre, desde);
+    var r = cargarCuotas(D, nombre, desde);
     tocar(); renderMes();
     toast('Cargué ' + r.poner + (r.poner === 1 ? ' cuota' : ' cuotas') + ' de ' + fARS(r.valor));
   });
@@ -4316,7 +4415,6 @@ var FORMAS = [['transferencia','Transferencia'],['echeq','Echeq'],['efectivo','E
 var PLAZOS = [0, 30, 45, 60, 90];
 var RETENCION_MAX = 0.10;                // si falta hasta un 10 %, probablemente es una retención
 var fx = null, cb = null, tjAntes = null, paseQuitado = null;
-var RENGLON_TRABAJO = 'Del trabajo';
 var CATS = [['mercaderia','Mercadería o partes'],['comisiones','Comisiones y envíos'],['impuestos','Impuestos'],['herramientas','Herramientas'],['otros','Otros']];
 var gx = null, px = null;
 var PERIODOS = [['','Un día'],['semana','Semana'],['quincena','Quincena']];   // el renglón de Ingresos donde cae lo que pasás a lo personal
@@ -4341,13 +4439,6 @@ function utcDe(iso){ var p = iso.split('-'); return Date.UTC(+p[0], +p[1]-1, +p[
 function sumarDias(iso, n){ var d = new Date(utcDe(iso) + n*864e5); return d.getUTCFullYear()+'-'+dos(d.getUTCMonth()+1)+'-'+dos(d.getUTCDate()); }
 function diasEntre(a, b){ return Math.round((utcDe(b) - utcDe(a)) / 864e5); }
 function fDia(iso){ if(!esISO(iso)) return ''; var p = iso.split('-'); return p[2]+'/'+p[1] + (+p[0] !== new Date().getFullYear() ? '/'+p[0].slice(2) : ''); }
-function clave(x){
-  // para comparar nombres: sin tildes, sin mayúsculas y sin espacios de más
-  var t = String(x || '').toLowerCase().replace(/\s+/g, ' ').trim(), a = 'áàäâéèëêíìïîóòöôúùüûñç', b = 'aaaaeeeeiiiioooouuuunc', o = '', i, k;
-  for(i=0;i<t.length;i++){ k = a.indexOf(t.charAt(i)); o += k < 0 ? t.charAt(i) : b.charAt(k); }
-  return o;
-}
-function esRenglonTrabajo(n){ return clave(n) === clave(RENGLON_TRABAJO); }
 function pasesDelMes(anio, m){
   if(!T || !T.pases) return 0;
   var t = 0; for(var i=0;i<T.pases.length;i++) if(T.pases[i].anio === anio && T.pases[i].mes === m) t += T.pases[i].monto;

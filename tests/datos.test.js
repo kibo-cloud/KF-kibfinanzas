@@ -126,7 +126,7 @@ function cuota(app, j){ return app.D.meses[j].deudas.filter(function(x){ return 
 
 test('cargarCuotas: before current month -> paid, current and future -> pending', function(){
   var app = appConPlan(2026);
-  app.cargarCuotas('Prestamo', 0);
+  app.cargarCuotas(app.D, 'Prestamo', 0);
   for(var j = 0; j < 12; j++){
     assert.ok(cuota(app, j), 'cuota mes ' + j);
     assert.equal(cuota(app, j).monto, 100);
@@ -138,7 +138,7 @@ test('cargarCuotas keeps an existing explicit flag', function(){
   var app = appConPlan(2026);
   app.D.meses[1].deudas.push({nombre: 'Prestamo', monto: 0, pagado: false});   // past month, explicit unpaid
   app.D.meses[7].deudas.push({nombre: 'Prestamo', monto: 0, pagado: true});    // future month, explicit paid
-  app.cargarCuotas('Prestamo', 0);
+  app.cargarCuotas(app.D, 'Prestamo', 0);
   assert.strictEqual(cuota(app, 1).pagado, false);
   assert.strictEqual(cuota(app, 7).pagado, true);
   assert.equal(cuota(app, 1).monto, 100);
@@ -146,10 +146,10 @@ test('cargarCuotas keeps an existing explicit flag', function(){
 
 test('cargarCuotas in a past year marks every month paid, in a future year none', function(){
   var past = appConPlan(2025);
-  past.cargarCuotas('Prestamo', 0);
+  past.cargarCuotas(past.D, 'Prestamo', 0);
   for(var j = 0; j < 12; j++) assert.strictEqual(cuota(past, j).pagado, true);
   var fut = appConPlan(2027);
-  fut.cargarCuotas('Prestamo', 0);
+  fut.cargarCuotas(fut.D, 'Prestamo', 0);
   for(j = 0; j < 12; j++) assert.strictEqual(cuota(fut, j).pagado, false);
 });
 

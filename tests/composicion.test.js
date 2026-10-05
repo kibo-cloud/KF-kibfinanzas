@@ -18,7 +18,7 @@ function anio(){
   return d;
 }
 function rk(d){ return app.plain(app.ranking(d)); }
-function torta(m){ return app.plain(app.datosTorta(m)).map(function(x){ return [x.n, x.v]; }); }
+function torta(m){ return app.plain(app.datosTorta(m, app.mes)).map(function(x){ return [x.n, x.v]; }); }
 
 test('ranking: a pending expense does not appear', function(){
   var d = anio();

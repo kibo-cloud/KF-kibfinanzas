@@ -35,38 +35,38 @@ test('[R2 fixed] esc S6: single quote is escaped', function(){
 
 test('[R2 fixed] hayDatos E1: registered data counts even when nothing is ticked', function(){
   app.D = freshD();
-  assert.equal(app.hayDatos(), false);
+  assert.equal(app.hayDatos(app.D, false), false);
   app.D.meses[5].ingresos = [{nombre: 'Sueldo', monto: 100000, pagado: false}];
   app.D.meses[5].gastosFijos = [{nombre: 'Alquiler', monto: 30000, pagado: false}];
-  assert.equal(app.hayDatos(), true);
+  assert.equal(app.hayDatos(app.D, false), true);
   app.D.meses[5].ingresos[0].pagado = true;   // ticking does not change it
-  assert.equal(app.hayDatos(), true);
+  assert.equal(app.hayDatos(app.D, false), true);
 });
 
 test('[R2 fixed] hayDatos E1: any month flow field is registered data', function(){
   ['ahorroMesARS', 'ahorroMesUSD', 'compraARS', 'compraUSD', 'retiroARS', 'ventaUSD', 'ventaARS', 'reposicionARS'].forEach(function(f){
     app.D = freshD();
     app.D.meses[3][f] = 5;
-    assert.equal(app.hayDatos(), true, f);
+    assert.equal(app.hayDatos(app.D, false), true, f);
   });
 });
 
 test('[R2 fixed] hayDatos E1: empty year and zero amounts are not data', function(){
   app.D = freshD();
   app.D.meses[2].ingresos = [{nombre: 'Sueldo', monto: 0, pagado: true}];   // ticked but zero
-  assert.equal(app.hayDatos(), false);
+  assert.equal(app.hayDatos(app.D, false), false);
 });
 
 test('[R2 fixed] hayDatos E1: Trabajo data counts', function(){
   var a = loadApp({today: '2026-06-15', funcs: ['hayDatos'], globals: {tieneTrab: function(){ return true; }}});
   a.D = {meses: []};
-  assert.equal(a.hayDatos(), true);
+  assert.equal(a.hayDatos(a.D, true), true);
 });
 
 test('[R2 fixed] cargarCuotas E14: 100000 in 3 installments loads 33333, 33333, 33334 (sum 100000)', function(){
   app.D = freshD();
   app.D.planDeudas.Tarjeta = {total: 100000, recargo: 0, cuotas: 3, pagadasAntes: 0};
-  var pc = app.cargarCuotas('Tarjeta', 6);
+  var pc = app.cargarCuotas(app.D, 'Tarjeta', 6);
   assert.equal(pc.poner, 3);
   var vals = [6, 7, 8].map(function(j){ return app.D.meses[j].deudas.filter(function(x){ return x.nombre === 'Tarjeta'; })[0].monto; });
   assert.deepEqual(app.plain(vals), [33333, 33333, 33334]);
@@ -77,7 +77,7 @@ test('[R2 fixed] estadoDeuda E9: a ticked month with monto 0 does not count as a
   app.D = freshD();
   app.D.planDeudas.Tarjeta = {total: 30000, recargo: 0, cuotas: 3, pagadasAntes: 0};
   app.D.meses[0].deudas = [{nombre: 'Tarjeta', monto: 0, pagado: true}];
-  var e = app.estadoDeuda('Tarjeta', 0);
+  var e = app.estadoDeuda(app.D, 'Tarjeta', 0);
   assert.equal(e.pagadas, 0);
   assert.equal(e.restantes, 3);
 });

@@ -24,13 +24,13 @@ function mes(){
 
 test('pending expense does not consume the budget', function(){
   var it = {nombre: 'Super', monto: 8000, tope: 10000, pagado: false};
-  assert.equal(app.gastadoTope(it), 0);
+  assert.equal(app.gastadoTope(it, app.mes), 0);
   assert.deepEqual(barra(it), {txt: '— de $10.000', pct: 0, mal: false});
 });
 
 test('paid expense consumes the budget', function(){
   var it = {nombre: 'Super', monto: 8000, tope: 10000, pagado: true};
-  assert.equal(app.gastadoTope(it), 8000);
+  assert.equal(app.gastadoTope(it, app.mes), 8000);
   assert.deepEqual(barra(it), {txt: '$8.000 de $10.000', pct: 80, mal: false});
 });
 
@@ -45,10 +45,10 @@ test('untick stops consuming; re-tick consumes exactly once', function(){
 test('repeated toggles never double count', function(){
   var it = {nombre: 'Super', monto: 8000, tope: 10000, pagado: true};
   for(var n = 0; n < 6; n++) app.alternarPago(5, it);
-  assert.equal(app.gastadoTope(it), 8000);
+  assert.equal(app.gastadoTope(it, app.mes), 8000);
   assert.deepEqual(barra(it), {txt: '$8.000 de $10.000', pct: 80, mal: false});
   it.pagado = true; it.pagado = true;
-  assert.equal(app.gastadoTope(it), 8000);
+  assert.equal(app.gastadoTope(it, app.mes), 8000);
 });
 
 test('mixed paid and pending: only paid rows are over the cap', function(){

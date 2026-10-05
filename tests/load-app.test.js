@@ -46,3 +46,31 @@ test('a regex containing braces and quotes does not break brace matching', funct
   var k = 'function q(x){ return /}/.test(x) ? 1 : 0; }';
   assert.equal(m(k, k.indexOf('{')), k.length, 'regex after return keyword');
 });
+
+test('loadMotor evaluates the <script id="motor"> block as a whole and exports the engine', function(){
+  var m = la.loadMotor({today: '2026-10-04'});
+  ['calc', 'serie', 'patrimonio', 'ranking', 'datosTorta', 'gastadoTope', 'estadoDeuda', 'cargarCuotas', 'hayDatos', 'normalizar', 'parseMonto', 'mesTope'].forEach(function(n){
+    assert.equal(typeof m[n], 'function', n);
+  });
+  assert.equal(m.mesTope(2026), 9, 'uses the injected today');
+  assert.equal(m.RENGLON_TRABAJO, 'Del trabajo');
+});
+
+test('the motor block is self-contained: no DOM, storage or app globals', function(){
+  var code = la.MOTOR_SRC.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  ['document', 'window', 'localStorage', 'navigator', 'sessionStorage', 'fetch', 'setTimeout'].forEach(function(n){
+    assert.ok(!new RegExp('\\b' + n + '\\b').test(code), n + ' must not appear in the motor');
+  });
+  assert.ok(!/(^|[^\w.$'])(D|T|mes|tab)\.|(^|[^\w.$'])(D|T|mes|tab)\s*(\[|=[^=>])/m.test(code.replace(/'[^'\n]*'/g, "''")), 'no app state (D, T, mes, tab) in the motor');
+  assert.ok(!/DATOS_/.test(la.MOTOR_SRC), 'the motor must not hold the data markers used by "Versión para PC"');
+});
+
+test('every motor member is available to extracted app code and no app function duplicates a motor name', function(){
+  var motor = la.loadMotor();
+  var app = la.loadApp({funcs: ['fARS', 'grupos'], globals: {oculto: false, PUNTOS: '..'}});
+  Object.keys(motor).forEach(function(n){
+    assert.ok(app[n] !== undefined, n + ' missing as app global');
+    var re = new RegExp('^function ' + n + '\\s*\\(', 'gm');
+    assert.equal((la.SRC_FOR_TESTS.match(re) || []).length <= 1, true, n + ' is defined more than once in index.html');
+  });
+});

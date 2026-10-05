@@ -1,5 +1,6 @@
 'use strict';
-// D13 consumer inventory: every top-level function in index.html whose body reads `.monto`
+// D13 consumer inventory: every top-level function in index.html (both inline blocks: the engine in <script id="motor">
+// since R3, and the app script; the semantics below did not change with the move) whose body reads `.monto`
 // or calls suma/sumaPagado/calc/serie, with its CURRENT semantic (documentation of today's
 // behavior, known bugs included; classification is NOT a statement of what is correct).
 //   registrado = counts every loaded amount, paid or not (suma)

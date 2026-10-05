@@ -35,3 +35,19 @@ test('money consumers in index.html match the documented inventory', function(){
     '(registrado|realizado|mixto|otro + reason) and in the feature doc: ' + nuevas.join(', '));
   assert.deepEqual(quitadas, [], 'Function(s) no longer consume money (removed, renamed or rewritten): update tests/inventario.data.js: ' + quitadas.join(', '));
 });
+
+test('the scan covers both inline blocks: the engine (<script id="motor">) and the app script', function(){
+  var found = scan();
+  var motorAt = SRC.indexOf('<script id="motor">'), appAt = SRC.indexOf('<script>\n(function(){');
+  assert.ok(motorAt > 0 && appAt > motorAt, 'motor block precedes the app script');
+  ['calc', 'serie', 'suma', 'sumaPagado', 'ranking', 'gastadoTope', 'hayDatos'].forEach(function(n){
+    var at = SRC.search(new RegExp('^function ' + n + '\\s*\\(', 'm'));
+    assert.ok(at > motorAt && at < appAt, n + ' is defined in the motor block');
+    assert.ok(found.indexOf(n) >= 0, n + ' is scanned');
+  });
+  ['renderMes', 'seccion', 'exportarCSV'].forEach(function(n){
+    var at = SRC.search(new RegExp('^function ' + n + '\\s*\\(', 'm'));
+    assert.ok(at > appAt, n + ' stays in the app script');
+    assert.ok(found.indexOf(n) >= 0, n + ' is scanned');
+  });
+});

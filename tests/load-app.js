@@ -7,6 +7,12 @@ var vm = require('vm');
 
 var SRC = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 
+// The financial engine lives in its own inline block (<script id="motor">, global TGMotor). Its functions sit at column 0 like the
+// app's, so extractFunction/extractVar find them in SRC too; loadApp/loadMotor evaluate the block itself, as a whole.
+var MOTOR_RE = /<script id="motor">([\s\S]*?)<\/script>/;
+var MOTOR_SRC = (MOTOR_RE.exec(SRC) || [])[1];
+if(!MOTOR_SRC) throw new Error('<script id="motor"> block not found in index.html');
+
 // Returns the index just past the end of a string/comment/template/regex starting at i, or i if none starts there.
 function skipLiteral(s, i){
   var c = s[i], j;
@@ -99,12 +105,12 @@ function extractVar(name){
   throw new Error('unterminated var: ' + name);
 }
 
-var DEFAULT_FUNCS = ['num', 'mesVacio', 'normalizar', 'suma', 'calc', 'serie', 'mesTope', 'estaPagado', 'sumaPagado', 'esRenglonTrabajo', 'clave', 'alternarPago', 'sumarAItem'];
-var DEFAULT_VARS = ['SECS', 'MARCABLE', 'RENGLON_TRABAJO'];
 
-// opts: {today:'YYYY-MM-DD', funcs:[...extra], vars:[...extra], globals:{name:value} injected before the code runs}
-function loadApp(opts){
-  opts = opts || {};
+// Everything the engine owns comes from the motor block (see loadApp); only app-level names are extracted by name.
+var DEFAULT_FUNCS = [];
+var DEFAULT_VARS = [];
+
+function newContext(opts){
   var today = new Date((opts.today || '2026-06-15') + 'T12:00:00');
   var RealDate = Date;
   var FakeDate = class extends RealDate {
@@ -112,9 +118,29 @@ function loadApp(opts){
     static now(){ return today.getTime(); }
   };
   var ctx = vm.createContext({Date: FakeDate, JSON: JSON, Math: Math, Object: Object, Array: Array, String: String, isFinite: isFinite, parseFloat: parseFloat});
+  return {ctx: ctx, today: today};
+}
+
+// The motor evaluated as a whole in a bare context (no DOM, no storage, no app globals): real unit loading, no regex extraction.
+function loadMotor(opts){
+  var c = newContext(opts || {});
+  vm.runInContext(MOTOR_SRC, c.ctx);
+  return c.ctx.TGMotor;
+}
+
+// opts: {today:'YYYY-MM-DD', funcs:[...extra], vars:[...extra], globals:{name:value} injected before the code runs}
+// The motor block is evaluated first and every TGMotor member becomes a context global, so extracted app functions keep
+// resolving calc, serie, suma... by name. Names the motor provides are never extracted again from the app.
+function loadApp(opts){
+  opts = opts || {};
+  var c = newContext(opts), ctx = c.ctx, today = c.today;
+  vm.runInContext(MOTOR_SRC, ctx);
+  var motor = ctx.TGMotor;
+  Object.keys(motor).forEach(function(k){ ctx[k] = motor[k]; });
   Object.keys(opts.globals || {}).forEach(function(k){ ctx[k] = opts.globals[k]; });
-  var funcs = DEFAULT_FUNCS.concat(opts.funcs || []);
-  var vars = DEFAULT_VARS.concat(opts.vars || []);
+  var propios = function(n){ return !Object.prototype.hasOwnProperty.call(motor, n); };
+  var funcs = DEFAULT_FUNCS.concat(opts.funcs || []).filter(propios);
+  var vars = DEFAULT_VARS.concat(opts.vars || []).filter(propios);
   var code = 'var D = null, mes = ' + today.getMonth() + ';\n';
   vars.forEach(function(v){ code += extractVar(v) + '\n'; });
   funcs.forEach(function(f){ code += extractFunction(f) + '\n'; });
@@ -124,4 +150,4 @@ function loadApp(opts){
   return ctx;
 }
 
-module.exports = {loadApp: loadApp, matchBrace: matchBrace, extractFunction: extractFunction, extractVar: extractVar};
+module.exports = {loadApp: loadApp, loadMotor: loadMotor, MOTOR_SRC: MOTOR_SRC, SRC_FOR_TESTS: SRC, matchBrace: matchBrace, extractFunction: extractFunction, extractVar: extractVar};
