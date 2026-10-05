@@ -2322,8 +2322,9 @@ function barra(txt, pct, verde, id){
        + '<div class="pista"><i id="'+id+'" class="'+(verde?'verde':'')+'" style="width:'+w+'%"></i></div></div>';
 }
 var TOPEABLE = {gastosFijos:true, gastosVariables:true};
+function gastadoTope(it){ return estaPagado(mes, it) ? num(it.monto) : 0; }   // el tope lo consume solo lo ya pagado
 function filaTope(k, i, it){
-  var tope = num(it.tope), gastado = num(it.monto), pct = tope > 0 ? gastado / tope : 0;
+  var tope = num(it.tope), gastado = gastadoTope(it), pct = tope > 0 ? gastado / tope : 0;
   var pasado = gastado > tope;
   var txt = pasado ? 'Te pasaste por ' + fARS(gastado - tope) + ' del tope de ' + fARS(tope)
                    : fARS(gastado) + ' de ' + fARS(tope);
@@ -2343,7 +2344,7 @@ function pasadas(m){
   for(s=0;s<SECS.length;s++){
     k = SECS[s].k; if(!TOPEABLE[k]) continue;
     l = m[k];
-    for(i=0;i<l.length;i++){ if(num(l[i].tope) > 0 && num(l[i].monto) > num(l[i].tope)) out.push(l[i].nombre); }
+    for(i=0;i<l.length;i++){ if(num(l[i].tope) > 0 && gastadoTope(l[i]) > num(l[i].tope)) out.push(l[i].nombre); }
   }
   return out;
 }
@@ -3121,7 +3122,7 @@ function refrescar(){
     for(var z=0;z<ll.length;z++){
       var bt = document.getElementById('tb-'+kk+'-'+z), tt = document.getElementById('tt-'+kk+'-'+z);
       if(!bt || !tt) continue;
-      var tp = num(ll[z].tope), gs = num(ll[z].monto), ps = gs > tp;
+      var tp = num(ll[z].tope), gs = gastadoTope(ll[z]), ps = gs > tp;
       bt.style.width = Math.max(0, Math.min(100, (tp>0?gs/tp:0)*100)) + '%';
       bt.className = ps ? 'mal' : '';
       tt.className = ps ? 'mal' : '';
