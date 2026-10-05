@@ -73,9 +73,10 @@ R1, R2, R3 only. **Stop before R4** for review of the extracted engine and the e
       wildcard; S4/E12 restore reports failures and `hayLS` recovers; E9 quick-expense undo
       restores previous `pagado` and debt progress requires monto > 0; E14 last installment
       absorbs rounding remainder. Each with RED-before/GREEN-after tests.
-- [ ] R3 Pure extraction of the financial engine into an isolated unit loaded before the app,
+- [x] R3 Pure extraction of the financial engine into an isolated unit loaded before the app,
       testable as a whole; identical financial behavior; deployment contract preserved
-      (offline cache, "Versión para PC" export).
+      (offline cache, "Versión para PC" export). Commits `f95a625`, `a6dd7a4`, `12d4a7c`, `3a8a7ae`
+      (v1.31.4, sw v44); docs commit follows. See "R3 evidence" below.
 
 ## Deferred (not in this run)
 
@@ -174,10 +175,89 @@ Baseline for the E2E RED: new run.mjs against a worktree of `98146d4` gives 13 F
     replaces the whole container (one notice at a time).
   - Not fixed (suggestion): `nav` pending load promise on a failed navigate (E2E only).
 
+## R3 evidence (v1.31.4, branch `fix/repair-sprint-1`)
+
+Commits: `f95a625` golden fixtures (against the pre-extraction engine) · `a6dd7a4` extraction · `12d4a7c` E2E checks · `3a8a7ae` release (APPVER 1.31.4, sw `kibfinanzas-offline-v44`, LEEME changelog).
+
+- Golden before the move: `npm test` 269/269 (golden generated and checked against the code of `29ed7cc`). Golden after the move, with the engine loaded as a whole (`loadMotor()`, no regex extraction): the same fixture, byte for byte (`tests/motor.golden.test.js` compares the whole serialized output and each dataset/field). `npm test` 273/273 final (the 4 extra tests are the motor self-containment, loader and inventory-coverage tests). `npm run test:e2e` 90 pass / 0 fail (86 before + 4 new R3 checks). Inline-script syntax check of the 2 non-JSON inline scripts: 0 errors.
+- Golden corpus (`tests/fixtures/motor-corpus.js`, fixture `motor-golden.json`, ~1 MB, regenerate only by hand with `node tests/fixtures/generar-golden.js`, never to make a failing test pass): fake date 2026-10-04. Datasets: a migrated 2026 year with mixed paid/pending in the four sections (Del trabajo rows in several spellings, ahorro/compra/venta/retiro/reposición, a reposición larger than the pending stock, crypto, five debt plans: with recargo and pagadasAntes, tiny total vs many installments, cuotas 0, no rows, ticked-without-amount rows, future months loaded, 11 categories to force "Otros", unnamed row, movimientos with and without `pp`); the same year as 2025 and 2027; the same year as a legacy blob (no `pagoExplicito`, no `pagado`, text amounts, junk rows, 11 months) for 2025/2026/2027; empty `{}`, `null` and a string. Per dataset it records: normalizar, calc per month, serie, patrimonio, costoDolares, criptoUSD, ranking, datosTorta per month, gastadoTope per item, suma/sumaPagado per section (with and without the income flag), cuotaPaga/estaPagado, hayDatos (with and without Trabajo), proyeccionDeudas, and per plan/debt name: planDe, estadoDeuda for 12 months, pagadasHasta for 0..13, pendientesDesde, planDeCarga, cargarCuotas effects (returned plan + every month's debt rows) at desde 0/3/6/9/11, plus alternarPago and sumarAItem. Pure inputs: mesTope/mesesCorridos for 2023-2028, mesVacio, num (24 inputs), clave/esRenglonTrabajo, the constants, parseMonto/parseCantidad/parsePct/parseEntero with and without `neg` and `parcial` over 56 texts, repartoCuotas/totalConRecargo/valorCuota over 11 plans. NaN, -0 and Infinity are serialized explicitly so they cannot hide.
+- Design: the engine is a classic inline block `<script id="motor">` (`var TGMotor = (function(){ 'use strict'; ... return {...}; })();`) placed right before the app script, not a separate `.js`. Rationale: "Versión para PC" fetches `./index.html` and slices it between the data markers, so anything outside index.html would be missing from the single self-contained file; the service worker cache is a fixed 9-file list (a new file would need sw.js + the E2E site copy + the deploy list changes and would be cached separately from the HTML that calls it); no build step exists. The block holds no `DATOS_` markers (tested) and `M1`/`M2` stay built by concatenation in the app so each marker still appears exactly once in the file. Inside the app IIFE, right after `'use strict'`, aliases (`var calc = TGMotor.calc, ...`) keep every existing call site working. The E2E hook (`calc`, `serie`, `ranking`, `datosTorta` in the app IIFE) works unchanged through the aliases.
+- Test infrastructure: `tests/load-app.js` evaluates the motor block first in the vm context and exposes every TGMotor member as a global, so tests that extract app functions by name still resolve `calc`, `suma`, ... ; names the motor owns are skipped when listed in `funcs`/`vars`; `loadMotor()` returns `TGMotor` from a bare context (only Date, JSON, Math, Object, Array, String, isFinite, parseFloat). New tests: motor loads whole, motor source has no DOM/storage/app state/data markers, every TGMotor member reaches app code and none is defined twice, inventory scan covers both blocks. Existing tests were updated only for the new explicit arguments (`cargarCuotas(D, ...)`, `estadoDeuda(D, ...)`, `pagadasHasta(D, ...)`, `pendientesDesde(D, ...)`, `hayDatos(D, tieneTrab())`, `gastadoTope(it, mes)`, `datosTorta(m, mes)`, `mesTope(anio)`); no assertion value changed.
+- Size: the move is ~430 lines of pure relocation (the advisory ~400 lines/task is exceeded by the golden corpus and its 1 MB fixture, not by logic); not split because the golden has to land before the move and the tests only make sense together with the move.
+
+### Motor membership (final)
+
+Signature column: "same" = unchanged; otherwise old → new. Call sites pass `D` (the app year object) and `mes` (current month index).
+
+| Function / constant | Where | Reason / signature change |
+|---|---|---|
+| SECS, MARCABLE, RENGLON_TRABAJO, TORTA_MAX, TOPEABLE | moved (aliased, except TORTA_MAX) | constants the engine needs; TORTA_MAX is used only by datosTorta, so the app has no alias |
+| mesVacio, normalizar | moved | pure (normalizar calls `mesTope(d.anio)`); same |
+| num | moved | pure; same |
+| sinSigno, cerosFuera, parseMonto, parseCantidad, parsePct, parseEntero, parcial | moved | pure; same (sinSigno, cerosFuera, parseMonto-family helpers are exported but the app only aliases the ones it calls) |
+| suma, sumaPagado, calc, serie, costoDolares, criptoUSD, patrimonio, ranking | moved | pure; same |
+| clave, esRenglonTrabajo, estaPagado, cuotaPaga, alternarPago, sumarAItem | moved | pure item helpers; same |
+| mesTope | moved | read `D.anio` when called without argument → `mesTope(anio)` always explicit; the only no-argument caller was `estadoDeuda`, now `mesTope(d.anio)`. Reads `new Date()` (builtin) |
+| mesesCorridos | moved | same; reads `new Date()` |
+| planDe | moved | `planDe(nombre)` → `planDe(d, nombre)`; call sites: seccion (debt row button), abrirPlan x2, ofrecerCarga |
+| estadoDeuda | moved | `(nombre, i)` → `(d, nombre, i)`; call sites: textoDeuda, duplicar |
+| pagadasHasta, pendientesDesde, planDeCarga | moved | `(nombre, x)` → `(d, nombre, x)`; call site of planDeCarga: ofrecerCarga; the other two are internal |
+| cargarCuotas | moved | `(nombre, desde)` → `(d, nombre, desde)`; call sites: duplicar, ofrecerCarga (it mutates the passed year, as before) |
+| proyeccionDeudas | moved | `()` → `(d)`; call site: renderAnio |
+| totalConRecargo, repartoCuotas, valorCuota | moved | pure; same |
+| gastadoTope | moved | `(it)` → `(it, j)`; callers pass `mes` (filaTope, pasadas, refrescar). `estaPagado` ignores `j`, so output is identical |
+| datosTorta | moved | `(m)` → `(m, j)`; caller htmlTorta passes `mes` |
+| hayDatos | moved | `()` → `(d, conTrabajo)`; every caller passes `hayDatos(D, tieneTrab())` (cargar x2, restaurarTexto, cerrarBienvenida, quitarAvisoVacia, revisarCopia). `conTrabajo` replaces the old early `if(tieneTrab()) return true` |
+| notaCompra | stayed | builds user text with `fARS` (presentation) |
+| textoDeuda | stayed | builds user text with `fARS`, `MESES`, `D` |
+| cuantosPagos, diasDelMes, cobroTxt | stayed | cuantosPagos/diasDelMes are pure calendar helpers used only by the cobro editor and its text (`cobroTxt` reads `D`/`mes` and `fARS`); not part of any total, so left in the app (candidate to move later without risk) |
+| fARS, fUSD, hARS, hUSD, fPct, corto, grupos, esc, crudo, fechaCorta, marcarErr | stayed | presentation / DOM (read `oculto`, `PUNTOS`, `classList`) |
+| renderMes, seccion, secAhorro, secMovimientos, notaRetiro, pintarTorta, htmlTorta, renderAnio, renderUSD, refrescar | stayed | render: DOM and app state |
+| exportarCSV, duplicar, copiarAnterior, gastoRapido, sumarGasto, quitarMov, aplicarInput, abrirComoCobras, guardarComoCobras, pintarNotaCobras | stayed | DOM, `D`, `mes`, localStorage side effects; they call the motor |
+| guardar, cargar, leerAnio, escribirAnios, restaurarTexto, versionPC | stayed | localStorage / persistence / export |
+| Trabajo ledger (normTrab, resumenTrab, pasesDelMes, saldoFac, aplicarPase, quitarPase, tieneTrab, ...) | stayed | outside the monthly plan engine (D13 "otro"); read the global `T`. `pasesDelMes` and `tieneTrab` read `T` |
+
+### Aliases in the app IIFE (31)
+
+SECS, MARCABLE, RENGLON_TRABAJO, TOPEABLE, normalizar, num, parseMonto, parseCantidad, parsePct, parseEntero, parcial, suma, calc, serie, costoDolares, estaPagado, alternarPago, clave, esRenglonTrabajo, planDe, estadoDeuda, planDeCarga, cargarCuotas, proyeccionDeudas, criptoUSD, patrimonio, ranking, gastadoTope, datosTorta, hayDatos, sumarAItem.
+
+Moved but not aliased because the app never calls them (reachable as `TGMotor.x`, and by name in tests): TORTA_MAX, mesVacio, sinSigno, cerosFuera, sumaPagado, mesTope, mesesCorridos, cuotaPaga, totalConRecargo, repartoCuotas, valorCuota, pagadasHasta, pendientesDesde.
+
+### Engine state for R4 review (no implementation)
+
+Which function defines each D13 concept TODAY (all in the motor):
+
+| Concept | Defined by today | Note |
+|---|---|---|
+| Registrado | `suma(items)`; `hayDatos` for "any data" | every loaded `monto`, paid or not |
+| Realizado | `sumaPagado(items, ing)`; `estaPagado`; `calc.totalIngresos/totalGastos/totalDeudas` | `pagado === true`, plus "Del trabajo" income rows always |
+| Pendiente | `calc.pendienteIngresos/Fijos/Variables/Gastos/Deudas` = `suma - sumaPagado` | no concept of overdue |
+| Programado | does not exist | every future-month amount is just registered/pending; future transfers (ahorro/compra/venta/retiro/reposición of future months) flow into `serie` accumulations like current ones |
+| Disponible inicial | does not exist | `calc` starts from zero each month; only `ahorroAnioAnterior`, `usdAnioAnterior`, `aReponerAnterior` carry stock across years (by `duplicar`) |
+| Resultado del mes | `calc.disponibleLibre` (= realized income − realized expenses − ahorroMesARS + sacado − repuesto) and `calc.disponibleFinal` (− realized debt payments) | note: debts are subtracted separately; compraARS/ventaUSD/ahorroMesUSD are not in `disponibleLibre`, only in `serie` stocks |
+| Pases netos | does not exist as one number; pieces: `ahorroMesARS`, `retiroARS`, `ventaARS`, `reposicionARS` inside `calc`; `compraARS/compraUSD/ventaUSD/ahorroMesUSD` inside `serie` | no month-to-month chain of available money |
+| Disponible actual | does not exist | the UI "disponible" is the month's `disponibleFinal`; it resets each month |
+| Proyectado al cierre | does not exist | pending is shown, but no projected closing |
+| Patrimonio bruto / neto | `patrimonio(d)` (year-end `s[11]`: savings ARS valued at `cotizacionUSD` + USD stock + crypto) | no pending debt subtracted (so neither bruto nor neto in D7 terms); uses month 11, i.e. includes future months' flows (D7 wants only up to the current month); `estadoDeuda.saldo` holds the debt pending balance per plan |
+
+What R4 will need to add (not done): per-month opening balance and an explicit chain opening → movements → closing → next opening; a "realized vs scheduled" rule for transfers keyed on the month index vs `mesTope(d.anio)` (note: `estaPagado(j, it)` already receives the month and ignores it, and `gastadoTope`/`datosTorta` now receive `j` too, so month-aware semantics can be added without touching callers); the migration marker (`arrastreDesde`) set by `normalizar`; confirmed-closing storage and the real-vs-recorded difference; a net-worth function that subtracts pending debt and stops at the current month; the reposición-without-debt rule (D11); and a golden regeneration plan: R4 changes numbers on purpose, so regenerate `motor-golden.json` only together with a table of every changed output (before → migration → after) as D14 requires.
+
+### R4 candidates noticed during the extraction (not fixed, by D12)
+
+- `estaPagado(j, it)` and `alternarPago(j, it)` ignore `j` (dead parameter); R4 will probably give it meaning.
+- `serie` accumulates all 12 months, so `patrimonio` and `renderUSD` include future-month flows (D7 says up to the current month, D3 says scheduled transfers must not change current available).
+- `calc.disponibleLibre` ignores `compraARS`/`compraUSD`/`ahorroMesUSD`/`ventaUSD`: they only move the `serie` stocks. A purchase of USD from available money does not reduce the month's available.
+- `reposicionARS` larger than the pending `aReponer` still lowers `disponibleLibre` and raises `ahorroAcumulado` (money creation; D11 / E14 reposición rule). Pinned by the golden (month 10 of the corpus).
+- `patrimonio` does not subtract pending debt although `estadoDeuda.saldo` exists.
+- `normalizar` silently defaults `cotizacionUSD` to 1499 when 0/missing and migrates legacy `pagado` with `i <= mesTope(anio)` (current month counts as paid). Both pinned.
+- `datosTorta` includes deudas, `ranking` does not (different "expense" definitions across charts).
+- `proyeccionDeudas` falls back to `new Date().getMonth()` when a plan has no loaded row; `estadoDeuda` projects from `max(first unpaid month, mesTope(d.anio) + 1)`.
+- `mesTope(anio)` no longer falls back to `D.anio` for a missing argument (nothing relied on it after R3).
+- `cuantosPagos`/`diasDelMes` (pure) and `notaCompra`/`textoDeuda` (text) were left in the app on purpose; `cobroTxt` reads `mes`/`D`.
+
 ## Next step
 
-R3 pure extraction. The new parsers, `cuotaPaga`, `repartoCuotas` and `hayDatos` are pure and
-extractable in R3.
+Stop before R4: review of the extracted engine (this document, `tests/motor.golden.test.js`) and the exact R4 migration plan.
 
 ## Consumer inventory (R1, current semantics)
 
