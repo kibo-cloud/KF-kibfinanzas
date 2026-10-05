@@ -343,25 +343,44 @@ try{
   check('TGMotor.calc is a function (engine block loaded before the app)', await ev(`typeof TGMotor.calc`), 'function');
   check('the app aliases are the motor functions', await ev(`calc === TGMotor.calc && serie === TGMotor.serie && datosTorta === TGMotor.datosTorta && ranking === TGMotor.ranking`), true);
   check('motor and app agree on a month (calc via alias vs motor)', await ev(`JSON.stringify(calc(D.meses[mes])) === JSON.stringify(TGMotor.calc(D.meses[mes]))`), true);
+  // run the app's real versionPC() through the real click delegation and inspect the file it would download
   const pcCheck = '(' + function(){
-    return fetch('./index.html').then(function(r){ return r.text(); }).then(function(txt){
-      // the same slicing versionPC() does: everything between the two data markers is replaced
-      var M1 = '/*DATOS_' + 'INICIO*/', M2 = '/*DATOS_' + 'FIN*/';
-      var i = txt.indexOf(M1), j = txt.indexOf(M2);
-      var out = txt.slice(0, i + M1.length) + '{}' + txt.slice(j);
-      var mo = /<script id="motor">([\s\S]*?)<\/script>/.exec(out), app = out.indexOf("(function(){\n'use strict';");
-      var nuevo = new DOMParser().parseFromString(out, 'text/html');
-      return {
-        m1: txt.split(M1).length - 1, m2: txt.split(M2).length - 1, j_after_i: j > i,
-        motorBlocks: out.split('<script id="motor">').length - 1, motorHasMarkers: mo ? mo[1].indexOf('DATOS_') >= 0 : null,
-        appAfterMotor: !!mo && app > out.indexOf('<script id="motor">'),
-        motorDefinesTGMotor: !!mo && mo[1].indexOf('var TGMotor = (function(){') >= 0,
-        scriptIds: Array.prototype.map.call(nuevo.querySelectorAll('script'), function(s){ return s.id || '(app)'; })
-      };
+    return new Promise(function(resolve){
+      var orig = URL.createObjectURL, capt = null, t0 = performance.now();
+      URL.createObjectURL = function(b){ capt = b; return orig.call(URL, b); };
+      var btn = document.createElement('button'); btn.setAttribute('data-act', 'verpc'); document.body.appendChild(btn);
+      btn.click(); document.body.removeChild(btn);
+      (function esperar(){
+        if(!capt && performance.now() - t0 < 8000) return setTimeout(esperar, 100);
+        URL.createObjectURL = orig;
+        if(!capt) return resolve({captured: false});
+        capt.text().then(function(out){
+          var M1 = '/*DATOS_' + 'INICIO*/', M2 = '/*DATOS_' + 'FIN*/';
+          var i = out.indexOf(M1), j = out.indexOf(M2), datos = null;
+          try{ datos = JSON.parse(out.slice(i + M1.length, j)); }catch(e){}
+          var mo = /<script id="motor">([\s\S]*?)<\/script>/.exec(out), app = out.search(/\(function\(\)\{\r?\n'use strict';/);
+          var nuevo = new DOMParser().parseFromString(out, 'text/html'), compilan = true;
+          Array.prototype.forEach.call(nuevo.querySelectorAll('script'), function(s){
+            if(s.type === 'application/json') return;
+            try{ new Function(s.textContent); }catch(e){ compilan = false; }
+          });
+          var cerrar = document.createElement('button'); cerrar.setAttribute('data-act', 'cerrarHoja'); document.body.appendChild(cerrar); cerrar.click(); document.body.removeChild(cerrar);
+          resolve({
+            captured: true, m1: out.split(M1).length - 1, m2: out.split(M2).length - 1,
+            embeddedYear: datos ? datos.anio === D.anio : false, embeddedMonths: datos && datos.meses ? datos.meses.length : null,
+            motorBlocks: out.split('<script id="motor">').length - 1, motorHasMarkers: mo ? mo[1].indexOf('DATOS_') >= 0 : null,
+            appAfterMotor: !!mo && app > out.indexOf('<script id="motor">'),
+            motorDefinesTGMotor: !!mo && mo[1].indexOf('var TGMotor = (function(){') >= 0,
+            scriptsCompile: compilan,
+            scriptIds: Array.prototype.map.call(nuevo.querySelectorAll('script'), function(s){ return s.id || '(app)'; })
+          });
+        });
+      })();
     });
   } + ')()';
-  check('"Versión para PC" markers exist exactly once and outside the motor; motor precedes the app in the output', await ev(pcCheck),
-    { m1: 1, m2: 1, j_after_i: true, motorBlocks: 1, motorHasMarkers: false, appAfterMotor: true, motorDefinesTGMotor: true, scriptIds: ['(app)', 'datos', 'motor', '(app)'] });   // the first '(app)' is the Date pin the harness injects in <head>
+  check('"Versión para PC" (real versionPC): data embedded once, motor before the app, every script compiles', await ev(pcCheck),
+    { captured: true, m1: 1, m2: 1, embeddedYear: true, embeddedMonths: 12, motorBlocks: 1, motorHasMarkers: false, appAfterMotor: true,
+      motorDefinesTGMotor: true, scriptsCompile: true, scriptIds: ['(app)', 'datos', 'motor', '(app)'] });   // the first '(app)' is the Date pin the harness injects in <head>
 
   check('no uncaught page errors', pageErrs, []);
 }catch(e){ fails++; results.push('ERROR ' + e.message); }
