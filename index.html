@@ -5113,7 +5113,7 @@ function venderProducto(id, forma){
   if(p.stock !== null) p.stock = p.stock - 1;
   guardarTrab(true); renderTrabajo();
   var qd = p.stock === null ? '' : p.stock > 0 ? ' · quedan ' + p.stock : p.stock === 0 ? ' · último' : ' · sin stock';
-  toast(esc(p.nombre) + ' · ' + fARS(p.precio) + ' · ' + nombreForma(fo).toLowerCase() + qd, 'Deshacer', 'tjDeshacer');
+  toast(p.nombre + ' · ' + fARS(p.precio) + ' · ' + nombreForma(fo).toLowerCase() + qd, 'Deshacer', 'tjDeshacer');
 }
 function tocarProducto(id){
   var p = prodPorId(id); if(!p) return;
@@ -5954,9 +5954,8 @@ function seguroActualizacion(){
     var datos = {}, hay = false, i, k;
     for(i=0;i<localStorage.length;i++){
       k = localStorage.key(i);
-      if(!k || k.indexOf('kibo.') !== 0) continue;
-      if(k === LSESQ || k === LSPRE130) continue;
-      datos[k] = localStorage.getItem(k); hay = true;
+      if(!claveMia(k)) continue;
+      datos[k] =localStorage.getItem(k); hay = true;
     }
     if(hay && !localStorage.getItem(LSPRE130)){
       try{ localStorage.setItem(LSPRE130, JSON.stringify({version:'anterior a 1.30', fecha:new Date().toISOString(), datos:datos})); }
@@ -5980,9 +5979,9 @@ function volverAntesDe130(){
     'Restaurar', function(){
       try{
         var i, k, borrar = [];
-        for(i=0;i<localStorage.length;i++){ k = localStorage.key(i); if(k && k.indexOf('kibo.') === 0 && k !== LSPRE130) borrar.push(k); }
+        for(i=0;i<localStorage.length;i++){ k = localStorage.key(i); if(claveMia(k) || k === LSESQ) borrar.push(k); }   // LSESQ también: así el arranque vuelve a anotar el esquema
         for(i=0;i<borrar.length;i++) localStorage.removeItem(borrar[i]);
-        for(k in r.datos) if(r.datos.hasOwnProperty(k)) localStorage.setItem(k, r.datos[k]);
+        for(k in r.datos) if(r.datos.hasOwnProperty(k) && claveMia(k)) localStorage.setItem(k, r.datos[k]);   // un respaldo viejo puede traer claves ajenas: no se escriben
         localStorage.removeItem(LSPRE130);
       }catch(e){ pildora('No se pudo restaurar', true); return; }
       location.reload();
