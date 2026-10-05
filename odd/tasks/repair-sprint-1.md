@@ -350,6 +350,29 @@ implementation until the owner approves the design and answers Q1-Q15.
 - KNOWN RISKS: functions are unused until R4.4, so real-data behavior (decimals, a year with partial arrastre) is only covered by the corpus and the random years; money amounts with decimals can differ at float noise level (visible in `mixed-con-arrastre-desde-mayo`); `pasivos` is count-based (Q14) and ignores edited installment amounts; scheduled transfers are treated as realized when their month arrives (Q5/D1).
 - NEXT STEP: R4.3 (migration: `arrastre`/`cierreReal` written by `normalizar`/`duplicar`, pre-R4 snapshot, multi-tab `rev`), reusing `cadena` as the reader. Golden regeneration of the OLD fixture stays reserved for R4.4 (needs `TUGASTO_GOLDEN_RAZON`).
 
+#### R4.1 / R4.2 native reviews (parent)
+
+- R4.1 slice 3a8a7ae..e4669dc (926 lines): approved, acknowledged (review-2ecd86c348008b01). REAL
+  finding: no guard that app call sites pass `hoy` → tests/hoy-llamadas.test.js (static arity check +
+  negative case); 2 test-quality suggestions applied (tautology removed, direct poisoned-clock
+  assertion). Commit 59ebbbf.
+- R4.2 engine+tests e4669dc..26267e0 (745 lines, worktree): approved, acknowledged
+  (review-98de80990eaba357). Findings, all fixed RED→GREEN in 6bbda16: hoy-llamadas did not list the
+  new temporal functions (REAL); `flujosMes` re-implemented the paid predicate instead of
+  `estaPagado` (REAL, one semantic source D13); `reposicionExcedente` reported in future months
+  (REAL; now realized-only + `reposicionExcedenteProg`). R4 golden regenerated with reason; diff
+  verified mechanically: +324 new fields, 3 future values moved, 0 other changes
+  (tests/fixtures/golden-diff-R4.2-revision.md). Legacy golden untouched.
+- R4.2 remainder 26267e0..6bbda16 (281 lines incl. the ~330 KB R4 fixture): single native attempt →
+  `lens_context_budget_exceeded`, no authority. Parent review of the executable non-fixture code:
+  both generators refuse to write without `TUGASTO_GOLDEN_RAZON` (tested by spawning them and
+  asserting the fixtures are unchanged); the R4 golden test checks metadata reason, base commit and
+  data hash, per dataset/field and byte-identical; corpus-r4 builds datasets only (no engine logic).
+  The fixture itself is generated output, covered by the hash and the mechanical diff.
+- Verified independently by the parent: §2 contract numbers from the real motor (Sep 200.000 / −25.000,
+  Oct 825.000 / 580.000, patrimonio 2.925.000 / 2.625.000, chain 580.000 → 1.280.000).
+- State at 6bbda16: npm test 456/456, test:e2e 90/90, tree clean.
+
 ## Consumer inventory (R1, current semantics)
 
 Documentation of the CURRENT state (baseline `f3dbff3`; line numbers refer to index.html, which R1 does not touch). Guarded by `tests/inventario.test.js` (source of truth: `tests/inventario.data.js`). Semantics: registrado = every loaded amount; realizado = only ticked/paid; mixto = both; otro = editor/display/Trabajo ledger/false positive. Known bugs are listed as they behave today.
