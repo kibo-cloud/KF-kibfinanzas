@@ -64,14 +64,29 @@ function serve(dir){
 const tmpDirs = []; let srv = null, br = null, ws = null;
 const pageErrs = []; let id = 0; const pend = new Map();
 const results = []; let fails = 0;
-const send = (method, params = {}) => new Promise(r => { const i = ++id; pend.set(i, r); ws.send(JSON.stringify({ id: i, method, params })); });
+const CDP_TIMEOUT_MS = 15000;
+// Every CDP call rejects after CDP_TIMEOUT_MS and when the socket errors or closes, so a hung browser fails the run instead of hanging it.
+const send = (method, params = {}) => new Promise((res, rej) => {
+  const i = ++id;
+  const t = setTimeout(() => { pend.delete(i); rej(new Error(`CDP timeout (${CDP_TIMEOUT_MS} ms): ${method}`)); }, CDP_TIMEOUT_MS);
+  pend.set(i, { res: m => { clearTimeout(t); res(m); }, rej: e => { clearTimeout(t); rej(e); } });
+  try{ ws.send(JSON.stringify({ id: i, method, params })); }catch(e){ clearTimeout(t); pend.delete(i); rej(e); }
+});
+function failPending(err){ for(const [i, p] of pend){ pend.delete(i); p.rej(err); } }
+const loadWaiters = [];
+// resolves on the next Page.loadEventFired (register BEFORE navigating)
+const nextLoad = () => new Promise((res, rej) => {
+  const w = { res: () => { clearTimeout(t); res(); } };
+  const t = setTimeout(() => { const k = loadWaiters.indexOf(w); if(k >= 0) loadWaiters.splice(k, 1); rej(new Error(`page load timeout (${CDP_TIMEOUT_MS} ms)`)); }, CDP_TIMEOUT_MS);
+  loadWaiters.push(w);
+});
 async function ev(expr){
   const r = await send('Runtime.evaluate', { expression: '(function(){with(window.__kf||{}){return eval(' + JSON.stringify(expr) + ')}})()', returnByValue: true, awaitPromise: true });
   if(r.result.exceptionDetails) throw new Error(expr + ' -> ' + JSON.stringify(r.result.exceptionDetails.exception?.description || r.result.exceptionDetails.text));
   return r.result.result.value;
 }
 let URL_APP = '';
-async function nav(u){ await send('Page.navigate', { url: u }); await sleep(1500); }
+async function nav(u){ const loaded = nextLoad(); await send('Page.navigate', { url: u }); await loaded; await sleep(300); }   // load event + a short settle for the app's own start-up timers
 let total = 0;
 function check(name, got, want){ total++; const ok = JSON.stringify(got) === JSON.stringify(want); if(!ok) fails++; results.push(`${ok ? 'PASS' : 'FAIL'}  ${name}  got=${JSON.stringify(got)}${ok ? '' : ' want=' + JSON.stringify(want)}`); }
 
@@ -91,7 +106,14 @@ async function connect(userDir){
   }
   if(!ws) throw new Error('could not find a page target');
   await new Promise((res, rej) => { ws.onopen = res; ws.onerror = () => rej(new Error('websocket error')); });
-  ws.onmessage = e => { const m = JSON.parse(e.data); if(m.method === 'Runtime.exceptionThrown') pageErrs.push(m.params.exceptionDetails.exception?.description || m.params.exceptionDetails.text); if(m.id && pend.has(m.id)){ pend.get(m.id)(m); pend.delete(m.id); } };
+  ws.onmessage = e => {
+    const m = JSON.parse(e.data);
+    if(m.method === 'Runtime.exceptionThrown') pageErrs.push(m.params.exceptionDetails.exception?.description || m.params.exceptionDetails.text);
+    if(m.method === 'Page.loadEventFired') loadWaiters.splice(0).forEach(w => w.res());
+    if(m.id && pend.has(m.id)){ pend.get(m.id).res(m); pend.delete(m.id); }
+  };
+  ws.onerror = () => failPending(new Error('websocket error'));
+  ws.onclose = () => failPending(new Error('websocket closed'));
 }
 
 async function cleanup(){
@@ -145,6 +167,7 @@ try{
   check('Jan pendienteFijos', await ev('calc(D.meses[0]).pendienteFijos'), 5000);
   check('Dec disponibleFinal (all pending)', await ev('calc(D.meses[11]).disponibleFinal'), 0);
   check('Dec pendienteIngresos', await ev('calc(D.meses[11]).pendienteIngresos'), 200000);
+  await sleep(1300);   // the big number counts up: let the animation finish before reading the screen
   check('Oct big number on screen', await ev(`(${bigFinal}).replace(/\\D/g,'')`), '150000');
   // checkboxes rendered for all 4 sections
   check('check on ingresos rows', await ev(`document.querySelectorAll('[data-act=pagar][data-k=ingresos]').length`), 2);
@@ -189,6 +212,7 @@ try{
   check('after reload flags Oct variables', await ev(flags(9,'gastosVariables')), [true]);
   check('after reload Jan explicit false kept', await ev(flags(0,'gastosFijos')), [true,false]);
   check('after reload disponible', await ev('calc(D.meses[9]).disponibleFinal'), 128000);
+  await sleep(1300);
   check('after reload screen', await ev(`(${bigFinal}).replace(/[^\\d-]/g,'')`), '128000');
   // untick then reload: stays pending
   await ev(`document.querySelector('[data-act=pagar][data-k=gastosVariables][data-i="0"]').click(); true`);
@@ -252,6 +276,68 @@ try{
   check('tope: edit paid over limit (live) -> over', await bar(), {txt:'Te pasaste por $500 del tope de $10.000', w:100, mal:true});
   check('tope: live warning', await aviso(), 'Te pasaste del tope en Super.');
   check('tope: saldo semantics intact', await ev('calc(D.meses[9]).disponibleFinal'), 200000 - 60000 - 10500);
+
+  // ── R2: card "Gasto" button, number errors, empty notice, toast XSS ──
+  const typeIn = (sel, v, final = true) => ev(`(function(){ var x=document.querySelector(${JSON.stringify(sel)}); x.dispatchEvent(new FocusEvent('focusin',{bubbles:true})); x.value=${JSON.stringify(v)}; x.dispatchEvent(new Event('input',{bubbles:true})); ${final ? "x.dispatchEvent(new FocusEvent('focusout',{bubbles:true}));" : ''} return true; })()`);
+  const focusOut = sel => ev(`document.querySelector(${JSON.stringify(sel)}).dispatchEvent(new FocusEvent('focusout',{bubbles:true})); true`);
+  const hasCls = (sel, c) => ev(`document.querySelector(${JSON.stringify(sel)}).classList.contains(${JSON.stringify(c)})`);
+  const toastTxt = () => ev(`(function(){ var t=document.getElementById('toast'); return t.classList.contains('on') ? t.textContent : ''; })()`);
+  // (1) the card "Gasto" button opens the same quick-expense sheet as the FAB
+  check('card Gasto button exists', await ev(`!!document.querySelector('[data-act=rapido]')`), true);
+  await ev(`document.querySelector('[data-act=rapido]').click(); true`); await sleep(300);
+  check('card Gasto button opens the quick-expense sheet', await ev(`!!document.getElementById('grMonto') && document.getElementById('velo').classList.contains('on')`), true);
+  const cerrarHoja = async () => { await ev(`(function(){ var b = document.querySelector('#hoja [data-act=cerrarHoja]'); if(b) b.click(); return true; })()`); await sleep(400); };
+  await cerrarHoja();
+  await ev(`document.querySelector('[data-act=gastoRapido]').click(); true`); await sleep(300);
+  check('FAB opens the same sheet', await ev(`!!document.getElementById('grMonto')`), true);
+  await cerrarHoja();
+  // (2) number parsing: visible error, nothing stored; crypto quantity keeps decimals
+  const alq = 'input.monto[data-k=gastosFijos][data-i="0"]';
+  const antes = await ev('D.meses[9].gastosFijos[0].monto');
+  await typeIn(alq, '1e3', false);
+  check('typing 1e3: field marked', await hasCls(alq, 'err'), true);
+  check('typing 1e3: nothing stored yet', await ev('D.meses[9].gastosFijos[0].monto'), antes);
+  check('typing 1e3: no message while typing', await toastTxt(), '');
+  await focusOut(alq);
+  check('blur with 1e3: visible message', await toastTxt(), 'No entendí «1e3» como número');
+  check('blur with 1e3: stored monto unchanged', await ev('D.meses[9].gastosFijos[0].monto'), antes);
+  check('blur with 1e3: field shows the last valid value again', await ev(`document.querySelector(${JSON.stringify(alq)}).value.replace(/\\D/g,'')`), String(antes));
+  check('blur with 1e3: error mark cleared', await hasCls(alq, 'err'), false);
+  await typeIn(alq, '1.', false);
+  check('typing "1." (partial): no error mark', await hasCls(alq, 'err'), false);
+  await typeIn(alq, '60.000');
+  check('60.000 is 60000 (thousands dot)', await ev('D.meses[9].gastosFijos[0].monto'), 60000);
+  await ev(`document.querySelector('[data-act=tab][data-t=usd]').click(); true`); await sleep(400);
+  const cant = 'input.cant[data-cripto="0"]';
+  await typeIn(cant, '0.001');
+  check('crypto quantity 0.001 is stored as 0.001', await ev('D.cripto[0].cantidad'), 0.001);
+  await typeIn(cant, '1,234.5');
+  check('crypto quantity 1,234.5 is rejected and not stored', await ev('D.cripto[0].cantidad'), 0.001);
+  check('crypto quantity 1,234.5: visible message', await toastTxt(), 'No entendí «1,234.5» como número');
+  await ev(`document.querySelector('[data-act=tab][data-t=mes]').click(); true`); await sleep(300);
+  // (3) registered but unticked data is data: the empty-app notice goes away and the backup reminder shows
+  await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); true`);
+  await nav(URL_APP);
+  check('empty app shows the empty notice', await ev(`!!document.querySelector('#avisos [data-av=vacia]')`), true);
+  await typeIn('input.monto[data-k=gastosVariables][data-i="0"]', '5000'); await sleep(800);
+  check('unticked amount is registered', await ev('D.meses[9].gastosVariables[0].pagado'), false);
+  check('unticked amount: empty notice is gone', await ev(`!!document.querySelector('#avisos [data-av=vacia]')`), false);
+  await nav(URL_APP);
+  check('reload: no empty notice', await ev(`!!document.querySelector('#avisos [data-av=vacia]')`), false);
+  check('reload: backup reminder shown (no backup yet)', await ev(`document.getElementById('avisos').textContent.indexOf('Todavía no hiciste ninguna copia') >= 0`), true);
+  // (4) toast XSS through the repeat-invoice action, driven by the UI
+  const NUM = '<img src=x onerror="window.__xss=1">12';
+  const trab = { version: 1, activo: true, modo: 'pro', facturas: [{ id: 'f1', tipo: 'factura', cliente: 'Cliente X', numero: NUM, concepto: '', monto: 1000, cantidad: 1, precio: 1000, base: 1000, ajuste: 0,
+    fecha: '2026-09-01', contado: false, plazo: 30, forma: 'transferencia', creada: '2026-09-01T10:00:00.000Z' }], cobros: [], pases: [], gastos: [], productos: [] };
+  await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); localStorage.setItem('kibo.trabajo', ${JSON.stringify(JSON.stringify(trab))}); true`);
+  await nav(URL_APP);
+  check('Trabajo data loaded (tab visible)', await ev(`document.querySelector('#nav button[data-t=trabajo]').style.display !== 'none'`), true);
+  await ev(`document.querySelector('[data-act=tab][data-t=trabajo]').click(); true`); await sleep(400);
+  await ev(`document.querySelector('[data-act=tjVerFac]').click(); true`); await sleep(400);
+  await ev(`document.querySelector('[data-act=tjRepetir]').click(); true`); await sleep(1000);
+  check('toast XSS: no handler ran', await ev('typeof window.__xss'), 'undefined');
+  check('toast XSS: the toast shows the literal text', await ev(`document.getElementById('toast').textContent.indexOf('<img src=x onerror="window.__xss=1">13') >= 0`), true);
+  check('toast XSS: no img element inside the toast', await ev(`document.querySelectorAll('#toast img').length`), 0);
 
   check('no uncaught page errors', pageErrs, []);
 }catch(e){ fails++; results.push('ERROR ' + e.message); }
