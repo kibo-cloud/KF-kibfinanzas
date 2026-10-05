@@ -2124,6 +2124,7 @@ function ranking(d){
   for(i=0;i<12;i++){
     var m = d.meses[i], ls = m.gastosFijos.concat(m.gastosVariables);
     for(j=0;j<ls.length;j++){
+      if(!estaPagado(i, ls[j])) continue;   // solo lo que ya se pagó: lo pendiente no es plata que se fue
       var n = (ls[j].nombre||'(sin nombre)').trim();
       map[n] = (map[n]||0) + num(ls[j].monto);
     }
@@ -2537,6 +2538,7 @@ function datosTorta(m){
   for(k=0;k<secs.length;k++){
     arr = m[secs[k]] || [];
     for(i=0;i<arr.length;i++){
+      if(!estaPagado(mes, arr[i])) continue;   // la torta muestra lo ya pagado, igual que los totales
       v = Math.round(num(arr[i].monto));
       if(v > 0) l.push({n:String(arr[i].nombre || 'Sin nombre'), v:v, k:secs[k]});
     }
@@ -2556,7 +2558,7 @@ function htmlTorta(m, c){
   if(!total){
     return '<div class="final"><small>Gastos de ' + MESES[mes] + '</small>'
          + '<div class="final-fila"><div class="big">' + fARS(0) + '</div></div></div>'
-         + '<div class="nota" style="text-align:center;padding:14px 10px 6px">Cuando cargues gastos, deudas o fijos, acá vas a ver en qué se te va la plata.</div>';
+         + '<div class="nota" style="text-align:center;padding:14px 10px 6px">Cuando tildes como pagados tus gastos, deudas o fijos, acá vas a ver en qué se te va la plata.</div>';
   }
   var r = 54, cir = 2 * Math.PI * r, acum = 0, svg = '', leyenda = '';
   for(i=0;i<l.length;i++){
@@ -2699,7 +2701,7 @@ function renderAnio(){
         '<div class="chart">' + barras(s.map(function(c){return c.ahorroAcumulado;})) + '</div>');
 
   var rk = ranking(D), hR = '<div class="rank" style="padding:12px 16px">';
-  if(!rk.length) hR += '<div class="nota" style="padding:2px 0">Cuando cargues gastos, acá vas a ver el ranking del año por categoría.</div>';
+  if(!rk.length) hR += '<div class="nota" style="padding:2px 0">Cuando tildes gastos como pagados, acá vas a ver el ranking del año por categoría.</div>';
   var max = rk.length ? rk[0].monto : 1;
   for(i=0;i<rk.length;i++){
     hR += '<div class="rk"><small><span>'+esc(rk[i].nombre)+'</span><span>'+fARS(rk[i].monto)+'</span></small>'
