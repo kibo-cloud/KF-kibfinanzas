@@ -62,8 +62,8 @@ function extractVar(name){
   throw new Error('unterminated var: ' + name);
 }
 
-var DEFAULT_FUNCS = ['num', 'mesVacio', 'normalizar', 'suma', 'calc', 'serie', 'mesTope', 'estaPagado'];
-var DEFAULT_VARS = ['SECS', 'MARCABLE'];
+var DEFAULT_FUNCS = ['num', 'mesVacio', 'normalizar', 'suma', 'calc', 'serie', 'mesTope', 'estaPagado', 'sumaPagado', 'esRenglonTrabajo', 'clave', 'alternarPago', 'sumarAItem'];
+var DEFAULT_VARS = ['SECS', 'MARCABLE', 'RENGLON_TRABAJO'];
 
 // opts: {today:'YYYY-MM-DD', funcs:[...extra], vars:[...extra], globals:{name:value} injected before the code runs}
 function loadApp(opts){

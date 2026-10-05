@@ -51,7 +51,7 @@ R10. Income synced from Trabajo ("Del trabajo") is already cash-based and always
 
 - [x] T1 Test infrastructure + characterization of current `suma`/`calc`/`serie`.
 - [x] T2 Model: explicit flags at creation, legacy migration, `estaPagado`, `duplicar`, cuotas.
-- [ ] T3 Engine + UI: status-aware `calc`, `MARCABLE` for ingresos/variables, gasto rápido, Trabajo row.
+- [x] T3 Engine + UI: status-aware `calc`, `MARCABLE` for ingresos/variables, gasto rápido, Trabajo row.
 - [ ] T4 Version bump (APPVER, sw cache), LEEME changelog, full suite + manual flow check.
 
 ## TDD
@@ -69,7 +69,9 @@ Delegated direct: one writer for `index.html` + test files (writer trigger: 2+ n
 - T1 done: package.json, tests/load-app.js (brace-matching extractor + node:vm + fake Date), tests/smoke.test.js. Observed: `node --test "tests/**/*.test.js"` 2 pass / 0 fail. Note: on Node 24 the literal `node --test tests/` fails (directory treated as a module path), so the npm script uses a glob. Commit hash is recorded in the next task entry (a commit cannot contain its own hash).
 - T1 commit: 95c4cb6.
 - T2 done: R4-R8 in index.html (mesVacio, normalizar migration + marker `pagoExplicito`, mesTope(anio), mesesCorridos, estaPagado strict, cargarCuotas, crearItem/propagar/copiarAnterior, duplicar, restaurarTexto sets blob year before normalizar). tests/datos.test.js. Observed: 15 pass / 0 fail; inline script parses.
+- T2 commit: 0aac6cf.
+- T3 done: sumaPagado + calc realized totals and pendiente* (R1-R3), MARCABLE extended, alternarPago (pagar handler), sumarAItem (gasto rápido, R9), renglonTrabajo creates pagado:true and calc/seccion treat "Del trabajo" as always counted without checkbox (R10), aria text "cobrado" for ingresos, Ajustes help text updated. tests/totales.test.js. Observed: 30 pass / 0 fail; inline script parses.
 
 ## Next step
 
-T3.
+T4.

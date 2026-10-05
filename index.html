@@ -1917,15 +1917,23 @@ function fechaCorta(iso){
 }
 
 /* ═══ 3 · cálculos (funciones puras) ════════════════════════════ */
-function suma(a){ var t=0; for(var i=0;i<(a||[]).length;i++) t += num(a[i].monto); return t; }
+function suma(a){ var t=0; for(var i=0;i<(a||[]).length;i++) t += num(a[i].monto); return t; }   // lo cargado, esté pagado o no
+// lo realizado: solo lo tildado (pagado/cobrado). "Del trabajo" viene de pases ya cobrados, siempre cuenta
+function sumaPagado(a, ing){
+  var t=0;
+  for(var i=0;i<(a||[]).length;i++) if(a[i].pagado === true || (ing && esRenglonTrabajo(a[i].nombre))) t += num(a[i].monto);
+  return t;
+}
 function calc(m){
-  var ti = suma(m.ingresos), sf = suma(m.gastosFijos), sv = suma(m.gastosVariables);
-  var tg = sf + sv, td = suma(m.deudas), ah = num(m.ahorroMesARS);
+  var ti = sumaPagado(m.ingresos, true), sf = sumaPagado(m.gastosFijos), sv = sumaPagado(m.gastosVariables);
+  var tg = sf + sv, td = sumaPagado(m.deudas), ah = num(m.ahorroMesARS);
+  var pi = suma(m.ingresos) - ti, pf = suma(m.gastosFijos) - sf, pv = suma(m.gastosVariables) - sv, pd = suma(m.deudas) - td;
   var sacado = num(m.retiroARS) + num(m.ventaARS), repuesto = num(m.reposicionARS);
   var libre = ti - tg - ah + sacado - repuesto;
   return {
     totalIngresos: ti, subtotalFijos: sf, subtotalVariables: sv,
     totalGastos: tg, totalDeudas: td, ahorroMesARS: ah,
+    pendienteIngresos: pi, pendienteFijos: pf, pendienteVariables: pv, pendienteGastos: pf + pv, pendienteDeudas: pd,
     retiroARS: num(m.retiroARS), ventaUSD: num(m.ventaUSD), ventaARS: num(m.ventaARS),
     reposicionARS: repuesto, sacadoARS: sacado,
     disponibleLibre: libre, disponibleFinal: libre - td,
@@ -1971,7 +1979,7 @@ function notaCompra(m, acum){
   if(a > 0 || u > 0) return 'Complet\u00e1 los dos campos para calcular a cu\u00e1nto lo pagaste.';
   return 'Si pas\u00e1s parte del ahorro a d\u00f3lares, cargalo ac\u00e1: se descuenta de los pesos y se suma a los d\u00f3lares.';
 }
-var MARCABLE = {gastosFijos:true, deudas:true};
+var MARCABLE = {ingresos:true, gastosFijos:true, gastosVariables:true, deudas:true};
 function mesTope(anio){
   var hoy = new Date(), a = anio == null ? D.anio : anio;
   if(a < hoy.getFullYear()) return 11;
@@ -1987,6 +1995,7 @@ function mesesCorridos(anio){   // cuántos meses de ese año ya pasaron del tod
 function estaPagado(j, it){
   return !!it && it.pagado === true;   // el estado es explícito; lo viejo sin definir lo completa normalizar
 }
+function alternarPago(j, it){ it.pagado = !estaPagado(j, it); return it.pagado; }
 var DIASEM = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
 var DIASEMC = ['D','L','M','M','J','V','S'];
 function diasDelMes(anio, m){ return new Date(anio, m + 1, 0).getDate(); }
@@ -2423,10 +2432,11 @@ function seccion(S, m){
      + '<span class="sub" id="sub-'+S.k+'">'+fARS(sub)+'</span><i class="chev"></i></button>';
   h += '<div class="cuerpo">';
   for(var i=0;i<lista.length;i++){
-    var pg = MARCABLE[S.k] && estaPagado(mes, lista[i]);
+    var marc = MARCABLE[S.k] && !(S.k === 'ingresos' && esRenglonTrabajo(lista[i].nombre));   // "Del trabajo" ya está cobrado: no se tilda
+    var pg = marc && estaPagado(mes, lista[i]), pal = S.k === 'ingresos' ? 'cobrado' : 'pagado';
     var vt = S.k === 'ingresos' && esRenglonTrabajo(lista[i].nombre) && pasesDelMes(D.anio, mes) > 0;   // lo carga Trabajo con sus pases
     h += '<div class="item'+(pg?' pago':'')+(vt?' deltrab':'')+'">'
-       +   (MARCABLE[S.k] ? '<button class="chk'+(pg?' on':'')+'" data-act="pagar" data-k="'+S.k+'" data-i="'+i+'" aria-label="'+(pg?'Marcar como no pagado':'Marcar como pagado')+'"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>' : '')
+       +   (marc ? '<button class="chk'+(pg?' on':'')+'" data-act="pagar" data-k="'+S.k+'" data-i="'+i+'" aria-label="'+(pg?'Marcar como no '+pal:'Marcar como '+pal)+'"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>' : '')
        +   '<input class="nombre" data-k="'+S.k+'" data-i="'+i+'" value="'+esc(lista[i].nombre)+'" aria-label="Nombre"'+(vt?' readonly':'')+'>'
        +   '<input class="monto" inputmode="decimal" enterkeyhint="done" data-k="'+S.k+'" data-i="'+i+'" value="'+fARS(lista[i].monto)+'" aria-label="Monto"'+(vt?' readonly':'')+'>'
        +   '<button class="x" data-act="'+(vt?'tjDelTrabajo':'del')+'" data-k="'+S.k+'" data-i="'+i+'" aria-label="Borrar">×</button>'
@@ -2875,8 +2885,8 @@ function manual(){
     '<p>El renglón gris de cada deuda y el panel de <b>Deudas</b> del año proyectan desde el <b>primer mes que todavía no pagaste</b>, sumando una cuota por mes. No importa qué mes estés mirando: la fecha de fin es siempre la misma.</p>'
     + '<p>Al crear el año siguiente, la app anota cuántas cuotas llevabas pagadas en ese momento. Si todavía no marcaste como pagadas las cuotas que faltan del año actual, el año nuevo arranca con esa cuenta y la proyección se corre. Por eso conviene tener los checks al día antes de crear el año.</p>');
   h += bloque('pagado', 'Marcar lo que ya pagaste',
-    '<p>En <b>Gastos fijos</b> y en <b>Deudas</b> cada fila tiene un círculo a la izquierda. Tocalo y queda tildado en verde: eso significa que esa cuota o ese gasto ya está pagado, y la fila se ve apagada.</p>'
-    + '<p>La app lo tilda sola en los meses que ya pasaron y en el que estás. Los meses que todavía no llegaron quedan sin tildar, aunque tengas la cuota cargada, porque cargarla no es lo mismo que pagarla. Si pagaste una cuota adelantada, tildala a mano; si un mes que ya pasó quedó sin pagar, destildalo.</p>'
+    '<p>Cada fila de <b>Ingresos</b>, <b>Gastos fijos</b>, <b>Gastos variables</b> y <b>Deudas</b> tiene un círculo a la izquierda. Tocalo y queda tildado en verde: eso significa que ese ingreso ya lo cobraste, o que ese gasto o esa cuota ya la pagaste, y la fila se ve apagada.</p>'
+    + '<p>Los totales del mes y del año cuentan solo lo tildado. Lo que cargás sin tildar queda como pendiente y no suma ni resta hasta que lo marques. Lo que ya tenías cargado de meses anteriores sigue como se veía; lo nuevo arranca sin tildar. Lo que sumás con el botón de gasto rápido queda tildado, porque es plata que ya gastaste. Si pagaste una cuota adelantada, tildala a mano; si algo de un mes que ya pasó quedó sin pagar, destildalo.</p>'
     + '<p>De ahí sale la cuenta de <b>cuántas cuotas llevás</b>, tanto en el mes como en el panel de Deudas de la pestaña Año. Por eso los dos dicen siempre lo mismo.</p>');
   h += bloque('orden', 'Ordenar y borrar categorías',
     '<p>Abajo de cada sección está <b>Cambiar el orden</b>: subís o bajás cada categoría hasta dejarlas como las querés ver. Se aplica solo a ese mes o de ese mes en adelante, igual que los topes. Los montos viajan con la categoría, no se mezclan.</p>'
@@ -3651,11 +3661,15 @@ function gastoRapido(){
   inp.addEventListener('input', function(){ gr.monto = parseNum(inp.value); });
   inp.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); sumarGasto(); } });
 }
+function sumarAItem(it, monto){   // gasto rápido es plata ya gastada: un ítem vacío queda pagado; con un monto pendiente conserva su estado
+  if(!num(it.monto)) it.pagado = true;
+  it.monto = num(it.monto) + monto;
+}
 function sumarGasto(){
   if(!gr.monto){ var i = document.getElementById('grMonto'); if(i) i.focus(); return; }
   if(gr.cat === null){ toast('Tocá una categoría para saber dónde sumarlo'); return; }
   var it = D.meses[mes][gr.sec][gr.cat];
-  it.monto = num(it.monto) + gr.monto;
+  sumarAItem(it, gr.monto);
   var id = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
   D.meses[mes].movimientos.push({id:id, fecha:new Date().toISOString(), sec:gr.sec, nombre:it.nombre, monto:gr.monto});
   cerrarHoja(); tocar(); conScroll(renderMes);
@@ -3940,7 +3954,7 @@ document.addEventListener('click', function(ev){
   if(a === 'topes'){ abrirTopes(b.getAttribute('data-k')); return; }
   if(a === 'pagar'){
     var kp = b.getAttribute('data-k'), ip = +b.getAttribute('data-i'), itp = D.meses[mes][kp][ip];
-    if(itp){ itp.pagado = !estaPagado(mes, itp); tocar(); guardar(); conScroll(renderMes); }
+    if(itp){ alternarPago(mes, itp); tocar(); guardar(); conScroll(renderMes); }
     return;
   }
   if(a === 'ordenar'){ abrirOrden(b.getAttribute('data-k')); return; }
@@ -5635,7 +5649,7 @@ function renglonTrabajo(d, m, crear){
   var ls = d.meses[m].ingresos, i;
   for(i=0;i<ls.length;i++) if(String(ls[i].nombre || '').trim().toLowerCase() === RENGLON_TRABAJO.toLowerCase()) return ls[i];
   if(!crear) return null;
-  var it = {nombre:RENGLON_TRABAJO, monto:0, tope:0}; ls.push(it); return it;
+  var it = {nombre:RENGLON_TRABAJO, monto:0, tope:0, pagado:true}; ls.push(it); return it;
 }
 function aplicarPase(p, signo){
   var abierto = p.anio === D.anio, d = abierto ? D : leerAnio(p.anio);

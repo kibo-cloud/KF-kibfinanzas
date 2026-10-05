@@ -8,6 +8,8 @@ test('loads engine and computes a basic month', function(){
   var m = app.mesVacio();
   m.ingresos[0].monto = 1000;
   m.gastosFijos[0].monto = 300;
+  m.ingresos[0].pagado = true;
+  m.gastosFijos[0].pagado = true;
   var c = app.calc(m);
   assert.equal(c.totalIngresos, 1000);
   assert.equal(c.totalGastos, 300);
