@@ -1,0 +1,73 @@
+# Sprint 0 — Payment status drives totals
+
+## Objective
+
+Make the financial impact of every movement depend on its real payment/collection status.
+Income counts only when collected; expenses and installments count only when paid.
+
+## Problem
+
+`suma()` / `calc()` in `index.html` (lines ~1917-1933) sum every `monto` regardless of `pagado`.
+Every view (Mes, Año, torta, CSV, live `refrescar`) consumes `calc`/`serie`, so pending
+movements hit totals as soon as an amount is typed. Contributing issues:
+
+- `ingresos` and `gastosVariables` have no status (`MARCABLE = {gastosFijos, deudas}`).
+- `estaPagado` infers `pagado` for undefined flags (`monto > 0 && month <= current`), so
+  freshly typed current-month amounts look and count as already paid.
+- `duplicar` (next year) keeps stale `pagado` flags while zeroing amounts.
+
+## Scope (authorized)
+
+- Status-aware totals in the central engine (`calc`), no per-screen patches.
+- Status checkbox for `ingresos` and `gastosVariables`, reusing the existing `pagar` button.
+- Explicit, non-destructive legacy compatibility for undefined `pagado`.
+- Minimal isolated Node test infrastructure (`node:test`, no dependencies).
+
+Out of scope: general audit, cleanup, refactor, redesign, rename, unrelated features.
+
+## Rules (decided)
+
+R1. Realized totals: `calc` sums only items with `pagado === true` for `totalIngresos`,
+    `subtotalFijos`, `subtotalVariables`, `totalGastos`, `totalDeudas`; all derived metrics
+    (`disponibleLibre`, `disponibleFinal`, `pctGastos`, `pctAhorro`, `ahorroSugerido`) follow.
+R2. Pending is exposed as data only (`pendienteIngresos`, `pendienteFijos`,
+    `pendienteVariables`, `pendienteGastos`, `pendienteDeudas`); no new visual design.
+R3. `suma()` stays "registered total" (all amounts) for section subtotals, `hayDatos`, etc.
+R4. Every creation path writes an explicit `pagado` boolean (default `false`).
+R5. Legacy compatibility: a one-time, per-year migration in `normalizar` fills ONLY
+    undefined `pagado` using the exact pre-fix inference (`monto > 0 && month <= mesTope()`),
+    then stamps a marker so it never runs again. Explicit `true`/`false` are never touched.
+    This freezes what the UI already showed as ticked, preserving past/current totals;
+    only future-month projections and explicitly unticked items change.
+R6. After migration `estaPagado` treats undefined as `false` (no silent inference).
+R7. Next-year `duplicar` resets `pagado` to `false` along with the zeroed amounts.
+R8. `cargarCuotas` sets `pagado: true` for months strictly before the current month,
+    `false` for current and future; it keeps an existing explicit flag.
+R9. Gasto rápido is money already spent: a new target item, or one whose `monto` was 0,
+    becomes `pagado: true`; a target with a pending positive amount keeps its status.
+R10. Income synced from Trabajo ("Del trabajo") is already cash-based and always counts.
+
+## Tasks
+
+- [x] T1 Test infrastructure + characterization of current `suma`/`calc`/`serie`.
+- [ ] T2 Model: explicit flags at creation, legacy migration, `estaPagado`, `duplicar`, cuotas.
+- [ ] T3 Engine + UI: status-aware `calc`, `MARCABLE` for ingresos/variables, gasto rápido, Trabajo row.
+- [ ] T4 Version bump (APPVER, sw cache), LEEME changelog, full suite + manual flow check.
+
+## TDD
+
+Mode: off (no project/session configuration). Tests are still required by the sprint brief.
+Runner: `node --test tests/` (Node 24, no dependencies).
+
+## Route
+
+Delegated direct: one writer for `index.html` + test files (writer trigger: 2+ non-trivial files).
+
+## Progress / evidence
+
+- Baseline commit `7f7ad40` on `main`; work on branch `fix/estado-pago-totales`.
+- T1 done: package.json, tests/load-app.js (brace-matching extractor + node:vm + fake Date), tests/smoke.test.js. Observed: `node --test "tests/**/*.test.js"` 2 pass / 0 fail. Note: on Node 24 the literal `node --test tests/` fails (directory treated as a module path), so the npm script uses a glob. Commit hash is recorded in the next task entry (a commit cannot contain its own hash).
+
+## Next step
+
+T2.
