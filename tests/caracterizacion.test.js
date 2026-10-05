@@ -8,7 +8,7 @@ var loadApp = require('./load-app').loadApp;
 
 var app = loadApp({
   today: '2026-06-15',
-  funcs: ['parseNum', 'esc', 'hayDatos', 'cargarCuotas', 'planDeCarga', 'pendientesDesde', 'pagadasHasta', 'planDe',
+  funcs: ['sinSigno', 'cerosFuera', 'parseMonto', 'esc', 'hayDatos', 'cargarCuotas', 'planDeCarga', 'pendientesDesde', 'pagadasHasta', 'planDe',
           'valorCuota', 'totalConRecargo', 'estadoDeuda', 'mesesCorridos'],
   globals: {tieneTrab: function(){ return false; }}
 });
@@ -19,13 +19,13 @@ function freshD(){
   return {anio: 2026, meses: meses, planDeudas: {}};
 }
 
-test('[R2 will change] parseNum E4: ambiguous and exotic input is silently guessed', function(){
-  assert.equal(app.parseNum('0.001'), 1);          // dot treated as thousands separator
-  assert.equal(app.parseNum('1e3'), 13);           // letters stripped: "13"
-  assert.equal(app.parseNum('12.5,3'), 125.3);     // dots dropped, comma decimal
-  assert.equal(app.parseNum('1.234'), 1234);       // always thousands
-  assert.equal(app.parseNum('1,5'), 1.5);
-  assert.equal(app.parseNum('1.234,56'), 1234.56);
+test('[R2 fixed] parseMonto E4: ambiguous and exotic input is rejected, not guessed', function(){
+  assert.equal(app.parseMonto('0.001'), 0.001);    // was 1 (dot treated as thousands)
+  assert.ok(Number.isNaN(app.parseMonto('1e3')));  // was 13 (letters stripped)
+  assert.ok(Number.isNaN(app.parseMonto('12.5,3'))); // was 125.3
+  assert.equal(app.parseMonto('1.234'), 1234);     // grouped thousands, unchanged
+  assert.equal(app.parseMonto('1,5'), 1.5);
+  assert.equal(app.parseMonto('1.234,56'), 1234.56);
 });
 
 test('[R2 will change] esc S6: single quote is not escaped', function(){

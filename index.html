@@ -157,6 +157,7 @@ h2.tit{font-size:13px;font-weight:600;color:var(--txt2);margin:22px 4px 8px;lett
 .mas{display:block;width:100%;padding:14px 16px;text-align:left;color:var(--acc);font-weight:600;font-size:15px;min-height:48px}
 .nota{padding:10px 16px 14px;font-size:13px;color:var(--txt2)}
 .nota.mal{color:var(--neg)}
+input.err{box-shadow:inset 0 0 0 1.5px var(--neg);border-radius:8px;color:var(--neg)}
 .manual .cuerpo{padding:12px 16px 4px}
 .manual p{margin:0 0 10px;font-size:15px;line-height:1.5}
 .manual ul{margin:0 0 10px;padding-left:18px;font-size:15px;line-height:1.5}
@@ -1900,14 +1901,56 @@ function corto(n){
   return String(n);
 }
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function parseNum(s){
-  s = String(s).replace(/[^0-9,.\-]/g,'');
-  if(s.indexOf(',') > -1) s = s.replace(/\./g,'').replace(',','.');
-  else if(/^-?\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g,'');
-  var n = parseFloat(s);
-  return isFinite(n) ? n : 0;
+/* Lectura de números es-AR por tipo de campo (D9). Cada lector devuelve NaN si no entiende el texto
+   (nunca adivina) y 0 si está vacío. Con neg=true acepta un "-" adelante. */
+function sinSigno(t, neg){   // {t:texto sin el "-", sg:1|-1} o null si el signo no corresponde
+  if(t.charAt(0) !== '-') return {t:t, sg:1};
+  if(!neg) return null;
+  t = t.slice(1);
+  return t === '' ? null : {t:t, sg:-1};
 }
-function crudo(n){ n = num(n); return n === 0 ? '' : String(n).replace('.',','); }
+function cerosFuera(v){ return v === 0 ? 0 : v; }   // sin -0
+// plata y precios: 1234 · 1.234 (miles) · 1.234,56 · 1,5 · ,5 · 0.5 / 1.5 (punto solo y sin tres dígitos = decimal) · "$" y espacios se ignoran
+function parseMonto(s, neg){
+  var t = String(s).replace(/[\s$]/g,''), r, m;
+  if(t === '') return 0;
+  r = sinSigno(t, neg); if(!r) return NaN;
+  t = r.t;
+  m = /^(\d+|[1-9]\d{0,2}(?:\.\d{3})+)?(?:,(\d+))?$/.exec(t);
+  if(m && (m[1] !== undefined || m[2] !== undefined)) return cerosFuera(r.sg * parseFloat((m[1] || '0').replace(/\./g,'') + '.' + (m[2] || '0')));
+  if(/^0\.\d+$/.test(t) || /^[1-9]\d*\.(?:\d{1,2}|\d{4,})$/.test(t)) return cerosFuera(r.sg * parseFloat(t));
+  return NaN;
+}
+// cantidades con precisión (cripto, unidades): un solo separador es el decimal, con cualquier cantidad de decimales; 1.234,5 también vale
+function parseCantidad(s, neg){
+  var t = String(s).replace(/\s/g,''), r;
+  if(t === '') return 0;
+  r = sinSigno(t, neg); if(!r) return NaN;
+  t = r.t;
+  if(/^\d+$/.test(t)) return cerosFuera(r.sg * parseFloat(t));
+  if(/^\d*[.,]\d+$/.test(t)) return cerosFuera(r.sg * parseFloat('0' + t.replace(',','.')));
+  if(/^[1-9]\d{0,2}(?:\.\d{3})+(?:,\d+)?$/.test(t)) return cerosFuera(r.sg * parseFloat(t.replace(/\./g,'').replace(',','.')));
+  return NaN;
+}
+function parsePct(s, neg){ return parseCantidad(String(s).replace(/%/g,''), neg); }
+// contar cosas (cuotas, días, stock): solo dígitos; el punto solo vale como separador de miles bien puesto
+function parseEntero(s, neg){
+  var t = String(s).replace(/\s/g,''), r;
+  if(t === '') return 0;
+  r = sinSigno(t, neg); if(!r) return NaN;
+  t = r.t;
+  if(/^(?:\d+|[1-9]\d{0,2}(?:\.\d{3})+)$/.test(t)) return cerosFuera(r.sg * parseFloat(t.replace(/\./g,'')));
+  return NaN;
+}
+// texto que todavía se está escribiendo ("1." o "1,"): no se marca error hasta que se suelta el campo
+function parcial(raw, lector){ var t = String(raw).trim(); return /[.,]$/.test(t) && !isNaN(lector(t.slice(0,-1))); }
+function marcarErr(t, mal){ if(t && t.classList){ if(mal) t.classList.add('err'); else t.classList.remove('err'); } }
+function crudo(n){
+  n = num(n); if(n === 0) return '';
+  var s = String(n);
+  if(/e/i.test(s)) s = n.toFixed(12).replace(/0+$/,'').replace(/\.$/,'');   // 1e-8 no se lee de vuelta: se escribe con todos sus decimales
+  return s.replace('.',',');
+}
 function fechaCorta(iso){
   if(!iso) return '';
   var d = new Date(iso);
@@ -2409,9 +2452,13 @@ function abrirTopes(k){
   abrirHoja(h);
 }
 function guardarTopes(k, adelante){
-  var l = D.meses[mes][k], campos = document.querySelectorAll('#hoja input.topein'), i, j, q, cambiados = 0;
+  var l = D.meses[mes][k], campos = document.querySelectorAll('#hoja input.topein'), i, j, q, cambiados = 0, vals = [];
+  for(i=0;i<campos.length;i++){   // primero se lee todo: si algo no se entiende, no se guarda nada
+    vals[i] = parseMonto(campos[i].value);
+    if(isNaN(vals[i])){ marcarErr(campos[i], true); campos[i].focus(); toast('No entendí «' + campos[i].value.trim() + '» como número'); return; }
+  }
   for(i=0;i<campos.length;i++){
-    var idx = +campos[i].getAttribute('data-i'), v = Math.max(0, parseNum(campos[i].value));
+    var idx = +campos[i].getAttribute('data-i'), v = vals[i];
     if(!l[idx]) continue;
     if(num(l[idx].tope) !== v) cambiados++;
     l[idx].tope = v;
@@ -3666,7 +3713,11 @@ function gastoRapido(){
   abrirHoja(h);
   var inp = document.getElementById('grMonto');
   inp.focus();
-  inp.addEventListener('input', function(){ gr.monto = parseNum(inp.value); });
+  inp.addEventListener('input', function(){
+    var v = parseMonto(inp.value);
+    if(isNaN(v)){ marcarErr(inp, !parcial(inp.value, parseMonto)); return; }   // se queda con el último valor válido
+    marcarErr(inp, false); gr.monto = v;
+  });
   inp.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); sumarGasto(); } });
 }
 function sumarAItem(it, monto){   // gasto rápido es plata ya gastada: un ítem vacío queda pagado; con un monto pendiente conserva su estado
@@ -3674,6 +3725,10 @@ function sumarAItem(it, monto){   // gasto rápido es plata ya gastada: un ítem
   it.monto = num(it.monto) + monto;
 }
 function sumarGasto(){
+  var inp = document.getElementById('grMonto');
+  if(inp && isNaN(parseMonto(inp.value))){   // el último valor válido no vale si lo que se ve no se entiende
+    marcarErr(inp, true); toast('No entendí «' + inp.value.trim() + '» como número'); return;
+  }
   if(!gr.monto){ var i = document.getElementById('grMonto'); if(i) i.focus(); return; }
   if(gr.cat === null){ toast('Tocá una categoría para saber dónde sumarlo'); return; }
   var it = D.meses[mes][gr.sec][gr.cat];
@@ -3747,7 +3802,7 @@ function abrirComoCobras(i){
     + '<label class="tj-lb">¿Cada cuánto lo cobrás?</label><div class="seg seg4" id="icFrec" style="margin-bottom:14px">' + seg + '</div>'
     + '<label class="tj-lb" id="icLbl"></label><div id="icGrilla"></div>'
     + '<div class="tj-dos">'
-    +   '<div class="campo"><label>Total del mes</label><input type="text" id="icTotal" inputmode="decimal" autocomplete="off" value="' + (num(it.monto) ? fARS(it.monto) : '') + '"></div>'
+    +   '<div class="campo"><label>Total del mes</label><input type="text" id="icTotal" inputmode="decimal" autocomplete="off" value="' + montoInput(it.monto) + '"></div>'
     +   '<div class="campo"><label>Cada pago</label><input type="text" id="icCada" inputmode="decimal" autocomplete="off"></div>'
     + '</div>'
     + '<div class="nota" id="icNota" style="padding:0 0 14px"></div>'
@@ -3779,11 +3834,16 @@ function pintarNotaCobras(){
   var e = document.getElementById('icNota'); if(!e) return;
   var it = {frec:cbx.frec, dias:cbx.dias, monto:0}, n = cuantosPagos(it, D.anio, mes);
   var tot = document.getElementById('icTotal'), cada = document.getElementById('icCada');
-  if(cbx.ult === 'cada'){ var vc = parseNum(cada.value); tot.value = n > 0 && vc > 0 ? fARS(Math.round(vc * n)) : ''; }
-  else { var vt = parseNum(tot.value); cada.value = n > 0 && vt > 0 ? fARS(Math.round(vt / n)) : ''; }
+  var ult = cbx.ult === 'cada' ? cada : tot, otro = ult === cada ? tot : cada, vu = parseMonto(ult.value);
+  if(isNaN(vu)) marcarErr(ult, !parcial(ult.value, parseMonto));   // se queda con lo último que se entendió
+  else { marcarErr(ult, false); otro.value = n > 0 && vu > 0 ? montoInput(ult === cada ? vu * n : vu / n) : ''; }
   e.className = 'nota';
   if(!n){ e.className = 'nota mal'; e.innerHTML = 'Elegí al menos un día.'; return; }
-  var t2 = parseNum(tot.value);
+  var t2 = parseMonto(tot.value);
+  if(isNaN(t2)){
+    if(!parcial(tot.value, parseMonto)){ e.className = 'nota mal'; e.innerHTML = 'No entendí «' + esc(tot.value.trim()) + '» como número.'; return; }
+    t2 = 0;
+  }
   it.monto = t2;
   e.innerHTML = t2 > 0 ? cobroTxt(it) + '. En el mes suman <b>' + fARS(t2) + '</b>.'
                        : 'Poné el total del mes o cuánto es cada pago, y hago la otra cuenta.';
@@ -3794,7 +3854,9 @@ function guardarComoCobras(quitar){
   else {
     var n = cuantosPagos({frec:cbx.frec, dias:cbx.dias}, D.anio, mes);
     if(!n){ errorEn('icNota', 'Elegí al menos un día.'); return; }
-    var t = Math.round(parseNum(document.getElementById('icTotal').value));
+    var tt = document.getElementById('icTotal'), t = parseMonto(tt.value);
+    if(isNaN(t)){ marcarErr(tt, true); errorEn('icNota', 'No entendí «' + esc(tt.value.trim()) + '» como número.'); return; }
+    t = Math.round(t);
     if(!(t > 0)){ errorEn('icNota', 'Falta el total del mes o cuánto es cada pago.'); return; }
     it.frec = cbx.frec; it.dias = cbx.dias.slice(); it.monto = t;
   }
@@ -3805,7 +3867,7 @@ function abrirPlan(i){
   var it = D.meses[mes].deudas[i], p = planDe(it.nombre) || {total:0, cuotas:0, pagadasAntes:0};
   planIdx = i;
   abrirHoja('<h3>' + esc(it.nombre || 'Deuda') + '</h3>'
-    + '<div class="campo"><label>Total del préstamo</label><input type="text" id="plTotal" inputmode="decimal" value="'+(p.total?fARS(p.total):'')+'"></div>'
+    + '<div class="campo"><label>Total del préstamo</label><input type="text" id="plTotal" inputmode="decimal" value="'+montoInput(p.total)+'"></div>'
     + '<div class="tj-dos">'
     +   '<div class="campo"><label>Cantidad de cuotas</label><input type="text" id="plCuotas" inputmode="numeric" value="'+(p.cuotas||'')+'"></div>'
     +   '<div class="campo"><label>Recargo % (opcional)</label><input type="text" id="plRec" inputmode="decimal" placeholder="sin recargo" value="'+(num(p.recargo)?String(p.recargo).replace('.',','):'')+'"></div>'
@@ -3816,11 +3878,12 @@ function abrirPlan(i){
     + '<div class="fila">' + (planDe(it.nombre) ? '<button class="mal" data-act="quitarPlan">Quitar</button>' : '<button data-act="cerrarHoja">Cancelar</button>')
     + '<button class="pri" data-act="guardarPlan">Guardar</button></div>');
   var refrescarCuota = function(){
-    var t = parseNum(document.getElementById('plTotal').value);
-    var c = Math.round(parseNum(document.getElementById('plCuotas').value));
-    var r = parseNum(document.getElementById('plRec').value);
     var e = document.getElementById('plCuota');
     if(!e) return;
+    var lt = leerPlan();
+    if(lt.mal){ e.className = 'nota mal'; e.innerHTML = 'No entendí «' + esc(lt.mal) + '» como número.'; return; }
+    e.className = 'nota';
+    var t = lt.total, c = lt.cuotas, r = lt.recargo;
     var tc = t * (1 + r/100);
     e.innerHTML = (t > 0 && c > 0)
       ? 'Cada cuota queda en <b>' + fARS(Math.round(tc/c)) + '</b>' + (r ? ', con el ' + String(r).replace('.', ',') + ' % ya sumado (' + fARS(Math.round(tc)) + ' en total)' : ', sin recargo') + '.'
@@ -3833,16 +3896,31 @@ function abrirPlan(i){
   var f = document.getElementById('plTotal'); if(f) f.focus();
 }
 var planIdx = -1;
+// lee los cuatro campos del plan por tipo: plata (total), entero (cuotas, ya pagadas) y porcentaje (recargo).
+// Si hay un texto que no se entiende devuelve {mal:texto}; el que se está escribiendo ("1.") cuenta como 0
+function leerPlan(){
+  var defs = [['plTotal', parseMonto, 'total'], ['plCuotas', parseEntero, 'cuotas'], ['plRec', parsePct, 'recargo'], ['plAntes', parseEntero, 'antes']], i, out = {}, el, v;
+  for(i=0;i<defs.length;i++){
+    el = document.getElementById(defs[i][0]); if(!el){ out[defs[i][2]] = 0; continue; }
+    v = defs[i][1](el.value);
+    if(isNaN(v)){
+      if(!parcial(el.value, defs[i][1])){ marcarErr(el, true); out.mal = el.value.trim(); return out; }
+      v = 0;
+    }
+    marcarErr(el, false); out[defs[i][2]] = v;
+  }
+  return out;
+}
 function guardarPlan(quitar){
   var it = D.meses[mes].deudas[planIdx]; if(!it) return;
   var n = String(it.nombre||'').trim();
   if(quitar){ delete D.planDeudas[n]; }
   else {
-    var c = Math.round(parseNum(document.getElementById('plCuotas').value));
+    var lp = leerPlan();
+    if(lp.mal){ errorEn('plCuota', 'No entendí «' + esc(lp.mal) + '» como número.'); return; }
+    var c = lp.cuotas;
     if(!n || c <= 0){ alerta('Falta la cantidad de cuotas', 'Necesito al menos saber en cuántas cuotas es la deuda.'); return; }
-    D.planDeudas[n] = {total:parseNum(document.getElementById('plTotal').value), cuotas:c,
-                       recargo:parseNum(document.getElementById('plRec').value),
-                       pagadasAntes:Math.max(0, Math.round(parseNum(document.getElementById('plAntes').value)))};
+    D.planDeudas[n] = {total:lp.total, cuotas:c, recargo:lp.recargo, pagadasAntes:Math.max(0, lp.antes)};
   }
   cerrarHoja(); tocar(); renderMes();
   if(!quitar) ofrecerCarga(n, mes);
@@ -4009,6 +4087,9 @@ document.addEventListener('click', function(ev){
 });
 velo.addEventListener('click', function(ev){ if(ev.target === velo){ pendiente = null; cerrarHoja(); } });
 
+document.addEventListener('input', function(ev){   // al escribir se quita la marca de error; quien lee el campo la vuelve a poner si sigue sin entenderse
+  if(ev.target && ev.target.classList) ev.target.classList.remove('err');
+}, true);
 document.addEventListener('input', function(ev){
   var t = ev.target;
   if(t && t.id === 'tjBuscar'){ busqProd = String(t.value || ''); filtrarProds(); return; }
@@ -4052,7 +4133,19 @@ function valorDe(t){
   return D.meses[mes][t.getAttribute('data-k')][+t.getAttribute('data-i')].monto;
 }
 function aplicarInput(t, final){
-  var v = t.classList.contains('nombre') ? t.value : parseNum(t.value);
+  var v;
+  if(t.classList.contains('nombre')) v = t.value;
+  else {
+    // tipo de campo: cantidad (cripto), porcentaje (meta de ahorro) o plata (todo lo demás)
+    var lector = t.classList.contains('cant') ? parseCantidad : t.classList.contains('pct') ? parsePct : parseMonto;
+    v = lector(t.value);
+    if(isNaN(v)){   // no se entiende: no se toca el modelo; mientras se escribe solo se marca, al soltar se avisa
+      marcarErr(t, !final && !parcial(t.value, lector));
+      if(final) toast('No entendí «' + String(t.value).trim() + '» como número');
+      return;
+    }
+    marcarErr(t, false);
+  }
   var ci = t.getAttribute('data-cripto');
   if(ci !== null){
     var cc = D.cripto[+ci], cf = t.getAttribute('data-campo');
@@ -4233,8 +4326,8 @@ function leerMonto(id){
   var e = document.getElementById(id); if(!e) return {ok:false, vacio:true, v:0, msg:''};
   var raw = String(e.value || '').trim();
   if(!raw){ var g = e.getAttribute('data-guardado'); return g ? {ok:true, v:num(g)} : {ok:false, vacio:true, v:0, msg:''}; }
-  if(!/\d/.test(raw)) return {ok:false, v:0, msg:'no entendí el número: escribilo solo con cifras'};
-  var v = parseNum(raw);
+  var v = parseMonto(raw, true);   // el signo se lee para poder decir "no puede ser negativo"
+  if(isNaN(v)) return {ok:false, v:0, msg:'no entendí «' + esc(raw) + '» como número'};
   if(v < 0) return {ok:false, v:v, msg:'no puede ser negativo'};
   return {ok:true, v:v};
 }
@@ -4242,8 +4335,8 @@ function montoDe(id){ var r = leerMonto(id); return r.ok ? r.v : 0; }
 function cantidadDe(id){
   var raw = val(id).trim();
   if(!raw) return {ok:true, v:1};
-  if(!/\d/.test(raw)) return {ok:false, v:1, msg:'No entendí la cantidad: escribila solo con cifras.'};
-  var v = parseNum(raw);
+  var v = parseCantidad(raw, true);   // negativo se lee para decir "mayor que cero"
+  if(isNaN(v)) return {ok:false, v:1, msg:'No entendí «' + esc(raw) + '» como cantidad.'};
   if(!(v > 0)) return {ok:false, v:1, msg:'La cantidad tiene que ser mayor que cero.'};
   return {ok:true, v:v};
 }
@@ -5089,10 +5182,10 @@ function guardarProducto(){
   if(!(rp.v > 0)){ errorEn('pxNota', 'El precio tiene que ser mayor que cero.'); document.getElementById('pxPrecio').focus(); return; }
   if(!rc.ok && !rc.vacio){ errorEn('pxNota', 'Lo que te cuesta: ' + rc.msg + '.'); document.getElementById('pxCosto').focus(); return; }
   if(rc.v > rp.v){ errorEn('pxNota', 'Te cuesta más de lo que lo vendés. Si es así, dejá el costo vacío.'); document.getElementById('pxCosto').focus(); return; }
-  var rs = val('pxStock').replace(/[\s.]/g, ''), stk = null;
+  var rs = val('pxStock').trim(), stk = null;
   if(rs !== ''){
-    if(!/^-?\d+$/.test(rs)){ errorEn('pxNota', 'Stock: poné un número entero de unidades, o dejalo vacío si no querés controlarlo.'); document.getElementById('pxStock').focus(); return; }
-    stk = parseInt(rs, 10);
+    stk = parseEntero(rs, true);   // puede quedar negativo si vendiste de más
+    if(isNaN(stk)){ errorEn('pxNota', 'Stock: poné un número entero de unidades, o dejalo vacío si no querés controlarlo.'); document.getElementById('pxStock').focus(); return; }
   }
   var carp = nomCarpeta(val('pxCarp')), col = '', lc = carpetas(), ci;
   if(carp){
@@ -5210,13 +5303,19 @@ function abrirFactura(id){
   document.getElementById('fxMonto').addEventListener('input', totalFactura);
   document.getElementById('fxAjuste').addEventListener('input', totalFactura);
   totalFactura();
-  di.addEventListener('input', function(){ fx.plazo = Math.max(0, Math.round(parseNum(di.value))); notaFx(); });
+  di.addEventListener('input', function(){
+    var p = parseEntero(di.value);
+    if(isNaN(p)){ marcarErr(di, !parcial(di.value, parseEntero)); return; }   // se queda con el último plazo válido
+    marcarErr(di, false); fx.plazo = p; notaFx();
+  });
   notaFx();
   if(!f) document.getElementById('fxCliente').focus();
 }
 function totalFactura(){
   var e = document.getElementById('fxTotalF'); if(!e) return;
-  var r = leerMonto('fxMonto'), a = parseNum(val('fxAjuste')), base = r.v, t = Math.round(base * (1 + a/100));
+  var r = leerMonto('fxMonto'), a = parsePct(val('fxAjuste'), true), base = r.v;
+  if(isNaN(a)) a = 0;   // mientras no se entienda no se muestra la cuenta; al guardar se avisa
+  var t = Math.round(base * (1 + a/100));
   if(!(base > 0) || !a){ e.innerHTML = ''; e.style.display = 'none'; return; }
   e.style.display = '';
   e.innerHTML = fARS(Math.round(base)) + (a > 0 ? ' + ' : ' − ') + String(Math.abs(a)).replace('.', ',') + ' % = <b>' + fARS(t) + '</b>';
@@ -5256,7 +5355,9 @@ function guardarFac(){
              fuente:'', periodo:'', desde:'',
              costo: viejo && !viejo.periodo ? Math.min(viejo.costo, Math.round(pr)) : 0};   // lo que te costó no cambia porque cambies el precio
   } else {
-    var cli = val('fxCliente').trim(), rm = leerMonto('fxMonto'), aj = parseNum(val('fxAjuste'));
+    var cli = val('fxCliente').trim(), rm = leerMonto('fxMonto'), aj = parsePct(val('fxAjuste'), true), dd2 = document.getElementById('fxDias');
+    if(isNaN(aj)){ errorEn('fxNota', 'Recargo o descuento: no entendí «' + esc(val('fxAjuste').trim()) + '» como número.'); document.getElementById('fxAjuste').focus(); return; }
+    if(dd2 && dd2.style.display !== 'none' && isNaN(parseEntero(dd2.value))){ errorEn('fxNota', 'Días: no entendí «' + esc(dd2.value.trim()) + '» como número entero.'); dd2.focus(); return; }
     if(aj < -100){ errorEn('fxNota', 'Un descuento no puede pasar del 100 %.'); document.getElementById('fxAjuste').focus(); return; }
     m = Math.round(rm.v * (1 + aj/100));
     if(!cli){ errorEn('fxNota', 'Falta a quién le facturaste.'); document.getElementById('fxCliente').focus(); return; }
@@ -5758,7 +5859,7 @@ function accionTj(a, b){
   if(a === 'tjBorrarFac'){ borrarFac(id); return; }
   if(a === 'tjFxPlazo'){
     var di = document.getElementById('fxDias');
-    if(v === 'otro'){ di.style.display = 'block'; di.focus(); fx.plazo = Math.max(0, Math.round(parseNum(di.value))); }
+    if(v === 'otro'){ di.style.display = 'block'; di.focus(); var pq = parseEntero(di.value); fx.plazo = isNaN(pq) ? 0 : pq; }
     else { di.style.display = 'none'; fx.plazo = +v; }
     marcarChips('fxPlazo', b); notaFx(); return;
   }

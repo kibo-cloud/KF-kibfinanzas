@@ -23,10 +23,11 @@ test('extractFunction(esc) survives the /"/g and /\'/g regex literals', function
   assert.ok(out.indexOf('&amp;') > 0);
 });
 
-test('grupos, parseNum and fARS are extractable and run', function(){
+test('grupos, the number parsers and fARS are extractable and run', function(){
   var ctx = load('grupos');
   assert.equal(ctx.grupos('1234567'), '1.234.567');
-  assert.equal(typeof load('parseNum').parseNum('1.234,56'), 'number');
+  var p = la.loadApp({funcs: ['sinSigno', 'cerosFuera', 'parseMonto']});
+  assert.equal(p.parseMonto('1.234,56'), 1234.56);   // its regex literals hold braces and quantifiers
   var c = la.loadApp({funcs: ['grupos', 'fARS'], globals: {oculto: false, PUNTOS: '..'}});
   assert.equal(c.fARS(1500), '$1.500');
   assert.equal(c.fARS(-1234567), '($1.234.567)');
