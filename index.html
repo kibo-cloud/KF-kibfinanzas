@@ -3935,13 +3935,14 @@ function abrirPlan(i){
 var planIdx = -1;
 // lee los cuatro campos del plan por tipo: plata (total), entero (cuotas, ya pagadas) y porcentaje (recargo).
 // Si hay un texto que no se entiende devuelve {mal:texto}; el que se está escribiendo ("1.") cuenta como 0
-function leerPlan(){
+// solo en la vista previa: al guardar (alGuardar) también es un error, para no guardar un 0 que nadie escribió
+function leerPlan(alGuardar){
   var defs = [['plTotal', parseMonto, 'total'], ['plCuotas', parseEntero, 'cuotas'], ['plRec', parsePct, 'recargo'], ['plAntes', parseEntero, 'antes']], i, out = {}, el, v;
   for(i=0;i<defs.length;i++){
     el = document.getElementById(defs[i][0]); if(!el){ out[defs[i][2]] = 0; continue; }
     v = defs[i][1](el.value);
     if(isNaN(v)){
-      if(!parcial(el.value, defs[i][1])){ marcarErr(el, true); out.mal = el.value.trim(); return out; }
+      if(alGuardar || !parcial(el.value, defs[i][1])){ marcarErr(el, true); out.mal = el.value.trim(); return out; }
       v = 0;
     }
     marcarErr(el, false); out[defs[i][2]] = v;
@@ -3953,7 +3954,7 @@ function guardarPlan(quitar){
   var n = String(it.nombre||'').trim();
   if(quitar){ delete D.planDeudas[n]; }
   else {
-    var lp = leerPlan();
+    var lp = leerPlan(true);
     if(lp.mal){ errorEn('plCuota', 'No entendí «' + esc(lp.mal) + '» como número.'); return; }
     var c = lp.cuotas;
     if(!n || c <= 0){ alerta('Falta la cantidad de cuotas', 'Necesito al menos saber en cuántas cuotas es la deuda.'); return; }
