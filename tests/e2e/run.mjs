@@ -339,6 +339,30 @@ try{
   check('toast XSS: the toast shows the literal text', await ev(`document.getElementById('toast').textContent.indexOf('<img src=x onerror="window.__xss=1">13') >= 0`), true);
   check('toast XSS: no img element inside the toast', await ev(`document.querySelectorAll('#toast img').length`), 0);
 
+  // (5) R3: the financial engine is its own script block, and "Versión para PC" still builds one self-contained file
+  check('TGMotor.calc is a function (engine block loaded before the app)', await ev(`typeof TGMotor.calc`), 'function');
+  check('the app aliases are the motor functions', await ev(`calc === TGMotor.calc && serie === TGMotor.serie && datosTorta === TGMotor.datosTorta && ranking === TGMotor.ranking`), true);
+  check('motor and app agree on a month (calc via alias vs motor)', await ev(`JSON.stringify(calc(D.meses[mes])) === JSON.stringify(TGMotor.calc(D.meses[mes]))`), true);
+  const pcCheck = '(' + function(){
+    return fetch('./index.html').then(function(r){ return r.text(); }).then(function(txt){
+      // the same slicing versionPC() does: everything between the two data markers is replaced
+      var M1 = '/*DATOS_' + 'INICIO*/', M2 = '/*DATOS_' + 'FIN*/';
+      var i = txt.indexOf(M1), j = txt.indexOf(M2);
+      var out = txt.slice(0, i + M1.length) + '{}' + txt.slice(j);
+      var mo = /<script id="motor">([\s\S]*?)<\/script>/.exec(out), app = out.indexOf("(function(){\n'use strict';");
+      var nuevo = new DOMParser().parseFromString(out, 'text/html');
+      return {
+        m1: txt.split(M1).length - 1, m2: txt.split(M2).length - 1, j_after_i: j > i,
+        motorBlocks: out.split('<script id="motor">').length - 1, motorHasMarkers: mo ? mo[1].indexOf('DATOS_') >= 0 : null,
+        appAfterMotor: !!mo && app > out.indexOf('<script id="motor">'),
+        motorDefinesTGMotor: !!mo && mo[1].indexOf('var TGMotor = (function(){') >= 0,
+        scriptIds: Array.prototype.map.call(nuevo.querySelectorAll('script'), function(s){ return s.id || '(app)'; })
+      };
+    });
+  } + ')()';
+  check('"Versión para PC" markers exist exactly once and outside the motor; motor precedes the app in the output', await ev(pcCheck),
+    { m1: 1, m2: 1, j_after_i: true, motorBlocks: 1, motorHasMarkers: false, appAfterMotor: true, motorDefinesTGMotor: true, scriptIds: ['(app)', 'datos', 'motor', '(app)'] });   // the first '(app)' is the Date pin the harness injects in <head>
+
   check('no uncaught page errors', pageErrs, []);
 }catch(e){ fails++; results.push('ERROR ' + e.message); }
 finally{
