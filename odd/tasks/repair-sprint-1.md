@@ -157,9 +157,27 @@ Baseline for the E2E RED: new run.mjs against a worktree of `98146d4` gives 13 F
 
 38 call sites. Plain constant text: ordering, topes, copy, restore and Trabajo messages. Text with user data (now escaped by `toast`, pre-escape removed): "Sumé $X a <categoria>", "Borré <nombre>", "<producto> · ...", "todo quedó a nombre de <cliente>", "Copié la factura ... con el número <numero>" (the known sink), "No entendí «<texto>» como número" (new). None passes markup.
 
+### Native review (R1 + R2)
+
+- R1 slice (base 1c56f92, 981 lines, includes Sprint 0 T5/T6): medium, consent granted,
+  review-reliability approved and acknowledged (lineage review-269074009bc7ad4b). Advisory:
+  E2E CDP had no timeout (fixed in R2); `gastadoTope`/`datosTorta` read global `mes` (to be
+  parameterized in R3); composition tests assign fields directly (E2E covers the real path);
+  regex heuristic misreads `a++ / b` (documented limit).
+- R2 slice (base 98146d4, 1219 lines): medium, consent granted, approved and acknowledged
+  (lineage review-cd57a009e8401e0b). Findings verified by the parent:
+  - CONFIRMED, introduced: `leerPlan` turned half-typed values ("100000,", "10,", "2.") into 0
+    and `guardarPlan` saved them. Fixed in c6a9ca4 (`leerPlan(alGuardar)`), RED first:
+    tests/plan.test.js "saving rejects a trailing separator" failed, then 114/114 and E2E 86/86.
+  - FALSE POSITIVE: `guardarTrab` returns true/false explicitly (index.html ~4497-4504).
+  - FALSE POSITIVE: clearing `#avisos` only removes the storage notice, because `aviso()`
+    replaces the whole container (one notice at a time).
+  - Not fixed (suggestion): `nav` pending load promise on a failed navigate (E2E only).
+
 ## Next step
 
-Stop before R3 for review. The new parsers, `cuotaPaga`, `repartoCuotas` and `hayDatos` are pure and extractable in R3.
+R3 pure extraction. The new parsers, `cuotaPaga`, `repartoCuotas` and `hayDatos` are pure and
+extractable in R3.
 
 ## Consumer inventory (R1, current semantics)
 
