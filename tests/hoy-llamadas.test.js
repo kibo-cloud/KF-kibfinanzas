@@ -11,7 +11,7 @@ var path = require('node:path');
 
 var SRC = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 var TEMPORALES = {normalizar: 2, mesTope: 2, mesesCorridos: 2, estadoDeuda: 4, cargarCuotas: 4, proyeccionDeudas: 2,
-                  estadoMes: 3, flujosMes: 3, cadena: 2, pasivos: 2, patrimonioNeto: 2};
+                  estadoMes: 3, flujosMes: 3, cadena: 2, pasivos: 2, patrimonioNeto: 2, iniciarArrastre: 3};
 
 function codigoApp(src){
   var a = src.indexOf('<script id="motor">'), b = src.indexOf('</script>', a);

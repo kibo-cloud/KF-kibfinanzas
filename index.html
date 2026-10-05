@@ -1811,6 +1811,11 @@ function normalizar(d, hoy){
   if(!Array.isArray(d.cripto)) d.cripto = [{activo:'BTC',cantidad:0,precioUSD:0}];
   d.cripto = d.cripto.map(function(c){ return {activo:String(c&&c.activo||''),cantidad:num(c&&c.cantidad),precioUSD:num(c&&c.precioUSD)}; });
   if(!Array.isArray(d.meses)) d.meses = [];
+  var refPago = hoy;   // Q9: la migración vieja de `pagado` mide "mes ya corrido" contra el último guardado del blob (`actualizado`), no contra hoy
+  if(!d.pagoExplicito){
+    var ma = /^(\d{4})-(\d{2})/.exec(String(d.actualizado)), ra = ma ? +ma[1] : 0, rm = ma ? +ma[2] - 1 : -1;
+    if(rm >= 0 && rm <= 11 && (ra < hoy.anio || (ra === hoy.anio && rm <= hoy.mes))) refPago = {anio:ra, mes:rm, dia:1, iso:ma[1] + '-' + ma[2] + '-01'};   // fecha ilegible o futura: sigue valiendo hoy
+  }
   for(var i=0;i<12;i++){
     var m = d.meses[i] && typeof d.meses[i]==='object' ? d.meses[i] : mesVacio();
     for(var s=0;s<SECS.length;s++){
@@ -1823,7 +1828,7 @@ function normalizar(d, hoy){
         if(it && it.pagado === true) o.pagado = true;
         if(it && it.pagado === false) o.pagado = false;
         // migración única por año: solo completa los pagado sin definir con la inferencia de antes (monto cargado y mes ya corrido)
-        if(!d.pagoExplicito && o.pagado === undefined) o.pagado = o.monto > 0 && i <= mesTope(d.anio, hoy);
+        if(!d.pagoExplicito && o.pagado === undefined) o.pagado = o.monto > 0 && i <= mesTope(d.anio, refPago);
         return o;
       });
     }
@@ -1842,6 +1847,8 @@ function normalizar(d, hoy){
       return mo;
     });
     m.metaAhorroPct = m.metaAhorroPct==null ? 0.10 : num(m.metaAhorroPct);
+    var cr = validarCierreReal(m.cierreReal);   // R4.3: se conserva si está bien formado; si no, se descarta (nunca se inventa un valor)
+    if(cr) m.cierreReal = cr; else delete m.cierreReal;
     d.meses[i] = m;
   }
   d.meses.length = 12;
@@ -1854,7 +1861,45 @@ function normalizar(d, hoy){
   if(!d.ui || typeof d.ui!=='object') d.ui = {};
   if(['auto','claro','oscuro'].indexOf(d.ui.tema)<0) d.ui.tema = 'auto';
   if(!d.ui.col || typeof d.ui.col!=='object') d.ui.col = {};
+  var ar = validarArrastre(d.arrastre);   // R4.3: normalizar conserva y valida el modelo de saldos pero NUNCA lo crea (arrancarlo necesita la respuesta del usuario: iniciarArrastre)
+  if(ar) d.arrastre = ar; else delete d.arrastre;
+  var rv = revValida(d.rev);               // revisión del blob (varias pestañas): se conserva si es válida, nunca se inventa
+  if(rv === null) delete d.rev; else d.rev = rv;
   return d;
+}
+// Validación de los campos del modelo de saldos (nivel año y mes; nunca por ítem: las versiones viejas los pierden). Un campo mal formado se descarta.
+var ORIGENES_ARRASTRE = ['declarado', 'omitido', 'arrastre'];
+function numEstricto(v){   // número finito o texto numérico completo; cualquier otra cosa (incluido '' y 'abc') no es un número
+  var n = typeof v === 'number' ? v : (typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN);
+  return isFinite(n) ? n : null;
+}
+function revValida(v){ var n = numEstricto(v); return n !== null && n >= 0 ? Math.floor(n) : null; }
+function validarArrastre(a){
+  if(!a || typeof a !== 'object' || Array.isArray(a)) return null;
+  var desde = numEstricto(a.desde), o, ini, i, n;
+  if(desde === null) return null;   // sin mes de arranque el modelo no se puede leer, y un 0 inventado tomaría el año entero
+  desde = Math.round(desde);
+  if(desde < 0 || desde > 11) return null;
+  o = {desde: desde}; ini = a.inicial;
+  if(ini && typeof ini === 'object' && !Array.isArray(ini)){
+    i = {};
+    if(ini.apertura === null) i.apertura = null; else if((n = numEstricto(ini.apertura)) !== null) i.apertura = n;
+    if(ini.declarado === null) i.declarado = null; else if((n = numEstricto(ini.declarado)) !== null) i.declarado = n;
+    if(typeof ini.declaradoEl === 'string') i.declaradoEl = ini.declaradoEl;
+    if(ORIGENES_ARRASTRE.indexOf(ini.origen) >= 0) i.origen = ini.origen;
+    if((n = numEstricto(ini.calculadoOrigen)) !== null) i.calculadoOrigen = n;
+    o.inicial = i;
+  }
+  return o;
+}
+function validarCierreReal(c){
+  if(!c || typeof c !== 'object' || Array.isArray(c)) return null;
+  var v = numEstricto(c.valor), o, n;
+  if(v === null) return null;
+  o = {valor: v};
+  if((n = numEstricto(c.calculadoAlConfirmar)) !== null) o.calculadoAlConfirmar = n;
+  if(typeof c.confirmadoEl === 'string') o.confirmadoEl = c.confirmadoEl;
+  return o;
 }
 function num(v){ var n = typeof v==='number' ? v : parseFloat(v); return isFinite(n) ? n : 0; }
 /* Lectura de números es-AR por tipo de campo (D9). Cada lector devuelve NaN si no entiende el texto
@@ -2212,6 +2257,20 @@ function cadena(d, hoy, ctx){
     vencidos: vencidos, vencidosIngresos: vencidosIngresos, reconciliar: recon
   }};
 }
+// arranque del modelo (Q1, D5): el `arrastre` del año que contiene hoy a partir de lo que el usuario DECLARA tener disponible ahora.
+// declarado = número -> apertura del mes de hoy = declarado - (resultado + pases netos realizados de ese mes a hoy); null/undefined -> 'omitido' (sin apertura).
+// Pura: no toca d ni lee el reloj. Devuelve null si el año no es el de hoy o si lo declarado no es un número (nunca inventa un saldo).
+function iniciarArrastre(d, hoy, declarado, ctx){
+  if(!d || d.anio !== hoy.anio) return null;
+  var ap = null, dec = null, orig = 'omitido', f;
+  if(declarado !== null && declarado !== undefined){
+    if(!numOk(declarado)) return null;
+    f = flujosMes(d, hoy.mes, hoy, ctx);
+    ap = cerosFuera(Math.round((declarado - (f.resultado + f.pasesNetos)) * 100) / 100);
+    dec = declarado; orig = 'declarado';
+  }
+  return {desde: hoy.mes, inicial: {apertura: ap, declarado: dec, declaradoEl: hoy.iso, origen: orig}};
+}
 // liabilities a hoy (Q6, Q14): saldo por cuotas de cada plan (con las vencidas y las futuras) + filas sin tildar de deudas sin plan en meses pasado/actual
 function pasivos(d, hoy){
   var iHoy = Math.min(11, mesTope(d.anio, hoy)), detalle = [], total = 0, libres = {}, orden = [], j, q, e, n;
@@ -2306,6 +2365,8 @@ return {
   estadoMes: estadoMes,
   flujosMes: flujosMes,
   cadena: cadena,
+  iniciarArrastre: iniciarArrastre,
+  revValida: revValida,
   pasivos: pasivos,
   patrimonioNeto: patrimonioNeto,
   ranking: ranking,
