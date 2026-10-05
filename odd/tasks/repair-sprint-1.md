@@ -316,6 +316,20 @@ numeric chain cases, `hoy` injection, transfers, debts, net worth, "Del trabajo"
 migration, golden procedure, multi-tab, R4.1-R4.6 plan, owner decisions Q1-Q15). Stop: no R4
 implementation until the owner approves the design and answers Q1-Q15.
 
+## R4 progress
+
+### R4.1
+
+- STATUS: done. The engine no longer reads the system clock. `hoyDe(date)` is the only constructor of `hoy` ({anio, mes, dia, iso}, mes 0-based); the motor block has no `Date` reference at all.
+- COMMIT: 9f205c8 `r4.1: inject system date into engine` (code, tests and this note's base).
+- Signature changes (call graph followed): `normalizar(d, hoy)`, `mesTope(anio, hoy)`, `mesesCorridos(anio, hoy)`, `estadoDeuda(d, nombre, i, hoy)`, `cargarCuotas(d, nombre, desde, hoy)`, `proyeccionDeudas(d, hoy)` (clock fallback now `hoy.mes`). `serie`, `patrimonio`, `planDeCarga`, `calc`, `suma*`, parsers, `ranking`, `datosTorta`, `gastadoTope`, `repartoCuotas`, `estaPagado` stay time-free and unchanged. New export `hoyDe`; app alias `hoyDe` and app helper `hoyApp()` = `hoyDe(new Date())`.
+- App call sites (all pass `hoyApp()`): estadoDeuda (fila de deuda, cierre de año), proyeccionDeudas (render deudas), normalizar (leer año, cargar, importar), cargarCuotas (carga masiva, hoja de carga). Trabajo date logic untouched; APPVER/sw not bumped (Q11).
+- TESTS: RED first (`tests/motor.reloj.test.js`, `tests/motor.determinismo.test.js` failed on a480520: `new Date` in the motor, `hoyDe` missing). GREEN after: `npm test` 286 pass / 0 fail. Golden pins `hoy` built from TODAY; `tests/fixtures/motor-golden.json` unchanged (empty `git diff --stat a480520`), byte-identical. `loadMotor()` now runs with a POISONED Date (any clock read throws); determinism test evaluates the motor under fake clocks 2020-01-01 and 2030-06-15 with the same `hoy` and asserts identical output on the six mixed/legacy datasets (normalizar, serie, patrimonio, proyeccionDeudas, estadoDeuda, cargarCuotas, mesTope, mesesCorridos). `loadApp` exposes `app.hoy` and `app.hoyApp` (fake clock) for tests and extracted app functions.
+- E2E: `npm run test:e2e` 90 pass / 0 fail.
+- AUDIT: inline scripts compile (new Function); alias and inventory tests green, `inventario.data.js` unchanged (no membership change besides the new `hoyDe`).
+- KNOWN RISKS: any future motor call to a temporal function without `hoy` throws TypeError (intended, no silent clock fallback); the app still uses Date for timestamps and Trabajo (R4.x/out of scope); `hoy.dia` and `hoy.iso` are not consumed yet (reserved for R4.3 realization of Trabajo/transfers).
+- NEXT STEP: R4.2 per design section 11 (monthly chain and invariants I1-I5 as tests), building on explicit `hoy`.
+
 ## Consumer inventory (R1, current semantics)
 
 Documentation of the CURRENT state (baseline `f3dbff3`; line numbers refer to index.html, which R1 does not touch). Guarded by `tests/inventario.test.js` (source of truth: `tests/inventario.data.js`). Semantics: registrado = every loaded amount; realizado = only ticked/paid; mixto = both; otro = editor/display/Trabajo ledger/false positive. Known bugs are listed as they behave today.
