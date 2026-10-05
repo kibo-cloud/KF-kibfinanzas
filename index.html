@@ -2138,11 +2138,11 @@ function flujosMes(d, j, hoy, ctx){
       filasTrab += mo;
       if(pases > 0){ var abs = Math.max(0, Math.min(mo, resto)); resto -= abs; mo -= abs; }
     }
-    acumularFlujo(ing, mo, it.pagado === true, real);
+    acumularFlujo(ing, mo, estaPagado(j, it), real);
   }
-  for(i=0;i<m.gastosFijos.length;i++) acumularFlujo(gas, num(m.gastosFijos[i].monto), m.gastosFijos[i].pagado === true, real);
-  for(i=0;i<m.gastosVariables.length;i++) acumularFlujo(gas, num(m.gastosVariables[i].monto), m.gastosVariables[i].pagado === true, real);
-  for(i=0;i<m.deudas.length;i++) acumularFlujo(cuo, num(m.deudas[i].monto), m.deudas[i].pagado === true, real);
+  for(i=0;i<m.gastosFijos.length;i++) acumularFlujo(gas, num(m.gastosFijos[i].monto), estaPagado(j, m.gastosFijos[i]), real);
+  for(i=0;i<m.gastosVariables.length;i++) acumularFlujo(gas, num(m.gastosVariables[i].monto), estaPagado(j, m.gastosVariables[i]), real);
+  for(i=0;i<m.deudas.length;i++) acumularFlujo(cuo, num(m.deudas[i].monto), estaPagado(j, m.deudas[i]), real);
   var ah = num(m.ahorroMesARS), rt = num(m.retiroARS), vA = num(m.ventaARS), vU = num(m.ventaUSD), rp = num(m.reposicionARS);
   var cA = num(m.compraARS), cU = num(m.compraUSD), aU = num(m.ahorroMesUSD);
   var base = rt + vA - ah - rp;   // pases netos hacia Disponible, sin Trabajo; compra y ahorro en USD nunca lo tocan
@@ -2161,7 +2161,9 @@ function flujosMes(d, j, hoy, ctx){
     dDisp: cerosFuera(resultado + pasesNetos),
     dAhorroARS: cerosFuera(real ? ah - cA - rt + rp : 0),
     dUSD: cerosFuera(real ? aU + cU - vU : 0),
-    reposicionExcedente: Math.max(0, rp - (acc + rt + vA))   // D11: lo repuesto por encima de lo que había que reponer se cuenta como ahorro (los números no cambian)
+    // D11: lo repuesto por encima de lo que había que reponer se cuenta como ahorro (los números no cambian); en un mes futuro es programado
+    reposicionExcedente: real ? Math.max(0, rp - (acc + rt + vA)) : 0,
+    reposicionExcedenteProg: real ? 0 : Math.max(0, rp - (acc + rt + vA))
   };
 }
 // cadena de 12 meses: apertura -> resultado + pases netos -> cierre; {meses:[...], resumen:{...}}. Sin d.arrastre (o antes de arrastre.desde) el mes es legacy.
