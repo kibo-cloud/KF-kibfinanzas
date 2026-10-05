@@ -4,7 +4,7 @@ var test = require('node:test');
 var assert = require('node:assert/strict');
 var loadApp = require('./load-app').loadApp;
 
-var EXTRA = ['mesesCorridos', 'planDe', 'totalConRecargo', 'valorCuota', 'pagadasHasta', 'pendientesDesde', 'planDeCarga', 'cargarCuotas'];
+var EXTRA = ['mesesCorridos', 'planDe', 'totalConRecargo', 'valorCuota', 'pagadasHasta', 'pendientesDesde', 'planDeCarga', 'cargarCuotas', 'repartoCuotas'];
 var KEYS = ['ingresos', 'gastosFijos', 'gastosVariables', 'deudas'];
 
 function legacyBlob(anio){

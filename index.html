@@ -1854,7 +1854,9 @@ function normalizar(d){
     m.reposicionARS = num(m.reposicionARS); // pesos que devolví al ahorro
     if(!Array.isArray(m.movimientos)) m.movimientos = [];
     m.movimientos = m.movimientos.filter(function(x){ return x && typeof x==='object'; }).map(function(x){
-      return {id:String(x.id||''), fecha:String(x.fecha||''), sec:String(x.sec||'gastosVariables'), nombre:String(x.nombre||''), monto:num(x.monto)};
+      var mo = {id:String(x.id||''), fecha:String(x.fecha||''), sec:String(x.sec||'gastosVariables'), nombre:String(x.nombre||''), monto:num(x.monto)};
+      if(typeof x.pp === 'boolean') mo.pp = x.pp;   // pagado que tenía el renglón antes de este gasto: lo usa Deshacer
+      return mo;
     });
     m.metaAhorroPct = m.metaAhorroPct==null ? 0.10 : num(m.metaAhorroPct);
     d.meses[i] = m;
@@ -2068,12 +2070,13 @@ function cobroTxt(it){
   return det;
 }
 function planDe(nombre){ return D.planDeudas[String(nombre||'').trim()] || null; }
+function cuotaPaga(j, it){ return estaPagado(j, it) && num(it.monto) > 0; }   // una cuota cuenta como paga si está tildada Y tiene monto
 function estadoDeuda(nombre, i){
   var p = planDe(nombre); if(!p || !p.cuotas) return null;
   var n = String(nombre||'').trim(), pag = p.pagadasAntes, antes = p.pagadasAntes;
   for(var j=0;j<=i;j++){
     var ls = D.meses[j].deudas, pagoMes = false;
-    for(var q=0;q<ls.length;q++) if(String(ls[q].nombre||'').trim() === n && estaPagado(j, ls[q])) pagoMes = true;
+    for(var q=0;q<ls.length;q++) if(String(ls[q].nombre||'').trim() === n && cuotaPaga(j, ls[q])) pagoMes = true;
     if(pagoMes){ pag++; if(j < i) antes++; }
   }
   var esteMes = pag > antes, restantes = Math.max(0, p.cuotas - pag);
@@ -2081,24 +2084,31 @@ function estadoDeuda(nombre, i){
   var primero = 0, jj;
   for(jj=0;jj<12;jj++){
     var lz = D.meses[jj].deudas, hay = false;
-    for(var qz=0;qz<lz.length;qz++) if(String(lz[qz].nombre||'').trim() === n && estaPagado(jj, lz[qz])) hay = true;
+    for(var qz=0;qz<lz.length;qz++) if(String(lz[qz].nombre||'').trim() === n && cuotaPaga(jj, lz[qz])) hay = true;
     if(hay) primero = jj + 1;
   }
   if(primero < mesTope() + 1) primero = mesTope() + 1;
   if(primero < 0) primero = 0;
   var k = primero + restantes - 1;
   var fin = restantes > 0 ? {mes:((k % 12) + 12) % 12, anio:D.anio + Math.floor(k/12)} : null;
-  var valor = p.cuotas ? totalConRecargo(p)/p.cuotas : 0;
+  var rp = repartoCuotas(p);   // saldo = lo que suman las cuotas que faltan (la última lleva el resto del redondeo)
   return {plan:p, pagadas:pag, restantes:restantes, esteMes:esteMes, cuotaN:esteMes ? pag : antes + 1,
-          fin:fin, saldo:restantes*valor, pct:Math.min(1, pag/p.cuotas)};
+          fin:fin, saldo:restantes > 0 ? (restantes - 1)*rp.valor + rp.ultima : 0, pct:Math.min(1, pag/p.cuotas)};
 }
 function totalConRecargo(p){ return p ? num(p.total) * (1 + num(p.recargo)/100) : 0; }   // sin recargo cargado, es el total tal cual
-function valorCuota(p){ return p && p.cuotas ? Math.round(totalConRecargo(p)/p.cuotas) : 0; }
+// La última cuota del plan absorbe el resto del redondeo: la suma de todas es exactamente el total con recargo (100000 en 3 = 33333, 33333, 33334)
+function repartoCuotas(p){
+  if(!p || !p.cuotas) return {valor:0, ultima:0};
+  var tot = Math.round(totalConRecargo(p)), v = Math.round(totalConRecargo(p)/p.cuotas), u = tot - (p.cuotas - 1)*v;
+  if(u < 0){ v = Math.floor(tot/p.cuotas); u = tot - (p.cuotas - 1)*v; }   // totales ínfimos frente a la cantidad de cuotas: nunca una cuota negativa
+  return {valor:v, ultima:u};
+}
+function valorCuota(p){ return repartoCuotas(p).valor; }
 function pagadasHasta(nombre, hasta){
   var n = String(nombre||'').trim(), c = 0, j, q;
   for(j=0;j<hasta && j<12;j++){
     var ls = D.meses[j].deudas;
-    for(q=0;q<ls.length;q++) if(String(ls[q].nombre||'').trim() === n && estaPagado(j, ls[q])){ c++; break; }
+    for(q=0;q<ls.length;q++) if(String(ls[q].nombre||'').trim() === n && cuotaPaga(j, ls[q])){ c++; break; }
   }
   return c;
 }
@@ -2109,14 +2119,17 @@ function pendientesDesde(nombre, desde){
 function planDeCarga(nombre, desde){
   var p = planDe(nombre), r = pendientesDesde(nombre, desde);
   var caben = Math.min(r, 12 - desde);
-  return {valor:valorCuota(p), poner:caben, hasta:desde + caben - 1, sobran:r - caben, desde:desde};
+  var rp = repartoCuotas(p);
+  return {valor:rp.valor, ultima:caben > 0 && r - caben === 0 ? rp.ultima : rp.valor, poner:caben, hasta:desde + caben - 1, sobran:r - caben, desde:desde};
 }
 function cargarCuotas(nombre, desde){
-  var n = String(nombre||'').trim(), pc = planDeCarga(n, desde), j, q, ls, hallado;
+  var n = String(nombre||'').trim(), pc = planDeCarga(n, desde), p = planDe(n), j, q, ls, hallado, mc;
+  var num0 = p ? p.pagadasAntes + pagadasHasta(n, desde) : 0;   // cuántas cuotas hay antes de la primera que se carga
   for(j=desde;j<desde+pc.poner;j++){
     ls = D.meses[j].deudas; hallado = false;
-    for(q=0;q<ls.length;q++) if(String(ls[q].nombre||'').trim() === n){ ls[q].monto = pc.valor; if(typeof ls[q].pagado !== 'boolean') ls[q].pagado = j < mesesCorridos(D.anio); hallado = true; break; }
-    if(!hallado) ls.push({nombre:n, monto:pc.valor, pagado:j < mesesCorridos(D.anio)});
+    mc = num0 + (j - desde) + 1 >= p.cuotas ? pc.ultima : pc.valor;   // la cuota número "cuotas" es la última del plan
+    for(q=0;q<ls.length;q++) if(String(ls[q].nombre||'').trim() === n){ ls[q].monto = mc; if(typeof ls[q].pagado !== 'boolean') ls[q].pagado = j < mesesCorridos(D.anio); hallado = true; break; }
+    if(!hallado) ls.push({nombre:n, monto:mc, pagado:j < mesesCorridos(D.anio)});
   }
   return pc;
 }
@@ -2950,7 +2963,7 @@ function manual(){
   h += bloque('deudas', 'Deudas con cuotas',
       '<p>Cada deuda tiene un monto mensual, como cualquier gasto. Debajo, la línea <b>Cargar cuotas</b> te deja ponerle el total, la cantidad de cuotas y cuántas ya pagaste antes de este año.</p>'
     + '<p>Al guardar el plan te ofrece cargar solas las cuotas que faltan, de ese mes en adelante, con el total dividido por la cantidad de cuotas. Lo que no entra en el año se carga cuando creás el año siguiente.</p>'
-    + '<p>Con eso te dice en qué cuota vas, cuántas quedan, cuánta plata falta y en qué mes terminás. Las cuotas se cuentan solas: cada mes con un monto cargado en esa deuda es una cuota paga. Si un mes la dejás en cero, lo toma como que no pagaste y corre la fecha de fin.</p>'
+    + '<p>Con eso te dice en qué cuota vas, cuántas quedan, cuánta plata falta y en qué mes terminás. Las cuotas se cuentan solas: cada mes con la deuda tildada como paga y con un monto cargado es una cuota paga. Si un mes la dejás en cero o sin tildar, lo toma como que no pagaste y corre la fecha de fin.</p>'
     + '<p>Una deuda con plan es la misma en todos los meses: si la renombrás, el nombre nuevo se aplica a todo el año.</p>');
   h += bloque('avisos', 'Cómo sabés que quedó guardado',
     '<p>Cuando terminás de cargar, baja un cartelito desde arriba con un tilde que dice <b>Cambios guardados</b>. Al hacer una copia de seguridad dice <b>Copia de seguridad hecha</b>. Desaparece solo a los dos segundos.</p>'
@@ -3750,10 +3763,10 @@ function sumarGasto(){
   }
   if(!gr.monto){ var i = document.getElementById('grMonto'); if(i) i.focus(); return; }
   if(gr.cat === null){ toast('Tocá una categoría para saber dónde sumarlo'); return; }
-  var it = D.meses[mes][gr.sec][gr.cat];
+  var it = D.meses[mes][gr.sec][gr.cat], pp = it.pagado === true;
   sumarAItem(it, gr.monto);
   var id = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
-  D.meses[mes].movimientos.push({id:id, fecha:new Date().toISOString(), sec:gr.sec, nombre:it.nombre, monto:gr.monto});
+  D.meses[mes].movimientos.push({id:id, fecha:new Date().toISOString(), sec:gr.sec, nombre:it.nombre, monto:gr.monto, pp:pp});
   cerrarHoja(); tocar(); conScroll(renderMes);
   toast('Sumé ' + fARS(gr.monto) + ' a ' + it.nombre, 'Deshacer', 'quitarMov', id);
 }
@@ -3772,7 +3785,12 @@ function quitarMov(id){
   if(k < 0) return;
   var mv = m.movimientos[k], ls = m[mv.sec] || [];
   for(i=0;i<ls.length;i++){
-    if(ls[i].nombre === mv.nombre){ ls[i].monto = Math.max(0, num(ls[i].monto) - mv.monto); break; }
+    if(ls[i].nombre === mv.nombre){
+      ls[i].monto = Math.max(0, num(ls[i].monto) - mv.monto);
+      // si el gasto rápido tildó un renglón vacío y Deshacer lo deja vacío otra vez, vuelve a como estaba (los viejos sin pp no tocan nada)
+      if(typeof mv.pp === 'boolean' && !(ls[i].monto > 0)) ls[i].pagado = mv.pp;
+      break;
+    }
   }
   m.movimientos.splice(k, 1);
   tocar(); conScroll(renderMes); toast('Deshecho');
@@ -3953,7 +3971,7 @@ function ofrecerCarga(nombre, desde){
       + '. Se cargan solas cuando crees el año ' + (D.anio+1) + ' desde Ajustes.');
     return;
   }
-  var cuerpo = 'Cada cuota queda en <b>' + fARS(pc.valor) + '</b>.<br><br>Voy a cargarla en <b>' + esc(nombre) + '</b> '
+  var cuerpo = 'Cada cuota queda en <b>' + fARS(pc.valor) + '</b>' + (pc.ultima !== pc.valor ? ' (la última, <b>' + fARS(pc.ultima) + '</b>, lleva el resto del redondeo)' : '') + '.<br><br>Voy a cargarla en <b>' + esc(nombre) + '</b> '
     + (pc.poner === 1 ? 'en ' + MESES[pc.desde].toLowerCase()
                       : 'de ' + MESES[pc.desde].toLowerCase() + ' a ' + MESES[pc.hasta].toLowerCase()
                         + ' (' + pc.poner + ' cuotas)')
