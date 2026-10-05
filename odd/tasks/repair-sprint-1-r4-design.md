@@ -1,6 +1,8 @@
 # R4 Design Review — financial model, chain and migration
 
-Status: PROPOSAL for owner review. No product code is changed by this document.
+Status: APPROVED CONTRACT. On 2026-10-05 the owner approved Q1-Q15 exactly as recommended in
+section 12 (single answer: "Aprobar todas como están"). This document is the source of truth for
+R4 (Alfa loop).
 Base: `odd/tasks/repair-sprint-1.md` ("Engine state for R4 review"), decisions D1-D17, branch
 `fix/repair-sprint-1` at the R3 closure.
 
@@ -359,7 +361,16 @@ release between R4.4 and R5; version bump only when R5 lands.
 
 ---
 
-## 12. Decisions for the owner
+## 12. Decisions for the owner — APPROVED 2026-10-05 as recommended
+
+Binding answers: Q1 ask current available, derive the opening; Q2 Trabajo cash is a pocket in net
+worth; Q3 "Del trabajo" rows without pases are ordinary income with a checkbox; Q4 future Trabajo
+pases scheduled on both sides; Q5 scheduled transfers realize automatically when their month
+arrives; Q6 liabilities = debts section only; Q7 late installment booked in its own month; Q8
+overdue pending shown apart from the projection; Q9 legacy pagado migration dated by
+`actualizado`; Q10 new fields in the year blobs (year/month level); Q11 no release between R4.4
+and R5; Q12 multi-tab `rev` + `storage` in R4.3; Q13 `ahorroMesUSD` = external USD inflow
+realized by month, no checkbox; Q14 debt saldo count-based; Q15 pre-R4 snapshot kept 30 days.
 
 - Q1 First use: ask "¿Cuánto dinero tenés disponible actualmente?" (D5) and derive the opening of
   the current month from it (recommended), or ask "¿Con cuánto empezaste el mes?".
