@@ -4,10 +4,8 @@ var test = require('node:test');
 var assert = require('node:assert/strict');
 var loadApp = require('./load-app').loadApp;
 
-// esc() holds a /"/g regex literal the brace extractor cannot skip; inject an equivalent copy instead
-function esc(s){ return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
-var app = loadApp({today: '2026-06-15', funcs: ['gastadoTope', 'filaTope', 'pasadas', 'textoTopes', 'fARS', 'grupos'],
-                   vars: ['TOPEABLE', 'PUNTOS'], globals: {oculto: false, esc: esc}});
+var app = loadApp({today: '2026-06-15', funcs: ['gastadoTope', 'filaTope', 'pasadas', 'textoTopes', 'fARS', 'grupos', 'esc'],
+                   vars: ['TOPEABLE', 'PUNTOS'], globals: {oculto: false}});
 
 // Rendered bar: {txt, pct, mal} parsed from filaTope's HTML
 function barra(it){
