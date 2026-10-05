@@ -40,5 +40,6 @@ test('determinism: the output follows hoy, not the clock', function(){
   var h1 = A.hoyDe(new Date(2026, 2, 10, 12)), h2 = A.hoyDe(new Date(2026, 8, 10, 12));
   var d1 = A.normalizar(copy(raw), h1), d2 = A.normalizar(copy(raw), h2);
   assert.notEqual(corpus.canon(d1), corpus.canon(d2));
-  assert.equal(HOY.mes, 9);
+  // the hoy used by run() is exactly the documented evaluation date
+  assert.deepEqual(copy(A.hoyDe(new Date(2026, 9, 4, 12, 0, 0))), HOY);
 });

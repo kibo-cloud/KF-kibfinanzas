@@ -27,6 +27,10 @@ test('hoyDe builds {anio, mes, dia, iso} (mes 0-based) from the Date it is given
 
 test('the bare motor context has no usable system clock: a leak would throw', function(){
   var m = la.loadMotor();
+  // the Date seen by code inside the motor's context must be unusable without an explicit value
+  var CtxDate = m.hoyDe.constructor('return Date')();
+  assert.throws(function(){ return new CtxDate(); }, 'new Date() inside the motor context must throw');
+  assert.throws(function(){ return CtxDate.now(); }, 'Date.now() inside the motor context must throw');
   var h = m.hoyDe(new Date(2026, 5, 15, 12));
   assert.equal(m.mesTope(2026, h), 5);
   assert.equal(m.mesTope(2025, h), 11);
