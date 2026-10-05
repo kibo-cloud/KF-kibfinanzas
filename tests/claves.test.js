@@ -17,7 +17,7 @@ function fakeStorage(init){
   };
   return s;
 }
-var VARS = ['PREF', 'LSANIO', 'LSCOPIA', 'LSOCULTO', 'LSBIENV', 'LSHIST', 'LSTRAB', 'LSVISTA', 'LSESQ', 'CLAVES_PROPIAS'];
+var VARS = ['PREF', 'LSANIO', 'LSCOPIA', 'LSOCULTO', 'LSBIENV', 'LSHIST', 'LSTRAB', 'LSVISTA', 'LSESQ', 'LSR4', 'CLAVES_PROPIAS'];
 function s3App(ls, extra){
   var g = {localStorage: ls, pildora: function(){}, location: {reload: function(){ g.recargado = true; }}, confirmar: function(t, c, e, fn){ fn(); }};
   Object.keys(extra || {}).forEach(function(k){ g[k] = extra[k]; });
@@ -31,7 +31,8 @@ var PROPIAS = {'kibo.datos.2026': '{"a":1}', 'kibo.datos.2025': '{"a":2}', 'kibo
 test('claveMia knows the app keys and nothing else', function(){
   var app = s3App(fakeStorage());
   Object.keys(PROPIAS).forEach(function(k){ assert.equal(app.claveMia(k), true, k); });
-  ['kibo.otraApp', 'kibo.datos.test', 'kibo.datos.20266', 'kibo.datos.', 'otro.anio', 'kibo.respaldo.pre130', 'kibo.esquema', '', null, undefined]
+  assert.equal(app.claveMia('kibo.modeloSaldos'), true, 'R4.3 marker (this phone already started the balance model)');
+  ['kibo.otraApp', 'kibo.datos.test', 'kibo.datos.20266', 'kibo.datos.', 'otro.anio', 'kibo.respaldo.pre130', 'kibo.respaldo.pre-r4', 'kibo.esquema', '', null, undefined]
     .forEach(function(k){ assert.equal(app.claveMia(k), false, String(k)); });
 });
 

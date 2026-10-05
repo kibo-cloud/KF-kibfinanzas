@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const MARKER = '})();\n</script>';
-const HOOK = 'window.__kf={get D(){return D},get mes(){return mes},calc:calc,serie:serie,ranking:ranking,datosTorta:datosTorta,guardar:guardar,APPVER:APPVER,plain:function(x){return JSON.parse(JSON.stringify(x))}};\n})();\n</script>';
+const HOOK = 'window.__kf={get D(){return D},get mes(){return mes},calc:calc,serie:serie,ranking:ranking,datosTorta:datosTorta,guardar:guardar,activarSaldos:activarSaldos,armarCopia:armarCopia,restaurarTexto:restaurarTexto,get pendiente(){return pendiente},get obsoleta(){return obsoleta},set obsoleta(v){obsoleta=v},get sucio(){return sucio},set sucio(v){sucio=v},APPVER:APPVER,plain:function(x){return JSON.parse(JSON.stringify(x))}};\n})();\n</script>';
 const DATE_PIN = '<script>(function(){var R=Date,T=new R(2026,9,4,12,0,0).getTime();' +
   'class FD extends R{constructor(...a){if(a.length===0)super(T);else super(...a);}static now(){return T;}}' +
   'window.Date=FD;})();</script>';
@@ -61,7 +61,7 @@ function serve(dir){
   return new Promise(r => srv.listen(0, '127.0.0.1', () => r(srv)));
 }
 
-const tmpDirs = []; let srv = null, br = null, ws = null;
+const tmpDirs = []; let srv = null, br = null, ws = null, PORT = 0;
 const pageErrs = []; let id = 0; const pend = new Map();
 const results = []; let fails = 0;
 const CDP_TIMEOUT_MS = 15000;
@@ -97,6 +97,7 @@ async function connect(userDir){
     if(!port) await sleep(200);
   }
   if(!port) throw new Error('browser did not publish DevToolsActivePort');
+  PORT = port;
   for(let t = 0; t < 50 && !ws; t++){
     try{
       const l = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json(); const p = l.find(x => x.type === 'page');
@@ -114,6 +115,34 @@ async function connect(userDir){
   };
   ws.onerror = () => failPending(new Error('websocket error'));
   ws.onclose = () => failPending(new Error('websocket closed'));
+}
+
+// A SECOND tab (its own CDP target and websocket) on the same origin: the same localStorage, like two browser tabs of the real app.
+async function openTab(url){
+  const t = await (await fetch(`http://127.0.0.1:${PORT}/json/new?${url}`, { method: 'PUT' })).json();
+  const w = new WebSocket(t.webSocketDebuggerUrl);
+  await new Promise((res, rej) => { w.onopen = res; w.onerror = () => rej(new Error('websocket error (second tab)')); });
+  let n = 0; const waiting = new Map();
+  w.onmessage = e => {
+    const m = JSON.parse(e.data);
+    if(m.method === 'Runtime.exceptionThrown') pageErrs.push(m.params.exceptionDetails.exception?.description || m.params.exceptionDetails.text);
+    if(m.id && waiting.has(m.id)){ waiting.get(m.id)(m); waiting.delete(m.id); }
+  };
+  const sendT = (method, params = {}) => new Promise((res, rej) => {
+    const k = ++n;
+    const to = setTimeout(() => { waiting.delete(k); rej(new Error(`CDP timeout (second tab): ${method}`)); }, CDP_TIMEOUT_MS);
+    waiting.set(k, m => { clearTimeout(to); res(m); });
+    w.send(JSON.stringify({ id: k, method, params }));
+  });
+  await sendT('Runtime.enable');
+  const evT = async expr => {
+    const r = await sendT('Runtime.evaluate', { expression: '(function(){with(window.__kf||{}){return eval(' + JSON.stringify(expr) + ')}})()', returnByValue: true, awaitPromise: true });
+    if(r.result.exceptionDetails) throw new Error(expr + ' -> ' + JSON.stringify(r.result.exceptionDetails.exception?.description || r.result.exceptionDetails.text));
+    return r.result.result.value;
+  };
+  for(let i = 0; i < 50; i++){ try{ if(await evT('typeof guardar') === 'function') break; }catch{} await sleep(200); }
+  await sleep(300);
+  return { ev: evT, close: async () => { try{ w.close(); }catch{} try{ await fetch(`http://127.0.0.1:${PORT}/json/close/${t.id}`); }catch{} } };
 }
 
 async function cleanup(){
@@ -381,6 +410,84 @@ try{
   check('"Versión para PC" (real versionPC): data embedded once, motor before the app, every script compiles', await ev(pcCheck),
     { captured: true, m1: 1, m2: 1, embeddedYear: true, embeddedMonths: 12, motorBlocks: 1, motorHasMarkers: false, appAfterMotor: true,
       motorDefinesTGMotor: true, scriptsCompile: true, scriptIds: ['(app)', 'datos', 'motor', '(app)'] });   // the first '(app)' is the Date pin the harness injects in <head>
+
+  // ── R4.3: several tabs, model fields on reload, backup -> restore, back to pre-R4 ──
+  const oct = (sueldo) => { const ms = []; for(let i=0;i<12;i++) ms.push(mes([], [], [], []));
+    ms[9] = mes([it('Sueldo', sueldo, true)], [it('Alquiler', 50000, true)], [it('Super', 30000, false)], []); return ms; };
+  const blobR4 = JSON.stringify({anio: 2026, pagoExplicito: true, meses: oct(200000)});
+  const sembrar = async () => { await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); localStorage.setItem('kibo.anio','2026'); localStorage.setItem('kibo.datos.2026', ${JSON.stringify(blobR4)}); true`); };
+  const AVISO_OTRA = 'Hay cambios hechos en otra pestaña. Recargá para no perderlos.';
+  const avisoTxt = (e) => e(`(document.getElementById('avisos') || {}).textContent || ''`);
+  await sembrar(); await nav(URL_APP);
+  check('R4.3 a: a fresh blob has no model field and no rev', await ev(`[D.arrastre === undefined, D.rev === undefined, D.meses[8].cierreReal === undefined]`), [true, true, true]);
+  const tabB = await openTab(URL_APP);
+  check('R4.3 a: tab B loaded the same year', await tabB.ev('D.anio + ":" + D.meses[9].ingresos[0].monto'), '2026:200000');
+  // B starts editing (unsaved in memory); A saves meanwhile
+  await tabB.ev(`D.meses[9].ingresos[0].monto = 999; sucio = true; true`);
+  await ev(`D.meses[9].ingresos[0].monto = 123456; guardar(); true`);
+  check('R4.3 a: tab A saved with rev 1', await ev(`JSON.parse(localStorage.getItem('kibo.datos.2026')).rev`), 1);
+  await sleep(500);   // the storage event reaches tab B
+  check('R4.3 a: tab B (with unsaved edits) is NOT reloaded under its feet: in-memory edit kept', await tabB.ev('D.meses[9].ingresos[0].monto'), 999);
+  check('R4.3 a: tab B shows the notice (storage event)', await avisoTxt(tabB.ev).then(t => t.indexOf(AVISO_OTRA) >= 0), true);
+  check('R4.3 a: tab B is marked stale', await tabB.ev('obsoleta'), true);
+  await tabB.ev(`guardar(); true`); await sleep(200);
+  check('R4.3 a: stale tab B cannot overwrite tab A (stored amount and rev intact)', await ev(`(function(){ var b = JSON.parse(localStorage.getItem('kibo.datos.2026')); return [b.meses[9].ingresos[0].monto, b.rev]; })()`), [123456, 1]);
+  // the pure revision path: pretend the storage event was missed (stale flag cleared) and save again
+  await tabB.ev(`obsoleta = false; document.getElementById('avisos').innerHTML = ''; true`);
+  await tabB.ev(`guardar(); true`); await sleep(200);
+  check('R4.3 a: without the stale flag the revision check still refuses to overwrite', await ev(`(function(){ var b = JSON.parse(localStorage.getItem('kibo.datos.2026')); return [b.meses[9].ingresos[0].monto, b.rev]; })()`), [123456, 1]);
+  check('R4.3 a: ... and shows the notice again', await avisoTxt(tabB.ev).then(t => t.indexOf(AVISO_OTRA) >= 0), true);
+  check('R4.3 a: the notice has a reload button', await tabB.ev(`!!document.querySelector('#avisos [data-act=recargarPag]')`), true);
+  await tabB.close();
+  // a tab with NO unsaved edits reloads silently when another tab saves
+  const tabC = await openTab(URL_APP);
+  check('R4.3 a: tab C loads tab A data (rev 1)', await tabC.ev('D.meses[9].ingresos[0].monto + ":" + D.rev'), '123456:1');
+  await ev(`D.meses[9].ingresos[0].monto = 222222; guardar(); true`);
+  await sleep(600);
+  check('R4.3 a: tab C (no edits) reloaded silently to the new data', await tabC.ev('D.meses[9].ingresos[0].monto + ":" + D.rev'), '222222:2');
+  check('R4.3 a: ... with no notice', await avisoTxt(tabC.ev).then(t => t.indexOf(AVISO_OTRA) < 0), true);
+  check('R4.3 a: ... and it can save on top', await tabC.ev(`D.meses[9].ingresos[0].monto = 333333; guardar(); JSON.parse(localStorage.getItem('kibo.datos.2026')).rev`), 3);
+  await tabC.close();
+
+  // (b) activarSaldos: snapshot first, model fields survive a reload
+  await sembrar(); await nav(URL_APP);
+  check('R4.3 b: before activating there is no snapshot and no marker', await ev(`[localStorage.getItem('kibo.respaldo.pre-r4'), localStorage.getItem('kibo.modeloSaldos')]`), [null, null]);
+  check('R4.3 b: activarSaldos(400000) writes (Oct realized 150.000 -> apertura 250.000)', await ev(`activarSaldos(400000)`), true);
+  check('R4.3 b: the snapshot holds the OLD data (no arrastre) and the marker is set', await ev(`(function(){ var s = JSON.parse(localStorage.getItem('kibo.respaldo.pre-r4')); var old = JSON.parse(s.datos['kibo.datos.2026']); return [old.arrastre === undefined, !!localStorage.getItem('kibo.modeloSaldos'), Object.keys(s.datos).indexOf('kibo.datos.2026') >= 0]; })()`), [true, true, true]);
+  check('R4.3 b: activarSaldos again does nothing (idempotent)', await ev(`activarSaldos(1)`), false);
+  await ev(`D.meses[8].cierreReal = {valor: 111, calculadoAlConfirmar: 222, confirmadoEl: '2026-10-01'}; guardar(); true`);
+  const modelo = await ev(`plain({arrastre: D.arrastre, cierre: D.meses[8].cierreReal})`);
+  check('R4.3 b: arrastre derived from the declared value', modelo.arrastre, {desde: 9, inicial: {apertura: 250000, declarado: 400000, declaradoEl: '2026-10-04', origen: 'declarado'}});
+  await nav(URL_APP);
+  check('R4.3 b: arrastre and cierreReal survive a reload', await ev(`plain({arrastre: D.arrastre, cierre: D.meses[8].cierreReal})`), modelo);
+  check('R4.3 b: rev survives a reload (2 saves)', await ev(`D.rev`), 2);
+  check('R4.3 b: nothing on screen changed: the model is not wired to the UI (Oct disponible)', await ev(`calc(D.meses[9]).disponibleFinal`), 150000);
+  await ev(`document.querySelector('[data-act=tab][data-t=ajustes]').click(); true`); await sleep(300);
+  check('R4.3 b: Ajustes shows the "volver" row while the snapshot exists', await ev(`(function(){ var b = document.querySelector('[data-act=volverR4]'); return b ? b.textContent.indexOf('Volver a como estaba antes de los saldos') >= 0 : false; })()`), true);
+
+  // (d) go back to before the model through the real Ajustes action
+  await ev(`document.querySelector('[data-act=volverR4]').click(); true`); await sleep(300);
+  const recargado = nextLoad();
+  await ev(`document.querySelector('#hoja [data-act=confirmar]').click(); true`);
+  await recargado; await sleep(500);
+  check('R4.3 d: after "volver" the year has no model and the marker and snapshot are gone', await ev(`[D.arrastre === undefined, D.rev === undefined, localStorage.getItem('kibo.modeloSaldos'), localStorage.getItem('kibo.respaldo.pre-r4')]`), [true, true, null, null]);
+  check('R4.3 d: the old data is back exactly (same stored text)', await ev(`localStorage.getItem('kibo.datos.2026') === ${JSON.stringify(blobR4)}`), true);
+
+  // (c) backup -> restore keeps the model fields
+  check('R4.3 c: activate again', await ev(`activarSaldos(400000)`), true);
+  await ev(`D.meses[8].cierreReal = {valor: 111, calculadoAlConfirmar: 222, confirmadoEl: '2026-10-01'}; guardar(); true`);
+  const modeloAntes = await ev(`plain({arrastre: D.arrastre, cierre: D.meses[8].cierreReal, rev: D.rev})`);
+  const copiaTxt = await ev(`JSON.stringify(armarCopia())`);
+  check('R4.3 c: the backup carries the model fields in the year blob', await ev(`(function(c){ var y = JSON.parse(c).anios[2026]; return [!!y.arrastre, !!y.meses[8].cierreReal, y.rev]; })(${JSON.stringify(copiaTxt)})`), [true, true, modeloAntes.rev]);
+  await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); true`); await nav(URL_APP);
+  check('R4.3 c: a wiped phone has no model', await ev(`D.arrastre === undefined`), true);
+  await ev(`restaurarTexto(${JSON.stringify(copiaTxt)}); pendiente(); true`); await sleep(500);
+  check('R4.3 c: restore brings arrastre, cierreReal and rev back', await ev(`plain({arrastre: D.arrastre, cierre: D.meses[8].cierreReal, rev: D.rev})`), modeloAntes);
+  check('R4.3 c: ... and the restored phone is marked as migrated', await ev(`!!localStorage.getItem('kibo.modeloSaldos')`), true);
+  // an older backup without the model leaves the year without it
+  const viejoTxt = JSON.stringify({app: 'kibFinanzas', version: 1, anios: {2026: JSON.parse(blobR4)}});
+  await ev(`restaurarTexto(${JSON.stringify(viejoTxt)}); pendiente(); true`); await sleep(500);
+  check('R4.3 c: restoring an older backup without arrastre leaves the year without it', await ev(`[D.arrastre === undefined, D.meses[8].cierreReal === undefined]`), [true, true]);
 
   check('no uncaught page errors', pageErrs, []);
 }catch(e){ fails++; results.push('ERROR ' + e.message); }

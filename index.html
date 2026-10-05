@@ -2408,6 +2408,9 @@ var SECS = TGMotor.SECS,
     cargarCuotas = TGMotor.cargarCuotas,
     proyeccionDeudas = TGMotor.proyeccionDeudas,
     hoyDe = TGMotor.hoyDe,
+    cadena = TGMotor.cadena,
+    iniciarArrastre = TGMotor.iniciarArrastre,
+    revValida = TGMotor.revValida,
     criptoUSD = TGMotor.criptoUSD,
     patrimonio = TGMotor.patrimonio,
     ranking = TGMotor.ranking,
@@ -2440,6 +2443,7 @@ var CORTOS = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV',
 var D = null, mes = new Date().getMonth(), tab = 'mes';
 var sucio = false, tBuffer = null, tServidor = null, hayLS = true;
 var arrancado = false, tGuardar = null;
+var obsoleta = false;   // otra pestaña guardó antes que esta (R4.3, Q12): esta no escribe hasta recargar
 var conflictoDatos = null;
 var gr = {monto:0, cat:null, sec:'gastosVariables'};
 
@@ -3418,6 +3422,7 @@ function renderAjustes(){
     h += '<h2 class="tit">Año</h2><div class="lista">'
        + '<div class="anios" id="anios"></div>'
        + (respaldoPrevio() && diasDelRespaldo() <= 30 ? filaAj('volver', 'Volver a como estaba antes de la 1.30', {t:'Guardado al actualizar. Se borra solo a los 30 días'}, 'volver130') : '')
+       + (respaldoR4() && diasDelRespaldoR4() <= 30 ? filaAj('volverR4', 'Volver a como estaba antes de los saldos', {t:'Guardado antes de empezar con los saldos. Se borra solo a los 30 días'}, 'volverR4') : '')
        + filaAj('anio', 'Crear el año ' + (D.anio+1), {t:'Con las mismas categorías y el cierre de ' + D.anio + ' como saldo inicial'}, 'duplicar')
        + '</div>';
     h += '<h2 class="tit">Exportar</h2><div class="lista">'
@@ -3567,10 +3572,13 @@ function tocar(){
 function guardar(){
   if(!arrancado || !D) return;
   if(tGuardar){ clearTimeout(tGuardar); tGuardar = null; }
+  if(obsoleta){ avisoOtraPestana(); return; }
+  var ant = D.actualizado;
   D.actualizado = new Date().toISOString();
-  var eraSucio = sucio, recupero = !hayLS;
-  try{ localStorage.setItem(PREF + D.anio, JSON.stringify(D)); sucio = false; hayLS = true; }   // si ahora guarda, el navegador volvió a funcionar
-  catch(e){ hayLS = false; }
+  var eraSucio = sucio, recupero = !hayLS, r = escribirConRev(PREF + D.anio, D);
+  if(r === 'conflicto'){ D.actualizado = ant; obsoleta = true; avisoOtraPestana(); return; }
+  if(r === 'ok'){ sucio = false; hayLS = true; }   // si ahora guarda, el navegador volvió a funcionar
+  else hayLS = false;
   if(recupero && hayLS){ var av = document.getElementById('avisos'); if(av && av.textContent.indexOf('no está guardando') > -1) av.innerHTML = ''; }
   estado(eraSucio && hayLS);
   if(hayLS) quitarAvisoVacia();
@@ -3581,6 +3589,49 @@ function guardar(){
 function leerAnio(a){
   try{ var s = localStorage.getItem(PREF + a); return s ? normalizar(JSON.parse(s), hoyApp()) : null; }
   catch(e){ return null; }
+}
+/* ═══ revisión por blob: varias pestañas (R4.3, Q12) ═══
+   Cada blob guardado (un año, o Trabajo) lleva `rev`, un entero que sube en cada guardado. Antes de escribir se relee el rev guardado:
+   si no es el que esta pestaña cargó, otra pestaña guardó en el medio y NO se escribe (la última pestaña no pisa a la primera). */
+function revGuardada(clave){   // {hay, rev} del blob que está guardado ahora
+  var s, o;
+  try{ s = localStorage.getItem(clave); }catch(e){ return {hay:false, rev:0}; }
+  if(s === null || s === undefined) return {hay:false, rev:0};
+  try{ o = JSON.parse(s); }catch(e){ return {hay:true, rev:0}; }
+  return {hay:true, rev: revValida(o && o.rev) || 0};
+}
+function escribirConRev(clave, obj){   // 'ok' | 'conflicto' (otra pestaña guardó antes: no se escribe) | 'error' (el navegador no deja guardar)
+  var st = revGuardada(clave), mia = revValida(obj.rev) || 0, tenia = obj.rev;
+  if(st.hay && st.rev !== mia) return 'conflicto';   // si el blob ya no existe no hay nada que pisar: se escribe
+  obj.rev = mia + 1;
+  try{ localStorage.setItem(clave, JSON.stringify(obj)); return 'ok'; }
+  catch(e){ if(tenia === undefined) delete obj.rev; else obj.rev = tenia; return 'error'; }
+}
+function avisoOtraPestana(){
+  var e = document.getElementById('avisos'); if(!e) return;
+  e.innerHTML = '<div class="aviso" data-av="otra"><p>Hay cambios hechos en otra pestaña. Recargá para no perderlos.</p>'
+    + '<div class="fila"><button class="mini on" data-act="recargarPag">Recargar</button></div></div>';
+}
+function hayEdicion(){   // algo sin guardar o a mitad de escribirse en ESTA pestaña
+  var ae = document.activeElement, tag = ae && ae.tagName;
+  return !!(sucio || tGuardar || velo.classList.contains('on') || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT');
+}
+function recargarDesdeAlmacenamiento(anio, trab){   // sin argumentos recarga el año abierto y Trabajo
+  var d, e;
+  if(anio !== false){ d = leerAnio(D.anio); if(d){ D = d; mes = Math.min(mes, 11); } }
+  if(trab !== false){ T = leerTrab(); aplicarModo(); }
+  obsoleta = false;
+  e = document.getElementById('avisos');
+  if(e && e.innerHTML.indexOf('data-av="otra"') >= 0) e.innerHTML = '';
+  render();
+}
+function alCambiarOtraPestana(e){   // el evento `storage` solo llega cuando OTRA pestaña escribió
+  if(!arrancado || !D || !e || e.key === null || e.key === undefined) return;
+  if(e.storageArea && e.storageArea !== localStorage) return;
+  var anio = e.key === PREF + D.anio, trab = e.key === LSTRAB;
+  if(!anio && !trab) return;
+  if(hayEdicion()){ obsoleta = true; avisoOtraPestana(); return; }
+  recargarDesdeAlmacenamiento(anio, trab);
 }
 function aniosGuardados(){
   var out = [];
@@ -3728,10 +3779,17 @@ function restaurarCopia(f){
 }
 // guarda cada año de la copia; devuelve el último que entró y los que no (almacenamiento lleno o bloqueado)
 function escribirAnios(anios, claves){
-  var ultimo = 0, fallaron = [];
-  for(var i=0;i<claves.length;i++){
+  var ultimo = 0, fallaron = [], lista = [], modelo = false, i, d, st;
+  for(i=0;i<claves.length;i++){
     if(anios[claves[i]] && typeof anios[claves[i]] === 'object') anios[claves[i]].anio = +claves[i];   // la migración usa el año de la clave
-    var d = normalizar(anios[claves[i]], hoyApp()); d.anio = +claves[i];
+    d = normalizar(anios[claves[i]], hoyApp()); d.anio = +claves[i];
+    if(d.arrastre || d.meses.some(function(m){ return !!m.cierreReal; })) modelo = true;
+    lista.push(d);
+  }
+  if(modelo) asegurarSnapshotR4();   // la copia trae el modelo de saldos: antes de escribir queda guardado lo que había (si no entra, la restauración sigue: la pidió el usuario)
+  for(i=0;i<lista.length;i++){
+    d = lista[i]; st = revGuardada(PREF + d.anio);
+    if(st.hay) d.rev = Math.max(st.rev, d.rev || 0) + 1;   // la restauración solo avanza la revisión: ninguna pestaña con una revisión anterior puede pisarla
     try{ localStorage.setItem(PREF + d.anio, JSON.stringify(d)); if(d.anio > ultimo) ultimo = d.anio; }
     catch(e){ fallaron.push(d.anio); }
   }
@@ -3756,8 +3814,13 @@ function restaurarTexto(txt){
     if(!claves.length){ alerta('Copia vacía', 'El archivo no tiene ningún año adentro.'); return; }
     var teniaDatos = hayDatos(D, tieneTrab());
     pendiente = function(){
-      var r = escribirAnios(anios, claves), trabajoFallo = false;
-      if(j.trabajo && typeof j.trabajo === 'object'){ T = normTrab(j.trabajo); trabajoFallo = !guardarTrab(true); aplicarModo(); }
+      obsoleta = false;   // restaurar reemplaza todo: no hay nada que "recargar" de otra pestaña
+      var r = escribirAnios(anios, claves), trabajoFallo = false, stT;
+      if(j.trabajo && typeof j.trabajo === 'object'){
+        T = normTrab(j.trabajo); stT = revGuardada(LSTRAB);
+        if(stT.hay) T.rev = Math.max(stT.rev, T.rev || 0);   // guardarTrab suma 1: queda por encima de lo que cualquier pestaña tenga cargado
+        trabajoFallo = !guardarTrab(true); aplicarModo();
+      }
       // si la app tenía datos y ese año viene en la copia, me quedo ahí; si estaba vacía, abro el último año que se pudo guardar
       var abrir = teniaDatos && claves.indexOf(String(D.anio)) > -1 ? D.anio : r.ultimo;
       if(abrir) recordarAnio(abrir);
@@ -3846,8 +3909,14 @@ function exportarCSV(){
   descargar('\ufeff' + l.join('\r\n'), 'kibfinanzas-'+D.anio+'.csv', 'text/csv;charset=utf-8');
 }
 function duplicar(){
-  var s = serie(D), n = JSON.parse(JSON.stringify(D)), i, j, k;
+  var s = serie(D), n = JSON.parse(JSON.stringify(D)), i, j, k, hoy = hoyApp();
   n.anio = D.anio + 1;
+  delete n.arrastre; delete n.rev;   // el año nuevo no hereda el modelo ni la revisión del viejo: arranca los suyos
+  if(D.arrastre){   // R4.3: el saldo del año nuevo arranca del cierre de diciembre (el confirmado si existe, si no el calculado) y guarda cuánto calculaba, para detectar deriva
+    var dic = cadena(D, hoy, ctxModelo(D, hoy)).meses[11];
+    n.arrastre = {desde:0, inicial:{apertura:dic.cierre, origen:'arrastre', calculadoOrigen:dic.cierreCalc}};
+    if(!asegurarSnapshotR4()){ alerta('No pude crear el año', 'No pude guardar la copia previa de seguridad, así que no cambié nada. Probá de nuevo.'); return; }
+  }
   n.ahorroAnioAnterior = s[11].ahorroAcumulado;
   Object.keys(n.planDeudas).forEach(function(k){ var e = estadoDeuda(D, k, 11, hoyApp()); if(e) n.planDeudas[k].pagadasAntes = e.pagadas; });
   n.usdAnioAnterior = s[11].usdAcumulado;
@@ -3855,6 +3924,7 @@ function duplicar(){
   n.actualizado = '';
   for(i=0;i<12;i++){
     var m = n.meses[i];
+    delete m.cierreReal;   // la confirmación de un cierre es del año viejo
     for(j=0;j<SECS.length;j++){
       k = SECS[j].k;
       for(var q=0;q<m[k].length;q++){ m[k][q].monto = 0; m[k][q].pagado = false; }
@@ -4381,6 +4451,8 @@ document.addEventListener('click', function(ev){
   if(a === 'ajRaiz'){ ajVista = ''; renderAjustes(); window.scrollTo(0,0); return; }
   if(a === 'duplicar'){ duplicar(); return; }
   if(a === 'volver130'){ volverAntesDe130(); return; }
+  if(a === 'volverR4'){ volverAntesDeR4(); return; }
+  if(a === 'recargarPag'){ location.reload(); return; }
   if(a === 'tema'){ D.ui.tema = b.getAttribute('data-v'); aplicarTema(); tocar(); renderAjustes(); return; }
   if(a === 'copia'){ hacerCopia(); return; }
   if(a === 'restaurar'){ document.getElementById('fileJson').click(); return; }
@@ -4797,13 +4869,17 @@ function normTrab(t){
   if(t.ui && t.ui.col && typeof t.ui.col === 'object') for(var k in t.ui.col) if(t.ui.col.hasOwnProperty(k)) o.ui.col[k] = !!t.ui.col[k];
   var aPlazo = false; for(i=0;i<o.facturas.length;i++){ if(!o.facturas[i].contado) aPlazo = true; if(o.facturas[i].abono && !o.facturas[i].abonoHasta) o.facturas[i].abonoHasta = o.facturas[i].fecha.slice(0,7); }
   o.modo = t.modo === 'simple' || t.modo === 'pro' ? t.modo : (aPlazo ? 'pro' : 'simple');   // si ya tenía facturas a plazo, arranca en Profesional
+  var rv = revValida(t.rev); if(rv !== null) o.rev = rv;   // revisión del blob (varias pestañas): se conserva, nunca se inventa
   return o;
 }
 function leerTrab(){ try{ var s = localStorage.getItem(LSTRAB); return normTrab(s ? JSON.parse(s) : null); }catch(e){ return normTrab(null); } }
 function guardarTrab(silencio){
+  if(obsoleta){ avisoOtraPestana(); return false; }
+  var ant = T.actualizado, r;
   T.actualizado = new Date().toISOString();
-  try{ localStorage.setItem(LSTRAB, JSON.stringify(T)); }
-  catch(e){ pildora('No se pudo guardar', true); return false; }
+  r = escribirConRev(LSTRAB, T);
+  if(r === 'conflicto'){ T.actualizado = ant; obsoleta = true; avisoOtraPestana(); return false; }
+  if(r !== 'ok'){ pildora('No se pudo guardar', true); return false; }
   if(!silencio) pildora('Cambios guardados');
   marcarVencidos(); estado(true); quitarAvisoVacia();
   return true;
@@ -4812,9 +4888,10 @@ function tieneTrab(){ return !!(T && (T.facturas.length || T.cobros.length || T.
 function antesDeCambiar(){ tjAntes = JSON.stringify(T); }
 function deshacerTj(){
   if(!tjAntes) return;
-  var modo = T.modo, activo = T.activo, col = T.ui.col;
+  var modo = T.modo, activo = T.activo, col = T.ui.col, rev = T.rev;
   T = normTrab(JSON.parse(tjAntes)); tjAntes = null;
   T.modo = modo; T.activo = activo; T.ui.col = col;   // se deshace lo que cargaste, no cómo estás mirando la pestaña
+  if(rev === undefined) delete T.rev; else T.rev = rev;   // la revisión es la de lo guardado ahora, no la de la copia de antes de deshacer
   guardarTrab(true); aplicarModo(); if(tab === 'trabajo') renderTrabajo();
   toast('Listo, quedó como antes');
 }
@@ -6111,8 +6188,7 @@ function aplicarPase(p, signo){
   it.monto = Math.max(0, Math.round(num(it.monto) + signo * p.monto));
   if(abierto){ sucio = true; guardar(); return true; }
   d.actualizado = new Date().toISOString();                 // otro año: se escribe ese año guardado, el abierto no se toca
-  try{ localStorage.setItem(PREF + d.anio, JSON.stringify(d)); }catch(e){ return false; }
-  return true;
+  return escribirConRev(PREF + d.anio, d) === 'ok';
 }
 function fechaPaseDefecto(){
   // si tenés abierto el año de hoy, va a hoy; si tenés abierto otro año, va al mes que estás mirando de ese año
@@ -6283,7 +6359,8 @@ function accionTj(a, b){
    exactamente como estaban, y los campos nuevos se leen con valor por defecto. */
 var LSESQ = 'kibo.esquema', LSPRE130 = 'kibo.respaldo.pre130', ESQUEMA = '1.30';
 // claves de esta app (la copia y la restauración solo tocan estas; otra app del mismo sitio puede usar "kibo.algo"): kibo.datos.AAAA + estas
-var CLAVES_PROPIAS = [LSANIO, LSCOPIA, LSOCULTO, LSBIENV, LSHIST, LSTRAB, LSVISTA];
+var LSR4 = 'kibo.modeloSaldos', LSPRER4 = 'kibo.respaldo.pre-r4';   // marca "este teléfono ya empezó el modelo de saldos" y la copia de lo que había justo antes (como pre130)
+var CLAVES_PROPIAS = [LSANIO, LSCOPIA, LSOCULTO, LSBIENV, LSHIST, LSTRAB, LSVISTA, LSR4];
 function claveMia(k){
   return typeof k === 'string' && (CLAVES_PROPIAS.indexOf(k) >= 0 || (k.indexOf(PREF) === 0 && /^\d{4}$/.test(k.slice(PREF.length))));
 }
@@ -6326,6 +6403,78 @@ function volverAntesDe130(){
       location.reload();
     });
 }
+/* ═══ 13c · respaldo antes del modelo de saldos (R4.3, Q15) ═════════
+   Antes de la PRIMERA escritura del modelo nuevo en este teléfono se guarda una copia de todas las claves propias, 30 días, con una acción para volver.
+   Orden de la migración: DATOS VIEJOS -> RESPALDO -> normalizar -> migrar -> validar -> modelo. Si el respaldo no se puede guardar, no se migra nada. */
+function asegurarSnapshotR4(){   // true si ya hay marca o se pudo guardar el respaldo; false si no se pudo (no hay que escribir el modelo)
+  try{
+    if(localStorage.getItem(LSR4)) return true;
+    var datos = {}, hay = false, i, k, ahora = new Date().toISOString();
+    for(i=0;i<localStorage.length;i++){
+      k = localStorage.key(i);
+      if(!claveMia(k)) continue;
+      datos[k] = localStorage.getItem(k); hay = true;
+    }
+    if(hay) localStorage.setItem(LSPRER4, JSON.stringify({version:'anterior a los saldos', fecha:ahora, datos:datos}));
+    localStorage.setItem(LSR4, ahora);
+    return true;
+  }catch(e){ return false; }
+}
+function respaldoR4(){
+  try{ var r = JSON.parse(localStorage.getItem(LSPRER4) || 'null'); return r && r.datos ? r : null; }catch(e){ return null; }
+}
+function diasDelRespaldoR4(){
+  var r = respaldoR4(); if(!r || !r.fecha) return 0;
+  return Math.floor((Date.now() - new Date(r.fecha).getTime()) / 864e5);
+}
+function vencerRespaldoR4(){   // a los 30 días se borra solo el respaldo; la marca queda (no se vuelve a copiar)
+  if(!respaldoR4() || diasDelRespaldoR4() <= 30) return false;
+  try{ localStorage.removeItem(LSPRER4); }catch(e){ return false; }
+  return true;
+}
+function volverAntesDeR4(){
+  var r = respaldoR4(); if(!r) return;
+  confirmar('Volver a como estaba antes de los saldos',
+    'Se restaura todo tal cual estaba el ' + r.fecha.slice(8,10) + '/' + r.fecha.slice(5,7) + ', antes de empezar con los saldos. <b>Lo que cargaste desde entonces se pierde</b>, incluido lo de la pestaña Trabajo. Hacé una copia de seguridad antes, si no la tenés.',
+    'Restaurar', function(){
+      try{
+        var i, k, borrar = [];
+        for(i=0;i<localStorage.length;i++){ k = localStorage.key(i); if(claveMia(k)) borrar.push(k); }   // incluye la marca: así la app vuelve a quedar como antes del modelo
+        for(i=0;i<borrar.length;i++) localStorage.removeItem(borrar[i]);
+        for(k in r.datos) if(r.datos.hasOwnProperty(k) && claveMia(k)) localStorage.setItem(k, r.datos[k]);   // solo claves propias, venga lo que venga en el respaldo
+        localStorage.removeItem(LSPRER4);
+      }catch(e){ pildora('No se pudo restaurar', true); return; }
+      location.reload();
+    });
+}
+// lo que el motor necesita de afuera (ctx de R4.2): los pases de Trabajo por mes y el cierre VIVO del año anterior. Todavía no se muestra en pantalla (R4.4).
+function ctxModelo(d, hoy){
+  var pt = {}, ctx = {pasesTrabajo: pt}, cp = cierreAnioAnterior(d, hoy), i, p, k;
+  if(T && T.pases) for(i=0;i<T.pases.length;i++){
+    p = T.pases[i]; k = p.anio + '-' + dos(p.mes + 1);
+    (pt[k] = pt[k] || []).push({fecha:p.fecha, monto:p.monto});
+  }
+  if(cp !== null) ctx.cierrePrevio = cp;
+  return ctx;
+}
+function cierreAnioAnterior(d, hoy){   // cierre de diciembre del año anterior, en vivo, solo si el año arranca de ese cierre y el anterior tiene modelo; si no, manda el arrastre guardado
+  var ar = d.arrastre, prev;
+  if(!ar || ar.desde !== 0 || !ar.inicial || ar.inicial.origen !== 'arrastre') return null;
+  prev = leerAnio(d.anio - 1);
+  if(!prev || !prev.arrastre) return null;
+  return cadena(prev, hoy, ctxModelo(prev, hoy)).meses[11].cierre;
+}
+// Arranca el modelo de saldos del año abierto con lo que el usuario declara tener disponible ahora (null = lo saltea). Todavía no la llama ninguna pantalla (R5).
+// Idempotente: si el año ya tiene arrastre no hace nada. Devuelve true solo si escribió.
+function activarSaldos(declarado){
+  if(!arrancado || !D || D.arrastre) return false;
+  var hoy = hoyApp(), ar = iniciarArrastre(D, hoy, declarado === undefined ? null : declarado, ctxModelo(D, hoy));
+  if(!ar) return false;   // no es el año de hoy, o lo declarado no es un número
+  if(!asegurarSnapshotR4()){ pildora('No pude guardar la copia previa. No cambié nada.', true); return false; }
+  D.arrastre = ar; sucio = true; guardar();
+  if(sucio){ delete D.arrastre; return false; }   // no se pudo guardar (otra pestaña guardó antes o el navegador no deja): en memoria tampoco queda
+  return true;
+}
 function avisoActualizado(){
   var e = document.getElementById('avisos'); if(!e) return;   // reemplaza al recordatorio de copia: este ya lo incluye
   e.innerHTML = '<div class="aviso"><p>Actualizaste a la <b>versión 1.30</b>. Tus datos quedaron como estaban y ahora tenés la pestaña <b>Trabajo</b> si vendés o facturás por tu cuenta. Por las dudas, hacé una copia de seguridad antes de seguir.</p>'
@@ -6342,6 +6491,7 @@ D = leerEmbebido();
 T = leerTrab();
 var abonosNuevos = generarAbonos();
 if(respaldoPrevio() && diasDelRespaldo() > 30){ try{ localStorage.removeItem(LSPRE130); }catch(e){} }
+vencerRespaldoR4();
 aplicarModo();
 if(abonosNuevos) setTimeout(function(){ toast((abonosNuevos === 1 ? 'Se generó 1 abono' : 'Se generaron ' + abonosNuevos + ' abonos') + ' en Trabajo'); }, 900);
 if(actualizado130) setTimeout(avisoActualizado, 500);
@@ -6379,6 +6529,7 @@ if(location.search.indexOf('gasto=1') > -1) setTimeout(gastoRapido, 350);
 if('serviceWorker' in navigator && location.protocol === 'https:'){
   navigator.serviceWorker.register('./sw.js')['catch'](function(){});
 }
+window.addEventListener('storage', alCambiarOtraPestana);   // otra pestaña guardó: se recarga sola si esta no tiene cambios sin guardar; si no, avisa
 document.addEventListener('visibilitychange', function(){
   if(document.visibilityState === 'hidden' && sucio) guardar();
 });

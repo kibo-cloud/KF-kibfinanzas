@@ -12,7 +12,7 @@ function copia(anios){ var o = {}; anios.forEach(function(a){ o[a] = {anio: a, m
 
 test('escribirAnios stores every year when storage works', function(){
   var ls = storage(function(){ return false; });
-  var app = loadApp({funcs: ['escribirAnios', 'normalizar'], vars: ['PREF'], globals: {localStorage: ls}});
+  var app = loadApp({funcs: ['escribirAnios', 'normalizar', 'revGuardada'], vars: ['PREF'], globals: {localStorage: ls}});
   var r = app.plain(app.escribirAnios(copia([2024, 2025, 2026]), ['2024', '2025', '2026']));
   assert.deepEqual(r, {ultimo: 2026, fallaron: []});
   assert.deepEqual(Object.keys(ls.d).sort(), ['kibo.datos.2024', 'kibo.datos.2025', 'kibo.datos.2026']);
@@ -20,7 +20,7 @@ test('escribirAnios stores every year when storage works', function(){
 
 test('escribirAnios reports the years whose write failed and never counts them as restored', function(){
   var ls = storage(function(k){ return k === 'kibo.datos.2025' || k === 'kibo.datos.2026'; });
-  var app = loadApp({funcs: ['escribirAnios', 'normalizar'], vars: ['PREF'], globals: {localStorage: ls}});
+  var app = loadApp({funcs: ['escribirAnios', 'normalizar', 'revGuardada'], vars: ['PREF'], globals: {localStorage: ls}});
   var r = app.plain(app.escribirAnios(copia([2024, 2025, 2026]), ['2024', '2025', '2026']));
   assert.deepEqual(r.fallaron, [2025, 2026]);
   assert.equal(r.ultimo, 2024);   // the last year that really got written
@@ -29,7 +29,7 @@ test('escribirAnios reports the years whose write failed and never counts them a
 
 test('escribirAnios: when nothing could be written there is no year to open', function(){
   var ls = storage(function(){ return true; });
-  var app = loadApp({funcs: ['escribirAnios', 'normalizar'], vars: ['PREF'], globals: {localStorage: ls}});
+  var app = loadApp({funcs: ['escribirAnios', 'normalizar', 'revGuardada'], vars: ['PREF'], globals: {localStorage: ls}});
   var r = app.plain(app.escribirAnios(copia([2026]), ['2026']));
   assert.deepEqual(r, {ultimo: 0, fallaron: [2026]});
 });
@@ -77,7 +77,7 @@ function guardarApp(ls){
   g.quitarAvisoVacia = function(){};
   g.pildora = function(t, mal){ g.pildoras.push([t, !!mal]); };
   g.document = {getElementById: function(id){ return id === 'avisos' ? g.avisos : null; }};
-  var app = loadApp({funcs: ['guardar'], vars: ['PREF', 'sucio', 'arrancado'], globals: g});
+  var app = loadApp({funcs: ['guardar', 'revGuardada', 'escribirConRev'], vars: ['PREF', 'sucio', 'arrancado', 'obsoleta'], globals: g});
   app.g = g; app.arrancado = true; app.D = {anio: 2026};
   return app;
 }
