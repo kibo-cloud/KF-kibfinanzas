@@ -3228,9 +3228,10 @@ function guardar(){
   if(!arrancado || !D) return;
   if(tGuardar){ clearTimeout(tGuardar); tGuardar = null; }
   D.actualizado = new Date().toISOString();
-  var eraSucio = sucio;
-  try{ localStorage.setItem(PREF + D.anio, JSON.stringify(D)); sucio = false; }
+  var eraSucio = sucio, recupero = !hayLS;
+  try{ localStorage.setItem(PREF + D.anio, JSON.stringify(D)); sucio = false; hayLS = true; }   // si ahora guarda, el navegador volvió a funcionar
   catch(e){ hayLS = false; }
+  if(recupero && hayLS){ var av = document.getElementById('avisos'); if(av && av.textContent.indexOf('no está guardando') > -1) av.innerHTML = ''; }
   estado(eraSucio && hayLS);
   if(hayLS) quitarAvisoVacia();
   // la píldora aparece cuando terminaste de escribir, no en cada tecla
@@ -3385,6 +3386,25 @@ function restaurarCopia(f){
   r.onload = function(){ restaurarTexto(r.result); };
   r.readAsText(f);
 }
+// guarda cada año de la copia; devuelve el último que entró y los que no (almacenamiento lleno o bloqueado)
+function escribirAnios(anios, claves){
+  var ultimo = 0, fallaron = [];
+  for(var i=0;i<claves.length;i++){
+    if(anios[claves[i]] && typeof anios[claves[i]] === 'object') anios[claves[i]].anio = +claves[i];   // la migración usa el año de la clave
+    var d = normalizar(anios[claves[i]]); d.anio = +claves[i];
+    try{ localStorage.setItem(PREF + d.anio, JSON.stringify(d)); if(d.anio > ultimo) ultimo = d.anio; }
+    catch(e){ fallaron.push(d.anio); }
+  }
+  return {ultimo:ultimo, fallaron:fallaron};
+}
+function avisarRestauro(total, fallaron, trabajoFallo){
+  if(!fallaron.length && !trabajoFallo){ toast('Restauré ' + total + (total === 1 ? ' año' : ' años')); return; }
+  var ok = total - fallaron.length, falta = fallaron.slice();
+  if(trabajoFallo) falta.push('datos de trabajo');
+  alerta('No pude restaurar todo',
+    (ok > 0 ? 'Se guardó ' + ok + (ok === 1 ? ' año' : ' años') + ' de la copia, pero no entró: ' : (fallaron.length ? 'No se guardó ningún año de la copia. ' : '') + 'No entró: ')
+    + '<b>' + falta.join(', ') + '</b>.<br><br>Puede ser que el navegador no tenga más lugar o que tenga el almacenamiento bloqueado. Lo que ya había de eso en este teléfono sigue como estaba. Liberá espacio y probá de nuevo, o abrí la copia en otro navegador.');
+}
 function restaurarTexto(txt){
   (function(){
     var j;
@@ -3396,18 +3416,13 @@ function restaurarTexto(txt){
     if(!claves.length){ alerta('Copia vacía', 'El archivo no tiene ningún año adentro.'); return; }
     var teniaDatos = hayDatos();
     pendiente = function(){
-      var ultimo = 0;
-      for(var i=0;i<claves.length;i++){
-        if(anios[claves[i]] && typeof anios[claves[i]] === 'object') anios[claves[i]].anio = +claves[i];   // la migración usa el año de la clave
-        var d = normalizar(anios[claves[i]]); d.anio = +claves[i];
-        try{ localStorage.setItem(PREF + d.anio, JSON.stringify(d)); }catch(e){}
-        if(d.anio > ultimo) ultimo = d.anio;
-      }
-      if(j.trabajo && typeof j.trabajo === 'object'){ T = normTrab(j.trabajo); guardarTrab(true); aplicarModo(); }
-      // si la app tenía datos y ese año viene en la copia, me quedo ahí; si estaba vacía, abro el último año de la copia
-      recordarAnio(teniaDatos && claves.indexOf(String(D.anio)) > -1 ? D.anio : ultimo);
+      var r = escribirAnios(anios, claves), trabajoFallo = false;
+      if(j.trabajo && typeof j.trabajo === 'object'){ T = normTrab(j.trabajo); trabajoFallo = !guardarTrab(true); aplicarModo(); }
+      // si la app tenía datos y ese año viene en la copia, me quedo ahí; si estaba vacía, abro el último año que se pudo guardar
+      var abrir = teniaDatos && claves.indexOf(String(D.anio)) > -1 ? D.anio : r.ultimo;
+      if(abrir) recordarAnio(abrir);
       cargar();
-      toast('Restauré ' + claves.length + (claves.length === 1 ? ' año' : ' años'));
+      avisarRestauro(claves.length, r.fallaron, trabajoFallo);
     };
     abrirHoja('<h3>Restaurar copia</h3><div class="texto" style="margin-bottom:16px">La copia trae ' + claves.length + (claves.length === 1 ? ' año: ' : ' años: ')
       + '<b>' + claves.join(', ') + '</b>. Va a <b>reemplazar</b> lo que tengas guardado de esos años en este teléfono.'
