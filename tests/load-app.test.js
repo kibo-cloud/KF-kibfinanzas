@@ -65,7 +65,9 @@ test('the motor block is self-contained: no DOM, storage or app globals', functi
   assert.ok(!/DATOS_/.test(la.MOTOR_SRC), 'the motor must not hold the data markers used by "Versión para PC"');
 });
 
-test('every motor member is available to extracted app code and no app function duplicates a motor name', function(){
+// harness check only: loadApp copies TGMotor members onto the context, so this cannot prove the
+// real page's alias block is complete; tests/alias.test.js covers that statically.
+test('the harness exposes every motor member and no app function duplicates a motor name', function(){
   var motor = la.loadMotor();
   var app = la.loadApp({funcs: ['fARS', 'grupos'], globals: {oculto: false, PUNTOS: '..'}});
   Object.keys(motor).forEach(function(n){
