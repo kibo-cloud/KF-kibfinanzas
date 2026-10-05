@@ -53,6 +53,7 @@ R10. Income synced from Trabajo ("Del trabajo") is already cash-based and always
 - [x] T2 Model: explicit flags at creation, legacy migration, `estaPagado`, `duplicar`, cuotas.
 - [x] T3 Engine + UI: status-aware `calc`, `MARCABLE` for ingresos/variables, gasto rápido, Trabajo row.
 - [x] T4 Version bump (APPVER, sw cache), LEEME changelog, full suite + manual flow check.
+- [x] T5 Composition views (yearly ranking, monthly pie) count only paid items.
 
 ## TDD
 
@@ -88,7 +89,18 @@ Delegated direct: one writer for `index.html` + test files (writer trigger: 2+ n
   4x toggle without accumulation, edit pending amount (no impact) and paid amount (difference),
   persistence of ticked and pending state across reload, serie realized totals, no uncaught errors.
 
+- T5 (product decision: any metric representing money actually spent/collected excludes
+  pending): `ranking()` and `datosTorta()` summed `monto` regardless of status; both now skip
+  items where `estaPagado` is false (same predicate as Sprint 0, no parallel logic). Empty-state
+  copy of both views updated ("cuando tildes… como pagados"). Route: direct inline (1 source file,
+  mechanical). RED first: tests/composicion.test.js 8 fail / 1 pass on old code; GREEN after.
+  Commits d5fcc57 (fix) and 5d66c90 (v1.31.1, sw v41, LEEME). `npm test` 39/39. Browser check
+  49/49 (13 new: pie data and screen, pie center total, ranking data and screen, tick/untick,
+  4x toggle, saldo unchanged, pending still exposed). Native assess since 1c56f92: medium,
+  review_due false (`under_budget`, 138 lines) — stays pending in the slice.
+- Not changed by decision: per-category budget bars (`filaTope`, `pasadas`, refrescar topes)
+  compare registered amount against a budget cap, not realized money.
+
 ## Next step
 
-Done. Open product decisions: whether the Año ranking and the pie chart (composition views)
-should also become realized-only.
+Done. Open product question: should budget bars (topes) count only paid amounts?
