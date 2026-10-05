@@ -255,6 +255,17 @@ What R4 will need to add (not done): per-month opening balance and an explicit c
 - `mesTope(anio)` no longer falls back to `D.anio` for a missing argument (nothing relied on it after R3).
 - `cuantosPagos`/`diasDelMes` (pure) and `notaCompra`/`textoDeuda` (text) were left in the app on purpose; `cobroTxt` reads `mes`/`D`.
 
+### Native review (R3 slice)
+
+- Assess since 6717964 (plan fix c6a9ca4 + R3): medium, 1064 lines, review due. Consent granted,
+  but `review start` stopped with `lens_context_budget_exceeded`: no review authority was created.
+  Probable cause (not confirmed): the ~1 MB golden fixture. Per the stop table: review as
+  smaller candidates (e.g. commit by commit) or disable review for this clone. Pending owner
+  decision.
+- Verified by the parent: fixture unchanged since f95a625; motor block has no references to
+  D, T, document, window, innerHTML or localStorage (only comments/property names);
+  `npm test` 273/273; `npm run test:e2e` 90/90.
+
 ## Next step
 
 Stop before R4: review of the extracted engine (this document, `tests/motor.golden.test.js`) and the exact R4 migration plan.
