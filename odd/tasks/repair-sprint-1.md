@@ -443,6 +443,22 @@ implementation until the owner approves the design and answers Q1-Q15.
   explain clearly and auditably how the total is composed, including Disponible, Trabajo and Deudas. It
   must not remain a number whose composition the user has to infer.
 
+#### R4.4 native review and closure (parent, 2026-10-06)
+
+- Re-verified after the writer: `npm test` 512/512, `npm run test:e2e` 140/140 (re-run by the parent),
+  both golden fixtures byte-identical to b009cf8, tree clean.
+- Native assessment of 4c430ba..908afee: medium, 369 lines, `under_budget` (not due). Review requested
+  explicitly to close the stage; owner granted consent. Reliability lens: approved, no correction,
+  acknowledged (review-7ff05da739f4b4f5, authority burned). Next reviewed boundary: 908afee.
+- Advisory WARNING `R3-pase-validation-untested` (the Q4 double-pass guard was unproved through the pase
+  sheet): covered in 02ac5a5 by a test that drives the real `guardarPase` (600.000 above `paraPasar`
+  500.000 but under `disponible` 700.000 is rejected; exactly 500.000 is accepted). Passed on the
+  existing code; mutation check (validation switched to `disponible`) made it fail, then restored.
+  `npm test` 513/513, `test:e2e` 140/140. Assessed 908afee..02ac5a5: medium, 30 lines, under budget
+  (pending in the next slice).
+- Advisory SUGGESTION `R3-explicaDisp-untested` (index.html:5201-5202, explanation text with a scheduled
+  pase): open, for R4.5.
+
 ## Consumer inventory (R1, current semantics)
 
 Documentation of the CURRENT state (baseline `f3dbff3`; line numbers refer to index.html, which R1 does not touch). Guarded by `tests/inventario.test.js` (source of truth: `tests/inventario.data.js`). Semantics: registrado = every loaded amount; realizado = only ticked/paid; mixto = both; otro = editor/display/Trabajo ledger/false positive. Known bugs are listed as they behave today.
