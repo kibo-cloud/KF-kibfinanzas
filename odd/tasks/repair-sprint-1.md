@@ -460,6 +460,39 @@ implementation until the owner approves the design and answers Q1-Q15.
 - Advisory SUGGESTION `R3-explicaDisp-untested` (index.html:5201-5202, explanation text with a scheduled
   pase): open, for R4.5.
 
+### R4.5
+
+- STATUS: done (validation and evidence). Full matrix, complementary coverage, leftover classification and the before → migration →
+  after report: `odd/tasks/repair-sprint-1-r4.5-matrix.md`.
+- COMMITS: f0886f3 `r4.5: add the D16 acceptance matrix tests and screen checks` (`tests/r4.matriz.test.js`, harness
+  `tests/fixtures/r45-harness.js`, 16 E2E checks), d300d25 `r4.5: add complementary coverage, leftover pins and the before/after report`
+  (`tests/r4.cobertura.test.js`, `tests/fixtures/r45-antes-despues.js`), 0ff866d `r4.5: fix stale tab writing another year when passing
+  Trabajo money` (index.html 1 line + RED test), this note `r4.5: record progress`.
+- D16 (17 official cases, one test each `D16-01`..`D16-17`): 16 PASS, 1 PENDING-R7 (case 15, gasto rápido sobre pendiente: today the
+  amount is added to the pending row without asking, the money spent is not deducted from Disponible; R2 E9 undo holds), 0 FAIL.
+  Cases 5 and 17 validated on the model/migration (Editar and the first-use prompt are R5); case 14 passes on the model and the
+  headline, the gross row is R5 (owner: Patrimonio rows stay until R5).
+- Complementary (21, `C-xx`, not D16): 21 PASS (C-18 after the fix); 7 new tests, the rest cite existing tests.
+- FAILs found and classification:
+  1. REAL R4.3 bug, fixed (0ff866d): a stale tab (`obsoleta`) passing Trabajo money to ANOTHER year still wrote that year's blob while
+     the Trabajo save was refused, so the row without its pase counted the money twice. RED `L-07` on 0b31901, GREEN after
+     `aplicarPase` refuses (and shows the notice) when the tab is stale. Also covers `quitarPase` from a stale tab.
+  2. Accent / spacing variants of "Del trabajo" (`L-03b`, node:test `todo`): `renglonTrabajo` (trim/lowercase) vs `clave()` makes a
+     pase create a second row and the user's unticked amount becomes realized (Disponible 400.000 instead of 300.000). Pre-existing,
+     exposed by Q3. NOT fixed: changing the writer changes which existing row a pase/undo touches; needs an owner rule (R8 Trabajo).
+- Leftovers classified: "El año" table, year CSV and "Año por año" still read `serie()`/`calc()` in a model year (Q3 not applied there,
+  "Disponible" column = month flow, "Acumulado" = year end) — owner decision, pinned by `L-01`; "Del trabajo" above its pases is a locked
+  pending excess — R5 UX debt (`L-02`); R4.3 advisories covered (`L-05` duplicar real save, `L-06` other-year pase revs, `L-08`
+  deshacerTj revs, `L-09` Trabajo restore); `explicaDisp` with a scheduled pase correct (`L-04`). No contradiction with Q1-Q15.
+- TESTS: `npm test` 549 (548 pass, 0 fail, 1 todo) — was 513; `npm run test:e2e` 156 pass / 0 fail — was 140. Both goldens
+  byte-identical to 0b31901 (no regeneration).
+- KNOWN RISKS: `L-10` (pinned, accepted under Q12): with a missed storage event, a pase into the open year can store the year row while
+  the Trabajo save is refused (two blobs, no transaction); the "Pase borrado. No encontré el renglón…" toast is misleading in a stale tab
+  (nothing is written); `num()` reads legacy text "1.500" as 1.5 (pre-R1 behavior, the app no longer stores text amounts).
+- OWNER DECISIONS NEEDED: (1) whether "El año" table, year CSV and "Año por año" move to the chain/Q3 in a model year; (2) the
+  "Del trabajo" matcher rule for existing rows (L-03b); (3) approval of the matrix (design section 11, R4.5 acceptance).
+- NEXT STEP: native review of 908afee..HEAD (02ac5a5 is pending in that slice), owner approval of the matrix, then R4.6 cleanup and R5.
+
 ## D16 — official acceptance list (verbatim)
 
 Origin: owner message in the previous Claude Code session (02140968-86ae-44f2-b1ca-4a73731947bc),
