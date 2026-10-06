@@ -504,6 +504,43 @@ implementation until the owner approves the design and answers Q1-Q15.
   known inconsistency as a passing assertion (should read as a risk marker / todo); D16-16 E2E rejection check waits 300 ms and asserts
   no visible rejection.
 
+#### Year views on the chain (owner decision 2026-10-06)
+
+- DECISION (owner, binding): in a year WITH `arrastre`, "El año" (year table), the year CSV and "Año por año" use the SAME chained
+  balance model as the month card (`cadena`/`tilesMes`/`vistaModelo`, R4.4); a year WITHOUT `arrastre` behaves exactly as before.
+  Correction derived from the inconsistency pinned by `L-01`; D16 stays the official matrix. Closes owner decision (1) above.
+- MAPPING: `odd/tasks/repair-sprint-1-r4.5-matrix.md` section E (consumers, before → after for the L-01 and section 2 datasets,
+  per-column change/keep with the decision behind each number). Commit 8fb7633.
+- CONSUMERS (index.html at 374d899): new `serieVista(d, hoy)` (2706): `serie()` itself without `arrastre`; a model month overlays
+  `tilesMes` (one semantic source, D13). `renderAnio` (3112): table, "Ingresos y gastos" chart and "Año por año" (3176, open and
+  stored years) read it; in a model year the Disponible total and the "Cierre" header are December's card value. `exportarCSV`
+  (3954) reads it. Months before `desde` stay `calc()` (D4/I6).
+- BEFORE → AFTER (L-01 dataset, hoy 2026-10-15): Oct Ingresos 580.000 → 500.000 (Q3), Oct Disponible 430.000 → 350.000 (disponible a
+  hoy), Nov/Dec Disponible −200.000/0 → 230.000/230.000 (projected), Total Disponible 230.000 (sum) → 230.000 (December), "Año por año"
+  Ingresos 580.000 → 500.000; Acumulado 250.000 unchanged. Section 2: Sep 150.000 → 175.000 (confirmed), Oct 650.000 → 825.000, Nov
+  Ingresos 0 → 1.000.000 and Disponible −200.000 → 1.280.000, Total Ingresos 2.000.000 → 3.000.000, Total Disponible 600.000 → 1.280.000.
+- TESTS: `tests/r4.anio.test.js` (6): (a) legacy year byte-identical "El año" HTML + CSV over the 9 motor-corpus datasets against
+  `tests/fixtures/anio-legacy.json` (generated on 0ad13c1 code by `tests/fixtures/generar-anio-legacy.js`, refuses without
+  `TUGASTO_GOLDEN_RAZON`; harness `tests/fixtures/anio-vistas.js` renders the real `renderAnio`/`exportarCSV`); (b) L-01 and section 2
+  rows = `tilesMes` month by month, legacy months = `calc()`, totals and header; (c) CSV = card = "El año" cell; (d) "Año por año" open +
+  stored model years sum the card rows, legacy year keeps `serie()`, guards against 580.000; structure + `serieVista` = `serie()` for
+  every corpus dataset. RED on 0ad13c1: 5 of 6 failed (Oct 580.000/430.000 instead of 500.000/350.000, Sep 150.000 instead of 175.000,
+  CSV 580000/430000, "Año por año" 580.000, `serieVista` missing); (a) passed before and after (regression guard). GREEN 6/6. `L-01`
+  rewritten to pin the new behavior (it pinned the divergence). `seguridad` year-CSV test loads `serieVista`/`vistaModelo`; inventory:
+  `serieVista` added (r4), `exportarCSV` removed (no longer sums money itself; probe in `inventario.test.js` moved to `serieVista`),
+  `renderAnio` reason updated. `npm test` 556 (555 pass, 0 fail, 1 todo) — was 550.
+- E2E: 7 new checks in the R4.4 block (hoy 2026-10-04): legacy year Oct row 500.000/50.000/450.000, Total 700.000/50.000/650.000,
+  CSV = `serie()`; model year Oct row 500.000/50.000/550.000, Nov 200.000/—/750.000, Total Disponible 750.000, CSV = card. RED: the
+  same run.mjs on a 0ad13c1 worktree gave 159 pass / 4 fail (all model checks). GREEN `npm run test:e2e` 163/163 — was 156.
+- GOLDENS: `motor-golden.json` and `motor-golden-r4.json` byte-identical to 0ad13c1 (motor block untouched). No APPVER bump (Q11).
+- STOP ITEMS (unchanged, documented in matrix E.3): (1) Deudas column and "Año por año" Deudas stay paid installments (`tilesMes` keeps
+  `calc().totalDeudas`, no card tile; a future model month's scheduled installment is in the projected Disponible but not in the
+  column); (2) CSV "Gastos fijos"/"Gastos variables" stay paid subtotals (in a future model month Gastos ≠ fijos + variables; splitting
+  the scheduled amount would duplicate `flujosMes` logic); (3) `resumenAnio` (summary card on "El año") keeps `serie()`: its text is a
+  month flow ("gastaste más de lo que entró"), so in a model year its "Por mes entran" average can differ from the table (L-01 580.000
+  vs 500.000). Judgment for owner confirmation: the Disponible total / "Cierre" header in a model year = December's card value.
+- NOT TOUCHED: Patrimonio rows (R5), "Del trabajo" matcher (L-03b), motor block.
+
 ## D16 — official acceptance list (verbatim)
 
 Origin: owner message in the previous Claude Code session (02140968-86ae-44f2-b1ca-4a73731947bc),
