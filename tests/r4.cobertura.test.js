@@ -136,8 +136,27 @@ function paseSobre(nombre){
 test('L-03 pase onto "Del trabajo" written exactly: the pase lands in the same row (pinned reference for L-03b)', function(){
   assert.deepEqual(paseSobre('Del trabajo'), {filas: 1, disponible: 300000, pend: 100000});
 });
-test('L-03b accent / spacing variant of "Del trabajo" must behave like the exact name (D13 one matcher)', {todo: 'renglonTrabajo matches trim().toLowerCase() while the engine uses clave(): a pase creates a second row and the unticked 100.000 becomes realized (Disponible 400.000 instead of 300.000). Fixing the writer changes which existing row a pase/undo touches: owner decision, R8 Trabajo'}, function(){
+// N1 item 5 (R4.5 close, design §7 + D13): the app's row lookup uses the engine's clave() matcher; an exact (trim / lowercase) match still wins
+test('L-03b accent / spacing variant of "Del trabajo" must behave like the exact name (D13 one matcher)', function(){
   assert.deepEqual(paseSobre('Del Trabájo'), {filas: 1, disponible: 300000, pend: 100000});
+});
+
+function appRenglon(ingresos){
+  var d = C.vacio(2026); C.arrastre(d, 9, 0, 'declarado'); C.mes(d, 9, {ingresos: ingresos});
+  return H.appVista(d, H.trab([]), null, null, {funcs: ['renglonTrabajo', 'aplicarPase'], globals: {guardar: function(){}, sucio: false, obsoleta: false, avisoOtraPestana: function(){}}});
+}
+test('L-03c the row lookup is the engine matcher: an exact "Del trabajo" row wins over an earlier variant; a variant alone receives and gives back the pase (undo path)', function(){
+  var a = appRenglon([C.it('  del  TRABAJO ', 5000, false), C.it('Del trabajo', 100000, false)]), p = {id: 'x', fecha: '2026-10-10', monto: 300000, anio: 2026, mes: 9};
+  assert.equal(a.aplicarPase(p, 1), true);
+  assert.deepEqual(a.D.meses[9].ingresos.map(function(x){ return x.monto; }), [5000, 400000], 'exact row first, as before the change');
+  var b = appRenglon([C.it('Del Trabájo', 100000, false)]);
+  assert.equal(b.aplicarPase(p, 1), true);
+  assert.equal(b.aplicarPase(p, -1), true, 'quitarPase / reponerPase go through aplicarPase: the variant row is found to give the pase back');
+  assert.deepEqual(b.plain(b.D.meses[9].ingresos).map(function(x){ return [x.nombre, x.monto, x.pagado]; }), [['Del Trabájo', 100000, false]], 'no second row, no rename, amount back');
+  assert.match(la.extractFunction('renglonTrabajo'), /esRenglonTrabajo\(/, 'same clave() matcher as the engine');
+  assert.match(la.extractFunction('quitarPase'), /aplicarPase\(p, -1\)/);
+  assert.match(la.extractFunction('reponerPase'), /aplicarPase\(p, 1\)/);
+  assert.doesNotMatch(la.extractFunction('deshacerTj'), /ingresos|renglonTrabajo/, 'deshacerTj restores the Trabajo store only, it never looks up the row');
 });
 
 test('L-04 explicaDisp with a scheduled pase: only the pases already out are explained, and the text adds up to the big number', function(){

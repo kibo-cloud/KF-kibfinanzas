@@ -6272,7 +6272,8 @@ function csvTrabajo(){
 /* pasar a lo personal: suma a un renglón de Ingresos, sin tocar ninguna fórmula del mes */
 function renglonTrabajo(d, m, crear){
   var ls = d.meses[m].ingresos, i;
-  for(i=0;i<ls.length;i++) if(String(ls[i].nombre || '').trim().toLowerCase() === RENGLON_TRABAJO.toLowerCase()) return ls[i];
+  for(i=0;i<ls.length;i++) if(String(ls[i].nombre || '').trim().toLowerCase() === RENGLON_TRABAJO.toLowerCase()) return ls[i];   // el nombre exacto, como siempre
+  for(i=0;i<ls.length;i++) if(esRenglonTrabajo(ls[i].nombre)) return ls[i];   // R4.5 (D13): si no, el mismo renglón que el motor ya cuenta como "Del trabajo" (clave)
   if(!crear) return null;
   var it = {nombre:RENGLON_TRABAJO, monto:0, tope:0, pagado:true}; ls.push(it); return it;
 }
