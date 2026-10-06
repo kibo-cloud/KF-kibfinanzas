@@ -2700,6 +2700,19 @@ function tilesMes(d, j, vm){   // mismos campos que calc(); un mes legacy devuel
   return t;
 }
 function tilesHoy(){ return tilesMes(D, mes, vistaModelo(D, hoyApp())); }
+// R4.5 (dueño, 2026-10-06): "El año", su CSV y "Año por año" leen la MISMA cadena que la tarjeta. Sin `arrastre` devuelve serie() tal cual;
+// en un mes del modelo cada fila toma los valores de tilesMes (Ingresos, Gastos, Disponible final = cierre / a hoy / proyectado) y el resto
+// de las columnas (transferencias, deudas, acumulados) sigue siendo el de serie(). La fila lleva .modelo = true.
+function serieVista(d, hoy){
+  var s = serie(d), vm = vistaModelo(d, hoy), j, t, k;
+  if(!vm) return s;
+  for(j=0;j<12;j++){
+    if(vm.cad.meses[j].legacy) continue;
+    t = tilesMes(d, j, vm);
+    for(k in t) if(t.hasOwnProperty(k)) s[j][k] = t[k];
+  }
+  return s;
+}
 // ¿la fila lleva tilde de pagado/cobrado? "Del trabajo" no, salvo en un mes del modelo sin pases: ahí es un ingreso común (Q3)
 function tieneTilde(d, j, k, it){
   if(!MARCABLE[k]) return false;
@@ -3097,8 +3110,8 @@ function resumenAnio(s){
   return h;
 }
 function renderAnio(){
-  var s = serie(D), h = '', i;
-  h += resumenAnio(s);
+  var hoy = hoyApp(), s = serieVista(D, hoy), h = '', i;
+  h += resumenAnio(serie(D));   // el resumen habla de lo que entró y salió cada mes (flujo): sigue en serie() (R4.5, ítem frenado)
   var T = {i:0,g:0,a:0,c:0,d:0,f:0,s:0,r:0};
   var hT = '<div class="tabla"><table><thead><tr>'
      + '<th>Mes</th><th>Ingresos</th><th>Gastos</th><th>Ahorro</th><th>A dólares</th><th>Saqué</th><th>Repuse</th><th>Deudas</th><th>Disponible</th><th>Acumulado</th>'
@@ -3110,6 +3123,7 @@ function renderAnio(){
        + '<td>'+hARS(c.ahorroMesARS)+'</td><td>'+hARS(c.compraARS)+'</td><td>'+hARS(c.sacadoARS)+'</td><td>'+hARS(c.reposicionARS)+'</td><td>'+hARS(c.totalDeudas)+'</td><td>'+hARS(c.disponibleFinal)+'</td>'
        + '<td>'+hARS(c.ahorroAcumulado)+'</td></tr>';
   }
+  if(s[11].modelo) T.f = s[11].disponibleFinal;   // con la cadena la columna es un saldo: el total es el cierre de diciembre, no una suma
   hT += '<tr class="tot"><td>Total</td><td>'+hARS(T.i)+'</td><td>'+hARS(T.g)+'</td><td>'+hARS(T.a)+'</td><td>'+hARS(T.c)+'</td>'
      + '<td>'+hARS(T.s)+'</td><td>'+hARS(T.r)+'</td><td>'+hARS(T.d)+'</td><td>'+hARS(T.f)+'</td><td>'+hARS(s[11].ahorroAcumulado)+'</td></tr>';
   hT += '</tbody></table></div>';
@@ -3159,7 +3173,7 @@ function renderAnio(){
     for(i=0;i<anios.length;i++){
       var dA = anios[i] === D.anio ? D : leerAnio(anios[i]);
       if(!dA) continue;
-      var sA = serie(dA), tI = 0, tG = 0, tD = 0, tA = 0, j;
+      var sA = serieVista(dA, hoy), tI = 0, tG = 0, tD = 0, tA = 0, j;
       for(j=0;j<12;j++){ tI += sA[j].totalIngresos; tG += sA[j].totalGastos; tD += sA[j].totalDeudas; tA += sA[j].ahorroMesARS; }
       hA += '<tr' + (anios[i] === D.anio ? ' class="tot"' : '') + '><td>' + anios[i] + '</td><td>' + hARS(tI) + '</td><td>' + hARS(tG) + '</td><td>' + hARS(tD) + '</td>'
          + '<td>' + hARS(tA) + '</td><td>' + hARS(sA[11].ahorroAcumulado) + '</td><td>' + hUSD(sA[11].usdAcumulado) + '</td></tr>';
@@ -3938,7 +3952,7 @@ function csvTexto(v){   // celda de texto: sin ; ni saltos, y con ' adelante si 
   return (/^[=+\-@\t\r]/.test(s) ? "'" : '') + s.replace(/[;\r\n]/g, ' ');
 }
 function exportarCSV(){
-  var s = serie(D), l = [], i;
+  var s = serieVista(D, hoyApp()), l = [], i;
   var c = csvTexto;
   l.push(['Mes','Ingresos','Gastos fijos','Gastos variables','Gastos','Ahorro ARS','Pesos a dólares','Dólares comprados','Pagado a','Saqué del ahorro','Dólares vendidos','Repuse','A reponer','Deudas','Disponible final','Ahorro acumulado','USD del mes','USD acumulado'].join(';'));
   for(i=0;i<12;i++){

@@ -45,7 +45,7 @@ test('the scan covers both inline blocks: the engine (<script id="motor">) and t
     assert.ok(at > motorAt && at < appAt, n + ' is defined in the motor block');
     assert.ok(found.indexOf(n) >= 0, n + ' is scanned');
   });
-  ['renderMes', 'seccion', 'exportarCSV'].forEach(function(n){
+  ['renderMes', 'seccion', 'serieVista'].forEach(function(n){
     var at = SRC.search(new RegExp('^function ' + n + '\\s*\\(', 'm'));
     assert.ok(at > appAt, n + ' stays in the app script');
     assert.ok(found.indexOf(n) >= 0, n + ' is scanned');

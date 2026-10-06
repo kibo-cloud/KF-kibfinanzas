@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const MARKER = '})();\n</script>';
-const HOOK = 'window.__kf={get D(){return D},get mes(){return mes},calc:calc,serie:serie,ranking:ranking,datosTorta:datosTorta,guardar:guardar,activarSaldos:activarSaldos,armarCopia:armarCopia,restaurarTexto:restaurarTexto,get pendiente(){return pendiente},get obsoleta(){return obsoleta},set obsoleta(v){obsoleta=v},get sucio(){return sucio},set sucio(v){sucio=v},APPVER:APPVER,patrimonio:patrimonio,patrimonioPantalla:patrimonioPantalla,hoyApp:hoyApp,fARS:fARS,fUSD:fUSD,plain:function(x){return JSON.parse(JSON.stringify(x))}};\n})();\n</script>';
+const HOOK = 'window.__kf={get D(){return D},get mes(){return mes},calc:calc,serie:serie,ranking:ranking,datosTorta:datosTorta,guardar:guardar,activarSaldos:activarSaldos,armarCopia:armarCopia,restaurarTexto:restaurarTexto,get pendiente(){return pendiente},get obsoleta(){return obsoleta},set obsoleta(v){obsoleta=v},get sucio(){return sucio},set sucio(v){sucio=v},APPVER:APPVER,exportarCSV:exportarCSV,patrimonio:patrimonio,patrimonioPantalla:patrimonioPantalla,hoyApp:hoyApp,fARS:fARS,fUSD:fUSD,plain:function(x){return JSON.parse(JSON.stringify(x))}};\n})();\n</script>';
 const DATE_PIN = '<script>(function(){var R=Date,T=new R(2026,9,4,12,0,0).getTime();' +
   'class FD extends R{constructor(...a){if(a.length===0)super(T);else super(...a);}static now(){return T;}}' +
   'window.Date=FD;})();</script>';
@@ -507,6 +507,10 @@ try{
     const irTab = async (t) => { await ev(`document.querySelector('[data-act=tab][data-t=${t}]').click(); true`); await sleep(1400); };
     const tjDisp = () => ev(`document.getElementById('tjDisp').textContent.replace(/[^\\d-]/g,'')`);
     const patri = () => ev(`[document.getElementById('bigPatri').textContent, document.getElementById('bigPatri').nextElementSibling.textContent]`);
+    // R4.5 year views (owner decision 2026-10-06): "Los doce meses" cells [Ingresos, Gastos, Disponible] of a month and of the Total row; the year CSV via the real download path
+    const anioFila = (i) => ev(`(function(){ var r = document.querySelectorAll('#v-anio [data-sec=anTabla] tbody tr')[${i}]; return [1, 2, 8].map(function(k){ return r.children[k].textContent; }); })()`);
+    const csvAnio = () => ev(`(async function(){ var o = URL.createObjectURL, b = null; URL.createObjectURL = function(x){ b = x; return o.call(URL, x); };
+      try{ exportarCSV(); } finally{ URL.createObjectURL = o; } var l = (await b.text()).replace(/^\\ufeff/, '').split('\\r\\n'); return [9, 10, 11].map(function(j){ var c = l[j + 1].split(';'); return [c[1], c[4], c[14]]; }); })()`);
 
     // (a) legacy year: unchanged numbers everywhere
     await seed(legacyY, trabR44);
@@ -519,6 +523,10 @@ try{
     await irTab('usd');
     check('R4.4 legacy: Patrimonio total is the old year-end patrimonio() (savings 250.000 = US$ 200 at 1.250)', await patri(), await ev(`[fUSD(patrimonio(D).patrimonioUSD), fARS(patrimonio(D).patrimonioARS), fUSD(200), fARS(250000)]`).then(v => v.slice(0, 2)));
     check('R4.4 legacy: ... which is US$ 200', await ev(`patrimonio(D).patrimonioUSD`), 200);
+    await irTab('anio');
+    check('R4.5 year views, legacy: "El año" Oct row = calc() (500.000 / 50.000 / month flow 450.000)', await anioFila(9), await ev(`[fARS(500000), fARS(50000), fARS(450000)]`));
+    check('R4.5 year views, legacy: Total Ingresos / Gastos / Disponible = sums of serie() (Disponible 450.000 + 200.000)', await anioFila(12), await ev(`[fARS(700000), fARS(50000), fARS(650000)]`));
+    check('R4.5 year views, legacy: CSV Oct-Dec Ingresos / Gastos / Disponible final = serie()', await csvAnio(), [['500000', '50000', '450000'], ['200000', '0', '200000'], ['0', '0', '0']]);
 
     // (b) the same data with arrastre since October: the chain on the card, Q4 on both sides, D7 net worth
     await seed(modelY, trabR44);
@@ -535,6 +543,11 @@ try{
     check('R4.4 model: Patrimonio total is the D7 net a hoy incl. Trabajo cash (550.000 + 250.000 + 700.000 = 1.500.000 = US$ 1.200 at 1.250)',
       await patri(), await ev(`[fUSD(1200), fARS(1500000)]`));
     check('R4.4 model: ... and it is what patrimonioPantalla computes', await ev(`patrimonioPantalla(D, hoyApp()).patrimonioARS`), 1500000);
+    await irTab('anio');
+    check('R4.5 year views, model: "El año" Oct row = the card (500.000 / 50.000 / chain 550.000)', await anioFila(9), await ev(`[fARS(500000), fARS(50000), fARS(550000)]`));
+    check('R4.5 year views, model: Nov row = the future card (scheduled pase 200.000, projected 750.000)', await anioFila(10), await ev(`[fARS(200000), fARS(0), fARS(750000)]`));
+    check('R4.5 year views, model: Total Disponible = December closing 750.000 (not a sum of balances)', await anioFila(12), await ev(`[fARS(700000), fARS(50000), fARS(750000)]`));
+    check('R4.5 year views, model: CSV Oct-Dec Ingresos / Gastos / Disponible final = the card values', await csvAnio(), [['500000', '50000', '550000'], ['200000', '0', '750000'], ['0', '0', '750000']]);
 
     // (c) Q3: in a model month a "Del trabajo" row without pases is ordinary income with a checkbox (real click path)
     const q3 = JSON.parse(JSON.stringify(modelY));

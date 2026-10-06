@@ -61,7 +61,7 @@ test('csvTexto neutralizes spreadsheet formulas in text cells (S2)', function(){
 
 test('year CSV: numeric cells (possibly negative) are never prefixed', function(){
   var salida = null;
-  var app = loadApp({funcs: ['csvTexto', 'exportarCSV'], globals: {
+  var app = loadApp({funcs: ['csvTexto', 'exportarCSV', 'serieVista', 'vistaModelo'], globals: {   // a year without arrastre: serieVista is serie() itself (R4.5)
     MESES: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'],
     descargar: function(t, n){ salida = {t: t, n: n}; }
   }});

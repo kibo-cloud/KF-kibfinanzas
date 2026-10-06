@@ -99,19 +99,20 @@ function trabajoSinPases(){
   C.mes(d, 10, {ahorroMesARS: 200000});
   return d;
 }
-test('L-01 "El año" table, year CSV and "Año por año" still read serie()/calc() in a model year (owner decision pending): pinned divergence', function(){
-  var app = H.appVista(trabajoSinPases()), s = M.serie(app.D);
-  var card = H.tiles(app, 9);
+test('L-01 "El año" table, year CSV and "Año por año" read the month card (chain) in a model year (owner decision 2026-10-06, matrix section E)', function(){
+  var V = require('./fixtures/anio-vistas');
+  var app = V.appAnio(trabajoSinPases(), {2025: C.vacio(2025)}), s = M.serie(app.D);
+  var card = H.tiles(app, 9), f = app.fARS;
   assert.deepEqual([card.totalIngresos, card.disponibleFinal], [500000, 350000], 'month card: Q3 applied (unticked "Del trabajo" pending), chain');
-  assert.deepEqual([s[9].totalIngresos, s[9].disponibleFinal], [580000, 430000], '"El año" row / CSV: "Del trabajo" always realized, month flow (no opening)');
-  assert.equal(s[11].ahorroAcumulado, 250000, '"Acumulado" / "Año por año" cierre: year end incl. the scheduled November savings');
-  assert.equal(app.patrimonioPantalla(app.D, app.hoy).ahorroARS, 50000, 'Patrimonio: savings a hoy');
-  var csv = [], ex = la.loadApp({today: '2026-10-15', funcs: ['exportarCSV', 'csvTexto'], vars: ['MESES'], globals: {descargar: function(t){ csv.push(t); }}});
-  ex.D = app.D; ex.exportarCSV();
-  var oct = csv[0].split('\r\n')[10].split(';');
-  assert.deepEqual([oct[0], oct[1], oct[14]], ['Octubre', '580000', '430000'], 'CSV columns Ingresos / Disponible final');
-  assert.match(la.extractFunction('renderAnio'), /var s = serie\(D\)/);
-  assert.doesNotMatch(la.extractFunction('renderAnio') + la.extractFunction('exportarCSV'), /cadena|tilesMes|vistaModelo/);
+  var t = V.tabla(app.anio(), 'anTabla');
+  assert.deepEqual([t[9][1], t[9][8]], [f(500000), f(350000)], '"El año" Oct row = card (was 580.000 / 430.000 from serie())');
+  assert.deepEqual([s[9].totalIngresos, s[9].disponibleFinal], [580000, 430000], 'serie() itself is unchanged (other consumers, golden)');
+  assert.equal(t[12][9], f(250000), '"Acumulado" stays serie(): year end incl. the scheduled November savings (matrix E.3, unchanged)');
+  var pv = H.appVista(trabajoSinPases());
+  assert.equal(pv.patrimonioPantalla(pv.D, pv.hoy).ahorroARS, 50000, 'Patrimonio: savings a hoy (unchanged)');
+  var oct = V.csvFilas(app.csv())[10];
+  assert.deepEqual([oct[0], oct[1], oct[14]], ['Octubre', '500000', '350000'], 'CSV columns Ingresos / Disponible final = card');
+  assert.deepEqual(V.tabla(app.anio(), 'anAnios')[1].slice(0, 3), ['2026', f(500000), f(100000)], '"Año por año" = card rows');
 });
 
 test('L-02 "Del trabajo" amount above its pases: the excess stays pending with no checkbox and a read-only row (R5 UX debt)', function(){
