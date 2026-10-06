@@ -2409,6 +2409,8 @@ var SECS = TGMotor.SECS,
     proyeccionDeudas = TGMotor.proyeccionDeudas,
     hoyDe = TGMotor.hoyDe,
     cadena = TGMotor.cadena,
+    flujosMes = TGMotor.flujosMes,
+    patrimonioNeto = TGMotor.patrimonioNeto,
     iniciarArrastre = TGMotor.iniciarArrastre,
     revValida = TGMotor.revValida,
     criptoUSD = TGMotor.criptoUSD,
@@ -2673,8 +2675,39 @@ function plegable(k, titulo, resumen, cuerpo, porDefecto){
        + '</div>';
 }
 
+/* ═══ R4.4: el modelo de saldos en pantalla ═══
+   Un año SIN `arrastre` (y todo mes anterior a arrastre.desde) se ve exactamente como antes: la tarjeta es calc() tal cual (D4, I6).
+   En un mes del modelo la tarjeta sale de la cadena: Disponible final = cierre (mes pasado), disponible a hoy (mes en curso) o cierre
+   proyectado (mes futuro); Ingresos/Gastos = lo realizado (pasado/en curso) o lo programado (futuro), con "Del trabajo" desde los pases. */
+function vistaModelo(d, hoy){
+  if(!d || !d.arrastre) return null;
+  var ctx = ctxModelo(d, hoy);
+  return {hoy: hoy, ctx: ctx, cad: cadena(d, hoy, ctx)};
+}
+function mesDelModelo(d, j){ var ar = d && d.arrastre; return !!ar && typeof ar === 'object' && j >= num(ar.desde); }
+function tilesMes(d, j, vm){   // mismos campos que calc(); un mes legacy devuelve calc() mismo
+  var c = calc(d.meses[j]);
+  if(!vm || vm.cad.meses[j].legacy) return c;
+  var e = vm.cad.meses[j], f = flujosMes(d, j, vm.hoy, vm.ctx), t = {}, k;
+  for(k in c) if(c.hasOwnProperty(k)) t[k] = c[k];
+  var ti = f.realizado ? f.ingresosReal + f.trabajoRealizado : f.ingresosProg + f.trabajoProgramado;
+  var tg = f.realizado ? f.gastosReal : f.gastosProg;
+  t.totalIngresos = ti; t.totalGastos = tg;
+  t.disponibleFinal = e.estado === 'pasado' ? e.cierre : (e.estado === 'actual' ? e.cierreCalc : e.proyectado);
+  t.ahorroSugerido = ti * num(d.meses[j].metaAhorroPct);
+  t.pctGastos = ti > 0 ? tg/ti : 0; t.pctAhorro = ti > 0 ? c.ahorroMesARS/ti : 0;
+  t.modelo = true;
+  return t;
+}
+function tilesHoy(){ return tilesMes(D, mes, vistaModelo(D, hoyApp())); }
+// ¿la fila lleva tilde de pagado/cobrado? "Del trabajo" no, salvo en un mes del modelo sin pases: ahí es un ingreso común (Q3)
+function tieneTilde(d, j, k, it){
+  if(!MARCABLE[k]) return false;
+  if(k !== 'ingresos' || !esRenglonTrabajo(it.nombre)) return true;
+  return mesDelModelo(d, j) && !(pasesDelMes(d.anio, j) > 0);
+}
 function renderMes(){
-  var m = D.meses[mes], c = calc(m), h = '';
+  var m = D.meses[mes], c = tilesHoy(), h = '';
   h += '<div class="meses" id="selMes">';
   for(var i=0;i<12;i++) h += '<button data-act="mes" data-m="'+i+'" class="'+(i===mes?'on':'')+'">'+CORTOS[i]+'</button>';
   h += '</div>';
@@ -2845,7 +2878,7 @@ function seccion(S, m){
      + '<span class="sub" id="sub-'+S.k+'">'+fARS(sub)+'</span><i class="chev"></i></button>';
   h += '<div class="cuerpo">';
   for(var i=0;i<lista.length;i++){
-    var marc = MARCABLE[S.k] && !(S.k === 'ingresos' && esRenglonTrabajo(lista[i].nombre));   // "Del trabajo" ya está cobrado: no se tilda
+    var marc = tieneTilde(D, mes, S.k, lista[i]);   // "Del trabajo" ya está cobrado: no se tilda (salvo Q3, ver tieneTilde)
     var pg = marc && estaPagado(mes, lista[i]), pal = S.k === 'ingresos' ? 'cobrado' : 'pagado';
     var vt = S.k === 'ingresos' && esRenglonTrabajo(lista[i].nombre) && pasesDelMes(D.anio, mes) > 0;   // lo carga Trabajo con sus pases
     h += '<div class="item'+(pg?' pago':'')+(vt?' deltrab':'')+'">'
@@ -2972,7 +3005,7 @@ function htmlTorta(m, c){
 }
 function pintarTorta(){
   var e = document.getElementById('cardTorta'); if(!e) return;
-  e.innerHTML = htmlTorta(D.meses[mes], calc(D.meses[mes]));
+  e.innerHTML = htmlTorta(D.meses[mes], tilesHoy());
   altoCarr();
 }
 /* carrusel: el deslizamiento se queda acá adentro y nunca cambia de pestaña */
@@ -3179,8 +3212,16 @@ function barras(arr){
   return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Ahorro acumulado por mes">'+g+'</svg>';
 }
 
+// "Patrimonio total" de la pestaña Dólares. Año sin arrastre: patrimonio() de siempre (cierre del año, D4). Año con modelo: el neto de D7
+// a hoy (disponible + ahorro + dólares + cripto + Trabajo, Q2, − deudas), en pesos y en dólares a la cotización guardada.
+function patrimonioPantalla(d, hoy){
+  var vm = vistaModelo(d, hoy); if(!vm) return patrimonio(d);
+  vm.ctx.trabajoDisponible = trabajoDisponible();
+  var pn = patrimonioNeto(d, hoy, vm.ctx), cot = num(d.cotizacionUSD);
+  return {ahorroARS: pn.ahorroARS, usd: pn.usd, criptoUSD: pn.criptoUSD, patrimonioUSD: cot > 0 ? pn.neto / cot : 0, patrimonioARS: pn.neto, modelo: pn};
+}
 function renderUSD(){
-  var s = serie(D), p = patrimonio(D), h = '', i;
+  var s = serie(D), p = patrimonioPantalla(D, hoyApp()), h = '', i;
   h += plegable('usdCotiz', 'Cotización', fARS(D.cotizacionUSD),
         '<div class="fila-in"><label>Un dólar en pesos</label>'
       + '<input class="monto" inputmode="decimal" data-campo="cotizacionUSD" value="'+fARS(D.cotizacionUSD)+'"></div>'
@@ -3487,7 +3528,7 @@ function avisoSinGuardado(){
 /* refresco puntual: no vuelve a dibujar los inputs, así no se pierde el foco */
 function refrescar(){
   if(tab !== 'mes') return;
-  var m = D.meses[mes], c = calc(m), i;
+  var m = D.meses[mes], c = tilesHoy(), i;
   for(i=0;i<SECS.length;i++){
     var e = document.getElementById('sub-'+SECS[i].k);
     if(e) e.textContent = fARS(suma(m[SECS[i].k]));
@@ -4949,8 +4990,12 @@ function resumenTrab(){
     if(c.fecha <= hoy) r.cobrado += c.monto; else r.aAcreditar += c.monto;   // un echeq con fecha futura todavía no es plata
     r.sinAsignar += sinAsignar(c);
   }
-  r.pasado = 0; r.pasadoMes = 0;
-  for(i=0;i<T.pases.length;i++){ r.pasado += T.pases[i].monto; if(T.pases[i].fecha.slice(0,7) === mesAct) r.pasadoMes += T.pases[i].monto; }
+  r.pasado = 0; r.pasadoMes = 0; r.pasadoProgramado = 0;
+  var anios = {};
+  for(i=0;i<T.pases.length;i++){
+    r.pasado += T.pases[i].monto; if(T.pases[i].fecha.slice(0,7) === mesAct) r.pasadoMes += T.pases[i].monto;
+    if(T.pases[i].fecha > hoy && paseAlModelo(T.pases[i], anios)) r.pasadoProgramado += T.pases[i].monto;   // Q4: programado en los dos lados hasta su fecha
+  }
   r.gastado = 0; r.gastadoMes = 0; r.gastoFuturo = 0; r.vendidoSimpleMes = 0; r.hoyForma = {};
   r.hoyGanancia = 0; r.hayCosto = false; r.porFuente = []; r.hayFuente = false; r.facturadoMes = 0; r.facturado12 = 0; r.vencenSemana = 0; r.vencenSemanaMonto = 0;
   for(i=0;i<T.gastos.length;i++){
@@ -4984,9 +5029,18 @@ function resumenTrab(){
     var dv = diasEntre(hoy, venceFac(fa));
     if(dv >= 0 && dv <= 7){ r.vencenSemana++; r.vencenSemanaMonto += sa; }
   }
-  r.disponible = Math.round(r.cobrado - r.gastado - r.pasado);
+  r.disponible = Math.round(r.cobrado - r.gastado - r.pasado + r.pasadoProgramado);
+  r.paraPasar = Math.round(r.cobrado - r.gastado - r.pasado);   // lo que todavía se puede pasar: lo programado ya está comprometido
   return r;
 }
+// ¿el pase cae en un mes del modelo de saldos? Solo ahí un pase con fecha futura queda programado (Q4). En un mes legacy el renglón
+// "Del trabajo" ya lo cuenta como ingreso, así que Trabajo lo sigue descontando en el momento, como siempre (D4: nada se cuenta dos veces).
+function paseAlModelo(p, anios){
+  if(!anios.hasOwnProperty(p.anio)) anios[p.anio] = D && D.anio === p.anio ? D : leerAnio(p.anio);
+  return mesDelModelo(anios[p.anio], p.mes);
+}
+// la plata del trabajo como bolsillo del patrimonio (Q2)
+function trabajoDisponible(){ return T && tieneTrab() ? resumenTrab().disponible : 0; }
 function marcarVencidos(){
   var b = document.querySelector('#nav button[data-t="trabajo"] .np'); if(!b) return;
   var hoy = hoyISO(), hay = false;
@@ -5144,7 +5198,8 @@ function lineaHoy(r){
 function explicaDisp(r){
   var menos = [];
   if(r.gastado) menos.push('los gastos (' + fARS(r.gastado) + ')');
-  if(r.pasado) menos.push('lo que pasaste a Ingresos (' + fARS(r.pasado) + ')');
+  var pa = r.pasado - (r.pasadoProgramado || 0);   // los pases programados (Q4) todavía no salieron
+  if(pa) menos.push('lo que pasaste a Ingresos (' + fARS(pa) + ')');
   if(!menos.length) return r.cobrado ? 'Todo lo cobrado sigue en el trabajo: todavía no pasaste nada a Ingresos.' : 'Cuando cobres algo, aparece acá.';
   return 'Lo cobrado (' + fARS(r.cobrado) + ') menos ' + menos.join(' y ') + '.';
 }
@@ -6200,14 +6255,14 @@ function destinoPase(){ var fe = val('psFecha'); if(!esISO(fe)) fe = hoyISO(); r
 function anioExiste(a){ return a === D.anio || !!leerAnio(a); }
 function abrirPase(){
   var r = resumenTrab();
-  if(r.disponible <= 0){
+  if(r.paraPasar <= 0){
     alerta('Todavía no hay plata para pasar', 'Se pasa a lo personal lo que ya cobraste.'
       + (r.aAcreditar ? ' Lo que tiene fecha más adelante vas a poder pasarlo cuando llegue ese día.' : ' Cuando cargues una venta cobrada o un cobro, aparece acá.'));
     return;
   }
   abrirHoja('<h3>Pasar a lo personal</h3>'
     + '<input type="text" id="psMonto" class="grande tj-in" inputmode="decimal" placeholder="0" autocomplete="off">'
-    + '<div class="chips"><button data-act="tjPaseTodo">Todo: ' + fARS(r.disponible) + '</button></div>'
+    + '<div class="chips"><button data-act="tjPaseTodo">Todo: ' + fARS(r.paraPasar) + '</button></div>'
     + campoTj('Fecha', '<input type="date" id="psFecha" class="tj-in" value="' + fechaPaseDefecto() + '">')
     + '<div class="nota" id="psNota" style="padding:0 0 14px"></div>'
     + '<div class="fila"><button data-act="cerrarHoja">Cancelar</button><button class="pri" data-act="tjGuardarPase">Pasar</button></div>');
@@ -6221,15 +6276,15 @@ function notaPase(){
   e.className = 'nota';
   if(!rq.ok && !rq.vacio){ e.className = 'nota mal'; e.innerHTML = 'Monto: ' + rq.msg + '.'; return; }
   if(!anioExiste(d.anio)){ e.className = 'nota mal'; e.innerHTML = 'El ' + d.anio + ' no está creado en la app. Elegí una fecha de un año que tengas.'; return; }
-  if(m > r.disponible + 0.5){ e.className = 'nota mal'; e.innerHTML = 'Es más de lo que tenés disponible (' + fARS(r.disponible) + ').'; return; }
-  e.innerHTML = 'Se suma a Ingresos de <b>' + MESES[d.mes] + ' ' + d.anio + '</b>, en el renglón <b>' + RENGLON_TRABAJO + '</b>. Disponible: ' + fARS(r.disponible) + '.'
+  if(m > r.paraPasar + 0.5){ e.className = 'nota mal'; e.innerHTML = 'Es más de lo que tenés disponible (' + fARS(r.paraPasar) + ').'; return; }
+  e.innerHTML = 'Se suma a Ingresos de <b>' + MESES[d.mes] + ' ' + d.anio + '</b>, en el renglón <b>' + RENGLON_TRABAJO + '</b>. Disponible: ' + fARS(r.paraPasar) + '.'
     + (d.anio !== D.anio ? '<br><span class="neg">Ojo: tenés abierto ' + D.anio + ', así que en la pestaña Mes no lo vas a ver hasta que cambies de año.</span>' : '');
 }
 function guardarPase(){
   var rq = leerMonto('psMonto'), m = Math.round(rq.v), d = destinoPase(), r = resumenTrab();
   if(!rq.ok && !rq.vacio){ errorEn('psNota', 'Monto: ' + rq.msg + '.'); document.getElementById('psMonto').focus(); return; }
   if(!(m > 0)){ errorEn('psNota', 'Falta cuánto querés pasar.'); document.getElementById('psMonto').focus(); return; }
-  if(m > r.disponible + 0.5){ errorEn('psNota', 'Es más de lo que tenés disponible (' + fARS(r.disponible) + ').'); return; }
+  if(m > r.paraPasar + 0.5){ errorEn('psNota', 'Es más de lo que tenés disponible (' + fARS(r.paraPasar) + ').'); return; }
   if(!anioExiste(d.anio)){ errorEn('psNota', 'El ' + d.anio + ' no está creado en la app. Elegí una fecha de un año que tengas.'); return; }
   var p = {id:tjId(), fecha:d.fecha, monto:m, anio:d.anio, mes:d.mes, creada:new Date().toISOString()};
   if(!aplicarPase(p, 1)){ errorEn('psNota', 'No pude sumarlo al mes. Probá de nuevo.'); return; }
@@ -6309,7 +6364,7 @@ function accionTj(a, b){
   if(a === 'tjDeshacer'){ deshacerTj(); return; }
   if(a === 'tjPasar'){ abrirPase(); return; }
   if(a === 'tjPaseTodo'){
-    var r0 = resumenTrab(), mi = document.getElementById('psMonto'), dv = Math.max(0, r0.disponible);
+    var r0 = resumenTrab(), mi = document.getElementById('psMonto'), dv = Math.max(0, r0.paraPasar);
     if(mi){
       if(oculto){ mi.value = ''; mi.setAttribute('placeholder', '••••'); mi.setAttribute('data-guardado', String(dv)); }   // con el ojito cerrado no se escribe el número
       else { mi.value = montoInput(dv); mi.removeAttribute('data-guardado'); }
@@ -6447,7 +6502,7 @@ function volverAntesDeR4(){
       location.reload();
     });
 }
-// lo que el motor necesita de afuera (ctx de R4.2): los pases de Trabajo por mes y el cierre VIVO del año anterior. Todavía no se muestra en pantalla (R4.4).
+// lo que el motor necesita de afuera (ctx de R4.2): los pases de Trabajo por mes y el cierre VIVO del año anterior. La pantalla lo usa vía vistaModelo (R4.4).
 function ctxModelo(d, hoy){
   var pt = {}, ctx = {pasesTrabajo: pt}, cp = cierreAnioAnterior(d, hoy), i, p, k;
   if(T && T.pases) for(i=0;i<T.pases.length;i++){

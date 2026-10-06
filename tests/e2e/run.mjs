@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const MARKER = '})();\n</script>';
-const HOOK = 'window.__kf={get D(){return D},get mes(){return mes},calc:calc,serie:serie,ranking:ranking,datosTorta:datosTorta,guardar:guardar,activarSaldos:activarSaldos,armarCopia:armarCopia,restaurarTexto:restaurarTexto,get pendiente(){return pendiente},get obsoleta(){return obsoleta},set obsoleta(v){obsoleta=v},get sucio(){return sucio},set sucio(v){sucio=v},APPVER:APPVER,plain:function(x){return JSON.parse(JSON.stringify(x))}};\n})();\n</script>';
+const HOOK = 'window.__kf={get D(){return D},get mes(){return mes},calc:calc,serie:serie,ranking:ranking,datosTorta:datosTorta,guardar:guardar,activarSaldos:activarSaldos,armarCopia:armarCopia,restaurarTexto:restaurarTexto,get pendiente(){return pendiente},get obsoleta(){return obsoleta},set obsoleta(v){obsoleta=v},get sucio(){return sucio},set sucio(v){sucio=v},APPVER:APPVER,patrimonio:patrimonio,patrimonioPantalla:patrimonioPantalla,hoyApp:hoyApp,fARS:fARS,fUSD:fUSD,plain:function(x){return JSON.parse(JSON.stringify(x))}};\n})();\n</script>';
 const DATE_PIN = '<script>(function(){var R=Date,T=new R(2026,9,4,12,0,0).getTime();' +
   'class FD extends R{constructor(...a){if(a.length===0)super(T);else super(...a);}static now(){return T;}}' +
   'window.Date=FD;})();</script>';
@@ -461,7 +461,9 @@ try{
   await nav(URL_APP);
   check('R4.3 b: arrastre and cierreReal survive a reload', await ev(`plain({arrastre: D.arrastre, cierre: D.meses[8].cierreReal})`), modelo);
   check('R4.3 b: rev survives a reload (2 saves)', await ev(`D.rev`), 2);
-  check('R4.3 b: nothing on screen changed: the model is not wired to the UI (Oct disponible)', await ev(`calc(D.meses[9]).disponibleFinal`), 150000);
+  check('R4.3 b: calc() of Oct is unchanged (the old month result)', await ev(`calc(D.meses[9]).disponibleFinal`), 150000);
+  await sleep(1300);
+  check('R4.4: after activarSaldos(400000) the Oct card shows the chain: the declared available money', await ev(`(${bigFinal}).replace(/[^\\d-]/g,'')`), '400000');
   await ev(`document.querySelector('[data-act=tab][data-t=ajustes]').click(); true`); await sleep(300);
   check('R4.3 b: Ajustes shows the "volver" row while the snapshot exists', await ev(`(function(){ var b = document.querySelector('[data-act=volverR4]'); return b ? b.textContent.indexOf('Volver a como estaba antes de los saldos') >= 0 : false; })()`), true);
 
@@ -488,6 +490,61 @@ try{
   const viejoTxt = JSON.stringify({app: 'kibFinanzas', version: 1, anios: {2026: JSON.parse(blobR4)}});
   await ev(`restaurarTexto(${JSON.stringify(viejoTxt)}); pendiente(); true`); await sleep(500);
   check('R4.3 c: restoring an older backup without arrastre leaves the year without it', await ev(`[D.arrastre === undefined, D.meses[8].cierreReal === undefined]`), [true, true]);
+
+  // ── R4.4: the screen reads the balance model only for a year with arrastre; a legacy year shows exactly what it showed before ──
+  {
+    const ms = []; for(let i=0;i<12;i++) ms.push(mes([], [], [], []));
+    ms[9] = mes([it('Sueldo', 200000, true), it('Del trabajo', 300000, true)], [it('Alquiler', 50000, true)], [], []);
+    ms[10] = mes([it('Del trabajo', 200000, true)], [], [], []);
+    const legacyY = {anio: 2026, pagoExplicito: true, cotizacionUSD: 1250, ahorroAnioAnterior: 250000, meses: ms};
+    const modelY = Object.assign({}, legacyY, {arrastre: {desde: 9, inicial: {apertura: 100000, declarado: 100000, declaradoEl: '2026-10-01', origen: 'declarado'}}});
+    const trabR44 = {version: 1, activo: true, modo: 'simple', facturas: [], gastos: [], productos: [],
+      cobros: [{id: 'c1', cliente: '', monto: 1000000, fecha: '2026-01-01', forma: 'transferencia', aplic: []}],
+      pases: [{id: 'p1', fecha: '2026-10-02', monto: 300000, anio: 2026, mes: 9}, {id: 'p2', fecha: '2026-11-05', monto: 200000, anio: 2026, mes: 10}]};
+    const seed = async (year, t) => { await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); localStorage.setItem('kibo.anio','2026'); localStorage.setItem('kibo.datos.2026', ${JSON.stringify(JSON.stringify(year))}); ${t ? `localStorage.setItem('kibo.trabajo', ${JSON.stringify(JSON.stringify(t))});` : ''} true`); await nav(URL_APP); await sleep(1300); };
+    const pantalla = () => ev(`(${bigFinal}).replace(/[^\\d-]/g,'')`);
+    const tri = () => ev(`Array.prototype.map.call(document.querySelectorAll('#v-mes .tri b'), function(b){ return b.textContent; })`);
+    const irTab = async (t) => { await ev(`document.querySelector('[data-act=tab][data-t=${t}]').click(); true`); await sleep(1400); };
+    const tjDisp = () => ev(`document.getElementById('tjDisp').textContent.replace(/[^\\d-]/g,'')`);
+    const patri = () => ev(`[document.getElementById('bigPatri').textContent, document.getElementById('bigPatri').nextElementSibling.textContent]`);
+
+    // (a) legacy year: unchanged numbers everywhere
+    await seed(legacyY, trabR44);
+    check('R4.4 legacy: no model in the year', await ev(`D.arrastre === undefined`), true);
+    check('R4.4 legacy: Oct card = calc() (200.000 + 300.000 - 50.000)', [await pantalla(), await ev(`calc(D.meses[9]).disponibleFinal`)], ['450000', 450000]);
+    check('R4.4 legacy: Oct Ingresos / Gastos / Ahorro tiles', await tri(), await ev(`[fARS(500000), fARS(50000), fARS(0)]`));
+    check('R4.4 legacy: "Del trabajo" has no checkbox (only Sueldo)', await ev(`document.querySelectorAll('[data-act=pagar][data-k=ingresos]').length`), 1);
+    await irTab('trabajo');
+    check('R4.4 legacy: Trabajo available subtracts every pase at once, future ones included (1.000.000 - 500.000)', await tjDisp(), '500000');
+    await irTab('usd');
+    check('R4.4 legacy: Patrimonio total is the old year-end patrimonio() (savings 250.000 = US$ 200 at 1.250)', await patri(), await ev(`[fUSD(patrimonio(D).patrimonioUSD), fARS(patrimonio(D).patrimonioARS), fUSD(200), fARS(250000)]`).then(v => v.slice(0, 2)));
+    check('R4.4 legacy: ... which is US$ 200', await ev(`patrimonio(D).patrimonioUSD`), 200);
+
+    // (b) the same data with arrastre since October: the chain on the card, Q4 on both sides, D7 net worth
+    await seed(modelY, trabR44);
+    check('R4.4 model: Oct card shows the chain disponible (100.000 + 150.000 + the realized pase 300.000)', await pantalla(), '550000');
+    check('R4.4 model: ... while calc() of Oct is still the old month result', await ev(`calc(D.meses[9]).disponibleFinal`), 450000);
+    check('R4.4 model: Oct tiles (Del trabajo comes from the realized pase)', await tri(), await ev(`[fARS(500000), fARS(50000), fARS(0)]`));
+    check('R4.4 model: the future Nov pase does not raise the current available money', await pantalla(), '550000');
+    await ev(`document.querySelector('[data-act=mes][data-m="10"]').click(); true`); await sleep(1400);
+    check('R4.4 model: Nov (future) shows the projected closing with the scheduled pase (550.000 + 200.000)', await pantalla(), '750000');
+    await ev(`document.querySelector('[data-act=mes][data-m="9"]').click(); true`); await sleep(300);
+    await irTab('trabajo');
+    check('R4.4 model: the future pase does not reduce Trabajo available until its date (1.000.000 - 300.000)', await tjDisp(), '700000');
+    await irTab('usd');
+    check('R4.4 model: Patrimonio total is the D7 net a hoy incl. Trabajo cash (550.000 + 250.000 + 700.000 = 1.500.000 = US$ 1.200 at 1.250)',
+      await patri(), await ev(`[fUSD(1200), fARS(1500000)]`));
+    check('R4.4 model: ... and it is what patrimonioPantalla computes', await ev(`patrimonioPantalla(D, hoyApp()).patrimonioARS`), 1500000);
+
+    // (c) Q3: in a model month a "Del trabajo" row without pases is ordinary income with a checkbox (real click path)
+    const q3 = JSON.parse(JSON.stringify(modelY));
+    q3.meses[9].ingresos[1] = it('Del trabajo', 80000, false); q3.meses[10].ingresos = [];
+    await seed(q3, null);
+    check('R4.4 Q3: "Del trabajo" without pases has a checkbox in a model month', await ev(`document.querySelectorAll('[data-act=pagar][data-k=ingresos]').length`), 2);
+    check('R4.4 Q3: unticked it is pending, not in the card (100.000 + 200.000 - 50.000)', await pantalla(), '250000');
+    await ev(`document.querySelector('[data-act=pagar][data-k=ingresos][data-i="1"]').click(); true`); await sleep(1400);
+    check('R4.4 Q3: ticked it is realized', [await ev(`D.meses[9].ingresos[1].pagado`), await pantalla()], [true, '330000']);
+  }
 
   check('no uncaught page errors', pageErrs, []);
 }catch(e){ fails++; results.push('ERROR ' + e.message); }
