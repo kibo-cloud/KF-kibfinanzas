@@ -548,6 +548,17 @@ try{
     check('R4.5 year views, model: Nov row = the future card (scheduled pase 200.000, projected 750.000)', await anioFila(10), await ev(`[fARS(200000), fARS(0), fARS(750000)]`));
     check('R4.5 year views, model: Total Disponible = December closing 750.000 (not a sum of balances)', await anioFila(12), await ev(`[fARS(700000), fARS(50000), fARS(750000)]`));
     check('R4.5 year views, model: CSV Oct-Dec Ingresos / Gastos / Disponible final = the card values', await csvAnio(), [['500000', '50000', '550000'], ['200000', '0', '750000'], ['0', '0', '750000']]);
+    // N1 (R4.5 close): Deudas column, summary card and ranking of a model year never treat a future month as paid / realized
+    const n1 = JSON.parse(JSON.stringify(modelY));
+    n1.meses[8] = mes([it('Sueldo', 100000, true)], [], [], []);
+    n1.meses[10] = mes([it('Del trabajo', 200000, true)], [], [it('Viaje', 30000, true)], [it('Tarjeta', 100000, false)]);
+    await seed(n1, trabR44); await irTab('anio');
+    const deuFila = (i) => ev(`document.querySelectorAll('#v-anio [data-sec=anTabla] tbody tr')[${i}].children[7].textContent`);
+    check('N1 year views, model: Nov Deudas = the scheduled installment 100.000 (unticked, future); Total Deudas 100.000', [await deuFila(10), await deuFila(12)], await ev(`[fARS(100000), fARS(100000)]`));
+    check('N1 year views, model: the summary card averages the 2 elapsed months (Sep legacy 100.000, Oct card 500.000), never November',
+      await ev(`(function(){ var r = document.querySelector('#v-anio .resumen').textContent; return [r.indexOf('Por mes entran ' + fARS(300000) + ' y se van ' + fARS(25000)) >= 0, r.indexOf('Promedio de 2 meses ya transcurridos de 2026') >= 0, r.indexOf('Noviembre') < 0]; })()`), [true, true, true]);
+    check('N1 year views, model: "En qué se te fue la plata" leaves out the ticked expense of future November',
+      await ev(`(function(){ var t = document.querySelector('#v-anio [data-sec=anRank]').textContent; return [t.indexOf('Alquiler') >= 0, t.indexOf('Viaje') < 0]; })()`), [true, true]);
 
     // (c) Q3: in a model month a "Del trabajo" row without pases is ordinary income with a checkbox (real click path)
     const q3 = JSON.parse(JSON.stringify(modelY));
