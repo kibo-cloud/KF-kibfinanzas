@@ -591,6 +591,20 @@ test('restoring an older backup WITHOUT arrastre leaves the year without it (the
   b.meses.forEach(function(m){ assert.equal('cierreReal' in m, false); });
   assert.equal(M.cadena(M.normalizar(b, HOY), HOY, {}).resumen.sinDisponible, true);
 });
+test('restoring a backup whose Trabajo revision is HIGHER than the stored one writes Trabajo (no false conflict)', function(){
+  var guardadoT = {facturas: [], cobros: [], pases: [], gastos: [], productos: [], tope: 1, rev: 2};
+  var ls = fakeStorage({'kibo.datos.2026': JSON.stringify(C.vacio(2026)), 'kibo.trabajo': JSON.stringify(guardadoT)});
+  var texto = JSON.stringify({app: 'kibFinanzas', version: 1, anios: {2026: C.vacio(2026)},
+    trabajo: {facturas: [], cobros: [], pases: [], gastos: [], productos: [], tope: 55, rev: 9}});
+  var app = nuevaApp(ls, null, {descTrabajo: function(){ return ''; }});   // the confirmation text is not under test
+  app.D = app.normalizar({anio: 2026}, app.hoy);
+  app.restaurarTexto(texto); app.pendiente();
+  var t = JSON.parse(ls.d['kibo.trabajo']);
+  assert.equal(t.tope, 55, 'the Trabajo part of the backup is stored');
+  assert.ok(t.rev > 2, 'the revision moves past what any tab loaded');
+  assert.equal(app.obsoleta, false, 'no other tab exists: the tab is not marked stale');
+  assert.equal(app.g.avisos.innerHTML.indexOf(AVISO), -1, 'no "other tab" notice');
+});
 test('restore resets the stale flag of the tab (it replaces everything)', function(){
   var ls = fakeStorage({'kibo.datos.2026': JSON.stringify(C.vacio(2026))}), app = nuevaApp(ls);
   app.obsoleta = true;

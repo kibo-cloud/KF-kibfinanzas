@@ -3818,7 +3818,7 @@ function restaurarTexto(txt){
       var r = escribirAnios(anios, claves), trabajoFallo = false, stT;
       if(j.trabajo && typeof j.trabajo === 'object'){
         T = normTrab(j.trabajo); stT = revGuardada(LSTRAB);
-        if(stT.hay) T.rev = Math.max(stT.rev, T.rev || 0);   // guardarTrab suma 1: queda por encima de lo que cualquier pestaña tenga cargado
+        if(stT.hay) T.rev = stT.rev;   // escribirConRev exige la revisión guardada y suma 1: queda por encima de lo que cualquier pestaña tenga cargado
         trabajoFallo = !guardarTrab(true); aplicarModo();
       }
       // si la app tenía datos y ese año viene en la copia, me quedo ahí; si estaba vacía, abro el último año que se pudo guardar
