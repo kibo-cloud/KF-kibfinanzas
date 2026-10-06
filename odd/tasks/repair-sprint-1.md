@@ -435,6 +435,13 @@ implementation until the owner approves the design and answers Q1-Q15.
 - ON-SCREEN NUMBERS THAT CHANGE (year with `arrastre`, months `>= desde` only): month card "Disponible final" (+ its red/green color and pulse), Ingresos and Gastos tiles, the two bars, "Con esa meta te tocaría ahorrar", the pie's "% de lo que entró"; "Del trabajo" checkbox (Q3); Dólares > "Patrimonio total" header, big number, pesos line, and its rows "Ahorro líquido en pesos" / "Dólares guardados" (a hoy instead of year end); Trabajo > "Disponible del trabajo", its explanation and the CSV line, when a future pase goes to a model month. Unchanged: Ahorro tile, section subtotals, topes, notes a reponer/compra, "El año" table and CSV, Dólares month table, "Cripto".
 - KNOWN RISKS: "Patrimonio total" no longer equals the sum of the three rows shown (Disponible, Trabajo and Deudas have no row yet: R5 labels); the pase sheet says "Disponible" for `paraPasar` while Trabajo's big number includes scheduled pases (differ only with a scheduled pase into a model month); "El año" table, year CSV and "Año por año" keep `calc()/serie()` flows for every year, so in a model year an unticked "Del trabajo" without pases still counts there (Q3 not applied) and the "Disponible" column is the month flow, not the chain; a "Del trabajo" row whose amount exceeds its pases keeps the excess pending with no checkbox (locked row); `renglonTrabajo` still matches by `trim().toLowerCase()` (accented variants); `paseAlModelo` reads other years from storage on every `resumenTrab` call.
 - NEXT STEP: R4.5 validation (17-case matrix D16 with evidence, before -> migration -> after report, native review of b009cf8..HEAD), deciding there whether "El año"/CSV move to the chain; then R5 (first-use prompt, Editar, labels incl. the patrimonio rows).
+- OWNER DECISION (2026-10-06): the Patrimonio rows stay as they are until R5; R4.4 does not change the
+  visual structure of Patrimonio. Closed rules for R4.4: a year without `arrastre` looks exactly as
+  before; a year with `arrastre` uses the approved model; no new money rule; no golden change without a
+  prior justified report; future Trabajo pases are never deducted before their date.
+- R5 UX DEBT (MUST, owner wording): when "Patrimonio total" represents net worth, the interface must
+  explain clearly and auditably how the total is composed, including Disponible, Trabajo and Deudas. It
+  must not remain a number whose composition the user has to infer.
 
 ## Consumer inventory (R1, current semantics)
 
