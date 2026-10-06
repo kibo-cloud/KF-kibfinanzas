@@ -160,3 +160,33 @@ test('net worth without Trabajo data counts no Trabajo pocket', function(){
   assert.equal(app.trabajoDisponible(), 0);
   assert.equal(app.patrimonioPantalla(app.D, app.hoy).patrimonioARS, 2625000);
 });
+
+// ── Q4 guard through the real pase sheet validation (review advisory R3-pase-validation-untested) ──
+test('Q4: the pase sheet rejects passing money already committed to a scheduled pase (paraPasar, not disponible)', function(){
+  var hechos = {errores: [], aplicados: [], monto: 0};
+  var g = {
+    leerMonto: function(){ return {ok: true, v: hechos.monto}; },
+    destinoPase: function(){ return {fecha: '2026-10-20', anio: 2026, mes: 9}; },
+    errorEn: function(id, msg){ hechos.errores.push(msg); },
+    aplicarPase: function(p){ hechos.aplicados.push(p.monto); return true; },
+    anioExiste: function(){ return true; }, guardarTrab: function(){ return true; }, cerrarHoja: function(){}, renderTrabajo: function(){},
+    toast: function(){}, MESES: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'], tjId: function(){ return 'nuevo'; }, fARS: function(n){ return String(n); },
+    document: {getElementById: function(){ return {focus: function(){}}; }}
+  };
+  var ls = fakeStorage();
+  g.localStorage = ls;
+  var app = la.loadApp({today: '2026-10-15', funcs: FUNCS.concat(['guardarPase']), vars: ['PREF'], globals: g});
+  app.T = trab(PASES);
+  app.D = app.normalizar(C.copy(conTrabajo()), app.hoy);
+  var r = app.resumenTrab();
+  assert.equal(r.disponible, 700000); assert.equal(r.paraPasar, 500000);
+  hechos.monto = 600000;   // above paraPasar, at or below disponible: the scheduled 200.000 would be passed twice
+  app.guardarPase();
+  assert.equal(hechos.aplicados.length, 0, 'nothing is passed');
+  assert.equal(app.T.pases.length, 2, 'no pase is recorded');
+  assert.match(hechos.errores[0], /Es más de lo que tenés disponible \(500000\)/);
+  hechos.monto = 500000; hechos.errores = [];
+  app.guardarPase();
+  assert.deepEqual(hechos.aplicados, [500000], 'exactly paraPasar can still be passed');
+  assert.equal(hechos.errores.length, 0);
+});
