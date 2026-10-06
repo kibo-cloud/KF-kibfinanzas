@@ -487,11 +487,22 @@ implementation until the owner approves the design and answers Q1-Q15.
 - TESTS: `npm test` 549 (548 pass, 0 fail, 1 todo) — was 513; `npm run test:e2e` 156 pass / 0 fail — was 140. Both goldens
   byte-identical to 0b31901 (no regeneration).
 - KNOWN RISKS: `L-10` (pinned, accepted under Q12): with a missed storage event, a pase into the open year can store the year row while
-  the Trabajo save is refused (two blobs, no transaction); the "Pase borrado. No encontré el renglón…" toast is misleading in a stale tab
-  (nothing is written); `num()` reads legacy text "1.500" as 1.5 (pre-R1 behavior, the app no longer stores text amounts).
+  the Trabajo save is refused (two blobs, no transaction); `num()` reads legacy text "1.500" as 1.5 (pre-R1 behavior, the app no longer stores text amounts).
 - OWNER DECISIONS NEEDED: (1) whether "El año" table, year CSV and "Año por año" move to the chain/Q3 in a model year; (2) the
   "Del trabajo" matcher rule for existing rows (L-03b); (3) approval of the matrix (design section 11, R4.5 acceptance).
-- NEXT STEP: native review of 908afee..HEAD (02ac5a5 is pending in that slice), owner approval of the matrix, then R4.6 cleanup and R5.
+- NEXT STEP: owner approval of the matrix and decisions (1)-(2), then R4.6 cleanup and R5.
+
+#### R4.5 native review and closure (parent, 2026-10-06)
+
+- Parent re-verification after the writer: `npm test` 548 pass / 0 fail / 1 todo, `npm run test:e2e` 156/156 (re-run), goldens
+  byte-identical, tree clean; mutation check: removing the 0ff866d guard makes `L-07` fail.
+- Native review of 908afee..0cd42de (9 files, 1074 lines, medium, `slice_budget_reached`; covers 02ac5a5): owner granted consent;
+  reliability lens approved with no correction; acknowledged (review-15d6db26ee406280, authority burned). Next reviewed boundary 0cd42de.
+- Advisories: WARNINGs R3-stale-toast-misleading and R3-stale-quitarPase-unproved (consequence of 0ff866d: a stale tab removed the
+  pase from memory and said "Pase borrado") → fixed in 696077f (`quitarPase` refuses in a stale tab), RED `L-07b` first, GREEN after;
+  `npm test` 550 (549 pass, 0 fail, 1 todo), `test:e2e` 156/156, goldens identical. SUGGESTIONs left open for R4.6: `L-10` pins a
+  known inconsistency as a passing assertion (should read as a risk marker / todo); D16-16 E2E rejection check waits 300 ms and asserts
+  no visible rejection.
 
 ## D16 — official acceptance list (verbatim)
 

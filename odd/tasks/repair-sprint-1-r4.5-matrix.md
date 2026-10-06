@@ -137,7 +137,8 @@ How every changed number is explained:
   no pase: the money is in both pockets. Window = one missed storage event (same class as the accepted R4.3 race). No transactional
   write exists across the two blobs.
 - `L-03b` accent variants (stop item above).
-- After the fix, removing a pase from a stale tab still shows the generic "Pase borrado. No encontré el renglón…" toast although
-  nothing was written (the stale notice is shown too); pre-existing wording, R5/R8.
+- RESOLVED in 696077f (native review R3-stale-toast-misleading / R3-stale-quitarPase-unproved): removing a pase from a stale tab
+  removed it from memory and showed "Pase borrado…" although nothing was stored. `quitarPase` now refuses in a stale tab (notice
+  only, nothing changes in memory or storage); RED `L-07b` (pase removed from memory), GREEN after.
 - `num()` (= `parseFloat`, unchanged since before R1) reads a legacy text amount "1.500" as 1.5; the app never stores formatted text since R2 (D9),
   so only hand-edited or very old blobs are affected.
