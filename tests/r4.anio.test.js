@@ -201,3 +201,43 @@ test('N1-2 year CSV: past / current model months keep the paid subtotals; a lega
   var a2 = V.appAnio(d), l2 = V.csvFilas(a2.csv());
   assert.deepEqual([l2[11][2], l2[11][3], l2[11][4]], ['0', '100000', '100000'], 'legacy: paid subtotals, as before');
 });
+
+// N1 item 3 (R4.5 close, DERIVED rule, flagged for owner review): in a model year the "El año" summary card reads the same rows as the
+// table (serieVista) over the REALIZED months only (past + current, plus legacy months before desde as today); a future month never
+// enters the averages; a red month is a negative model Resultado (flujosMes.resultado), never the chained Disponible.
+function resumen(html){ var i = html.indexOf('<div class="resumen'); return html.slice(i, html.indexOf('</div></div>', html.indexOf('res-pie', i)) + 12); }
+function txt(h){ return h.replace(/<[^>]+>/g, ''); }
+test('N1-3 summary card, model year (L-01 + legacy September income 400.000): card averages over the realized months', function(){
+  var d = l01(); C.mes(d, 8, {ingresos: [C.it('Sueldo', 400000, true)]});
+  var app = V.appAnio(d), r = txt(resumen(app.anio())), f = app.fARS;
+  assert.ok(r.indexOf('Por mes entran ' + f(450000) + ' y se van ' + f(50000) + '. Te quedan ' + f(400000) + '.') >= 0, r);
+  assert.ok(r.indexOf('6%de lo que entra') >= 0, 'ring = 50.000 / 900.000 (card Ingresos): ' + r);
+  assert.ok(r.indexOf('Gastaste más en Octubre y menos en Septiembre.') >= 0, r);
+  assert.ok(r.indexOf('A este ritmo cerrás diciembre con ' + f(100000) + '.') >= 0, 'savings at this pace from October: ' + r);
+  assert.ok(r.indexOf('Promedio de 2 meses ya transcurridos de 2026') >= 0, 'explicit label: ' + r);
+  assert.equal(r.indexOf(f(490000)), -1, 'guard: not the serie() average (580.000 October)');
+});
+test('N1-3 summary card, model year (section 2, November ticked): a future month is never in the averages', function(){
+  var app = V.appAnio(C.seccion2(false, true)), r = txt(resumen(app.anio())), f = app.fARS;
+  assert.ok(r.indexOf('Por mes entran ' + f(1000000) + ' y se van ' + f(500000) + '.') >= 0, r);
+  assert.ok(r.indexOf('Promedio de 2 meses ya transcurridos de 2026') >= 0, r);
+  assert.equal(r.indexOf('Noviembre'), -1, r);
+});
+test('N1-3 summary card, model year: a red month is a negative model Resultado (October), never the chained Disponible; a future month is never flagged', function(){
+  var d = C.vacio(2026); C.arrastre(d, 8, 1000000, 'declarado');
+  C.mes(d, 8, {ingresos: [C.it('Sueldo', 500000, true)], gastosFijos: [C.it('Alquiler', 100000, true)]});
+  C.mes(d, 9, {ingresos: [C.it('Sueldo', 100000, true)], gastosFijos: [C.it('Alquiler', 300000, true)]});
+  C.mes(d, 10, {gastosVariables: [C.it('Viaje', 900000, true)]});
+  var app = V.appAnio(d), html = app.anio(), r = txt(resumen(html)), s = app.serieVista(app.D, app.hoy);
+  assert.ok(s[9].disponibleFinal > 0, 'the chained Disponible of October is positive');
+  assert.ok(r.indexOf('En Octubre gastaste más de lo que entró.') >= 0, r);
+  assert.equal(r.indexOf('Noviembre'), -1, 'the future month is not flagged: ' + r);
+});
+test('N1-3 summary card: a legacy year still uses the month flow over the loaded months', function(){
+  var d = C.vacio(2026);
+  C.mes(d, 9, {ingresos: [C.it('Sueldo', 100000, true)], gastosFijos: [C.it('Alquiler', 300000, true)]});
+  C.mes(d, 10, {gastosVariables: [C.it('Viaje', 900000, true)]});
+  var r = txt(resumen(V.appAnio(d).anio()));
+  assert.ok(r.indexOf('En 2 meses gastaste más de lo que entró.') >= 0, r);
+  assert.ok(r.indexOf('2 meses cargados de 2026') >= 0, r);
+});

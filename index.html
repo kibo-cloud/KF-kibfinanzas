@@ -3084,8 +3084,20 @@ function anillo(pct){
        +     ' class="prog" transform="rotate(-90 32 32)" stroke-dasharray="'+c.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'"/>'
        + '</svg>';
 }
-function resumenAnio(s){
-  var act = mesesCargados(s), i, n = act.length;
+// R4.5 (regla DERIVADA, a revisar por el dueño): en un año del modelo el resumen lee las mismas filas que la tabla (serieVista) y promedia
+// solo los meses ya transcurridos (pasados + el en curso; los legacy antes de desde como siempre); un mes futuro nunca entra.
+function mesesTranscurridos(s, vm){
+  var out = [], i, e;
+  for(i=0;i<12;i++){ e = vm.cad.meses[i]; if((e.legacy || e.estado !== 'futuro') && (s[i].totalIngresos || s[i].totalGastos)) out.push(i); }
+  return out;
+}
+// mes en rojo: en un mes del modelo, el Resultado del modelo < 0 (nunca el saldo encadenado); en uno legacy, el flujo de siempre
+function mesEnRojo(s, i, vm){
+  if(!vm || vm.cad.meses[i].legacy) return s[i].disponibleFinal < 0;
+  return flujosMes(D, i, vm.hoy, vm.ctx).resultado < 0;
+}
+function resumenAnio(s, vm){
+  var act = vm ? mesesTranscurridos(s, vm) : mesesCargados(s), i, n = act.length;
   if(n < 2) return '<div class="resumen vacio">'
     + '<div class="res-txt"><p>Cargá ' + (n === 0 ? 'un par de meses' : 'un mes más') + ' y acá te resumo el año: cuánto entra, cuánto se va y con cuánto cerrás.</p></div></div>';
   var sumG = 0, sumI = 0, sumA = 0, peor = act[0], mejor = act[0], rojos = [];
@@ -3094,7 +3106,7 @@ function resumenAnio(s){
     sumG += c.totalGastos; sumI += c.totalIngresos; sumA += c.ahorroMesARS;
     if(c.totalGastos > s[peor].totalGastos) peor = act[i];
     if(c.totalGastos < s[mejor].totalGastos) mejor = act[i];
-    if(c.disponibleFinal < 0) rojos.push(MESES[act[i]]);
+    if(mesEnRojo(s, act[i], vm)) rojos.push(MESES[act[i]]);
   }
   var promG = Math.round(sumG/n), promI = Math.round(sumI/n), promA = Math.round(sumA/n);
   var pct = sumI > 0 ? sumA/sumI : 0, ultimo = act[n-1], faltan = 11 - ultimo;
@@ -3108,12 +3120,13 @@ function resumenAnio(s){
   if(faltan > 0 && promA !== 0) h += '<p>A este ritmo cerrás diciembre con <b>'+fARS(s[ultimo].ahorroAcumulado + promA*faltan)+'</b>.</p>';
   if(rojos.length) h += '<p class="mal">' + (rojos.length === 1 ? 'En <b>'+rojos[0]+'</b> gastaste' : 'En <b>'+rojos.length+' meses</b> gastaste')
      + ' más de lo que entró.</p>';
-  h += '</div><div class="res-pie">' + n + ' ' + (n === 1 ? 'mes cargado' : 'meses cargados') + ' de ' + D.anio + '</div></div>';
+  h += '</div><div class="res-pie">' + (vm ? 'Promedio de ' + n + ' ' + (n === 1 ? 'mes ya transcurrido' : 'meses ya transcurridos')
+     : n + ' ' + (n === 1 ? 'mes cargado' : 'meses cargados')) + ' de ' + D.anio + '</div></div>';
   return h;
 }
 function renderAnio(){
   var hoy = hoyApp(), s = serieVista(D, hoy), h = '', i;
-  h += resumenAnio(serie(D));   // el resumen habla de lo que entró y salió cada mes (flujo): sigue en serie() (R4.5, ítem frenado)
+  h += resumenAnio(s, vistaModelo(D, hoy));   // sin arrastre: serie() y los meses cargados, como siempre
   var T = {i:0,g:0,a:0,c:0,d:0,f:0,s:0,r:0};
   var hT = '<div class="tabla"><table><thead><tr>'
      + '<th>Mes</th><th>Ingresos</th><th>Gastos</th><th>Ahorro</th><th>A dólares</th><th>Saqué</th><th>Repuse</th><th>Deudas</th><th>Disponible</th><th>Acumulado</th>'
