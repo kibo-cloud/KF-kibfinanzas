@@ -1,0 +1,235 @@
+'use strict';
+// R4.5 complementary coverage (NOT part of the D16 acceptance criterion): the owner's "MATRIZ ALFA" scenarios C-01..C-21
+// (odd/tasks/repair-sprint-1.md, "Complementary R4.5 coverage"). Scenarios already pinned by an existing test are cited in
+// odd/tasks/repair-sprint-1-r4.5-matrix.md instead of being duplicated here; this file holds the ones that had no direct test, the
+// R4.4 leftovers (L-xx) and the before -> migration -> after report invariants (R-xx).
+var test = require('node:test');
+var assert = require('node:assert/strict');
+var la = require('./load-app');
+var C = require('./fixtures/r4-casos');
+var H = require('./fixtures/r45-harness');
+var AD = require('./fixtures/r45-antes-despues');
+
+var M = la.loadMotor();
+var HOY = C.hoy('2026-10-15');
+var SRC = la.SRC_FOR_TESTS;
+function plain(x){ return JSON.parse(JSON.stringify(x)); }
+function modelo(raw, ctx){ var d = M.normalizar(C.copy(raw), HOY); return {d: d, cad: plain(M.cadena(d, HOY, ctx || {})), pat: plain(M.patrimonioNeto(d, HOY, ctx || {}))}; }
+
+// ── C: scenarios without a direct test before R4.5 ──
+test('C-01 mes vacío: an empty model month carries the opening unchanged; an empty legacy month is all zeros; an empty year has no data', function(){
+  var d = C.vacio(2026); C.arrastre(d, 8, 120000, 'declarado');
+  var r = modelo(d);
+  assert.deepEqual([r.cad.meses[8].cierre, r.cad.meses[9].apertura, r.cad.meses[9].cierreCalc, r.cad.meses[10].proyectado, r.cad.resumen.disponibleActual],
+    [120000, 120000, 120000, 120000, 120000]);
+  var app = H.appVista(d);
+  assert.deepEqual([H.tiles(app, 9).totalIngresos, H.tiles(app, 9).totalGastos, H.tiles(app, 9).disponibleFinal], [0, 0, 120000]);
+  var leg = M.normalizar(C.vacio(2026), HOY);
+  assert.deepEqual([M.calc(leg.meses[9]).disponibleFinal, M.calc(leg.meses[9]).pendienteIngresos], [0, 0]);
+  assert.equal(M.hayDatos(leg, false), false);
+});
+
+test('C-02 mes parcialmente cargado: rows without amount, ticked without amount and pending rows; only ticked amounts are realized', function(){
+  var d = C.vacio(2026); C.arrastre(d, 9, 0, 'declarado');
+  C.mes(d, 9, {ingresos: [C.it('Sueldo', 1000000, true), C.it('Extra', 0, true)], gastosFijos: [C.it('Alquiler', 0, true), C.it('Luz', 30000, false)],
+    gastosVariables: [{nombre: 'Super', monto: ''}], deudas: [C.it('Cuota', 0, true)]});
+  var r = modelo(d), o = r.cad.meses[9];
+  assert.deepEqual([o.resultado, o.pendienteGastos, o.cierreCalc, o.proyectado], [1000000, 30000, 1000000, 970000]);
+  assert.equal(H.tiles(H.appVista(d), 9).disponibleFinal, 1000000);
+});
+
+test('C-14 USD: buying funds from savings ARS, selling enters Disponible, an external USD inflow only touches USD; valued at the stored cotizacion', function(){
+  var d = C.vacio(2026); C.arrastre(d, 9, 0, 'declarado'); d.ahorroAnioAnterior = 1000000; d.usdAnioAnterior = 100;
+  C.mes(d, 9, {compraARS: 300000, compraUSD: 200, ventaUSD: 50, ventaARS: 75000, ahorroMesUSD: 10});
+  var r = modelo(d), f = plain(M.flujosMes(r.d, 9, HOY, {}));
+  assert.deepEqual([f.dDisp, f.dAhorroARS, f.dUSD], [75000, -300000, 160]);
+  assert.deepEqual([r.pat.disponible, r.pat.ahorroARS, r.pat.usd, r.pat.usdARS], [75000, 700000, 260, 390000]);
+  assert.equal(M.serie(r.d)[9].aReponer, 75000, 'a USD sale counts as money taken out of savings to put back (serie semantics, kept by the model)');
+});
+
+test('C-15 cripto: quantity x USD price x cotizacion enters the gross worth a hoy; the old year-end view counts it the same way', function(){
+  var d = C.seccion2(false, false); d.cripto = [{activo: 'BTC', cantidad: 0.5, precioUSD: 60000}, {activo: 'ETH', cantidad: 2, precioUSD: 2500}];
+  var r = modelo(d);
+  assert.deepEqual([r.pat.criptoUSD, r.pat.criptoARS, r.pat.bruto, r.pat.neto], [35000, 52500000, 2925000 + 52500000, 2625000 + 52500000]);
+  assert.equal(M.patrimonio(r.d).criptoUSD, 35000);
+});
+
+test('C-19 recarga: what one save writes, a fresh load reads back to the same chain, card and net worth', function(){
+  var ls = H.fakeStorage(), a = H.appAlmacen(ls);
+  a.D = M.normalizar(C.copy(C.seccion2(false, false)), HOY); a.sucio = true; a.guardar();
+  assert.equal(H.guardado(ls, 2026).rev, 1);
+  var b = H.appAlmacen(ls), d2 = H.cargarEn(b, ls, 2026);
+  assert.deepEqual(plain(M.cadena(d2, HOY, {})), plain(M.cadena(a.D, HOY, {})));
+  var v = H.appVista(H.guardado(ls, 2026));
+  assert.deepEqual([H.tiles(v, 9).disponibleFinal, v.patrimonioPantalla(v.D, v.hoy).patrimonioARS], [825000, 2625000]);
+});
+
+test('C-20 cierre/reapertura: confirming a closing and removing the confirmation gives back exactly the calculated chain; no movement is ever created', function(){
+  var abierto = H.sinModelo(C.seccion2(false, false)); C.arrastre(abierto, 8, 50000, 'declarado');
+  var a = modelo(abierto);
+  var cerrado = C.copy(abierto); cerrado.meses[8].cierreReal = {valor: 175000, calculadoAlConfirmar: 200000, confirmadoEl: '2026-10-01'};
+  var b = modelo(cerrado);
+  assert.deepEqual([b.cad.meses[9].apertura, b.cad.resumen.disponibleActual, b.cad.meses[8].diferencia], [175000, 825000, -25000]);
+  var reabierto = C.copy(cerrado); delete reabierto.meses[8].cierreReal;
+  var c = modelo(reabierto);
+  assert.deepEqual(c.cad, a.cad);
+  assert.deepEqual(c.pat, a.pat);
+  assert.equal(JSON.stringify(b.d.meses.map(function(m){ var o = plain(m); delete o.cierreReal; return o; })), JSON.stringify(a.d.meses), 'only the confirmation field differs');
+});
+
+// ── R: before -> migration -> after report (tests/fixtures/r45-antes-despues.js, design section 8/9, D4, D14, I6) ──
+test('R-01 before -> migration -> after: the migration only adds arrastre; legacy months, serie and the old outputs are untouched; Oct shows the declared value', function(){
+  AD.informe().forEach(function(r){
+    var tag = r.n + ' / ' + r.arrastre.inicial.origen;
+    assert.equal(JSON.stringify(r.mesesDespues), JSON.stringify(r.mesesAntes), tag + ': months');
+    assert.equal(JSON.stringify(r.serieDespues), JSON.stringify(r.serieAntes), tag + ': serie');
+    assert.equal(r.despues.sep, r.antes.sep, tag + ': September (before desde) reads as before (I6)');
+    if(r.arrastre.inicial.origen === 'declarado') assert.ok(Math.abs(r.despues.oct - AD.DECLARADO) < 0.005, tag + ': Oct = declared');
+    assert.equal(r.despues.disponibleActual, r.despues.oct, tag);
+  });
+});
+test('R-02 years without arrastre (older and later year) show no model at all after the migration of another year', function(){
+  AD.aniosSinArrastre().forEach(function(a){ assert.equal(a.modelo, null, a.n); });
+});
+
+// ── L: R4.4 leftovers, pinned and classified (odd/tasks/repair-sprint-1-r4.5-matrix.md section C) ──
+function trabajoSinPases(){
+  var d = C.vacio(2026); C.arrastre(d, 9, 0, 'declarado');
+  C.mes(d, 9, {ingresos: [C.it('Sueldo', 500000, true), C.it('Del trabajo', 80000, false)], gastosFijos: [C.it('Alquiler', 100000, true)], ahorroMesARS: 50000});
+  C.mes(d, 10, {ahorroMesARS: 200000});
+  return d;
+}
+test('L-01 "El año" table, year CSV and "Año por año" still read serie()/calc() in a model year (owner decision pending): pinned divergence', function(){
+  var app = H.appVista(trabajoSinPases()), s = M.serie(app.D);
+  var card = H.tiles(app, 9);
+  assert.deepEqual([card.totalIngresos, card.disponibleFinal], [500000, 350000], 'month card: Q3 applied (unticked "Del trabajo" pending), chain');
+  assert.deepEqual([s[9].totalIngresos, s[9].disponibleFinal], [580000, 430000], '"El año" row / CSV: "Del trabajo" always realized, month flow (no opening)');
+  assert.equal(s[11].ahorroAcumulado, 250000, '"Acumulado" / "Año por año" cierre: year end incl. the scheduled November savings');
+  assert.equal(app.patrimonioPantalla(app.D, app.hoy).ahorroARS, 50000, 'Patrimonio: savings a hoy');
+  var csv = [], ex = la.loadApp({today: '2026-10-15', funcs: ['exportarCSV', 'csvTexto'], vars: ['MESES'], globals: {descargar: function(t){ csv.push(t); }}});
+  ex.D = app.D; ex.exportarCSV();
+  var oct = csv[0].split('\r\n')[10].split(';');
+  assert.deepEqual([oct[0], oct[1], oct[14]], ['Octubre', '580000', '430000'], 'CSV columns Ingresos / Disponible final');
+  assert.match(la.extractFunction('renderAnio'), /var s = serie\(D\)/);
+  assert.doesNotMatch(la.extractFunction('renderAnio') + la.extractFunction('exportarCSV'), /cadena|tilesMes|vistaModelo/);
+});
+
+test('L-02 "Del trabajo" amount above its pases: the excess stays pending with no checkbox and a read-only row (R5 UX debt)', function(){
+  var d = C.vacio(2026); C.arrastre(d, 9, 0, 'declarado'); C.mes(d, 9, {ingresos: [C.it('Del trabajo', 400000, false)]});
+  var app = H.appVista(d, H.trab([{fecha: '2026-10-10', monto: 300000}])), vm = app.vistaModelo(app.D, app.hoy);
+  var f = plain(M.flujosMes(app.D, 9, app.hoy, vm.ctx));
+  assert.deepEqual([f.trabajoRealizado, f.ingresosReal, f.ingresosPend, vm.cad.resumen.disponibleActual, vm.cad.resumen.proyectadoAlCierre], [300000, 0, 100000, 300000, 400000]);
+  assert.equal(app.tieneTilde(app.D, 9, 'ingresos', app.D.meses[9].ingresos[0]), false, 'no checkbox: the excess can never be ticked');
+  assert.match(la.extractFunction('seccion'), /var vt = S\.k === 'ingresos' && esRenglonTrabajo\(lista\[i\]\.nombre\) && pasesDelMes\(D\.anio, mes\) > 0/);
+});
+
+function paseSobre(nombre){
+  var d = C.vacio(2026); C.arrastre(d, 9, 0, 'declarado'); C.mes(d, 9, {ingresos: [C.it(nombre, 100000, false)]});
+  var app = H.appVista(d, H.trab([]), null, null, {funcs: ['renglonTrabajo', 'aplicarPase'], globals: {guardar: function(){}, sucio: false, obsoleta: false, avisoOtraPestana: function(){}}});
+  var p = {id: 'x', fecha: '2026-10-10', monto: 300000, anio: 2026, mes: 9};
+  assert.equal(app.aplicarPase(p, 1), true);
+  app.T.pases.push(p);
+  var vm = app.vistaModelo(app.D, app.hoy);
+  return {filas: app.D.meses[9].ingresos.length, disponible: vm.cad.resumen.disponibleActual, pend: vm.cad.meses[9].pendienteIngresos};
+}
+test('L-03 pase onto "Del trabajo" written exactly: the pase lands in the same row (pinned reference for L-03b)', function(){
+  assert.deepEqual(paseSobre('Del trabajo'), {filas: 1, disponible: 300000, pend: 100000});
+});
+test('L-03b accent / spacing variant of "Del trabajo" must behave like the exact name (D13 one matcher)', {todo: 'renglonTrabajo matches trim().toLowerCase() while the engine uses clave(): a pase creates a second row and the unticked 100.000 becomes realized (Disponible 400.000 instead of 300.000). Fixing the writer changes which existing row a pase/undo touches: owner decision, R8 Trabajo'}, function(){
+  assert.deepEqual(paseSobre('Del Trabájo'), {filas: 1, disponible: 300000, pend: 100000});
+});
+
+test('L-04 explicaDisp with a scheduled pase: only the pases already out are explained, and the text adds up to the big number', function(){
+  var app = H.appVista(null, null, null, null, {funcs: ['explicaDisp', 'fARS', 'grupos'], globals: {oculto: false, PUNTOS: '..'}});
+  var r = {cobrado: 1000000, gastado: 100000, pasado: 500000, pasadoProgramado: 200000};
+  r.disponible = r.cobrado - r.gastado - r.pasado + r.pasadoProgramado;
+  assert.equal(app.explicaDisp(r), 'Lo cobrado ($1.000.000) menos los gastos ($100.000) y lo que pasaste a Ingresos ($300.000).');
+  assert.equal(1000000 - 100000 - 300000, r.disponible);
+  assert.equal(app.explicaDisp({cobrado: 500000, gastado: 0, pasado: 200000, pasadoProgramado: 200000}), 'Todo lo cobrado sigue en el trabajo: todavía no pasaste nada a Ingresos.');
+  assert.equal(app.explicaDisp({cobrado: 500000, gastado: 0, pasado: 200000}), 'Lo cobrado ($500.000) menos lo que pasaste a Ingresos ($200.000).', 'legacy (no scheduled field)');
+});
+
+// R4.3 review advisories
+test('L-05 duplicar through the REAL save path: the new year is written with its own rev and arrastre after the snapshot; the old year is untouched', function(){
+  var viejo = JSON.stringify(M.normalizar(C.copy(C.seccion2(false, false)), HOY));
+  var ls = H.fakeStorage({'kibo.datos.2026': viejo}), app = H.appAlmacen(ls);
+  H.cargarEn(app, ls, 2026);
+  app.duplicar();
+  var n = H.guardado(ls, 2027);
+  assert.deepEqual([n.rev, n.arrastre.desde, n.arrastre.inicial.apertura, n.arrastre.inicial.origen], [1, 0, 825000, 'arrastre']);
+  assert.equal(ls.d['kibo.datos.2026'], viejo);
+  assert.ok(ls.d['kibo.modeloSaldos']);
+  assert.ok(ls.log.indexOf('kibo.respaldo.pre-r4') < ls.log.indexOf('kibo.datos.2027'), 'snapshot before the new year');
+  assert.equal(app.D.anio, 2027);
+  var ls2 = H.fakeStorage({'kibo.datos.2026': viejo}, function(k){ return k === 'kibo.respaldo.pre-r4'; }), b = H.appAlmacen(ls2);
+  H.cargarEn(b, ls2, 2026);
+  b.duplicar();
+  assert.equal(ls2.d['kibo.datos.2027'], undefined, 'snapshot refused: no new year');
+  assert.equal(b.D.anio, 2026);
+  assert.equal(b.g.alertas[0][0], 'No pude crear el año');
+});
+
+var PASE_FUNCS = ['renglonTrabajo', 'aplicarPase', 'quitarPase', 'guardarPase', 'resumenTrab', 'hoyISO', 'esISO', 'utcDe', 'sumarDias', 'diasEntre', 'ganancia',
+  'saldoFac', 'venceFac', 'sinAsignar', 'paseAlModelo', 'mesDelModelo', 'pasesDelMes'];
+function appPase(ls, hechos){
+  return H.appAlmacen(ls, '2026-10-15', {
+    leerMonto: function(){ return {ok: true, v: hechos.monto}; },
+    destinoPase: function(){ return {fecha: hechos.fecha, anio: +hechos.fecha.slice(0, 4), mes: +hechos.fecha.slice(5, 7) - 1}; },
+    errorEn: function(id, msg){ hechos.errores.push(msg); }, anioExiste: function(){ return true; }, cerrarHoja: function(){}, renderTrabajo: function(){},
+    MESES: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'], tjId: function(){ return 'nuevo'; }, fARS: function(n){ return String(n); },
+    tjAntes: null, paseQuitado: null, tieneTrab: function(){ return true; }
+  }, PASE_FUNCS);
+}
+function almacenConTrabajo(){
+  return H.fakeStorage({'kibo.datos.2026': JSON.stringify(C.vacio(2026)), 'kibo.datos.2025': JSON.stringify(Object.assign(C.vacio(2025), {rev: 2})),
+    'kibo.trabajo': JSON.stringify(Object.assign(H.trab([]), {rev: 1}))});
+}
+test('L-06 aplicarPase / quitarPase on ANOTHER year go through the revision of that blob (advisory: covered by reading only)', function(){
+  var ls = almacenConTrabajo(), hechos = {monto: 100000, fecha: '2025-12-10', errores: []}, app = appPase(ls, hechos);
+  H.cargarEn(app, ls, 2026); app.T = app.leerTrab();
+  app.guardarPase();
+  assert.deepEqual(hechos.errores, []);
+  var y = H.guardado(ls, 2025), t = JSON.parse(ls.d['kibo.trabajo']);
+  assert.deepEqual([y.rev, y.meses[11].ingresos[0].nombre, y.meses[11].ingresos[0].monto, t.rev, t.pases.length], [3, 'Del trabajo', 100000, 2, 1]);
+  app.quitarPase('nuevo');
+  y = H.guardado(ls, 2025); t = JSON.parse(ls.d['kibo.trabajo']);
+  assert.deepEqual([y.rev, y.meses[11].ingresos[0].monto, t.rev, t.pases.length], [4, 0, 3, 0]);
+});
+
+test('L-08 deshacerTj keeps the revision of what is stored now, so the undo saves; a newer save of another tab still wins', function(){
+  var ls = H.fakeStorage({'kibo.trabajo': JSON.stringify(Object.assign(H.trab([]), {tope: 10, rev: 5}))});
+  var app = H.appAlmacen(ls, '2026-10-15', {tjAntes: null, tab: 'mes'}, ['deshacerTj', 'antesDeCambiar']);
+  app.T = app.leerTrab();
+  app.antesDeCambiar(); app.T.tope = 99; assert.equal(app.guardarTrab(true), true);
+  app.deshacerTj();
+  var t = JSON.parse(ls.d['kibo.trabajo']);
+  assert.deepEqual([t.tope, t.rev], [10, 7]);
+  var otra = H.appAlmacen(ls, '2026-10-15', {tjAntes: null, tab: 'mes'}, ['deshacerTj', 'antesDeCambiar']);
+  otra.T = otra.leerTrab();
+  app.antesDeCambiar(); app.T.tope = 50; app.guardarTrab(true);   // rev 8
+  otra.T.tope = 1; otra.antesDeCambiar(); otra.deshacerTj();   // otra loaded rev 7: its undo must not overwrite rev 8
+  t = JSON.parse(ls.d['kibo.trabajo']);
+  assert.deepEqual([t.tope, t.rev, otra.obsoleta], [50, 8, true]);
+});
+
+test('L-09 Trabajo restore: a backup without Trabajo leaves the stored Trabajo as it is; a lower incoming revision still moves forward', function(){
+  var guardadoT = JSON.stringify(Object.assign(H.trab([]), {tope: 3, rev: 6}));
+  var ls = H.fakeStorage({'kibo.datos.2026': JSON.stringify(C.vacio(2026)), 'kibo.trabajo': guardadoT});
+  var app = H.appAlmacen(ls, null, {descTrabajo: function(){ return ''; }});
+  app.D = app.normalizar({anio: 2026}, app.hoy);
+  app.restaurarTexto(JSON.stringify({app: 'kibFinanzas', version: 1, anios: {2026: C.vacio(2026)}})); app.pendiente();
+  assert.equal(ls.d['kibo.trabajo'], guardadoT);
+  app.restaurarTexto(JSON.stringify({app: 'kibFinanzas', version: 1, anios: {2026: C.vacio(2026)}, trabajo: Object.assign(H.trab([]), {tope: 44, rev: 1})})); app.pendiente();
+  var t = JSON.parse(ls.d['kibo.trabajo']);
+  assert.deepEqual([t.tope, t.rev, app.obsoleta], [44, 7, false]);
+});
+
+test('L-10 known R4.3 risk (accepted, Q12 minimal mechanism): a missed storage event can leave the year row written and the Trabajo pase refused', function(){
+  var ls = almacenConTrabajo(), hechos = {monto: 100000, fecha: '2026-10-10', errores: []};
+  var a = appPase(ls, hechos), b = appPase(ls, hechos);
+  H.cargarEn(a, ls, 2026); a.T = a.leerTrab(); H.cargarEn(b, ls, 2026); b.T = b.leerTrab();
+  a.T.tope = 7; a.guardarTrab(true);   // another tab saves Trabajo; tab B has not processed the storage event yet
+  b.guardarPase();
+  var y = H.guardado(ls, 2026), t = JSON.parse(ls.d['kibo.trabajo']);
+  assert.deepEqual([y.meses[9].ingresos[0].monto, t.pases.length, b.obsoleta], [100000, 0, true], 'pinned: the row is stored, the pase is not (tab B now shows the notice)');
+});

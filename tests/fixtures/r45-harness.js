@@ -42,8 +42,8 @@ function tiles(app, j){ return app.plain(app.tilesMes(app.D, j, app.vistaModelo(
 // ── storage layer (save, revisions, backup/restore, duplicar, activarSaldos): same stubs as tests/r4.migracion.test.js ──
 var FUNCS_ALMACEN = ['claveMia', 'dos', 'revGuardada', 'escribirConRev', 'avisoOtraPestana', 'hayEdicion', 'alCambiarOtraPestana', 'recargarDesdeAlmacenamiento',
   'asegurarSnapshotR4', 'respaldoR4', 'diasDelRespaldoR4', 'vencerRespaldoR4', 'volverAntesDeR4', 'ctxModelo', 'cierreAnioAnterior', 'activarSaldos',
-  'guardar', 'guardarTrab', 'leerAnio', 'aniosGuardados', 'normTrab', 'leerTrab', 'escribirAnios', 'armarCopia', 'restaurarTexto', 'duplicar', 'avisarRestauro'];
-var VARS_ALMACEN = ['PREF', 'LSANIO', 'LSCOPIA', 'LSOCULTO', 'LSBIENV', 'LSHIST', 'LSTRAB', 'LSVISTA', 'LSR4', 'CLAVES_PROPIAS', 'sucio', 'arrancado', 'obsoleta', 'pendiente'];
+  'guardar', 'guardarTrab', 'leerAnio', 'aniosGuardados', 'normTrab', 'leerTrab', 'esISO', 'utcDe', 'hoyISO', 'formaValida', 'escribirAnios', 'armarCopia', 'restaurarTexto', 'duplicar', 'avisarRestauro'];
+var VARS_ALMACEN = ['PREF', 'LSANIO', 'LSCOPIA', 'LSOCULTO', 'LSBIENV', 'LSHIST', 'LSTRAB', 'LSVISTA', 'LSR4', 'CLAVES_PROPIAS', 'sucio', 'arrancado', 'obsoleta', 'pendiente', 'FORMAS'];
 function appAlmacen(ls, today, extra, funcsExtra){
   var g = {localStorage: ls, pildoras: [], recargas: 0, renders: 0, alertas: [], hojas: [], ultPild: 0};
   g.avisos = {innerHTML: '', textContent: ''};
@@ -58,7 +58,7 @@ function appAlmacen(ls, today, extra, funcsExtra){
   g.location = {reload: function(){ g.recargas++; }};
   g.cargar = function(){}; g.toast = function(){}; g.tieneTrab = function(){ return false; };
   Object.keys(extra || {}).forEach(function(k){ g[k] = extra[k]; });
-  var funcs = FUNCS_ALMACEN.concat(funcsExtra || []).filter(function(n){ return !(n in g); });   // a stub passed by the test replaces the real function
+  var funcs = FUNCS_ALMACEN.concat((funcsExtra || []).filter(function(n){ return FUNCS_ALMACEN.indexOf(n) < 0; })).filter(function(n){ return !(n in g); });   // a stub passed by the test replaces the real function (esISO..FORMAS: normTrab needs them; leerTrab would swallow the error and return an EMPTY store)
   var app = la.loadApp({today: today || '2026-10-15', funcs: funcs, vars: VARS_ALMACEN, globals: g});
   app.T = app.normTrab(null);
   app.g = g; app.arrancado = true;
