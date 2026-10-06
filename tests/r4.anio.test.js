@@ -86,7 +86,8 @@ test('year views, model year: the CSV Ingresos / Gastos / Disponible final are t
       var r = l[j + 1], c = v.t[j], num = function(x){ return String(x).replace('.', ','); };
       assert.deepEqual([r[1], r[4], r[14]], [num(c.totalIngresos), num(c.totalGastos), num(c.disponibleFinal)], 'dataset ' + n + ' month ' + j);
       assert.equal(app.fARS(+r[14].replace(',', '.')), t[j][COL.disp].replace(/<[^>]+>/g, ''), 'CSV = "El año" cell');
-      assert.deepEqual([r[2], r[3], r[5], r[15]], [num(s[j].subtotalFijos), num(s[j].subtotalVariables), num(s[j].ahorroMesARS), num(s[j].ahorroAcumulado)], 'stop items / transfers unchanged');
+      assert.deepEqual([r[5], r[15]], [num(s[j].ahorroMesARS), num(s[j].ahorroAcumulado)], 'transfers unchanged');
+      assert.deepEqual([r[2], r[3]], [num(c.subtotalFijos), num(c.subtotalVariables)], 'Gastos fijos / variables = card split (N1 item 2)');
       assert.equal(r[13], num(c.totalDeudas), 'Deudas = card / table (N1 item 1: model installments)');
     }
   });
@@ -171,4 +172,32 @@ test('N1-1 legacy guard: a year without arrastre keeps calc().totalDeudas (paid 
   var x = deudasFila(d), s = x.app.serie(x.app.D);
   for(var j = 0; j < 12; j++) assert.equal(x.t[j][COL.deu], x.app.fARS(s[j].totalDeudas));
   assert.equal(x.t[10][COL.deu], '—', 'November unticked = not paid, as before');
+});
+
+// N1 item 2 (R4.5 close): CSV "Gastos fijos" / "Gastos variables" of a model month split the SAME Gastos the row shows: paid
+// subtotals in a past/current month (as before), every registered row of the section in a future month (Programado, §1)
+function nov400(){
+  var d = C.seccion2(false, false);
+  C.mes(d, 10, {gastosFijos: [C.it('Alquiler', 400000, false)], gastosVariables: [C.it('Super', 100000, true)]});
+  return d;
+}
+test('N1-2 year CSV, model year: Gastos fijos + Gastos variables = Gastos for every model month (L-01, section 2, Nov 400.000 + 100.000)', function(){
+  [l01(), C.seccion2(false, false), C.seccion2(true, true), nov400()].forEach(function(d, n){
+    var app = V.appAnio(d), vm = app.vistaModelo(app.D, app.hoy), l = V.csvFilas(app.csv());
+    for(var j = 0; j < 12; j++){
+      if(vm.cad.meses[j].legacy) continue;
+      var r = l[j + 1];
+      assert.equal(+r[2].replace(',', '.') + +r[3].replace(',', '.'), +r[4].replace(',', '.'), 'dataset ' + n + ' month ' + j + ': fijos + variables = Gastos');
+    }
+  });
+  var l = V.csvFilas(V.appAnio(nov400()).csv());
+  assert.deepEqual(l[11].slice(1, 5), ['1000000', '400000', '100000', '500000'], 'Nov: unticked fixed 400.000 + ticked variable 100.000, all scheduled');
+});
+test('N1-2 year CSV: past / current model months keep the paid subtotals; a legacy year is unchanged', function(){
+  var app = V.appAnio(C.seccion2(false, false)), l = V.csvFilas(app.csv()), s = app.serie(app.D);
+  [8, 9].forEach(function(j){ assert.deepEqual([l[j + 1][2], l[j + 1][3]], [String(s[j].subtotalFijos), String(s[j].subtotalVariables)], 'month ' + j); });
+  assert.deepEqual([l[10][2], l[10][3], l[10][4]], ['400000', '0', '400000'], 'Oct: Luz and Supermercado unticked stay pending');
+  var d = nov400(); delete d.arrastre;
+  var a2 = V.appAnio(d), l2 = V.csvFilas(a2.csv());
+  assert.deepEqual([l2[11][2], l2[11][3], l2[11][4]], ['0', '100000', '100000'], 'legacy: paid subtotals, as before');
 });
