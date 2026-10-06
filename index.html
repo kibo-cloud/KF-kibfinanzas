@@ -6294,6 +6294,7 @@ function guardarPase(){
   toast('Pasé ' + fARS(m) + ' a Ingresos de ' + MESES[d.mes] + (d.anio !== D.anio ? ' ' + d.anio : ''), 'Deshacer', 'tjDeshacerPase', p.id);
 }
 function quitarPase(id, avisar){
+  if(obsoleta){ avisoOtraPestana(); return; }   // pestaña vieja: no se borra nada (ni en memoria) hasta recargar
   var p = null, i;
   for(i=0;i<T.pases.length;i++) if(T.pases[i].id === id) p = T.pases[i];
   if(!p) return;

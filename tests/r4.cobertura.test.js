@@ -212,6 +212,26 @@ test('L-07 a STALE tab (another tab saved; tab marked obsoleta) writes nothing w
   b.obsoleta = true; b.quitarPase('nuevo');
   assert.equal(ls2.d['kibo.datos.2025'], y, 'the row keeps the pase that Trabajo still has');
 });
+test('L-07b removing a pase from a STALE tab changes nothing (memory, Trabajo, other year) and never says "Pase borrado" (review R3-stale-toast-misleading)', function(){
+  var ls = almacenConTrabajo(), hechos = {monto: 100000, fecha: '2025-12-10', errores: []}, toasts = [];
+  var app = H.appAlmacen(ls, '2026-10-15', {
+    leerMonto: function(){ return {ok: true, v: hechos.monto}; },
+    destinoPase: function(){ return {fecha: hechos.fecha, anio: 2025, mes: 11}; },
+    errorEn: function(id, msg){ hechos.errores.push(msg); }, anioExiste: function(){ return true; }, cerrarHoja: function(){}, renderTrabajo: function(){},
+    MESES: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'], tjId: function(){ return 'nuevo'; }, fARS: function(n){ return String(n); },
+    tjAntes: null, paseQuitado: null, tieneTrab: function(){ return true; }, toast: function(m){ toasts.push(m); }
+  }, PASE_FUNCS);
+  H.cargarEn(app, ls, 2026); app.T = app.leerTrab(); app.guardarPase();
+  var y25 = ls.d['kibo.datos.2025'], tr = ls.d['kibo.trabajo'];
+  toasts.length = 0;
+  app.obsoleta = true;
+  app.quitarPase('nuevo', true);
+  assert.equal(app.T.pases.length, 1, 'the pase stays in memory: nothing was removed');
+  assert.equal(ls.d['kibo.trabajo'], tr, 'Trabajo is not written');
+  assert.equal(ls.d['kibo.datos.2025'], y25, 'the other year is not written');
+  assert.deepEqual(toasts, [], 'no "Pase borrado" message');
+  assert.ok(app.g.avisos.innerHTML.indexOf('Hay cambios hechos en otra pestaña') >= 0, 'the stale notice is shown instead');
+});
 
 test('L-08 deshacerTj keeps the revision of what is stored now, so the undo saves; a newer save of another tab still wins', function(){
   var ls = H.fakeStorage({'kibo.trabajo': JSON.stringify(Object.assign(H.trab([]), {tope: 10, rev: 5}))});
