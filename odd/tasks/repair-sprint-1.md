@@ -54,6 +54,7 @@ modeled, producing inconsistent semantics (E1-E14), plus security and reliabilit
 - D15 Out of scope: bank accounts, wallets, bank sync, AI, advanced scenarios, inflation, multiple
   USD rates, encryption, unrelated features.
 - D16 R4 acceptance matrix (17 cases) with input, expected, actual, automated test, evidence.
+  The official list is recorded verbatim in "D16 — official acceptance list (verbatim)" below.
 - D17 UI speaks plain language (Disponible inicial, Ingresos, Gastos, Ahorro, Disponible actual,
   Proyectado al cierre, "Viene del mes anterior"); model jargon ("pases", "bolsillos") stays internal.
 
@@ -458,6 +459,56 @@ implementation until the owner approves the design and answers Q1-Q15.
   (pending in the next slice).
 - Advisory SUGGESTION `R3-explicaDisp-untested` (index.html:5201-5202, explanation text with a scheduled
   pase): open, for R4.5.
+
+## D16 — official acceptance list (verbatim)
+
+Origin: owner message in the previous Claude Code session (02140968-86ae-44f2-b1ca-4a73731947bc),
+2026-10-05 01:37 UTC, section "## 16. Criterio de aceptación del modelo". Recovered from the session
+transcript on 2026-10-06 and confirmed by the owner as the official D16. Kept literally (owner language);
+it must not be reinterpreted or replaced.
+
+> Quiero que antes de cerrar R4 exista una matriz de casos como mínimo:
+>
+> 1. sueldo realizado + gastos realizados;
+> 2. sueldo pendiente + gastos realizados;
+> 3. saldo inicial + sueldo pendiente;
+> 4. saldo inicial + ahorro;
+> 5. saldo inicial corregido manualmente;
+> 6. cierre confirmado que luego cambia;
+> 7. pase futuro;
+> 8. ahorro histórico;
+> 9. restauración de backup;
+> 10. creación de nuevo año;
+> 11. modificación de un mes anterior;
+> 12. patrimonio con meses futuros cargados;
+> 13. deuda pendiente;
+> 14. patrimonio bruto vs neto;
+> 15. gasto rápido sobre pendiente;
+> 16. formatos argentinos de números;
+> 17. primer mes sin saldo inicial.
+>
+> Para cada caso quiero:
+>
+> * datos de entrada;
+> * resultado esperado;
+> * resultado real;
+> * test automatizado;
+> * evidencia.
+
+Complementary R4.5 coverage (NOT part of the D16 acceptance criterion), from the owner's Alfa loop brief,
+2026-10-05 07:20 UTC, section "# 12. R4.5 — MATRIZ ALFA", verbatim:
+
+> Además de los casos nominales, probá: mes vacío; mes parcialmente cargado; mes anterior con pendientes;
+> mes actual; mes futuro; pase futuro; pase realizado; deuda; cuota vencida; cuota pagada tarde;
+> reposición; ahorro; Trabajo; USD; cripto; restauración; migración; múltiples pestañas; recarga;
+> cierre/reapertura; datos antiguos.
+>
+> Para cada caso registrar: INPUT / EXPECTED / ACTUAL / PASS/FAIL / EVIDENCE.
+> No aceptes "parece correcto".
+
+Owner rules for R4.5 (2026-10-06): cases 5 and 17 are validated on the model/migration (their UI is R5);
+case 15 belongs to R7 (rule D8 decided, feature not built): do not implement R7, distinguish a functional
+FAIL from a roadmap-pending result; do not advance to R5/R7; no golden regeneration to hide changes.
 
 ## Consumer inventory (R1, current semantics)
 
