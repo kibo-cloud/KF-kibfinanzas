@@ -117,3 +117,17 @@ test('year views: renderAnio and exportarCSV read the rows through serieVista (o
     assert.deepEqual(app.plain(app.serieVista(app.D, app.hoy)), app.plain(app.serie(app.D)), c.nombre);
   });
 });
+
+// Model rule (owner, 2026-10-06): in a year WITH arrastre, "Total Disponible" and the header "Cierre" are the available balance at the
+// close of the LAST month of the year (December), never a sum of monthly balances. A year WITHOUT arrastre keeps its previous behavior
+// (pinned byte for byte by the legacy test above).
+test('model rule: in a model year "Total Disponible" and "Cierre" = December closing balance, never the sum of the monthly balances', function(){
+  [l01(), C.seccion2(false, false)].forEach(function(d, i){
+    var app = V.appAnio(d, {2025: C.vacio(2025)}), v = vista(app), html = app.anio(), t = V.tabla(html, 'anTabla'), f = app.fARS;
+    var dic = v.t[11].disponibleFinal, suma = sumar(v.t.filter(function(c, j){ return !v.vm.cad.meses[j].legacy; }), 'disponibleFinal');
+    assert.notEqual(suma, dic, 'dataset ' + i + ': the sum differs from December, so the assertion can tell them apart');
+    assert.equal(t[12][COL.disp], f(dic), 'dataset ' + i + ': Total Disponible = December closing');
+    assert.notEqual(t[12][COL.disp], f(suma), 'dataset ' + i + ': not the sum of monthly balances');
+    assert.ok(html.indexOf('Cierre ' + f(dic)) > 0, 'dataset ' + i + ': header "Cierre" = December closing');
+  });
+});

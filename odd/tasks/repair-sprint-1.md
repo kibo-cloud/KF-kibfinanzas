@@ -540,6 +540,12 @@ implementation until the owner approves the design and answers Q1-Q15.
   month flow ("gastaste más de lo que entró"), so in a model year its "Por mes entran" average can differ from the table (L-01 580.000
   vs 500.000). Judgment for owner confirmation: the Disponible total / "Cierre" header in a model year = December's card value.
 - NOT TOUCHED: Patrimonio rows (R5), "Del trabajo" matcher (L-03b), motor block.
+- MODEL RULE (owner-approved 2026-10-06, point 4): in a year WITH `arrastre`, "Total Disponible" of "Los doce meses" and the header
+  "Cierre" represent the available balance at the close of the LAST month of the year (December): `serieVista(d, hoy)[11].disponibleFinal`
+  (index.html `renderAnio`, `if(s[11].modelo) T.f = s[11].disponibleFinal`). They never sum monthly balances. A year WITHOUT `arrastre`
+  keeps its previous behavior (byte-identical legacy test). Pinned by `tests/r4.anio.test.js` "model rule: ... December closing balance";
+  mutation check (rule disabled) fails 3 tests, restored. Points 1-3 (Deudas column, CSV fijos/variables, `resumenAnio`) are under
+  analysis; decision (1) is NOT closed yet.
 - PARENT VERIFICATION: `npm test` 556 (555 pass, 0 fail, 1 todo), `npm run test:e2e` 163/163 (re-run by the parent), goldens
   byte-identical to 0ad13c1, tree clean; mutation check (`serieVista` forced to return `serie()`) makes 5 tests fail, restored.
 - NATIVE REVIEW: assessment of 0cd42de..5e8502e (12 files, 484 lines, medium, `slice_budget_reached`; includes 696077f). The owner
