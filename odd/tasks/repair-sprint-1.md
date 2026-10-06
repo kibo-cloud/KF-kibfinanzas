@@ -540,6 +540,11 @@ implementation until the owner approves the design and answers Q1-Q15.
   month flow ("gastaste más de lo que entró"), so in a model year its "Por mes entran" average can differ from the table (L-01 580.000
   vs 500.000). Judgment for owner confirmation: the Disponible total / "Cierre" header in a model year = December's card value.
 - NOT TOUCHED: Patrimonio rows (R5), "Del trabajo" matcher (L-03b), motor block.
+- PARENT VERIFICATION: `npm test` 556 (555 pass, 0 fail, 1 todo), `npm run test:e2e` 163/163 (re-run by the parent), goldens
+  byte-identical to 0ad13c1, tree clean; mutation check (`serieVista` forced to return `serie()`) makes 5 tests fail, restored.
+- NATIVE REVIEW: assessment of 0cd42de..5e8502e (12 files, 484 lines, medium, `slice_budget_reached`; includes 696077f). The owner
+  DECLINED the review for this candidate (consent `declined_this_candidate`, 2026-10-06); no review record, reviews stay enabled. The
+  last reviewed boundary stays 0cd42de; this slice is unreviewed by native review.
 
 ## D16 — official acceptance list (verbatim)
 
