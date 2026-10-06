@@ -398,6 +398,21 @@ implementation until the owner approves the design and answers Q1-Q15.
 - KNOWN RISKS: localStorage has no compare-and-set, so two tabs saving within the same few milliseconds can still race (accepted: minimal mechanism, Q12); a stale tab keeps its unsaved edits in memory but they are lost on "Recargar" (that is what the text says); `deshacerTj` and `aplicarPase` rev handling are covered by reading, not by a dedicated test; `ctxModelo` builds Trabajo pases from `T.pases` as R4.4 will, but R4.4 may refine it; `volverAntesDeR4` also reverts Trabajo and everything after the snapshot (same trade-off as pre130); the first-use prompt and the "estimado"/labels are R5.
 - NEXT STEP: R4.4 integration (switch consumers to `cadena`/`patrimonioNeto`, Trabajo pases into ctx, future pases scheduled, golden regeneration commit with `golden-diff-R4.4.md`), then R5 (first-use prompt calling `activarSaldos`, Editar, labels).
 
+#### R4.3 native review (parent, 2026-10-06)
+
+- Slice 4512c18..bf86e0f (9 files, 1090 lines, medium, reliability lens): consent granted by the owner;
+  approved and acknowledged (review-6fc93dcdc772585a, authority burned).
+- CRITICAL finding (REAL, introduced): restoring a backup whose Trabajo `rev` is higher than the stored
+  one set `T.rev = max(stored, incoming)`, so `escribirConRev` saw a conflict, the Trabajo restore was
+  refused and the tab was wrongly marked `obsoleta`. Fixed in 4c430ba: the restore adopts the STORED
+  rev (`escribirConRev` adds 1, still above any tab). RED first (new test in `tests/r4.migracion.test.js`
+  failed: `tope` 1 instead of 55), GREEN after; `npm test` 499/499, `test:e2e` 121/121. Targeted
+  validator approved.
+- Advisory (non-blocking, follow-ups for R4.5/R4.6): `duplicar` save path untested (index.html:3914);
+  `deshacerTj`/`aplicarPase` rev paths covered by reading only (index.html:4891-4894); Trabajo restore
+  coverage beyond the new case (tests/r4.migracion.test.js:534-561).
+- Next reviewed boundary: 4c430ba.
+
 ## Consumer inventory (R1, current semantics)
 
 Documentation of the CURRENT state (baseline `f3dbff3`; line numbers refer to index.html, which R1 does not touch). Guarded by `tests/inventario.test.js` (source of truth: `tests/inventario.data.js`). Semantics: registrado = every loaded amount; realizado = only ticked/paid; mixto = both; otro = editor/display/Trabajo ledger/false positive. Known bugs are listed as they behave today.
