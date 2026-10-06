@@ -74,7 +74,7 @@ Summary B: 21 PASS (C-18 after the R4.5 fix).
 
 | Item | Observed (test) | Classification | Action |
 |---|---|---|---|
-| "El año" table, year CSV, "Año por año" in a model year | still `serie()`/`calc()`: with an unticked "Del trabajo" without pases the Oct row shows Ingresos 580.000 / Disponible 430.000 while the card shows 500.000 / 350.000; "Acumulado" 250.000 (year end incl. scheduled Nov savings) vs savings a hoy 50.000 (`L-01`) | Contract silent: not a bug of the approved rules; it is the product decision reserved by the owner (rule 5). Q3 is applied on the card but not in these secondary views | **Owner decision.** Not implemented |
+| "El año" table, year CSV, "Año por año" in a model year | still `serie()`/`calc()`: with an unticked "Del trabajo" without pases the Oct row shows Ingresos 580.000 / Disponible 430.000 while the card shows 500.000 / 350.000; "Acumulado" 250.000 (year end incl. scheduled Nov savings) vs savings a hoy 50.000 (`L-01`) | Contract silent: not a bug of the approved rules; it is the product decision reserved by the owner (rule 5). Q3 is applied on the card but not in these secondary views | **Owner decision 2026-10-06: move to the chain** — section E |
 | "Del trabajo" without pases (Q3) in those views | counted as always realized there (`L-01`) | same as above | Owner decision |
 | "Disponible" column vs chained balance | column = month flow (`calc().disponibleFinal`, no opening); card = chain (`L-01`) | same as above | Owner decision |
 | "Del trabajo" amount above its pases (locked row) | row 400.000 unticked, pase 300.000: excess 100.000 pending forever, no checkbox, row read-only; disponible 300.000, proyectado 400.000 (`L-02`) | Accepted debt R5 (UX: a control to settle the excess); money follows interpretation 4 of R4.2 | Pinned |
@@ -130,7 +130,83 @@ How every changed number is explained:
   same numbers as before (`R-02`).
 - **Pending payments**: no overdue appears because `desde` is October (months before `desde` are legacy and never feed `vencidos`, D4).
 
-## E. Risks found in R4.5
+## E. Year views on the chain (owner decision 2026-10-06)
+
+Owner decision: in a year WITH `arrastre`, "El año", the year CSV and "Año por año" use the SAME chained balance model as the month
+card (`cadena` / `tilesMes` / `vistaModelo`, R4.4); a year WITHOUT `arrastre` behaves exactly as before. Correction derived from the
+inconsistency pinned by `L-01` (section C, first row). D16 stays the official matrix; this is not a new matrix. No new money rule:
+every changed number is a value the month card already shows (R4.4 interpretations 1-2, Q3), or, for the Disponible total, the card
+value of December.
+
+### E.1 Consumers (index.html lines at 0ad13c1)
+
+| Surface | Function (lines) | Source today | Columns / values |
+|---|---|---|---|
+| "El año" summary card | `resumenAnio(s)` (3072-3098), called by `renderAnio` (3101) | `serie(D)` | avg Ingresos / Gastos / Ahorro, cheapest/most expensive month, "gastaste más de lo que entró" (`disponibleFinal < 0`), December savings at this pace (`ahorroAcumulado`) |
+| "El año" › "Los doce meses" | `renderAnio` (3099-3116) | `serie(D)` (3100) | Ingresos, Gastos, Ahorro, A dólares, Saqué, Repuse, Deudas, Disponible, Acumulado; Total row = sum of each column, Acumulado = `s[11]`; header "Cierre" = sum of Disponible; aReponer note |
+| "El año" › "Ingresos y gastos" | `renderAnio` (3118-3122) | `serie(D)` | the Ingresos / Gastos columns as lines; header = the table totals |
+| "El año" › "Ahorro acumulado" | `renderAnio` (3125-3126) | `serie(D)` | `ahorroAcumulado` per month |
+| "El año" › "Año por año" | `renderAnio` (3150-3169) | `serie(dA)` per stored year (3161; `leerAnio`) | Ingresos, Gastos, Deudas, Ahorrado (sums), Cierre en pesos (`s[11].ahorroAcumulado`), Dólares al cierre |
+| Year CSV | `exportarCSV` (3940-3951) | `serie(D)` | Ingresos, Gastos fijos, Gastos variables, Gastos, Ahorro ARS, Pesos a dólares, Dólares comprados, Pagado a, Saqué, Dólares vendidos, Repuse, A reponer, Deudas, Disponible final, Ahorro acumulado, USD del mes, USD acumulado |
+
+The card side: `vistaModelo` (2682), `tilesMes` (2688): a legacy month (no `arrastre`, or before `desde`) returns `calc()` itself;
+a model month overrides `totalIngresos` (realized income + realized Trabajo pases for past/current, scheduled income + scheduled pases
+for a future month; Q3: "Del trabajo" without pases is ordinary income with its own `pagado`), `totalGastos` (realized / scheduled
+fixed + variable), `disponibleFinal` (past: `cierreReal ?? cierreCalc`; current: `cierreCalc`; future: `proyectado`) and the derived
+`ahorroSugerido` / `pctGastos` / `pctAhorro`. Every other field (`ahorroMesARS`, `totalDeudas`, `subtotalFijos`, `subtotalVariables`,
+transfers) is `calc()`'s.
+
+### E.2 Before → after, model-year examples (hoy 2026-10-15)
+
+L-01 dataset (`desde` Oct, opening 0; Oct Sueldo 500.000 ✓, "Del trabajo" 80.000 ✗ without pases, Alquiler 100.000 ✓, ahorro 50.000;
+Nov ahorro 200.000):
+
+| Value | Before (`serie`) | After (card) | Decision |
+|---|---|---|---|
+| Oct Ingresos (table, CSV) | 580.000 | 500.000 | Q3 + R4.4 interp. 2: the unticked "Del trabajo" without pases is pending income |
+| Oct Gastos | 100.000 | 100.000 | realized = paid (no change here) |
+| Oct Disponible (table, CSV) | 430.000 (month flow) | 350.000 (`cierreCalc`) | R4.4 interp. 1 (current month = disponible a hoy) |
+| Nov Disponible | −200.000 (flow) | 230.000 (`proyectado` 430.000 − 200.000) | R4.4 interp. 1 (future = projected) |
+| Dec Disponible | 0 | 230.000 | same |
+| Total Ingresos / Gastos | 580.000 / 100.000 | 500.000 / 100.000 | sums of the changed rows |
+| Total Disponible and header "Cierre" | 230.000 (sum of flows) | 230.000 (December card value) | see E.3 row "Disponible total" |
+| Acumulado (rows, total) | 50.000 … 250.000 | unchanged | see E.3 |
+| "Año por año" 2026 Ingresos / Gastos | 580.000 / 100.000 | 500.000 / 100.000 | the table totals |
+
+Section 2 dataset (`desde` Sep, opening 50.000, Sep confirmed 175.000, Oct pending rows, Nov scheduled Sueldo 1.000.000 + Préstamo
+100.000 + ahorro 200.000):
+
+| Value | Before | After | Decision |
+|---|---|---|---|
+| Aug (before `desde`) | all `calc()` | unchanged | D4 / I6 |
+| Sep Disponible | 150.000 (flow) | 175.000 (confirmed closing) | R4.4 interp. 1, D6 |
+| Oct Disponible | 650.000 | 825.000 (disponible a hoy) | R4.4 interp. 1 |
+| Nov Ingresos / Gastos / Disponible | 0 / 0 / −200.000 | 1.000.000 / 0 / 1.280.000 | R4.4 interp. 1 (future: scheduled flows, projected closing) |
+| Dec Disponible | 0 | 1.280.000 | projected |
+| Total Ingresos / Gastos | 2.000.000 / 1.000.000 | 3.000.000 / 1.000.000 | sums of the changed rows |
+| Total Disponible and "Cierre" | 600.000 | 1.280.000 | December card value (E.3) |
+| Deudas column (Sep 100.000, Nov 0) | unchanged | unchanged | stop item (E.3) |
+| "Año por año" 2026 Ingresos / Gastos | 2.000.000 / 1.000.000 | 3.000.000 / 1.000.000 | the table totals |
+
+### E.3 Per column: change or keep
+
+| Surface / column | Model year | Why |
+|---|---|---|
+| Table / CSV Ingresos, Gastos (model months) | **= `tilesMes`** | owner decision; R4.4 interp. 1-2, Q3 |
+| Table / CSV Disponible (model months) | **= `tilesMes`** (chain) | owner decision; R4.4 interp. 1 |
+| Table Total Ingresos / Gastos | **sum of the shown rows** | flows: the total stays a sum |
+| Table Total Disponible and header "Cierre" | **December's value** (`tilesMes(11).disponibleFinal`) | the column is now a balance: summing balances has no meaning; the label already says "Cierre" (year closing), and the chain's closing is December's card value. Not a new money rule (it is a number the card shows), but it is a judgment: flagged for owner confirmation |
+| "Ingresos y gastos" chart | **the same rows as the table** | its header already shows the table totals; lines and header must agree |
+| "Año por año" Ingresos / Gastos (model year, open or stored) | **sums of the same rows** | owner decision; each year row is self-contained, legacy years keep `serie()` |
+| Months before `desde` | unchanged (`calc()`) | D4 / I6 (`tilesMes` returns `calc()` itself) |
+| Ahorro, A dólares, Saqué, Repuse, USD columns, A reponer | unchanged | transfers: `tilesMes` keeps `calc()`/`serie()` values, the card shows the same |
+| Acumulado, "Ahorro acumulado" chart, "Cierre en pesos", "Dólares al cierre" | unchanged | the model has no other savings source: `patrimonioNeto` itself reads `serie()[iHoy].ahorroAcumulado`; a future month's value is a projection exactly like the future Disponible |
+| Deudas column / "Año por año" Deudas | **STOP: unchanged** (paid installments) | `tilesMes` keeps `calc().totalDeudas`; the card shows no Deudas tile. In a future model month the scheduled installment is inside the projected Disponible but not in the column; showing scheduled installments would be a new display choice without a card equivalent |
+| CSV Gastos fijos / Gastos variables | **STOP: unchanged** (paid subtotals) | `tilesMes` keeps `calc()` subtotals (the month screen's section subtotals were also left unchanged by R4.4); in a future model month Gastos (scheduled) ≠ fijos + variables (paid). Splitting the scheduled amount by section would duplicate model logic outside `flujosMes` |
+| `resumenAnio` (summary card on "El año") | **STOP: unchanged** (`serie()`) | not part of the table: its text has a month-flow semantic ("gastaste más de lo que entró" = `disponibleFinal < 0`, average monthly leftover) that a chained balance would turn false; its "Por mes entran" average can differ from the table total in a model year (e.g. L-01 580.000 vs 500.000) |
+| Year without `arrastre` | byte-identical | owner decision; test over every motor-corpus dataset |
+
+## F. Risks found in R4.5
 
 - `L-10` (pinned, accepted under Q12 minimal mechanism): if another tab saves Trabajo and this tab has not yet processed the storage
   event, a pase into the OPEN year writes the year row and then the Trabajo save is refused (tab marked stale). On reload the row has
