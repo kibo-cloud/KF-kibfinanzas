@@ -552,6 +552,30 @@ implementation until the owner approves the design and answers Q1-Q15.
   DECLINED the review for this candidate (consent `declined_this_candidate`, 2026-10-06); no review record, reviews stay enabled. The
   last reviewed boundary stays 0cd42de; this slice is unreviewed by native review.
 
+## Night run to Alpha candidate (owner brief "MODO NOCTURNO AUTÓNOMO", 2026-10-06)
+
+Owner authorizes autonomous work R4.5 → R4.6 → R5 → pre-Alpha audit → fixes → cleanup → security → regression → final audit →
+smoke → Alpha readiness verdict, without intermediate approvals. Authority order: Q1-Q15, R4 contract, D16, complementary matrix,
+recorded R4.4/R4.5 decisions, existing behavior when it does not contradict the model, conservative data preservation. A genuinely
+new product rule is marked `OWNER_DECISION_REQUIRED` (documented with alternatives) and work continues on everything else. D16-15 stays
+`PENDIENTE-R7`. No golden regeneration to hide changes. Small conventional commits. Native review consent is interactive and the
+owner is away: per the brief, each pending consent is recorded here and the available verification runs instead (independent
+read-only reviewer agents + mutation checks); no native PASS is ever claimed without a real native review.
+
+Checklist (route: delegated writer per task, parent verifies + re-runs suites):
+- [ ] N1 R4.5 close: points 1-3 (Deudas column, CSV fijos/variables, `resumenAnio`), other `calc()/serie()` consumers in model years,
+      "Del trabajo" matcher (L-03b), cross-view consistency.
+- [ ] N2 R4.6 hardening: weak tests (L-10 risk marker, D16-16 E2E rejection), stale tab / storage races / double write / double count,
+      restore, migration, backup, import/export, numbers, pending/paid, future months, new years; dead params; semantics source per concept.
+- [ ] N3 R5: opening / available UX (first-use prompt via `activarSaldos`, "Saldo inicial · Editar", "Viene del mes anterior", real
+      closing correction, edit of a previous month), Patrimonio composition (owner MUST), "Del trabajo" above its pases presentation.
+- [ ] N4 Pre-Alpha code audit + cleanup (risk-reducing only).
+- [ ] N5 Security audit (import/restore/export, dynamic HTML/XSS, storage, SW/cache, deletion, migrations) with regression tests.
+- [ ] N6 Backup/restore/migration end-to-end round trips (old + new data, Trabajo, arrastre, ahorro, deudas, previous years).
+- [ ] N7 Final regression, smoke, Alpha readiness report.
+
+Native review consent log (night run): see each task's evidence.
+
 ## D16 — official acceptance list (verbatim)
 
 Origin: owner message in the previous Claude Code session (02140968-86ae-44f2-b1ca-4a73731947bc),
