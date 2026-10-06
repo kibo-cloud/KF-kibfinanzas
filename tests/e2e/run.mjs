@@ -546,6 +546,66 @@ try{
     check('R4.4 Q3: ticked it is realized', [await ev(`D.meses[9].ingresos[1].pagado`), await pantalla()], [true, '330000']);
   }
 
+  // ── R4.5: D16 cases about what the screen shows (tests/r4.matriz.test.js holds the model side; hoy here is 2026-10-04) ──
+  {
+    const vacio = () => { const ms = []; for(let i=0;i<12;i++) ms.push(mes([], [], [], [])); return ms; };
+    const anio = (apertura, desde, ms, extra) => Object.assign({anio: 2026, pagoExplicito: true, cotizacionUSD: 1500, meses: ms,
+      arrastre: {desde, inicial: {apertura, declarado: apertura, declaradoEl: '2026-10-01', origen: 'declarado'}}}, extra || {});
+    const seed = async (year) => { await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); localStorage.setItem('kibo.anio','2026'); localStorage.setItem('kibo.datos.2026', ${JSON.stringify(JSON.stringify(year))}); true`); await nav(URL_APP); await sleep(1300); };
+    const pantalla = () => ev(`(${bigFinal}).replace(/[^\\d-]/g,'')`);
+    const tri = () => ev(`Array.prototype.map.call(document.querySelectorAll('#v-mes .tri b'), function(b){ return b.textContent; })`);
+    const irMes = async (m) => { await ev(`document.querySelector('[data-act=mes][data-m="${m}"]').click(); true`); await sleep(1400); };
+    const patri = async () => { await ev(`document.querySelector('[data-act=tab][data-t=usd]').click(); true`); await sleep(1400);
+      const v = await ev(`[document.getElementById('bigPatri').textContent, document.getElementById('bigPatri').nextElementSibling.textContent]`);
+      await ev(`document.querySelector('[data-act=tab][data-t=mes]').click(); true`); await sleep(300); return v; };
+    const typeIn = (sel, v) => ev(`(function(){ var x=document.querySelector(${JSON.stringify(sel)}); x.dispatchEvent(new FocusEvent('focusin',{bubbles:true})); x.value=${JSON.stringify(v)}; x.dispatchEvent(new Event('input',{bubbles:true})); x.dispatchEvent(new FocusEvent('focusout',{bubbles:true})); return true; })()`);
+    const octRows = (sueldoPagado, gastos) => { const ms = vacio(); ms[9] = mes([it('Sueldo', 1000000, sueldoPagado)], gastos ? [it('Alquiler', 400000, true)] : [], gastos ? [it('Super', 100000, true)] : [], []); return ms; };
+
+    // D16-01 + D16-16: realized salary and expenses; then an Argentine-formatted amount typed on the screen reaches the card to the peso
+    await seed(anio(0, 9, octRows(true, true)));
+    check('D16-01 Oct card: 1.000.000 - 400.000 - 100.000', await pantalla(), '500000');
+    check('D16-01 Oct tiles Ingresos / Gastos / Ahorro', await tri(), await ev(`[fARS(1000000), fARS(500000), fARS(0)]`));
+    const sup = 'input.monto[data-k=gastosVariables][data-i="0"]';
+    await typeIn(sup, '100.234,56'); await sleep(1400);
+    check('D16-16 "100.234,56" is stored as 100234.56', await ev('D.meses[9].gastosVariables[0].monto'), 100234.56);
+    check('D16-16 ... and the card moves by exactly that (499.765,44 shown rounded)', await pantalla(), '499765');
+    await typeIn(sup, '1,234.5'); await sleep(300);
+    check('D16-16 "1,234.5" is rejected: the stored amount is unchanged', await ev('D.meses[9].gastosVariables[0].monto'), 100234.56);
+
+    // D16-02: pending salary, realized expenses
+    await seed(anio(600000, 9, octRows(false, true)));
+    check('D16-02 Oct card: opening 600.000 - 500.000 realized expenses (the pending salary is not available)', await pantalla(), '100000');
+    check('D16-02 Oct tiles: no realized income', await tri(), await ev(`[fARS(0), fARS(500000), fARS(0)]`));
+
+    // D16-03: opening + pending salary
+    await seed(anio(200000, 9, octRows(false, false)));
+    check('D16-03 Oct card: the opening only', await pantalla(), '200000');
+
+    // D16-04 / D16-07 / D16-12: opening + savings, scheduled savings in November, net worth a hoy
+    const s4 = (() => { const ms = octRows(true, false); ms[9].ahorroMesARS = 200000; ms[10].ahorroMesARS = 100000; return ms; })();
+    await seed(anio(300000, 9, s4, {ahorroAnioAnterior: 500000}));
+    check('D16-04 Oct card: 300.000 + 1.000.000 - 200.000 savings', await pantalla(), '1100000');
+    check('D16-04 Oct tiles show the savings', await tri(), await ev(`[fARS(1000000), fARS(0), fARS(200000)]`));
+    check('D16-12 Patrimonio a hoy: 1.100.000 + savings 700.000 (Nov savings excluded) = US$ 1.200', await patri(), await ev(`[fUSD(1200), fARS(1800000)]`));
+    await irMes(10);
+    check('D16-07 Nov (future) card: projection 1.100.000 - scheduled 100.000', await pantalla(), '1000000');
+
+    // D16-13 / D16-14: the same year with a 3-installment plan unpaid from October
+    const s5 = JSON.parse(JSON.stringify(s4)); [9, 10, 11].forEach(j => { s5[j].deudas = [it('Tarjeta', 100000, false)]; });
+    await seed(anio(300000, 9, s5, {ahorroAnioAnterior: 500000, planDeudas: {Tarjeta: {total: 300000, recargo: 0, cuotas: 3, pagadasAntes: 0}}}));
+    check('D16-13 Oct card: the unpaid installment is not deducted from available money', await pantalla(), '1100000');
+    check('D16-14 Patrimonio headline is the NET: 1.800.000 - debt 300.000 = US$ 1.000', await patri(), await ev(`[fUSD(1000), fARS(1500000)]`));
+
+    // D16-06: a confirmed September closing (175.000, calculated 200.000) that later changes (Luz ticked): the card keeps the confirmed value
+    const s6 = vacio();
+    s6[8] = Object.assign(mes([it('Sueldo', 1000000, true)], [it('Alquiler', 400000, true), it('Luz', 20000, true)], [it('Super', 200000, true)], [it('Préstamo', 100000, true)]),
+      {ahorroMesARS: 150000, cierreReal: {valor: 175000, calculadoAlConfirmar: 200000, confirmadoEl: '2026-10-01'}});
+    await seed(anio(50000, 8, s6));
+    check('D16-06 Oct card opens from the confirmed 175.000', await pantalla(), '175000');
+    await irMes(8);
+    check('D16-06 Sep card keeps the confirmed closing (calculated is now 180.000)', await pantalla(), '175000');
+  }
+
   check('no uncaught page errors', pageErrs, []);
 }catch(e){ fails++; results.push('ERROR ' + e.message); }
 finally{
