@@ -78,7 +78,7 @@ Summary B: 21 PASS (C-18 after the R4.5 fix).
 | "Del trabajo" without pases (Q3) in those views | counted as always realized there (`L-01`) | same as above | Owner decision |
 | "Disponible" column vs chained balance | column = month flow (`calc().disponibleFinal`, no opening); card = chain (`L-01`) | same as above | Owner decision |
 | "Del trabajo" amount above its pases (locked row) | row 400.000 unticked, pase 300.000: excess 100.000 pending forever, no checkbox, row read-only; disponible 300.000, proyectado 400.000 (`L-02`) | Accepted debt R5 (UX: a control to settle the excess); money follows interpretation 4 of R4.2 | Pinned |
-| Accent / spacing variants of "Del trabajo" | `renglonTrabajo` (`trim().toLowerCase()`) does not find "Del Trabájo" / " del  trabajo ": a pase creates a second row; the engine (`clave()`) allocates the pase to the first row, so the user's unticked 100.000 becomes realized: disponible 400.000 instead of 300.000 (`L-03b`, todo) | Real defect, pre-existing (two matchers, design §7) and exposed by R4 (Q3 gives the row its own flag). Not fixed: the fix changes which existing row a pase or its undo touches on data written under the old matcher — needs a rule | **Stop item**: todo test `L-03b`; owner / R8 Trabajo |
+| Accent / spacing variants of "Del trabajo" | `renglonTrabajo` (`trim().toLowerCase()`) does not find "Del Trabájo" / " del  trabajo ": a pase creates a second row; the engine (`clave()`) allocates the pase to the first row, so the user's unticked 100.000 becomes realized: disponible 400.000 instead of 300.000 (`L-03b`, todo) | Real defect, pre-existing (two matchers, design §7) and exposed by R4 (Q3 gives the row its own flag). Not fixed: the fix changes which existing row a pase or its undo touches on data written under the old matcher — needs a rule | **RESOLVED** in 8f3296c (N1, conservative rule: exact name first, else the `clave()` row the engine already counts; no data rewrite) — `L-03b` passes, `L-03c` added |
 | R4.3 advisory: `duplicar` save path | real `guardar`: 2027 written with rev 1, arrastre `{0, 825.000, arrastre}`, snapshot before it, 2026 untouched; snapshot refused → no year, alert (`L-05`) | Covered | — |
 | R4.3 advisory: `aplicarPase` / `deshacerTj` rev paths | other-year pase writes that blob with its rev (2→3→4 with the undo), Trabajo rev 1→2→3 (`L-06`); `deshacerTj` saves on top of the stored rev (5→6→7) and a stale undo is refused (`L-08`) | Covered | — |
 | | **stale tab** (`obsoleta`) passing money to ANOTHER year still wrote that year's blob while Trabajo refused: the row without its pase counts the money twice (`L-07`, RED on 0b31901) | **Real R4.3 bug** (contract: a stale tab writes nothing until reload) | **Fixed** `0ff866d`: `aplicarPase` refuses and shows the notice when the tab is stale |
@@ -201,10 +201,63 @@ Section 2 dataset (`desde` Sep, opening 50.000, Sep confirmed 175.000, Oct pendi
 | Months before `desde` | unchanged (`calc()`) | D4 / I6 (`tilesMes` returns `calc()` itself) |
 | Ahorro, A dólares, Saqué, Repuse, USD columns, A reponer | unchanged | transfers: `tilesMes` keeps `calc()`/`serie()` values, the card shows the same |
 | Acumulado, "Ahorro acumulado" chart, "Cierre en pesos", "Dólares al cierre" | unchanged | the model has no other savings source: `patrimonioNeto` itself reads `serie()[iHoy].ahorroAcumulado`; a future month's value is a projection exactly like the future Disponible |
-| Deudas column / "Año por año" Deudas | **STOP: unchanged** (paid installments) | `tilesMes` keeps `calc().totalDeudas`; the card shows no Deudas tile. In a future model month the scheduled installment is inside the projected Disponible but not in the column; showing scheduled installments would be a new display choice without a card equivalent |
-| CSV Gastos fijos / Gastos variables | **STOP: unchanged** (paid subtotals) | `tilesMes` keeps `calc()` subtotals (the month screen's section subtotals were also left unchanged by R4.4); in a future model month Gastos (scheduled) ≠ fijos + variables (paid). Splitting the scheduled amount by section would duplicate model logic outside `flujosMes` |
-| `resumenAnio` (summary card on "El año") | **STOP: unchanged** (`serie()`) | not part of the table: its text has a month-flow semantic ("gastaste más de lo que entró" = `disponibleFinal < 0`, average monthly leftover) that a chained balance would turn false; its "Por mes entran" average can differ from the table total in a model year (e.g. L-01 580.000 vs 500.000) |
+| Deudas column / "Año por año" Deudas / CSV Deudas | **= `tilesMes`** (N1 item 1): realized month `cuotasReal`, future month `cuotasProg` (ticks ignored, §1), from `flujosMes` | resolves the former STOP item: one source (D13); a future row now reconciles (Disponible(j) − Disponible(j−1) = Ingresos − Gastos − Deudas + net transfers). Months before `desde` keep `calc()` |
+| CSV Gastos fijos / Gastos variables | **= `tilesMes`** (N1 item 2): realized month = paid subtotals (unchanged); future month = `suma()` of each section (Programado = every registered row) | resolves the former STOP item: fijos + variables = Gastos in every model month; done in the app layer, `flujosMes` untouched |
+| `resumenAnio` (summary card on "El año") | **= `serieVista` over the REALIZED months** (N1 item 3, DERIVED rule, flagged for owner review, not blocking) | the set = past + current model months with Ingresos or Gastos on the card, plus legacy months before `desde` as before; future months never enter. Averages, ring %, max/min and "A este ritmo" (`ahorroAcumulado` of the last month of the set) read that set; a red month is `flujosMes.resultado < 0` (never the chained Disponible; legacy months keep `disponibleFinal < 0`); footer "Promedio de N meses ya transcurridos de AAAA" |
 | Year without `arrastre` | byte-identical | owner decision; test over every motor-corpus dataset |
+| "En qué se te fue la plata" (`ranking`) and "Deudas" (`proyeccionDeudas`) on "El año" | **read `datosRealizados(D, hoy)`** (N1 item 4) | a copy of the year where every row of a FUTURE model month is unticked (§1: scheduled, never paid). For the debt projection the paid count equals evaluating at `min(11, mesTope)` like `pasivos` (R4.2 interp. 8); the end month additionally ignores future ticks. Engine untouched (both live in the motor block; goldens identical); a year without `arrastre` passes `D` itself |
+
+### E.4 N1 closure (night run, 2026-10-06)
+
+Commits on `fix/repair-sprint-1`: a8a3a84 (Deudas), 6de98fb (CSV fijos/variables), 08b8cf0 (`resumenAnio`), 69c65a1 + ecda44f
+(ranking / debt projection + the missing `estadoMes` alias), 8f3296c ("Del trabajo" matcher), 4de7b35 (E2E).
+
+Before → after (hoy 2026-10-15 unless noted):
+
+| Value | Before | After |
+|---|---|---|
+| Section 2, November Deudas (unticked scheduled installment) | — (0) | 100.000 |
+| Section 2, Total Deudas / "Año por año" Deudas | 100.000 | 200.000 |
+| Section 2 with November ticked, November Deudas | 100.000 (counted as paid) | 100.000 (scheduled; same value, tick ignored) |
+| Section 2 + November Alquiler 400.000 unticked + Super 100.000 ticked: CSV fijos / variables / Gastos | 0 / 100.000 / 500.000 | 400.000 / 100.000 / 500.000 |
+| Summary card, L-01 + legacy September income 400.000: "Por mes entran / se van / te quedan", ring | 490.000 / 50.000 / 440.000, 5% | 450.000 / 50.000 / 400.000, 6% |
+| Summary card, section 2 with November ticked: months, "entran / se van" | 3 cargados, 1.000.000 / 333.333 | 2 transcurridos, 1.000.000 / 500.000 |
+| Summary card, opening 1.000.000, Oct 100.000 − 300.000, Nov (future) expense 900.000 ticked | "En 2 meses gastaste más…" | "En Octubre gastaste más…" |
+| "Deudas" on "El año", section 2 + November installment ticked | Préstamo 4 de 6 | Préstamo 3 de 6 (end month enero 2027 both) |
+| Ranking, a ticked expense in future November | listed | not listed |
+| Pase onto an existing "Del Trabájo" 100.000 unticked row (L-03b) | second row, Disponible 400.000 | same row, Disponible 300.000, 100.000 still pending |
+
+"Del trabajo" matcher (N1 item 5, design §7, D13): `renglonTrabajo` keeps the exact trim/lowercase match FIRST (a plain "Del trabajo"
+row, or an exact row listed after a variant, behaves exactly as before) and otherwise takes the row the engine already counts as
+"Del trabajo" (`esRenglonTrabajo` = `clave()`). No data rewrite, no rename. `quitarPase` / `reponerPase` reach the row through
+`aplicarPase`, so undo uses the same matcher; `deshacerTj` restores only the Trabajo store and never looks up the row. Tests `L-03b`
+(was `todo`), `L-03c`.
+
+Sweep (N1 item 6) of the other `calc()` / `serie()` / tick readers in a model year:
+
+| Consumer | Reads | Verdict |
+|---|---|---|
+| "El año" Ahorro, A dólares, Saqué, Repuse, Acumulado, "Ahorro acumulado" chart, aReponer note; "Año por año" Ahorrado / Cierre en pesos / Dólares al cierre; Dólares tab table; month-card Ahorro / compra / retiro notes (`serie(D)[mes]`) | `serie()` transfers and accumulations | unchanged by E.3 decision (transfers have no tick; no other savings source) |
+| Dólares "Patrimonio total" | `patrimonioPantalla` (model: `patrimonioNeto`) | already on the model (R4.4); Patrimonio rows are R5 |
+| Trabajo tab | Trabajo store, `pasesDelMes` | not a month-flow consumer; matcher fixed above |
+| Month screen of a FUTURE model month: expense pie (`datosTorta`), budget bars and the over-budget alert (`gastadoTope`), debt row text (`textoDeuda` → `estadoDeuda(D, n, mes)`) | ticks (`estaPagado`) | **OWNER_DECISION_REQUIRED (N1-A)**, see below |
+| `duplicar` (new year): `planDeudas[k].pagadasAntes = estadoDeuda(D, k, 11).pagadas` | ticks of all 12 months | **OWNER_DECISION_REQUIRED (N1-B)**, see below |
+
+OWNER_DECISION_REQUIRED (recorded, work continued):
+
+- **N1-A — ticks on the month screen of a future model month.** The card Ingresos/Gastos of a future month are scheduled (every row),
+  but the pie, the budget bars/alert and the debt row text still treat a ticked row as paid. Alternatives: (a) keep: the tick in a future
+  month is the user's own marker, only totals follow §1 (no change, inconsistent wording "pagado"); (b) follow §1 on the screen: pie and
+  budgets count every scheduled row, the debt text never says "pagada" in a future month (one rule, changes what the user sees); (c) R5
+  UX: disable / hide the tick in a future month and show "programado" (prevents the state, needs the R5 design). Recommendation: (c),
+  with (b) as the interim if R5 slips.
+- **N1-B — `duplicar` carries paid installments from every month.** Creating next year before December counts a ticked future
+  installment as paid and an unticked one as pending in the snapshot `pagadasAntes`. Alternatives: (a) keep (normally done after
+  December, when every month is past); (b) count only realized months (`min(11, mesTope)`), so later payments in the old year are not
+  reflected in the new snapshot; (c) derive `pagadasAntes` live from the previous year blob instead of a snapshot (larger change, R8).
+  Recommendation: (a) for Alpha with a note; revisit with (c).
+
+Line endings: a8a3a84 and 6de98fb wrote `tests/r4.anio.test.js` with CRLF; 08b8cf0 restores LF (history rewrite was not permitted).
 
 ## F. Risks found in R4.5
 
@@ -212,7 +265,7 @@ Section 2 dataset (`desde` Sep, opening 50.000, Sep confirmed 175.000, Oct pendi
   event, a pase into the OPEN year writes the year row and then the Trabajo save is refused (tab marked stale). On reload the row has
   no pase: the money is in both pockets. Window = one missed storage event (same class as the accepted R4.3 race). No transactional
   write exists across the two blobs.
-- `L-03b` accent variants (stop item above).
+- `L-03b` accent variants: RESOLVED in 8f3296c (N1 item 5, E.4).
 - RESOLVED in 696077f (native review R3-stale-toast-misleading / R3-stale-quitarPase-unproved): removing a pase from a stale tab
   removed it from memory and showed "Pase borrado…" although nothing was stored. `quitarPase` now refuses in a stale tab (notice
   only, nothing changes in memory or storage); RED `L-07b` (pase removed from memory), GREEN after.

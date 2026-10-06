@@ -552,6 +552,34 @@ implementation until the owner approves the design and answers Q1-Q15.
   DECLINED the review for this candidate (consent `declined_this_candidate`, 2026-10-06); no review record, reviews stay enabled. The
   last reviewed boundary stays 0cd42de; this slice is unreviewed by native review.
 
+#### N1 — R4.5 closure of the year views (night run, 2026-10-06)
+
+- STATUS: done; full mapping, before → after and the sweep in `odd/tasks/repair-sprint-1-r4.5-matrix.md` E.3 / E.4. Closes owner
+  decision (1) points 1-3 and owner decision (2) ("Del trabajo" matcher).
+- COMMITS: a8a3a84 `fix(r4.5): show model installments in the year Deudas column`, 6de98fb `fix(r4.5): split scheduled expenses in the
+  year CSV`, 08b8cf0 `fix(r4.5): base the year summary on realized model months`, 69c65a1 `fix(r4.5): ignore future ticks in the year
+  ranking and debt projection`, ecda44f `fix(r4.5): alias estadoMes for the realized year view` (69c65a1 was committed with 2 failing
+  alias tests: the real page would have thrown on "El año" of a model year; fixed in the next commit), 8f3296c `fix(r4.5): find the Del
+  trabajo row with the engine matcher`, 4de7b35 `test(r4.5): check year Deudas, summary and ranking of a model year on screen`.
+- 1 Deudas (`tilesMes`: realized `cuotasReal`, future `cuotasProg`): RED 4 tests (S2 Nov '—' instead of 100.000, Total/"Año por año"
+  200.000, ticked future = unticked, future row reconciliation), GREEN; r4.anio assertions that pinned Deudas = `serie()` now pin the
+  model value (explained in the test). Legacy guard + byte-identical legacy test pass.
+- 2 CSV fijos/variables (`tilesMes`, future month = `suma()` per section): RED 1 (Nov 0/100.000 vs Gastos 500.000), GREEN; past/current
+  and legacy unchanged.
+- 3 `resumenAnio` (DERIVED rule, flagged for owner review): realized months only, model Resultado for red months, label "Promedio de N
+  meses ya transcurridos". RED 3 (P3a 490.000 → 450.000, S2 3 → 2 months, red month "2 meses" → "Octubre"), GREEN; mutation (red
+  rule on chained Disponible + future months allowed) fails 2.
+- 4 ranking / `proyeccionDeudas`: app-side `datosRealizados(D, hoy)` (future model rows unticked in a copy); engine untouched, goldens
+  identical. RED 3, GREEN.
+- 5 matcher: exact name first, else `esRenglonTrabajo` (clave). `L-03b` todo → pass; `L-03c` (exact wins, undo path). Mutation (fallback
+  removed) fails both.
+- 6 sweep: no further §1/D13-derived fix; N1-A (ticks on the month screen of a future model month: pie, budgets, debt text) and N1-B
+  (`duplicar` `pagadasAntes` from all 12 months) recorded as OWNER_DECISION_REQUIRED with alternatives (matrix E.4).
+- TESTS: `npm test` 571 pass / 0 fail / 0 todo (was 556 / 0 / 1); `npm run test:e2e` 166/166 (was 163; RED with the 1d7102b
+  index.html: 163 pass / 3 fail). Goldens byte-identical to 1d7102b. No APPVER bump.
+- NOTE: a8a3a84 and 6de98fb wrote `tests/r4.anio.test.js` with CRLF; 08b8cf0 restores LF.
+- NATIVE REVIEW: consent pending (owner away, night-run rule); not claimed.
+
 ## Night run to Alpha candidate (owner brief "MODO NOCTURNO AUTÓNOMO", 2026-10-06)
 
 Owner authorizes autonomous work R4.5 → R4.6 → R5 → pre-Alpha audit → fixes → cleanup → security → regression → final audit →
@@ -563,8 +591,9 @@ owner is away: per the brief, each pending consent is recorded here and the avai
 read-only reviewer agents + mutation checks); no native PASS is ever claimed without a real native review.
 
 Checklist (route: delegated writer per task, parent verifies + re-runs suites):
-- [ ] N1 R4.5 close: points 1-3 (Deudas column, CSV fijos/variables, `resumenAnio`), other `calc()/serie()` consumers in model years,
-      "Del trabajo" matcher (L-03b), cross-view consistency.
+- [x] N1 R4.5 close: points 1-3 (Deudas column, CSV fijos/variables, `resumenAnio`), other `calc()/serie()` consumers in model years,
+      "Del trabajo" matcher (L-03b), cross-view consistency. Route: delegated writer. Evidence: "#### N1 — R4.5 closure" above and
+      matrix E.4; two OWNER_DECISION_REQUIRED recorded (N1-A, N1-B).
 - [ ] N2 R4.6 hardening: weak tests (L-10 risk marker, D16-16 E2E rejection), stale tab / storage races / double write / double count,
       restore, migration, backup, import/export, numbers, pending/paid, future months, new years; dead params; semantics source per concept.
 - [ ] N3 R5: opening / available UX (first-use prompt via `activarSaldos`, "Saldo inicial · Editar", "Viene del mes anterior", real
