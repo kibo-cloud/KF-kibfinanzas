@@ -47,8 +47,12 @@ function tablaModelo(d){
     assert.equal(r[0], app.MESES ? app.MESES[j] : r[0]);
     assert.deepEqual([r[COL.ing], r[COL.gas], r[COL.disp]], [app.hARS(c.totalIngresos), app.hARS(c.totalGastos), app.hARS(c.disponibleFinal)].map(function(h){ return h.replace(/<[^>]+>/g, ''); }), 'month ' + j + ' = card');
     if(leg) assert.deepEqual([c.totalIngresos, c.totalGastos, c.disponibleFinal], [s[j].totalIngresos, s[j].totalGastos, s[j].disponibleFinal], 'month ' + j + ' before desde = calc()');
-    assert.deepEqual([r[COL.aho], r[COL.dol], r[COL.saq], r[COL.rep], r[COL.deu], r[COL.acu]],
-      [s[j].ahorroMesARS, s[j].compraARS, s[j].sacadoARS, s[j].reposicionARS, s[j].totalDeudas, s[j].ahorroAcumulado].map(function(x){ return app.fARS(x); }), 'month ' + j + ' transfers / deudas / acumulado unchanged');
+    assert.deepEqual([r[COL.aho], r[COL.dol], r[COL.saq], r[COL.rep], r[COL.acu]],
+      [s[j].ahorroMesARS, s[j].compraARS, s[j].sacadoARS, s[j].reposicionARS, s[j].ahorroAcumulado].map(function(x){ return app.fARS(x); }), 'month ' + j + ' transfers / acumulado unchanged');
+    // N1 item 1 (R4.5 close): the Deudas column of a model month is the model's installments (realized: paid; future: scheduled,
+    // ticks ignored, §1), from flujosMes through tilesMes; a month before desde keeps calc()
+    var fm = leg ? null : app.flujosMes(app.D, j, app.hoy, v.vm.ctx);
+    assert.equal(r[COL.deu], app.fARS(leg ? s[j].totalDeudas : (fm.realizado ? fm.cuotasReal : fm.cuotasProg)), 'month ' + j + ' Deudas');
   }
   return {app: app, v: v, s: s, html: html, t: t};
 }
@@ -65,7 +69,7 @@ test('year views, model year (section 2): legacy August, confirmed September, cu
   var x = tablaModelo(C.seccion2(false, false)), f = x.app.fARS, tot = x.t[12];
   assert.deepEqual(x.t.slice(7, 12).map(function(r){ return [r[COL.ing], r[COL.gas], r[COL.deu], r[COL.disp]]; }),
     [['—', '—', '—', '—'], [f(1000000), f(600000), f(100000), f(175000)], [f(1000000), f(400000), '—', f(825000)],
-     [f(1000000), '—', '—', f(1280000)], ['—', '—', '—', f(1280000)]]);
+     [f(1000000), '—', f(100000), f(1280000)], ['—', '—', '—', f(1280000)]]);
   assert.deepEqual([tot[COL.ing], tot[COL.gas], tot[COL.disp]], [f(3000000), f(1000000), f(1280000)]);
   assert.ok(x.html.indexOf('Cierre ' + f(1280000)) > 0);
   assert.ok(x.html.indexOf(x.app.lineas(x.v.t.map(function(c){ return c.totalIngresos; }), x.v.t.map(function(c){ return c.totalGastos; }))) > 0,
@@ -82,7 +86,8 @@ test('year views, model year: the CSV Ingresos / Gastos / Disponible final are t
       var r = l[j + 1], c = v.t[j], num = function(x){ return String(x).replace('.', ','); };
       assert.deepEqual([r[1], r[4], r[14]], [num(c.totalIngresos), num(c.totalGastos), num(c.disponibleFinal)], 'dataset ' + n + ' month ' + j);
       assert.equal(app.fARS(+r[14].replace(',', '.')), t[j][COL.disp].replace(/<[^>]+>/g, ''), 'CSV = "El año" cell');
-      assert.deepEqual([r[2], r[3], r[5], r[13], r[15]], [num(s[j].subtotalFijos), num(s[j].subtotalVariables), num(s[j].ahorroMesARS), num(s[j].totalDeudas), num(s[j].ahorroAcumulado)], 'stop items / transfers unchanged');
+      assert.deepEqual([r[2], r[3], r[5], r[15]], [num(s[j].subtotalFijos), num(s[j].subtotalVariables), num(s[j].ahorroMesARS), num(s[j].ahorroAcumulado)], 'stop items / transfers unchanged');
+      assert.equal(r[13], num(c.totalDeudas), 'Deudas = card / table (N1 item 1: model installments)');
     }
   });
   var l = V.csvFilas(V.appAnio(l01()).csv());
@@ -130,4 +135,40 @@ test('model rule: in a model year "Total Disponible" and "Cierre" = December clo
     assert.notEqual(t[12][COL.disp], f(suma), 'dataset ' + i + ': not the sum of monthly balances');
     assert.ok(html.indexOf('Cierre ' + f(dic)) > 0, 'dataset ' + i + ': header "Cierre" = December closing');
   });
+});
+
+// N1 item 1 (R4.5 close, design §1): Deudas in a model month = realizado ? cuotasReal : cuotasProg (one source: flujosMes via tilesMes)
+function deudasFila(d, otros){
+  var app = V.appAnio(d, otros || {2025: C.vacio(2025)}), html = app.anio();
+  return {app: app, t: V.tabla(html, 'anTabla'), anios: V.tabla(html, 'anAnios'), csv: V.csvFilas(app.csv())};
+}
+test('N1-1 Deudas column, model year (section 2): November scheduled installment = 100.000; Total and "Año por año" Deudas = 200.000', function(){
+  var x = deudasFila(C.seccion2(false, false)), f = x.app.fARS;
+  assert.deepEqual(x.t.slice(8, 12).map(function(r){ return r[COL.deu]; }), [f(100000), '—', f(100000), '—'], 'Sep paid, Oct unpaid (0), Nov scheduled');
+  assert.equal(x.t[12][COL.deu], f(200000), 'Total Deudas');
+  assert.deepEqual(x.anios[1].slice(0, 4).filter(function(c, i){ return i === 0 || i === 3; }), ['2026', f(200000)], '"Año por año" Deudas');
+  assert.equal(x.csv[11][13], '100000', 'CSV Deudas November = scheduled');
+});
+test('N1-1 Deudas column: a ticked installment in a FUTURE month counts as scheduled, not paid (ticks ignored, §1)', function(){
+  var a = deudasFila(C.seccion2(false, false)), b = deudasFila(C.seccion2(false, true)), f = a.app.fARS;
+  assert.equal(b.t[10][COL.deu], a.t[10][COL.deu], 'ticked or not, November shows the same scheduled installment');
+  var vm = b.app.vistaModelo(b.app.D, b.app.hoy), fm = b.app.flujosMes(b.app.D, 10, b.app.hoy, vm.ctx);
+  assert.deepEqual([fm.cuotasReal, fm.cuotasProg], [0, 100000], 'the model holds it as scheduled');
+  assert.equal(b.app.tilesMes(b.app.D, 10, vm).totalDeudas, fm.cuotasProg);
+  assert.equal(b.t[12][COL.deu], f(200000));
+});
+test('N1-1 a future model row reconciles: Disponible(j) - Disponible(j-1) = Ingresos - Gastos - Deudas + net transfers', function(){
+  var d = C.seccion2(false, false);
+  C.mes(d, 11, {ingresos: [C.it('Sueldo', 300000, false)], gastosFijos: [C.it('Luz', 50000, true)], deudas: [C.it('Préstamo', 100000, false)], ahorroMesARS: 20000, retiroARS: 5000});
+  var x = deudasFila(d), app = x.app, s = app.serieVista(app.D, app.hoy), j = 11;
+  var neto = s[j].sacadoARS - s[j].reposicionARS - s[j].ahorroMesARS;
+  assert.equal(s[j].disponibleFinal - s[j - 1].disponibleFinal, s[j].totalIngresos - s[j].totalGastos - s[j].totalDeudas + neto);
+  assert.deepEqual([s[j].totalIngresos, s[j].totalGastos, s[j].totalDeudas, neto, s[j].disponibleFinal - s[j - 1].disponibleFinal], [300000, 50000, 100000, -15000, 135000]);
+  assert.equal(x.t[j][COL.deu], app.fARS(100000));
+});
+test('N1-1 legacy guard: a year without arrastre keeps calc().totalDeudas (paid installments only) in the table', function(){
+  var d = C.seccion2(false, false); delete d.arrastre;
+  var x = deudasFila(d), s = x.app.serie(x.app.D);
+  for(var j = 0; j < 12; j++) assert.equal(x.t[j][COL.deu], x.app.fARS(s[j].totalDeudas));
+  assert.equal(x.t[10][COL.deu], '—', 'November unticked = not paid, as before');
 });

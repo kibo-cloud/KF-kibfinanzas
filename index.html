@@ -2693,6 +2693,7 @@ function tilesMes(d, j, vm){   // mismos campos que calc(); un mes legacy devuel
   var ti = f.realizado ? f.ingresosReal + f.trabajoRealizado : f.ingresosProg + f.trabajoProgramado;
   var tg = f.realizado ? f.gastosReal : f.gastosProg;
   t.totalIngresos = ti; t.totalGastos = tg;
+  t.totalDeudas = f.realizado ? f.cuotasReal : f.cuotasProg;   // R4.5: cuotas pagadas (pasado/en curso) o programadas (futuro, el tilde no cuenta)
   t.disponibleFinal = e.estado === 'pasado' ? e.cierre : (e.estado === 'actual' ? e.cierreCalc : e.proyectado);
   t.ahorroSugerido = ti * num(d.meses[j].metaAhorroPct);
   t.pctGastos = ti > 0 ? tg/ti : 0; t.pctAhorro = ti > 0 ? c.ahorroMesARS/ti : 0;
