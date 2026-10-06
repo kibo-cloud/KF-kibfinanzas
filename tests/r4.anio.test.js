@@ -241,3 +241,29 @@ test('N1-3 summary card: a legacy year still uses the month flow over the loaded
   assert.ok(r.indexOf('En 2 meses gastaste más de lo que entró.') >= 0, r);
   assert.ok(r.indexOf('2 meses cargados de 2026') >= 0, r);
 });
+
+// N1 item 4 (R4.5 close, §1): "En qué se te fue la plata" (ranking) and "Deudas" (proyeccionDeudas) on "El año" never count a ticked
+// row of a FUTURE model month as paid; a legacy year is unchanged. Engine untouched: the app passes the realized view of the year.
+function seccion(html, k){ var i = html.indexOf('data-sec="' + k + '"'); return i < 0 ? '' : html.slice(i, html.indexOf('data-sec=', i + 10) > 0 ? html.indexOf('data-sec=', i + 10) : html.length); }
+function futuroTildado(){ var d = nov400(); d.meses[10].deudas = [C.it('Préstamo', 100000, true)]; return d; }
+test('N1-4 ranking, model year: a ticked expense of a future month is not "plata que se fue"', function(){
+  var app = V.appAnio(futuroTildado()), r = txt(seccion(app.anio(), 'anRank')), f = app.fARS;
+  assert.ok(r.indexOf('Supermercado' + f(200000)) >= 0, 'September paid stays: ' + r);
+  assert.equal(r.indexOf('Super' + f(100000)), -1, 'November (future) ticked Super is not in the ranking: ' + r);
+});
+test('N1-4 Deudas on "El año", model year: a ticked future installment is not paid; same count as evaluating at min(11, mesTope) (pasivos rule)', function(){
+  var app = V.appAnio(futuroTildado()), r = txt(seccion(app.anio(), 'anDeudas'));
+  assert.ok(r.indexOf('Préstamo3 de 6 · ene 2027') >= 0, '2 before + September; October unpaid, November future: ' + r);
+  var e = app.estadoDeuda(app.D, 'Préstamo', Math.min(11, app.mesTope(2026, app.hoy)), app.hoy);
+  assert.equal(e.pagadas, 3, 'pasivos evaluation point (R4.2 interpretation 8)');
+  var pd = app.proyeccionDeudas(app.datosRealizados(app.D, app.hoy), app.hoy);
+  assert.deepEqual([pd[0].e.pagadas, pd[0].e.restantes], [3, 3]);
+  assert.equal(app.D.meses[10].deudas[0].pagado, true, 'the stored data is not touched');
+});
+test('N1-4 legacy guard: a year without arrastre keeps ranking() and proyeccionDeudas() on the data as stored', function(){
+  var d = futuroTildado(); delete d.arrastre;
+  var app = V.appAnio(d), html = app.anio(), f = app.fARS;
+  assert.ok(txt(seccion(html, 'anRank')).indexOf('Super' + f(100000)) >= 0);
+  assert.ok(txt(seccion(html, 'anDeudas')).indexOf('Préstamo4 de 6') >= 0);
+  assert.equal(app.datosRealizados(app.D, app.hoy), app.D, 'legacy: the same object');
+});

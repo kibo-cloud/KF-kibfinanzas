@@ -3091,6 +3091,17 @@ function mesesTranscurridos(s, vm){
   for(i=0;i<12;i++){ e = vm.cad.meses[i]; if((e.legacy || e.estado !== 'futuro') && (s[i].totalIngresos || s[i].totalGastos)) out.push(i); }
   return out;
 }
+// R4.5 (§1): la vista "realizada" de un año del modelo para lo que el motor cuenta por tilde (ranking, proyección de deudas): en un mes
+// FUTURO del modelo nada está pagado todavía, aunque tenga tilde (es programado). Copia; los datos guardados no se tocan. Sin arrastre: d mismo.
+function datosRealizados(d, hoy){
+  if(!d || !d.arrastre) return d;
+  var c = JSON.parse(JSON.stringify(d)), secs = ['ingresos','gastosFijos','gastosVariables','deudas'], j, k, i, ls;
+  for(j=0;j<12;j++){
+    if(!mesDelModelo(d, j) || estadoMes(d.anio, j, hoy) !== 'futuro') continue;
+    for(k=0;k<secs.length;k++){ ls = c.meses[j][secs[k]] || []; for(i=0;i<ls.length;i++) if(ls[i] && typeof ls[i] === 'object') ls[i].pagado = false; }
+  }
+  return c;
+}
 // mes en rojo: en un mes del modelo, el Resultado del modelo < 0 (nunca el saldo encadenado); en uno legacy, el flujo de siempre
 function mesEnRojo(s, i, vm){
   if(!vm || vm.cad.meses[i].legacy) return s[i].disponibleFinal < 0;
@@ -3154,7 +3165,7 @@ function renderAnio(){
   h += plegable('anAhorro', 'Ahorro acumulado', fARS(s[11].ahorroAcumulado),
         '<div class="chart">' + barras(s.map(function(c){return c.ahorroAcumulado;})) + '</div>');
 
-  var rk = ranking(D), hR = '<div class="rank" style="padding:12px 16px">';
+  var real = datosRealizados(D, hoy), rk = ranking(real), hR = '<div class="rank" style="padding:12px 16px">';
   if(!rk.length) hR += '<div class="nota" style="padding:2px 0">Cuando tildes gastos como pagados, acá vas a ver el ranking del año por categoría.</div>';
   var max = rk.length ? rk[0].monto : 1;
   for(i=0;i<rk.length;i++){
@@ -3164,7 +3175,7 @@ function renderAnio(){
   hR += '</div>';
   h += plegable('anRank', 'En qué se te fue la plata', rk.length ? esc(rk[0].nombre) : '', hR);
 
-  var pd = proyeccionDeudas(D, hoyApp());
+  var pd = proyeccionDeudas(real, hoy);   // un año del modelo: como evaluar en min(11, mesTope), igual que pasivos (R4.2 interp. 8)
   if(pd.length){
     var libre = null, hD = '<div class="rank" style="padding:12px 16px">';
     for(i=0;i<pd.length;i++){
