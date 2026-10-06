@@ -6236,6 +6236,7 @@ function renglonTrabajo(d, m, crear){
   var it = {nombre:RENGLON_TRABAJO, monto:0, tope:0, pagado:true}; ls.push(it); return it;
 }
 function aplicarPase(p, signo){
+  if(obsoleta){ avisoOtraPestana(); return false; }   // pestaña vieja (R4.3): no escribe ningún año, tampoco otro que el abierto, hasta recargar
   var abierto = p.anio === D.anio, d = abierto ? D : leerAnio(p.anio);
   if(!d) return false;
   var it = renglonTrabajo(d, p.mes, signo > 0);

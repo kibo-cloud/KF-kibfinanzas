@@ -196,6 +196,23 @@ test('L-06 aplicarPase / quitarPase on ANOTHER year go through the revision of t
   assert.deepEqual([y.rev, y.meses[11].ingresos[0].monto, t.rev, t.pases.length], [4, 0, 3, 0]);
 });
 
+test('L-07 a STALE tab (another tab saved; tab marked obsoleta) writes nothing when it passes money from Trabajo to another year, or removes a pase', function(){
+  var ls = almacenConTrabajo(), hechos = {monto: 100000, fecha: '2025-12-10', errores: []}, app = appPase(ls, hechos);
+  H.cargarEn(app, ls, 2026); app.T = app.leerTrab();
+  app.obsoleta = true;   // what the storage event (with the pase sheet open) or a refused save leaves behind: no writes until reload (R4.3, Q12)
+  var y25 = ls.d['kibo.datos.2025'], y26 = ls.d['kibo.datos.2026'], tr = ls.d['kibo.trabajo'];
+  app.guardarPase();
+  assert.equal(ls.d['kibo.datos.2025'], y25, 'the other year is not written (its row without the pase would count the money twice)');
+  assert.deepEqual([ls.d['kibo.datos.2026'] === y26, ls.d['kibo.trabajo'] === tr, app.T.pases.length], [true, true, 0]);
+  assert.ok(app.g.avisos.innerHTML.indexOf('Hay cambios hechos en otra pestaña') >= 0, 'the stale notice is shown');
+  // removing a pase from a stale tab must not touch the other year either
+  var ls2 = almacenConTrabajo(), h2 = {monto: 100000, fecha: '2025-12-10', errores: []}, b = appPase(ls2, h2);
+  H.cargarEn(b, ls2, 2026); b.T = b.leerTrab(); b.guardarPase();
+  var y = ls2.d['kibo.datos.2025'];
+  b.obsoleta = true; b.quitarPase('nuevo');
+  assert.equal(ls2.d['kibo.datos.2025'], y, 'the row keeps the pase that Trabajo still has');
+});
+
 test('L-08 deshacerTj keeps the revision of what is stored now, so the undo saves; a newer save of another tab still wins', function(){
   var ls = H.fakeStorage({'kibo.trabajo': JSON.stringify(Object.assign(H.trab([]), {tope: 10, rev: 5}))});
   var app = H.appAlmacen(ls, '2026-10-15', {tjAntes: null, tab: 'mes'}, ['deshacerTj', 'antesDeCambiar']);
