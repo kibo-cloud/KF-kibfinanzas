@@ -123,6 +123,21 @@ h2.tit{font-size:13px;font-weight:600;color:var(--txt2);margin:22px 4px 8px;lett
 .final{border-top:1px solid var(--sep);padding-top:12px}
 .final small{font-size:12px;color:var(--txt2)}
 .final-fila{display:flex;align-items:center;justify-content:space-between;gap:10px}
+/* R5: saldo del mes */
+.sdo{margin-top:12px}
+.sdo-tit{font-size:13px;font-weight:600;color:var(--txt2);margin-bottom:8px}
+.sdo-f{display:flex;justify-content:space-between;gap:10px;padding:4px 0;font-size:15px}
+.sdo-f span{color:var(--txt2);min-width:0}
+.sdo-f b{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.sdo-ap b,.sdo-tot b{font-size:17px}
+.sdo-tot{border-top:1px solid var(--sep);margin-top:6px;padding-top:10px}
+.sdo-orig{font-size:12px;color:var(--txt2);margin:-2px 0 8px}
+.sdo-lnk{color:var(--acc);font-weight:600;font-size:12px;padding:4px 2px;min-height:32px}
+.sdo-acc{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.sdo-nota{padding:6px 0 0}
+.sdo-in{width:100%;font-size:20px;font-weight:600;padding:10px 12px;margin:0 0 4px;border-radius:12px;background:var(--fill);border:0}
+.hoja-sdo{margin:0 0 10px}
+.sdo-lbl{display:block;font-size:12px;color:var(--txt2);margin:0 4px 4px}
 .final-fila .big{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .final .big{font-size:34px;font-weight:700;letter-spacing:-.03em;line-height:1.1;margin-top:2px}
 .big.ok{color:var(--acc)} .big.mal{color:var(--neg)}
@@ -2721,11 +2736,98 @@ function tieneTilde(d, j, k, it){
   if(k !== 'ingresos' || !esRenglonTrabajo(it.nombre)) return true;
   return mesDelModelo(d, j) && !(pasesDelMes(d.anio, j) > 0);
 }
+/* ═══ R5: el saldo del mes (D2, D5, D6, D7/Q8, D10, D17) ═══
+   Solo presenta lo que ya calcula la cadena (cadena/flujosMes); no hay ninguna regla de plata nueva acá. */
+// la pregunta del primer uso (D5, Q1): el año abierto contiene hoy y todavía no tiene arrastre (omitirla también lo crea)
+function muestraPrimerUso(d, hoy){ return !!d && d.anio === hoy.anio && !d.arrastre; }
+function textoOrigen(origen, anio, sinSaldo){
+  if(sinSaldo) return 'Saldo inicial sin configurar';
+  if(origen === 'cadena') return 'Viene del mes anterior';
+  if(origen === 'anioAnterior' || origen === 'arrastre') return 'Viene de diciembre ' + (anio - 1);
+  return 'Lo cargaste vos';
+}
+// los renglones del mes j de un año con modelo: apertura + ingresos - gastos - cuotas - ahorro + otros = total del mes (cierre / a hoy / proyectado)
+function lineasSaldo(d, j, vm){
+  if(!vm || !vm.cad.meses[j] || vm.cad.meses[j].legacy) return null;
+  var e = vm.cad.meses[j], f = flujosMes(d, j, vm.hoy, vm.ctx), r = f.realizado, t = f.transferencias, res = vm.cad.resumen;
+  var desde = j === res.desde;
+  return {
+    mes: j, estado: e.estado, desde: desde, origen: e.origenApertura, sinSaldoInicial: e.sinSaldoInicial,
+    apertura: e.estado === 'futuro' && !desde ? vm.cad.meses[j - 1].proyectado : e.apertura,   // un mes futuro arranca de lo proyectado del anterior (estimado)
+    ingresos: r ? f.ingresosReal + f.trabajoRealizado : f.ingresosProg + f.trabajoProgramado,
+    gastos: r ? f.gastosReal : f.gastosProg,
+    cuotas: r ? f.cuotasReal : f.cuotasProg,
+    ahorro: t.ahorroMesARS,
+    otros: t.retiroARS + t.ventaARS - t.reposicionARS,
+    cierreCalc: e.cierreCalc, cierreReal: e.cierreReal, diferencia: e.diferencia, reconfirmar: e.reconfirmar, cierre: e.cierre,
+    disponibleActual: e.estado === 'actual' ? e.cierreCalc : null,
+    proyectado: e.proyectado,
+    vencidos: e.estado === 'actual' ? res.vencidos : 0, vencidosIngresos: e.estado === 'actual' ? res.vencidosIngresos : 0
+  };
+}
+function filaSaldo(txt, v, cls){ return '<div class="sdo-f' + (cls ? ' ' + cls : '') + '"><span>' + txt + '</span><b>' + v + '</b></div>'; }
+// solo números (fARS) y textos fijos: ningún nombre cargado por el usuario llega a este HTML
+function htmlSaldo(d, j, vm){
+  var l = lineasSaldo(d, j, vm); if(!l) return '';
+  var est = l.estado, h = '', editable = est !== 'futuro' || l.desde;
+  h += '<div class="saldo sdo"><div class="sdo-tit">Saldo de ' + MESES[j]
+     + (est === 'actual' ? ' · a hoy' : (est === 'futuro' ? ' · programado' : '')) + '</div>';
+  h += filaSaldo(est === 'futuro' && !l.desde ? 'Disponible inicial (estimado)' : 'Disponible inicial', fARS(l.apertura), 'sdo-ap');
+  h += '<div class="sdo-orig"><span>' + textoOrigen(l.origen, d.anio, l.sinSaldoInicial) + '</span>'
+     + (editable ? ' · <button class="sdo-lnk" data-act="editarApertura" data-m="' + j + '">Editar</button>' : '') + '</div>';
+  h += filaSaldo('+ Ingresos', fARS(l.ingresos)) + filaSaldo('− Gastos', fARS(l.gastos));
+  if(l.cuotas) h += filaSaldo('− Deudas', fARS(l.cuotas));
+  h += filaSaldo('− Ahorro', fARS(l.ahorro));
+  if(l.otros) h += filaSaldo('Retiros y reposiciones del ahorro', fARS(l.otros));
+  if(est === 'pasado'){
+    h += filaSaldo('Disponible al cierre', fARS(l.cierre), 'sdo-tot');
+    if(l.cierreReal === null) h += '<div class="sdo-acc"><button class="mini" data-act="cierreAbrir" data-m="' + j + '">¿Es correcto?</button></div>';
+    else {
+      h += filaSaldo('Según tus registros', fARS(l.cierreCalc)) + filaSaldo('Saldo real (confirmado)', fARS(l.cierreReal)) + filaSaldo('Diferencia', fARS(l.diferencia));
+      if(l.reconfirmar) h += '<div class="nota mal sdo-nota" id="avisoReconfirmar">Cambió desde que lo confirmaste. El cierre confirmado se mantiene en ' + fARS(l.cierreReal)
+        + '; con tus registros ahora da ' + fARS(l.cierreCalc) + '.</div>'
+        + '<div class="sdo-acc"><button class="mini on" data-act="cierreAbrir" data-m="' + j + '">Confirmar de nuevo</button>'
+        + '<button class="mini" data-act="cierreMantener" data-m="' + j + '">Mantener</button></div>';
+      else h += '<div class="sdo-acc"><button class="mini" data-act="cierreAbrir" data-m="' + j + '">Cambiar</button></div>';
+    }
+  } else if(est === 'actual'){
+    h += filaSaldo('Disponible actual', fARS(l.disponibleActual), 'sdo-tot');
+    h += filaSaldo('Proyectado al cierre (estimado)', fARS(l.proyectado));
+    if(l.vencidos > 0) h += '<div class="nota sdo-nota">Pendientes de meses anteriores: <b>' + fARS(l.vencidos) + '</b> (no están en lo proyectado)</div>';
+    if(l.vencidosIngresos > 0) h += '<div class="nota sdo-nota">Cobros pendientes de meses anteriores: <b>' + fARS(l.vencidosIngresos) + '</b></div>';
+  } else h += filaSaldo('Proyectado al cierre (estimado)', fARS(l.proyectado), 'sdo-tot');
+  return h + '</div>';
+}
+// aviso de comienzo de mes (D10): el mes anterior del modelo terminó y su cierre no está confirmado. Solo en el año de hoy y en el mes en curso.
+function claveAvisoCierre(anio, j){ return anio + '-' + dos(j + 1); }
+function avisoCierreDescartado(clave){ try{ return localStorage.getItem(LSAVCIERRE) === clave; }catch(e){ return false; } }
+function descartarAvisoCierre(j){ try{ localStorage.setItem(LSAVCIERRE, claveAvisoCierre(D.anio, j)); }catch(e){} }   // del teléfono: no viaja en la copia
+function avisoCierrePendiente(d, hoy, vm){
+  if(!vm || !d || d.anio !== hoy.anio || hoy.mes < 1) return null;
+  var p = hoy.mes - 1, e = vm.cad.meses[p];
+  if(!e || e.legacy || e.cierreReal !== null || avisoCierreDescartado(claveAvisoCierre(d.anio, p))) return null;
+  return {mes: p, valor: e.cierreCalc};
+}
+function htmlAvisosSaldo(d, j, vm, hoy){
+  if(muestraPrimerUso(d, hoy)) return '<div class="aviso" id="primerUso"><p><b>¿Cuánto dinero tenés disponible actualmente?</b><br>'
+    + '<small>Lo que tenés para gastar, sin contar tus ahorros. Así el saldo pasa de un mes al otro.</small></p>'
+    + '<input type="text" id="inPrimerUso" class="sdo-in" inputmode="decimal" placeholder="0" autocomplete="off" enterkeyhint="done">'
+    + '<div class="nota mal sdo-nota" id="notaPrimerUso"></div>'
+    + '<div class="fila"><button class="mini on" data-act="primerUsoOk">Guardar</button><button class="mini" data-act="primerUsoNo">Omitir</button></div></div>';
+  if(j !== hoy.mes) return '';
+  var a = avisoCierrePendiente(d, hoy, vm); if(!a) return '';
+  return '<div class="aviso" id="avisoCierre"><p>¿Cerraste <b>' + MESES[a.mes] + '</b> con <b>' + fARS(a.valor) + '</b>?<br>'
+    + '<small>Es lo que da con lo que registraste. Si tenías otra plata, corregilo.</small></p>'
+    + '<div class="fila"><button class="mini on" data-act="avCierreOk" data-m="' + a.mes + '">Confirmar</button>'
+    + '<button class="mini" data-act="cierreAbrir" data-m="' + a.mes + '">Corregir</button>'
+    + '<button class="mini" data-act="avCierreNo" data-m="' + a.mes + '">Ahora no</button></div></div>';
+}
 function renderMes(){
-  var m = D.meses[mes], c = tilesHoy(), h = '';
+  var hoy = hoyApp(), vm = vistaModelo(D, hoy), m = D.meses[mes], c = tilesMes(D, mes, vm), h = '';
   h += '<div class="meses" id="selMes">';
   for(var i=0;i<12;i++) h += '<button data-act="mes" data-m="'+i+'" class="'+(i===mes?'on':'')+'">'+CORTOS[i]+'</button>';
   h += '</div>';
+  h += '<div id="avisoSaldo">' + htmlAvisosSaldo(D, mes, vm, hoy) + '</div>';   // R5: primer uso (D5) o "¿Cerraste … con …?" (D10)
 
   h += '<div class="carr" id="carrMes"><div class="carr-pista" id="carrPista"><div class="carr-slide">'
      +   '<div class="saldo">'
@@ -2758,6 +2860,7 @@ function renderMes(){
      +   '<button class="dot' + (carrIdx === 0 ? ' on' : '') + '" data-act="carrIr" data-v="0" aria-label="Ver el disponible"></button>'
      +   '<button class="dot' + (carrIdx === 1 ? ' on' : '') + '" data-act="carrIr" data-v="1" aria-label="Ver el gráfico de gastos"></button>'
      + '</div></div>';
+  h += '<div id="saldoMes">' + htmlSaldo(D, mes, vm) + '</div>';   // R5: cómo se llega al disponible del mes (D2, D17); vacío en un mes legacy
 
   h += seccion(SECS[0], m);
   h += seccion(SECS[1], m);
@@ -3570,7 +3673,8 @@ function avisoSinGuardado(){
 /* refresco puntual: no vuelve a dibujar los inputs, así no se pierde el foco */
 function refrescar(){
   if(tab !== 'mes') return;
-  var m = D.meses[mes], c = tilesHoy(), i;
+  var hoy = hoyApp(), vm = vistaModelo(D, hoy), m = D.meses[mes], c = tilesMes(D, mes, vm), i;
+  var sm = document.getElementById('saldoMes'); if(sm) sm.innerHTML = htmlSaldo(D, mes, vm);   // R5: al editar un mes pasado confirmado se ve la diferencia (D6)
   for(i=0;i<SECS.length;i++){
     var e = document.getElementById('sub-'+SECS[i].k);
     if(e) e.textContent = fARS(suma(m[SECS[i].k]));
@@ -4547,6 +4651,15 @@ document.addEventListener('click', function(ev){
   if(a === 'imprimir'){ imprimir(); return; }
   if(a === 'anio'){ cambiarAnio(+b.getAttribute('data-v')); return; }
   if(a === 'cerrarAviso'){ document.getElementById('avisos').innerHTML = ''; return; }
+  if(a === 'primerUsoOk' || a === 'primerUsoNo'){ primerUso(a === 'primerUsoNo'); return; }
+  if(a === 'editarApertura'){ editarApertura(+b.getAttribute('data-m')); return; }
+  if(a === 'aperturaOk'){ guardarAperturaHoja(b.getAttribute('data-v')); return; }
+  if(a === 'cierreAbrir'){ abrirCierre(+b.getAttribute('data-m')); return; }
+  if(a === 'cierreOk'){ guardarCierreHoja(+b.getAttribute('data-m')); return; }
+  if(a === 'cierreQuitar'){ quitarCierreHoja(+b.getAttribute('data-m')); return; }
+  if(a === 'cierreMantener'){ if(mantenerCierreReal(+b.getAttribute('data-m'))){ conScroll(renderMes); pildora('Se mantiene el cierre confirmado'); } else if(!obsoleta) pildora('No se pudo guardar', true); return; }
+  if(a === 'avCierreOk'){ confirmarAvisoCierre(+b.getAttribute('data-m')); return; }
+  if(a === 'avCierreNo'){ descartarAvisoCierre(+b.getAttribute('data-m')); var av = document.getElementById('avisoSaldo'); if(av) av.innerHTML = ''; return; }
   if(a === 'copiar'){ copiarAnterior(b.getAttribute('data-k')); return; }
   if(a === 'topes'){ abrirTopes(b.getAttribute('data-k')); return; }
   if(a === 'pagar'){
@@ -4611,6 +4724,7 @@ document.addEventListener('input', function(ev){
 });
 document.addEventListener('keydown', function(ev){
   var t = ev.target;
+  if(ev.key === 'Enter' && t && t.id === 'inPrimerUso'){ ev.preventDefault(); primerUso(false); return; }
   if(ev.key === 'Enter' && t && t.id === 'tjBuscar'){ ev.preventDefault(); t.blur(); return; }
   if(ev.key === 'Enter' && t && t.classList && (t.classList.contains('monto') || t.classList.contains('nombre'))){ ev.preventDefault(); t.blur(); }
 });
@@ -6487,7 +6601,8 @@ function accionTj(a, b){
 var LSESQ = 'kibo.esquema', LSPRE130 = 'kibo.respaldo.pre130', ESQUEMA = '1.30';
 // claves de esta app (la copia y la restauración solo tocan estas; otra app del mismo sitio puede usar "kibo.algo"): kibo.datos.AAAA + estas
 var LSR4 = 'kibo.modeloSaldos', LSPRER4 = 'kibo.respaldo.pre-r4';   // marca "este teléfono ya empezó el modelo de saldos" y la copia de lo que había justo antes (como pre130)
-var CLAVES_PROPIAS = [LSANIO, LSCOPIA, LSOCULTO, LSBIENV, LSHIST, LSTRAB, LSVISTA, LSR4];
+var LSAVCIERRE = 'kibo.avisoCierre';   // R5 (D10): mes cuyo aviso "¿Cerraste … con …?" se descartó con "Ahora no"; es del teléfono, no viaja en la copia
+var CLAVES_PROPIAS = [LSANIO, LSCOPIA, LSOCULTO, LSBIENV, LSHIST, LSTRAB, LSVISTA, LSR4, LSAVCIERRE];
 function claveMia(k){
   return typeof k === 'string' && (CLAVES_PROPIAS.indexOf(k) >= 0 || (k.indexOf(PREF) === 0 && /^\d{4}$/.test(k.slice(PREF.length))));
 }
@@ -6591,10 +6706,153 @@ function cierreAnioAnterior(d, hoy){   // cierre de diciembre del año anterior,
   if(!prev || !prev.arrastre) return null;
   return cadena(prev, hoy, ctxModelo(prev, hoy)).meses[11].cierre;
 }
-// Arranca el modelo de saldos del año abierto con lo que el usuario declara tener disponible ahora (null = lo saltea). Todavía no la llama ninguna pantalla (R5).
+/* ═══ R5: escrituras del modelo desde la pantalla (D2, D6) ═══
+   Todas pasan por guardarModelo: pestaña vieja o revisión ajena -> no escribe nada; respaldo previo antes de la primera escritura del
+   modelo en este teléfono; si el año no se puede guardar, la memoria vuelve a como estaba. Nunca se crea un movimiento (D2, D14). */
+function guardarModelo(aplicar){   // aplicar() cambia D y devuelve la función que lo deshace
+  if(!arrancado || !D) return false;
+  if(obsoleta){ avisoOtraPestana(); return false; }
+  if(!blobAlDia(PREF + D.anio, D)){ obsoleta = true; avisoOtraPestana(); return false; }   // otra pestaña guardó y esta se perdió el aviso
+  if(!asegurarSnapshotR4()){ pildora('No pude guardar la copia previa. No cambié nada.', true); return false; }
+  var eraSucio = sucio, deshacer = aplicar();
+  sucio = true;
+  if(guardar() !== false) return true;
+  deshacer(); sucio = eraSucio;
+  return false;
+}
+// cómo se edita el disponible inicial del mes de arranque: 'actual' (el mes de arranque es el de hoy: se pregunta lo disponible ahora, Q1),
+// 'apertura' (mes de arranque ya pasado: se escribe la apertura misma, D2) o 'diciembre' (viene del cierre del año anterior: se corrige ese cierre)
+function modoApertura(d, hoy){
+  var ar = d && d.arrastre; if(!ar) return null;
+  var o = ar.inicial && ar.inicial.origen;
+  if(o === 'arrastre') return 'diciembre';
+  return d.anio === hoy.anio && ar.desde === hoy.mes ? 'actual' : 'apertura';
+}
+function fijarApertura(valor, modo){
+  if(!D || !D.arrastre || typeof valor !== 'number' || !isFinite(valor)) return false;
+  var hoy = hoyApp(), ar = D.arrastre, ctx = ctxModelo(D, hoy), real = modoApertura(D, hoy), ini, n, f;
+  if(modo !== real || real === 'diciembre') return false;
+  if(modo === 'actual'){ n = iniciarArrastre(D, hoy, valor, ctx); if(!n) return false; ini = n.inicial; }   // misma derivación que el primer uso
+  else {   // la apertura escrita; lo declarado guarda la misma identidad de iniciarArrastre: apertura = declarado - (resultado + pases netos) del mes
+    f = flujosMes(D, ar.desde, hoy, ctx);
+    ini = {apertura: valor, declarado: Math.round((valor + f.resultado + f.pasesNetos) * 100) / 100, declaradoEl: hoy.iso, origen: 'declarado'};
+  }
+  var viejo = ar.inicial;
+  return guardarModelo(function(){ ar.inicial = ini; return function(){ ar.inicial = viejo; }; });
+}
+// cierre real de un mes pasado del modelo (D2): {valor, calculadoAlConfirmar, confirmadoEl}; valor null = quitar la confirmación
+function fijarCierreReal(j, valor){
+  var hoy = hoyApp(), vm = vistaModelo(D, hoy), e = vm && vm.cad.meses[j];
+  if(!e || e.legacy || e.estado !== 'pasado') return false;
+  if(valor !== null && (typeof valor !== 'number' || !isFinite(valor))) return false;
+  var m = D.meses[j], viejo = m.cierreReal, nuevo = valor === null ? null : {valor: valor, calculadoAlConfirmar: e.cierreCalc, confirmadoEl: hoy.iso};
+  if(nuevo === null && !viejo) return false;
+  return guardarModelo(function(){
+    if(nuevo) m.cierreReal = nuevo; else delete m.cierreReal;
+    return function(){ if(viejo) m.cierreReal = viejo; else delete m.cierreReal; };
+  });
+}
+// "Mantener" (D6): el valor confirmado queda igual; se anota que ya viste el cambio de lo calculado
+function mantenerCierreReal(j){
+  var hoy = hoyApp(), vm = vistaModelo(D, hoy), e = vm && vm.cad.meses[j];
+  if(!e || e.legacy || e.cierreReal === null) return false;
+  return fijarCierreRealValor(j, e.cierreReal, e.cierreCalc, hoy);
+}
+function fijarCierreRealValor(j, valor, calculado, hoy){
+  var m = D.meses[j], viejo = m.cierreReal;
+  return guardarModelo(function(){
+    m.cierreReal = {valor: valor, calculadoAlConfirmar: calculado, confirmadoEl: hoy.iso};
+    return function(){ m.cierreReal = viejo; };
+  });
+}
+// ── pantalla: primer uso, disponible inicial, cierre real ──
+function leerMontoDe(id, neg){   // {ok, v, msg}: vacío no vale (hay que escribir un monto, también 0)
+  var inp = document.getElementById(id), txt = inp ? String(inp.value).trim() : '', v;
+  if(txt === '') return {ok:false, msg:'Escribí un monto.'};
+  v = parseMonto(txt, neg);
+  if(isNaN(v)){ marcarErr(inp, true); return {ok:false, msg:'No entendí «' + txt + '» como número.'}; }
+  marcarErr(inp, false);
+  return {ok:true, v:v};
+}
+function notaEn(id, txt){ var e = document.getElementById(id); if(e) e.textContent = txt; }
+function primerUso(omitir){
+  var v = null, r;
+  if(!omitir){ r = leerMontoDe('inPrimerUso', false); if(!r.ok){ notaEn('notaPrimerUso', r.msg); return; } v = r.v; }
+  if(!activarSaldos(v)){ if(!obsoleta) pildora('No se pudo guardar', true); return; }
+  conScroll(renderMes);
+  pildora(omitir ? 'Listo, sin saldo inicial' : 'Saldo guardado');
+}
+function montoEditable(n){ n = Math.round(num(n)); return n < 0 ? '-' + montoInput(-n) : (n === 0 ? '0' : montoInput(n)); }
+function editarApertura(j){
+  var hoy = hoyApp(), vm = vistaModelo(D, hoy), e = vm && vm.cad.meses[j];
+  if(!e || e.legacy) return;
+  if(j > vm.cad.resumen.desde){ abrirCierre(j - 1); return; }   // la apertura de este mes ES el cierre del anterior (D2)
+  var modo = modoApertura(D, hoy), desde = vm.cad.resumen.desde;
+  if(modo === 'diciembre'){
+    var prev = leerAnio(D.anio - 1);
+    if(!prev || !prev.arrastre){ alerta('Viene del año anterior', 'Este saldo sale del cierre de diciembre ' + (D.anio - 1) + ', que no está en este teléfono con saldos.'); return; }
+    cambiarAnio(D.anio - 1); mes = 11; renderMes(); abrirCierre(11); return;
+  }
+  var actual = modo === 'actual';
+  abrirHoja('<h3>' + (actual ? '¿Cuánto dinero tenés disponible actualmente?' : '¿Con cuánto dinero empezaste ' + MESES[desde] + '?') + '</h3>'
+    + '<div class="texto" style="margin-bottom:12px">' + (actual ? 'Con esto calculo con cuánto empezaste ' + MESES[desde] + '.' : 'Es el disponible inicial de ' + MESES[desde] + '.')
+    + ' No se crea ningún movimiento.</div>'
+    + '<input type="text" id="inApertura" class="grande" inputmode="decimal" placeholder="0" autocomplete="off" enterkeyhint="done" value="'
+    + esc(actual ? (vm.cad.resumen.disponibleActual > 0 ? montoInput(vm.cad.resumen.disponibleActual) : '') : montoEditable(e.apertura)) + '">'
+    + '<div class="nota mal" id="notaApertura" style="padding:0 0 12px"></div>'
+    + '<div class="fila"><button data-act="cerrarHoja">Cancelar</button><button class="pri" data-act="aperturaOk" data-v="' + modo + '">Guardar</button></div>');
+  var inp = document.getElementById('inApertura');
+  inp.addEventListener('keydown', function(ev){ if(ev.key === 'Enter'){ ev.preventDefault(); guardarAperturaHoja(modo); } });
+  inp.focus();
+}
+function guardarAperturaHoja(modo){
+  var r = leerMontoDe('inApertura', modo !== 'actual');
+  if(!r.ok){ notaEn('notaApertura', r.msg); return; }
+  if(!fijarApertura(r.v, modo)){ if(!obsoleta) notaEn('notaApertura', 'No se pudo guardar.'); else cerrarHoja(); return; }
+  cerrarHoja(); conScroll(renderMes); pildora('Disponible inicial guardado');
+}
+function abrirCierre(j){
+  var vm = vistaModelo(D, hoyApp()), e = vm && vm.cad.meses[j];
+  if(!e || e.legacy || e.estado !== 'pasado') return;
+  var conf = e.cierreReal !== null;
+  abrirHoja('<h3>Cierre de ' + MESES[j] + ' ' + D.anio + '</h3>'
+    + '<div class="texto" style="margin-bottom:12px">¿Es correcto? Si al terminar el mes tenías otra plata, cargá el saldo real. La diferencia queda anotada; no se crea ningún movimiento.</div>'
+    + '<div class="sdo hoja-sdo">' + filaSaldo('Según tus registros', fARS(e.cierreCalc)) + '</div>'
+    + '<small class="sdo-lbl">Saldo real</small>'
+    + '<input type="text" id="inCierre" class="grande" inputmode="decimal" placeholder="0" autocomplete="off" enterkeyhint="done" value="' + esc(montoEditable(conf ? e.cierreReal : e.cierreCalc)) + '">'
+    + '<div class="sdo hoja-sdo">' + filaSaldo('Diferencia', '<span id="difCierre"></span>') + '</div>'
+    + '<div class="nota mal" id="notaCierre" style="padding:0 0 12px"></div>'
+    + '<div class="fila"><button data-act="cerrarHoja">Cancelar</button>'
+    + (conf ? '<button data-act="cierreQuitar" data-m="' + j + '">Quitar confirmación</button>' : '')
+    + '<button class="pri" data-act="cierreOk" data-m="' + j + '">Confirmar</button></div>');
+  var inp = document.getElementById('inCierre');
+  var pintar = function(){ var v = parseMonto(inp.value, true), d = document.getElementById('difCierre'); if(d) d.textContent = isNaN(v) ? '—' : fARS(v - e.cierreCalc); };
+  inp.addEventListener('input', pintar);
+  inp.addEventListener('keydown', function(ev){ if(ev.key === 'Enter'){ ev.preventDefault(); guardarCierreHoja(j); } });
+  pintar(); inp.focus();
+}
+function guardarCierreHoja(j){
+  var r = leerMontoDe('inCierre', true);
+  if(!r.ok){ notaEn('notaCierre', r.msg); return; }
+  if(!fijarCierreReal(j, r.v)){ if(!obsoleta) notaEn('notaCierre', 'No se pudo guardar.'); else cerrarHoja(); return; }
+  cerrarHoja(); conScroll(renderMes); pildora('Cierre confirmado');
+}
+function quitarCierreHoja(j){
+  if(!fijarCierreReal(j, null)){ if(!obsoleta) notaEn('notaCierre', 'No se pudo guardar.'); else cerrarHoja(); return; }
+  cerrarHoja(); conScroll(renderMes); pildora('Volvió a lo calculado');
+}
+function confirmarAvisoCierre(j){
+  var vm = vistaModelo(D, hoyApp()), e = vm && vm.cad.meses[j];
+  if(!e || e.legacy) return;
+  if(!fijarCierreReal(j, e.cierreCalc)){ if(!obsoleta) pildora('No se pudo guardar', true); return; }
+  conScroll(renderMes); pildora('Cierre confirmado');
+}
+// Arranca el modelo de saldos del año abierto con lo que el usuario declara tener disponible ahora (null = lo saltea). La llama la pregunta del primer uso (R5).
 // Idempotente: si el año ya tiene arrastre no hace nada. Devuelve true solo si escribió.
 function activarSaldos(declarado){
   if(!arrancado || !D || D.arrastre) return false;
+  if(obsoleta){ avisoOtraPestana(); return false; }
+  if(!blobAlDia(PREF + D.anio, D)){ obsoleta = true; avisoOtraPestana(); return false; }   // R5: otra pestaña guardó y esta se perdió el aviso: ni respaldo ni marca
   var hoy = hoyApp(), ar = iniciarArrastre(D, hoy, declarado === undefined ? null : declarado, ctxModelo(D, hoy));
   if(!ar) return false;   // no es el año de hoy, o lo declarado no es un número
   if(!asegurarSnapshotR4()){ pildora('No pude guardar la copia previa. No cambié nada.', true); return false; }

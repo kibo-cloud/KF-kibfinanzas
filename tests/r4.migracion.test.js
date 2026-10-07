@@ -252,7 +252,7 @@ function fakeStorage(init, rechaza){
 var FUNCS = ['claveMia', 'dos', 'revGuardada', 'escribirConRev', 'avisoOtraPestana', 'hayEdicion', 'alCambiarOtraPestana', 'recargarDesdeAlmacenamiento',
   'asegurarSnapshotR4', 'respaldoR4', 'diasDelRespaldoR4', 'vencerRespaldoR4', 'volverAntesDeR4', 'ctxModelo', 'cierreAnioAnterior', 'activarSaldos',
   'guardar', 'guardarTrab', 'blobAlDia', 'leerAnio', 'aniosGuardados', 'normTrab', 'leerTrab', 'escribirAnios', 'armarCopia', 'restaurarTexto', 'duplicar', 'avisarRestauro'];
-var VARS = ['PREF', 'LSANIO', 'LSCOPIA', 'LSOCULTO', 'LSBIENV', 'LSHIST', 'LSTRAB', 'LSVISTA', 'LSR4', 'CLAVES_PROPIAS', 'sucio', 'arrancado', 'obsoleta', 'pendiente'];
+var VARS = ['PREF', 'LSANIO', 'LSCOPIA', 'LSOCULTO', 'LSBIENV', 'LSHIST', 'LSTRAB', 'LSVISTA', 'LSR4', 'LSAVCIERRE', 'CLAVES_PROPIAS', 'sucio', 'arrancado', 'obsoleta', 'pendiente'];
 function nuevaApp(ls, today, extra){
   var g = {localStorage: ls, pildoras: [], recargas: 0, renders: 0, alertas: [], hojas: [], ultPild: 0};
   g.avisos = {innerHTML: '', textContent: ''};
@@ -616,13 +616,14 @@ test('restore resets the stale flag of the tab (it replaces everything)', functi
 
 // ── 9. static guards on index.html ──
 var SRC = la.SRC_FOR_TESTS;
-test('index.html: the storage listener, the Ajustes row and the actions exist; the app never calls activarSaldos by itself in R4.3', function(){
+test('index.html: the storage listener, the Ajustes row and the actions exist; activarSaldos is only called by the first-use answer (R5), never automatically', function(){
   assert.match(SRC, /window\.addEventListener\('storage', alCambiarOtraPestana\)/);
   assert.match(SRC, /filaAj\('volverR4'/);
   assert.match(SRC, /a === 'volverR4'/);
   assert.match(SRC, /a === 'recargarPag'/);
   var llamadas = SRC.match(/activarSaldos\(/g) || [];
-  assert.equal(llamadas.length, 1, 'only the definition: no automatic call, R5 builds the prompt');
+  assert.equal(llamadas.length, 2, 'the definition and one caller');
+  assert.match(la.extractFunction('primerUso'), /activarSaldos\(v\)/, 'the caller is the first-use prompt (Guardar / Omitir), a user action');
 });
 test('index.html: the restore row shows only while the snapshot exists and is younger than 30 days', function(){
   assert.match(SRC, /respaldoR4\(\) && diasDelRespaldoR4\(\) <= 30 \? filaAj\('volverR4'/);
