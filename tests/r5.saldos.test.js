@@ -16,7 +16,7 @@ function varDeLaApp(n){ return new Function(la.extractVar(n) + ' return ' + n + 
 
 var R5_FUNCS = ['vistaModelo', 'tilesMes', 'mesDelModelo', 'pasesDelMes', 'lineasSaldo', 'textoOrigen', 'muestraPrimerUso', 'claveAvisoCierre',
   'avisoCierreDescartado', 'descartarAvisoCierre', 'avisoCierrePendiente', 'guardarModelo', 'fijarApertura', 'modoApertura', 'fijarCierreReal',
-  'mantenerCierreReal', 'fijarCierreRealValor', 'filaSaldo', 'htmlSaldo', 'htmlAvisosSaldo', 'fARS', 'grupos', 'esc', 'editarApertura'];
+  'mantenerCierreReal', 'hayCierreParaMantener', 'fijarCierreRealValor', 'filaSaldo', 'htmlSaldo', 'htmlAvisosSaldo', 'fARS', 'grupos', 'esc', 'editarApertura'];
 function app(ls, today, extra, funcs){
   var g = Object.assign({MESES: varDeLaApp('MESES'), oculto: false, PUNTOS: '••••'}, extra || {});
   return H.appAlmacen(ls, today || '2026-10-15', g, R5_FUNCS.concat(funcs || []));
@@ -339,4 +339,44 @@ test('balance sheets: an unchanged input keeps the exact source value, even beyo
   a.editarApertura(8); a.st.inputs.inApertura.value = '60.000,25';
   a.guardarAperturaHoja('apertura');
   assert.equal(H.guardado(a.ls, 2026).arrastre.inicial.apertura, 60000.25, 'a typed amount is read as typed');
+});
+
+// ── native review follow-up (night range T3): "Mantener" refuses a month that is not past, and reports a refusal apart from a write failure ──
+function appMantener(ls, today){
+  var a = app(ls, today, {conScroll: function(f){ f(); }, renderMes: function(){ a.g.renders++; }}, ['mantenerCierreHoja']);
+  H.cargarEn(a, ls, 2026);
+  return a;
+}
+test('Mantener only keeps the closing of a past month: a confirmed month that is current again is refused and nothing is written', function(){
+  var ls = con(C.seccion2(false, false), '2026-09-20'), a = appMantener(ls, '2026-09-20');
+  assert.equal(vm(a).cad.meses[8].estado, 'actual', 'September is the current month on this clock');
+  assert.equal(vm(a).cad.meses[8].cierreReal, 175000, 'and still carries the stored confirmation');
+  var antes = JSON.stringify(ls.d);
+  assert.equal(a.mantenerCierreReal(8), false);
+  assert.equal(JSON.stringify(ls.d), antes, 'nothing written');
+  a.mantenerCierreHoja(8);
+  assert.equal(JSON.stringify(ls.d), antes, 'the button writes nothing either');
+  assert.deepEqual(a.g.pildoras, [['Ese mes ya no tiene un cierre confirmado para mantener', false]], 'a refusal, not "No se pudo guardar"');
+  assert.equal(a.g.renders, 1, 'the month is repainted so the stale button goes away');
+});
+test('the Mantener button: success, nothing to keep, and a write failure that shows "No se pudo guardar" exactly once', function(){
+  var ls = con(C.seccion2(false, false)), a = appMantener(ls);
+  a.D.meses[8].gastosFijos[1].pagado = true;   // calculated 180.000 against the confirmed 175.000
+  a.mantenerCierreHoja(8);
+  assert.deepEqual(a.g.pildoras[a.g.pildoras.length - 1], ['Se mantiene el cierre confirmado', false]);
+  assert.deepEqual(a.g.pildoras.filter(function(p){ return p[1]; }), [], 'no error pill');
+  assert.equal(H.guardado(ls, 2026).meses[8].cierreReal.calculadoAlConfirmar, 180000);
+  var l2 = con(sinSep()), b = appMantener(l2), antes = JSON.stringify(l2.d);
+  b.mantenerCierreHoja(8);
+  assert.deepEqual(b.g.pildoras, [['Ese mes ya no tiene un cierre confirmado para mantener', false]], 'no confirmation: a refusal');
+  assert.equal(JSON.stringify(l2.d), antes);
+  var falla = {si: false}, l3 = H.fakeStorage({'kibo.datos.2026': JSON.stringify(M.normalizar(C.seccion2(false, false), C.hoy('2026-10-15')))}, function(k){ return falla.si && k === 'kibo.datos.2026'; });
+  var c = appMantener(l3), y;
+  c.D.meses[8].gastosFijos[1].pagado = true;
+  falla.si = true; y = l3.d['kibo.datos.2026'];
+  c.mantenerCierreHoja(8);
+  assert.equal(l3.d['kibo.datos.2026'], y, 'the year is not written');
+  assert.deepEqual(c.g.pildoras.filter(function(p){ return p[0] === 'No se pudo guardar'; }), [['No se pudo guardar', true]], 'the failure is reported once');
+  assert.equal(c.g.pildoras.length, 1, 'and nothing else is claimed');
+  assert.equal(c.D.meses[8].cierreReal.calculadoAlConfirmar, 200000, 'memory as before');
 });

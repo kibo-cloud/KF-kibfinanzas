@@ -4819,7 +4819,7 @@ document.addEventListener('click', function(ev){
   if(a === 'cierreAbrir'){ abrirCierre(+b.getAttribute('data-m')); return; }
   if(a === 'cierreOk'){ guardarCierreHoja(+b.getAttribute('data-m')); return; }
   if(a === 'cierreQuitar'){ quitarCierreHoja(+b.getAttribute('data-m')); return; }
-  if(a === 'cierreMantener'){ if(mantenerCierreReal(+b.getAttribute('data-m'))){ conScroll(renderMes); pildora('Se mantiene el cierre confirmado'); } else if(!obsoleta) pildora('No se pudo guardar', true); return; }
+  if(a === 'cierreMantener'){ mantenerCierreHoja(+b.getAttribute('data-m')); return; }
   if(a === 'avCierreOk'){ confirmarAvisoCierre(+b.getAttribute('data-m')); return; }
   if(a === 'avCierreNo'){ descartarAvisoCierre(+b.getAttribute('data-m')); var av = document.getElementById('avisoSaldo'); if(av) av.innerHTML = ''; return; }
   if(a === 'copiar'){ copiarAnterior(b.getAttribute('data-k')); return; }
@@ -6932,10 +6932,19 @@ function fijarCierreReal(j, valor){
   });
 }
 // "Mantener" (D6): el valor confirmado queda igual; se anota que ya viste el cambio de lo calculado
+function hayCierreParaMantener(e){ return !!e && !e.legacy && e.estado === 'pasado' && e.cierreReal !== null; }   // solo un mes pasado del modelo con un cierre confirmado
 function mantenerCierreReal(j){
   var hoy = hoyApp(), vm = vistaModelo(D, hoy), e = vm && vm.cad.meses[j];
-  if(!e || e.legacy || e.cierreReal === null) return false;
+  if(!hayCierreParaMantener(e)) return false;
   return fijarCierreRealValor(j, e.cierreReal, e.cierreCalc, hoy);
+}
+// el botón "Mantener": un pedido que ya no corresponde (el mes dejó de ser pasado o ya no tiene cierre confirmado) se avisa como tal y se repinta;
+// si la escritura falla, guardarModelo/guardar ya avisaron (otra pestaña, copia previa, año ilegible o "No se pudo guardar"): no se repite la píldora
+function mantenerCierreHoja(j){
+  var vm = vistaModelo(D, hoyApp());
+  if(!hayCierreParaMantener(vm && vm.cad.meses[j])){ conScroll(renderMes); pildora('Ese mes ya no tiene un cierre confirmado para mantener'); return; }
+  if(!mantenerCierreReal(j)) return;
+  conScroll(renderMes); pildora('Se mantiene el cierre confirmado');
 }
 function fijarCierreRealValor(j, valor, calculado, hoy){
   var m = D.meses[j], viejo = m.cierreReal;
