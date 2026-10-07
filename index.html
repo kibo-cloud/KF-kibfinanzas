@@ -1817,13 +1817,13 @@ function mesVacio(){
 function normalizar(d, hoy){
   d = d && typeof d === 'object' ? d : {};
   d.version = 1;
-  d.anio = num(d.anio) || 2026;
-  d.actualizado = d.actualizado || '';
+  d.anio = num(d.anio) || 2026;   // respaldo fijo a propósito (I-7): quien llama siempre pone el año de la clave; uno que dependa de hoy cambiaría la salida del motor
+  d.actualizado = typeof d.actualizado === 'string' ? d.actualizado : '';   // N5 S-3: solo texto (una copia editada a mano puede traer cualquier cosa)
   d.ahorroAnioAnterior = num(d.ahorroAnioAnterior);
   d.usdAnioAnterior = num(d.usdAnioAnterior);
   d.aReponerAnterior = num(d.aReponerAnterior);   // lo que quedó por reponer al ahorro al cerrar el año anterior
   d.cotizacionUSD = num(d.cotizacionUSD) || 1499;
-  d.cotizacionFecha = d.cotizacionFecha || '';
+  d.cotizacionFecha = typeof d.cotizacionFecha === 'string' ? d.cotizacionFecha : '';
   if(!Array.isArray(d.cripto)) d.cripto = [{activo:'BTC',cantidad:0,precioUSD:0}];
   d.cripto = d.cripto.map(function(c){ return {activo:String(c&&c.activo||''),cantidad:num(c&&c.cantidad),precioUSD:num(c&&c.precioUSD)}; });
   if(!Array.isArray(d.meses)) d.meses = [];
@@ -4045,7 +4045,10 @@ function versionPC(){
     alerta('No pude leer la app', 'Abrí la app una vez con internet para que quede guardada completa y probá de nuevo.');
   });
 }
+var MAX_COPIA = 10 * 1024 * 1024;   // N5 S-3: una copia real pesa unos pocos cientos de KB; más de 10 MB no se lee
+function avisoCopiaGrande(){ alerta('Ese archivo es muy grande', 'Pesa más de 10 MB, y una copia de kibFinanzas pesa mucho menos. No parece una copia: no cambié nada.'); }
 function restaurarCopia(f){
+  if(f && f.size > MAX_COPIA){ avisoCopiaGrande(); return; }
   var r = new FileReader();
   r.onload = function(){ restaurarTexto(r.result); };
   r.readAsText(f);
@@ -4086,6 +4089,7 @@ function avisarRestauro(total, fallaron, trabajoFallo, saltados){
 function restaurarTexto(txt){
   (function(){
     var j;
+    if(typeof txt === 'string' && txt.length > MAX_COPIA){ avisoCopiaGrande(); return; }
     try{ j = JSON.parse(txt); }catch(e){ alerta('Ese archivo no se pudo leer', 'No parece una copia de kibFinanzas.'); return; }
     var anios = j && j.anios && typeof j.anios === 'object' ? j.anios
               : (j && Array.isArray(j.meses) ? (function(o){ var t = {}; t[num(j.anio)||new Date().getFullYear()] = j; return t; })() : null);

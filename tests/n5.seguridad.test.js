@@ -134,3 +134,38 @@ test('S-2 a backup whose only keys are invalid years is reported as empty and wr
   assert.deepEqual(app.g.alertas.map(function(a){ return a[0]; }), ['Copia vacía']);
   assert.deepEqual(Object.keys(ls.d), []);
 });
+
+// ── S-3: type hygiene of normalizar and a size cap on restore ──
+test('S-3 normalizar keeps actualizado and cotizacionFecha only as text, and still keeps unknown fields', function(){
+  var M = la.loadMotor(), hoy = M.hoyDe(new Date('2026-10-15T12:00:00'));
+  var raros = [{x: 1}, ['2026-01-01'], 20260101, true, null];
+  raros.forEach(function(v){
+    var d = M.normalizar({anio: 2026, actualizado: v, cotizacionFecha: v}, hoy);
+    assert.equal(d.actualizado, '', JSON.stringify(v));
+    assert.equal(d.cotizacionFecha, '', JSON.stringify(v));
+  });
+  var ok = M.normalizar({anio: 2026, actualizado: '2026-09-01T10:00:00.000Z', cotizacionFecha: '2026-09-02', campoNuevo: {a: 1}, meses: [{campoMes: 7}]}, hoy);
+  assert.equal(ok.actualizado, '2026-09-01T10:00:00.000Z');
+  assert.equal(ok.cotizacionFecha, '2026-09-02');
+  assert.deepEqual(JSON.parse(JSON.stringify(ok.campoNuevo)), {a: 1}, 'unknown year-level fields survive (design §8)');
+  assert.equal(ok.meses[0].campoMes, 7, 'unknown month-level fields survive (design §8)');
+});
+
+test('S-3 restoring a file over 10 MB is refused with a visible message and reads nothing', function(){
+  var ls = H.fakeStorage({});
+  var leidos = 0;
+  var app = H.appAlmacen(ls, null, {FileReader: function(){ leidos++; this.readAsText = function(){}; }}, ['restaurarCopia']);
+  app.D = app.normalizar({anio: 2026}, app.hoy);
+  app.restaurarCopia({size: 10 * 1024 * 1024 + 1, name: 'copia.json'});
+  assert.equal(leidos, 0, 'the file is not read');
+  assert.equal(app.g.alertas.length, 1);
+  assert.match(app.g.alertas[0][0], /grande/);
+  app.restaurarCopia({size: 2000, name: 'copia.json'});
+  assert.equal(leidos, 1, 'a normal file is read');
+  var grande = JSON.stringify({app: 'kibFinanzas', version: 1, anios: {2026: C.vacio(2026)}, relleno: 'x'.repeat(10 * 1024 * 1024)});
+  app.restaurarTexto(grande);
+  assert.equal(app.pendiente, null, 'no restore is offered');
+  assert.equal(app.g.alertas.length, 2);
+  assert.match(app.g.alertas[1][0], /grande/);
+  assert.deepEqual(Object.keys(ls.d), []);
+});
