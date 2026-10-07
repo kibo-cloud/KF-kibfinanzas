@@ -594,8 +594,9 @@ Checklist (route: delegated writer per task, parent verifies + re-runs suites):
 - [x] N1 R4.5 close: points 1-3 (Deudas column, CSV fijos/variables, `resumenAnio`), other `calc()/serie()` consumers in model years,
       "Del trabajo" matcher (L-03b), cross-view consistency. Route: delegated writer. Evidence: "#### N1 — R4.5 closure" above and
       matrix E.4; two OWNER_DECISION_REQUIRED recorded (N1-A, N1-B).
-- [ ] N2 R4.6 hardening: weak tests (L-10 risk marker, D16-16 E2E rejection), stale tab / storage races / double write / double count,
+- [x] N2 R4.6 hardening: weak tests (L-10 risk marker, D16-16 E2E rejection), stale tab / storage races / double write / double count,
       restore, migration, backup, import/export, numbers, pending/paid, future months, new years; dead params; semantics source per concept.
+      Route: delegated writer. Evidence: "#### N2 — R4.6 hardening" below; 3 bugs fixed RED→GREEN, one OWNER_DECISION_REQUIRED (N2-B).
 - [ ] N3 R5: opening / available UX (first-use prompt via `activarSaldos`, "Saldo inicial · Editar", "Viene del mes anterior", real
       closing correction, edit of a previous month), Patrimonio composition (owner MUST), "Del trabajo" above its pases presentation.
 - [ ] N4 Pre-Alpha code audit + cleanup (risk-reducing only).
@@ -604,6 +605,8 @@ Checklist (route: delegated writer per task, parent verifies + re-runs suites):
 - [ ] N7 Final regression, smoke, Alpha readiness report.
 
 Native review consent log (night run):
+- N2 (ec12149..HEAD of N2): native review consent pending (owner away); not claimed. Writer verification: `npm test` 585 (584 pass,
+  1 todo risk marker), `npm run test:e2e` 169/169, motor goldens byte-identical, mutation checks recorded in the N2 section.
 - N1 (1d7102b..1d6c734, 8 commits, 297+/21-): native review consent pending (owner away); not claimed. Parent verification:
   `npm test` 571/571 (0 todo), `npm run test:e2e` 166/166, motor goldens byte-identical, tree clean. Independent read-only review
   launched (results below when available).
@@ -617,6 +620,55 @@ Native review consent log (night run):
   stays OWNER_DECISION_REQUIRED (low; Q14 count-based debts; alternatives in matrix E.4), recommended keep for Alpha with a note.
 
 #### N2 — R4.6 hardening (night run)
+
+- STATUS: done. Route: delegated writer (one bounded writer, 2+ non-trivial files). Commits on `fix/repair-sprint-1` after ec12149:
+  cb25dd3 `fix(r4.6): check both revisions before a Trabajo pase writes anything`, f987630 `test(r4.6): assert a visible rejection for
+  D16-16 with a condition wait`, 3cc37fa `fix(r4.5): count Trabajo pases in the red-month rule` (parent addition A), 75bff01
+  `test(r4.6): pin legacy two-row Del trabajo allocation as a risk marker` (parent addition B), 8ea9e7d `test(r4.6): guard data-driven
+  loops against vacuous passes`, 0a2eb2d `fix(r4.6): a stale tab never creates the new year`, d785220 `refactor(r4.6): remove
+  unreferenced baseline leftovers`, b71de11 `refactor(r4.6): document the single semantic source per concept`, plus this record.
+- BUG 1 — L-10 two-blob pase (was a pinned "accepted" risk; a SAFE fix existed): a pase writes the year row and Trabajo with no
+  transaction. With a missed storage event the row was written and the Trabajo save refused (money in both pockets); removing a pase
+  emptied the row while Trabajo kept the pase (money in neither); a stale open year left memory changed and toasted "Pasé".
+  Fix: `blobAlDia` + a precheck in `aplicarPase` of the stored Trabajo and open-year revisions before the first write; `guardarPase`
+  says "Hay cambios hechos en otra pestaña. Recargá antes de pasar."; `quitarPase` / `reponerPase` stop silently when stale. RED: 4 tests
+  (`L-10`, `L-10b`, `L-10c`, `L-10d`) fail on ec12149 (`L-10` stored the row +100.000; `L-10b` stored the row at 0, rev 2). GREEN after.
+  Mutation (precheck removed): 4 fail, restored.
+- BUG 2 — red month ignored Trabajo pases (independent review of N1, parent addition A): `mesEnRojo` used `flujosMes().resultado`, which
+  leaves realized pases out, while the card / row count them as Ingresos; a month funded by a 300.000 pase with 100.000 expenses was "En
+  Octubre gastaste más de lo que entró". Fix: `resultado + trabajoRealizado < 0` (= card Ingresos − Gastos − Deudas); legacy rule
+  unchanged. RED 1 (`N2 red month, model year ...` in r4.anio), GREEN; the test also asserts the month stays red when the pase does not
+  cover the expenses (guards against "never red").
+- BUG 3 — `duplicar` in a stale tab: wrote the pre-R4 snapshot, switched the open year and alerted "Listo el 2027" while the new year's
+  save was refused (nothing stored). Fix: refuse up front when stale, and when its own pending save is refused (December in memory is
+  not the stored one). RED 2 (r4.endurecimiento), GREEN; mutation (guards removed) fails 2.
+- WEAK TESTS FIXED: `L-10` pinned a money-duplicating state as passing → now 4 behavior tests (above). D16-16 E2E rejection waited
+  300 ms and only checked the stored value → `waitFor` condition helper; asserts the visible toast "No entendí «1,234.5» como número",
+  the field showing the stored amount back, the card unchanged and the `err` class while typing (169 E2E checks, was 166). Mutation
+  (toast removed from `aplicarInput`): 3 E2E checks fail (incl. the new one), restored. Vacuous-loop guards: R-01 (12 rows, 6 declared),
+  R-02 (3 years), r4.anio serieVista corpus (9), r4.integracion legacy datasets (6), datos `duplicar` rows (>= 2). D16-15 still pins
+  today's behavior on purpose (PENDING-R7, labeled in its name and messages).
+- NEW RISK TESTS (`tests/r4.endurecimiento.test.js`, 8): own-key classification (data vs device; a new key fails until classified) and
+  backup completeness (every year + Trabajo, no device key); multi-year + Trabajo backup → empty phone round trip (years, Trabajo, chain,
+  12 cards, net worth); restore over newer revisions (written above them; a stale tab of before is refused); unreadable / empty backups
+  write nothing; `duplicar` with a CONFIRMED December closing (opens at 700.000, `calculadoOrigen` 825.000; in 2027 the confirmed value
+  holds when December changes, the unconfirmed chain follows: 625.000 − 90.000); the two stale `duplicar` cases; sheet fields
+  `leerMonto` / `cantidadDe` (decimals, `$`, negatives with reason, escaped echo, quantity > 0). Pending vs paid, future months and
+  editing a previous month with / without confirmed closing were already covered (D16-02/03/06/11, C-03..C-05, N1) and not duplicated.
+- CLEANUP (no behavior change): scan of every top-level function's parameters (425 params, 384 functions, motor and app): no dead
+  parameter. Unreferenced code removed: `tBuffer`, `tServidor`, `conflictoDatos`, `limpiarBuffer(){}` (baseline leftovers, no reference in
+  app, sw.js or tests). `activarSaldos` is unreferenced by the UI but kept (R5 caller; tested). Motor goldens byte-identical to ec12149.
+- INVENTORY: `tests/inventario.data.js` reasons refreshed (flujosMes now wired, ranking / proyeccionDeudas through `datosRealizados`,
+  renderAnio summary, duplicar, aplicarPase) and `SOURCES` added; the table below is guarded by `tests/inventario.test.js` (mutation:
+  wrong owner in the doc row → 1 fail, restored). The R1 "Consumer inventory" table at the end of this file stays the R1 snapshot; the
+  current classification is `tests/inventario.data.js`.
+- OWNER_DECISION_REQUIRED: N2-B (MEDIUM) legacy two-row "Del trabajo" data — `L-03b` is resolved for new data only; alternatives in
+  matrix F. Pinned by `L-03d` (node:test `todo`; passing it means the risk was fixed).
+- RISKS (matrix F): no transaction across year + Trabajo (precheck closes the missed-event window; a quota error on the second write can
+  still split); `cambiarAnio` in a stale tab drops the stale edits (LOW, left as is).
+- TESTS: `npm test` 585 (584 pass, 0 fail, 1 todo = `L-03d` risk marker; was 571 / 0 / 0); `npm run test:e2e` 169/169 (was 166); motor
+  goldens byte-identical to ec12149. No APPVER bump.
+- NATIVE REVIEW: consent pending (owner away, night-run rule); not claimed.
 
 ##### Semantic sources (R4.6)
 

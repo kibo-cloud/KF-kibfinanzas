@@ -63,7 +63,7 @@ Summary A: 16 PASS (5 and 17 on the model, 14 with its gross row reserved for R5
 | C-15 | cripto | BTC 0.5 @ 60.000, ETH 2 @ 2.500 | qty × price × cotización in bruto a hoy | criptoUSD 35.000, ARS 52.500.000; bruto 55.425.000, neto 55.125.000; old view criptoUSD 35.000 | PASS | `C-15` (new) |
 | C-16 | restauración | see D16-09 | — | — | PASS | `D16-09`; r4.migracion restore tests (4); `L-09` (new); E2E `R4.3 c` |
 | C-17 | migración | 6 legacy / pre-R4 datasets, declared 500.000 and skipped | additive only; legacy months, serie and old outputs untouched; Oct = declared | all hold (section D) | PASS | `R-01`, `R-02` (new); r4.migracion `iniciarArrastre ...` (4), `additive only ...`, `legacy isolation (I6) ...`, `old-version round trip ...`; E2E `R4.3 b` |
-| C-18 | múltiples pestañas | two tabs, stale tab, storage event | stale tab never overwrites; no write until reload | all hold after fix `0ff866d` (stale tab no longer writes another year through a pase) | PASS (after fix) | r4.migracion revision, two-tab and storage-event tests; E2E `R4.3 a` checks; `L-06`, `L-07` (new, RED→GREEN), `L-08`; risk pinned in `L-10` |
+| C-18 | múltiples pestañas | two tabs, stale tab, storage event | stale tab never overwrites; no write until reload | all hold after fix `0ff866d` (stale tab no longer writes another year through a pase) | PASS (after fix) | r4.migracion revision, two-tab and storage-event tests; E2E `R4.3 a` checks; `L-06`, `L-07` (new, RED→GREEN), `L-08`; `L-10` risk resolved in N2 (R4.6) |
 | C-19 | recarga | save section 2, fresh load | same chain, card, net worth | rev 1; `cadena` deepEqual; card 825.000; net worth 2.625.000 | PASS | `C-19` (new); E2E `R4.3 b: arrastre and cierreReal survive a reload`, `rev survives a reload` |
 | C-20 | cierre/reapertura | confirm Sep at 175.000, then remove the confirmation | reopening gives back exactly the calculated chain; no movement | confirmed: Oct 175.000 / 825.000 / −25.000; reopened `cadena` and `patrimonioNeto` deepEqual the never-confirmed ones; only `cierreReal` differs | PASS | `C-20` (new); `D16-06` |
 | C-21 | datos antiguos | every golden corpus dataset; 7f7ad40-era blob | a year without model reads exactly as before | card = `calc()` for 12 months × 9 datasets; net worth = old `patrimonio()`; both goldens byte-identical | PASS | r4.integracion `legacy year: no model view ...`; r4.migracion round trip + Q9 tests; `R-01`; motor golden tests |
@@ -84,7 +84,7 @@ Summary B: 21 PASS (C-18 after the R4.5 fix).
 | | **stale tab** (`obsoleta`) passing money to ANOTHER year still wrote that year's blob while Trabajo refused: the row without its pase counts the money twice (`L-07`, RED on 0b31901) | **Real R4.3 bug** (contract: a stale tab writes nothing until reload) | **Fixed** `0ff866d`: `aplicarPase` refuses and shows the notice when the tab is stale |
 | R4.3 advisory: Trabajo restore coverage | backup without Trabajo leaves the stored one byte-identical; a backup with a LOWER Trabajo rev (1 vs stored 6) is written with rev 7 (`L-09`) | Covered | — |
 | `explicaDisp` with a scheduled pase (index.html ~5201) | "Lo cobrado ($1.000.000) menos los gastos ($100.000) y lo que pasaste a Ingresos ($300.000)." = 600.000 = the big number with 200.000 scheduled (`L-04`) | Covered, correct | — |
-| Multiple tabs and reload | see C-18, C-19 | Covered | New risk pinned in `L-10` (below) |
+| Multiple tabs and reload | see C-18, C-19 | Covered | Risk `L-10` (below) resolved in N2 (R4.6) |
 | Restore / migration | see C-16, C-17, section D | Covered | — |
 
 Contradictions with Q1-Q15 found: none.
@@ -261,10 +261,19 @@ Line endings: a8a3a84 and 6de98fb wrote `tests/r4.anio.test.js` with CRLF; 08b8c
 
 ## F. Risks found in R4.5
 
-- `L-10` (pinned, accepted under Q12 minimal mechanism): if another tab saves Trabajo and this tab has not yet processed the storage
-  event, a pase into the OPEN year writes the year row and then the Trabajo save is refused (tab marked stale). On reload the row has
-  no pase: the money is in both pockets. Window = one missed storage event (same class as the accepted R4.3 race). No transactional
-  write exists across the two blobs.
+- `L-10` RESOLVED in N2 (cb25dd3, R4.6): if another tab saved Trabajo and this tab had not yet processed the storage event, a pase
+  into the OPEN year wrote the year row and then the Trabajo save was refused (money in both pockets); removing a pase did the reverse
+  (money in neither). `aplicarPase` now checks the stored revisions of Trabajo and of the open year BEFORE the first write; a mismatch
+  marks the tab stale and writes nothing. Tests `L-10`, `L-10b` (removal), `L-10c` (stale open year), `L-10d` (undo of a removal); RED
+  on ec12149, mutation (precheck removed) fails 4. Residual: there is still no transaction across the two blobs; the precheck and both
+  writes run in one synchronous task, so another tab's write in between is practically excluded (browsers do not guarantee localStorage
+  atomicity across tabs), and a storage error on the second write (quota) can still leave one side written (pre-existing, reported by
+  the "No se pudo guardar" pill).
+- N2 `duplicar` in a stale tab (RESOLVED, 0a2eb2d): it wrote the pre-R4 snapshot, switched the open year and said "Listo el 2027" while
+  the save of the new year was refused. Now refused up front, and when its own pending save is refused.
+- N2 (LOW, open): `cambiarAnio` in a stale tab: the pending save is refused (notice shown), then the other year loads and the unsaved
+  edits of the stale tab are dropped; the tab stays stale until reload. No money is written twice; the edits were going to be lost on
+  reload anyway. Left as is.
 - `L-03b` accent variants: RESOLVED in 8f3296c (N1 item 5, E.4).
 - RESOLVED in 696077f (native review R3-stale-toast-misleading / R3-stale-quitarPase-unproved): removing a pase from a stale tab
   removed it from memory and showed "Pase borrado…" although nothing was stored. `quitarPase` now refuses in a stale tab (notice
