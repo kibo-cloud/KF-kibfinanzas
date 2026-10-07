@@ -12,6 +12,8 @@ npm-debug.log*
 *.backup.json
 tugasto-*.json
 kibfinanzas-*.json
+tugasto-*.html
+kibfinanzas-*.html
 *.csv
 
 # Environment and secrets
