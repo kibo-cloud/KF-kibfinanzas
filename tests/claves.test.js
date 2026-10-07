@@ -17,11 +17,11 @@ function fakeStorage(init){
   };
   return s;
 }
-var VARS = ['PREF', 'LSANIO', 'LSCOPIA', 'LSOCULTO', 'LSBIENV', 'LSHIST', 'LSTRAB', 'LSVISTA', 'LSESQ', 'LSR4', 'LSAVCIERRE', 'CLAVES_PROPIAS'];
+var VARS = ['PREF', 'LSANIO', 'LSCOPIA', 'LSOCULTO', 'LSBIENV', 'LSHIST', 'LSTRAB', 'LSVISTA', 'LSESQ', 'LSR4', 'LSAVCIERRE', 'CLAVES_PROPIAS', 'LSCUAR'];
 function s3App(ls, extra){
   var g = {localStorage: ls, pildora: function(){}, location: {reload: function(){ g.recargado = true; }}, confirmar: function(t, c, e, fn){ fn(); }};
   Object.keys(extra || {}).forEach(function(k){ g[k] = extra[k]; });
-  var app = loadApp({funcs: ['claveMia', 'seguroActualizacion', 'respaldoPrevio', 'volverAntesDe130'], vars: VARS, globals: g});
+  var app = loadApp({funcs: ['claveMia', 'seguroActualizacion', 'respaldoPrevio', 'volverAntesDe130', 'cuarentenaAntesDeBorrar', 'revGuardada', 'claveCuarentena', 'ponerEnCuarentena'], vars: VARS, globals: g});
   app.g = g;
   return app;
 }

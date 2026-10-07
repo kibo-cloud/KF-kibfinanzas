@@ -6764,6 +6764,16 @@ var CLAVES_PROPIAS = [LSANIO, LSCOPIA, LSOCULTO, LSBIENV, LSHIST, LSTRAB, LSVIST
 function claveMia(k){
   return typeof k === 'string' && (CLAVES_PROPIAS.indexOf(k) >= 0 || (k.indexOf(PREF) === 0 && /^\d{4}$/.test(k.slice(PREF.length))));
 }
+// N7: antes de que una vuelta atrás borre las claves propias, el texto ilegible de un año o de Trabajo se copia a cuarentena; si la copia no entra, false (no se borra nada)
+function cuarentenaAntesDeBorrar(claves){
+  for(var i=0, k, st;i<claves.length;i++){
+    k = claves[i];
+    if(k !== LSTRAB && !(k.indexOf(PREF) === 0 && /^\d{4}$/.test(k.slice(PREF.length)))) continue;
+    st = revGuardada(k);
+    if(st.roto && !ponerEnCuarentena(k, st.texto)) return false;
+  }
+  return true;
+}
 function seguroActualizacion(){
   try{
     if(localStorage.getItem(LSESQ) === ESQUEMA) return false;
@@ -6796,6 +6806,7 @@ function volverAntesDe130(){
       try{
         var i, k, borrar = [];
         for(i=0;i<localStorage.length;i++){ k = localStorage.key(i); if(claveMia(k) || k === LSESQ) borrar.push(k); }   // LSESQ también: así el arranque vuelve a anotar el esquema
+        if(!cuarentenaAntesDeBorrar(borrar)){ pildora('No pude guardar una copia de lo que no se puede leer. No cambié nada.', true); return; }
         for(i=0;i<borrar.length;i++) localStorage.removeItem(borrar[i]);
         for(k in r.datos) if(r.datos.hasOwnProperty(k) && claveMia(k)) localStorage.setItem(k, r.datos[k]);   // un respaldo viejo puede traer claves ajenas: no se escriben
         localStorage.removeItem(LSPRE130);
@@ -6840,6 +6851,7 @@ function volverAntesDeR4(){
       try{
         var i, k, borrar = [];
         for(i=0;i<localStorage.length;i++){ k = localStorage.key(i); if(claveMia(k)) borrar.push(k); }   // incluye la marca: así la app vuelve a quedar como antes del modelo
+        if(!cuarentenaAntesDeBorrar(borrar)){ pildora('No pude guardar una copia de lo que no se puede leer. No cambié nada.', true); return; }
         for(i=0;i<borrar.length;i++) localStorage.removeItem(borrar[i]);
         for(k in r.datos) if(r.datos.hasOwnProperty(k) && claveMia(k)) localStorage.setItem(k, r.datos[k]);   // solo claves propias, venga lo que venga en el respaldo
         localStorage.removeItem(LSPRER4);

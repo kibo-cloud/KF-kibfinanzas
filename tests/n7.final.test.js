@@ -57,3 +57,41 @@ test('N7-1 the normal app is unchanged: the shipped seed takes the remembered or
   var c = appCargar(ls2, exportado(2027)); c.cargar();
   assert.equal(c.D.anio, 2026, 'a stored year always wins over the embedded one');
 });
+
+// ── N7-2: the rollbacks never delete an unreadable own blob without quarantining it first ──
+var ROTO = '{"anio":2027,"meses":[{"ingresos":[{"nombre":"Sueldo","monto":900000';
+
+test('N7-2 volverAntesDeR4 quarantines an unreadable non-active year and Trabajo before deleting own keys', function(){
+  var ls = H.fakeStorage({'kibo.datos.2026': JSON.stringify(M.normalizar(C.vacio(2026), HOY)), 'kibo.trabajo': JSON.stringify({version: 1, facturas: []})});
+  var app = H.appAlmacen(ls);
+  assert.equal(app.asegurarSnapshotR4(), true);
+  ls.d['kibo.datos.2027'] = ROTO; ls.d['kibo.trabajo'] = '{roto';
+  app.volverAntesDeR4();
+  assert.equal(app.g.recargas, 1);
+  assert.equal(ls.d['kibo.datos.2027'], undefined, 'the rollback still removes keys created after the snapshot');
+  assert.equal(ls.d['kibo.cuarentena.2027'], ROTO, 'the raw text was kept');
+  assert.equal(ls.d['kibo.cuarentena.trabajo'], '{roto');
+});
+
+test('N7-2 volverAntesDeR4 does nothing when the quarantine copy cannot be stored', function(){
+  var ls = H.fakeStorage({'kibo.datos.2026': JSON.stringify(M.normalizar(C.vacio(2026), HOY))}, function(k){ return k.indexOf('kibo.cuarentena.') === 0; });
+  var app = H.appAlmacen(ls);
+  app.asegurarSnapshotR4();
+  ls.d['kibo.datos.2027'] = ROTO;
+  app.volverAntesDeR4();
+  assert.equal(app.g.recargas, 0);
+  assert.equal(ls.d['kibo.datos.2027'], ROTO, 'nothing deleted');
+  assert.ok(ls.d['kibo.respaldo.pre-r4'], 'the snapshot is still there to try again');
+  assert.deepEqual(app.g.pildoras.map(function(p){ return p[1]; }), [true]);
+});
+
+test('N7-2 volverAntesDe130 quarantines an unreadable non-active year before deleting own keys', function(){
+  var ls = H.fakeStorage({'kibo.datos.2026': '{"a":1}', 'kibo.respaldo.pre130': JSON.stringify({version: 'anterior a 1.30', fecha: '2026-01-01T00:00:00.000Z', datos: {'kibo.datos.2026': '{"a":1}'}})});
+  ls.d['kibo.datos.2027'] = ROTO;
+  var app = H.appAlmacen(ls, null, {LSESQ: 'kibo.esquema', LSPRE130: 'kibo.respaldo.pre130'}, ['volverAntesDe130', 'respaldoPrevio']);
+  assert.equal(app.LSPRE130, la.extractVar('LSESQ').indexOf("LSPRE130 = 'kibo.respaldo.pre130'") >= 0 ? 'kibo.respaldo.pre130' : null, 'same key as the app');
+  app.volverAntesDe130();
+  assert.equal(app.g.recargas, 1);
+  assert.equal(ls.d['kibo.datos.2027'], undefined);
+  assert.equal(ls.d['kibo.cuarentena.2027'], ROTO);
+});

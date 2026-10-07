@@ -249,7 +249,7 @@ function fakeStorage(init, rechaza){
     removeItem: function(k){ delete d[k]; }
   };
 }
-var FUNCS = ['claveMia', 'dos', 'revGuardada', 'claveCuarentena', 'ponerEnCuarentena', 'avisoCuarentena', 'esc', 'escribirConRev', 'avisoOtraPestana', 'hayEdicion', 'alCambiarOtraPestana', 'recargarDesdeAlmacenamiento',
+var FUNCS = ['claveMia', 'dos', 'revGuardada', 'claveCuarentena', 'ponerEnCuarentena', 'cuarentenaAntesDeBorrar', 'avisoCuarentena', 'esc', 'escribirConRev', 'avisoOtraPestana', 'hayEdicion', 'alCambiarOtraPestana', 'recargarDesdeAlmacenamiento',
   'asegurarSnapshotR4', 'respaldoR4', 'diasDelRespaldoR4', 'vencerRespaldoR4', 'volverAntesDeR4', 'ctxModelo', 'cierreAnioAnterior', 'activarSaldos',
   'guardar', 'guardarTrab', 'blobAlDia', 'leerAnio', 'aniosGuardados', 'normTrab', 'leerTrab', 'anioValido', 'escribirAnios', 'armarCopia', 'restaurarTexto', 'avisoCopiaGrande', 'duplicar', 'avisarRestauro'];
 var VARS = ['PREF', 'LSANIO', 'LSCOPIA', 'LSOCULTO', 'LSBIENV', 'LSHIST', 'LSTRAB', 'LSVISTA', 'LSR4', 'LSAVCIERRE', 'CLAVES_PROPIAS', 'sucio', 'arrancado', 'obsoleta', 'pendiente', 'MAX_COPIA', 'LSCUAR'];
