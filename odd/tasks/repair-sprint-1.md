@@ -597,14 +597,18 @@ Checklist (route: delegated writer per task, parent verifies + re-runs suites):
 - [x] N2 R4.6 hardening: weak tests (L-10 risk marker, D16-16 E2E rejection), stale tab / storage races / double write / double count,
       restore, migration, backup, import/export, numbers, pending/paid, future months, new years; dead params; semantics source per concept.
       Route: delegated writer. Evidence: "#### N2 — R4.6 hardening" below; 3 bugs fixed RED→GREEN, one OWNER_DECISION_REQUIRED (N2-B).
-- [ ] N3 R5: opening / available UX (first-use prompt via `activarSaldos`, "Saldo inicial · Editar", "Viene del mes anterior", real
+- [x] N3 R5: opening / available UX (first-use prompt via `activarSaldos`, "Saldo inicial · Editar", "Viene del mes anterior", real
       closing correction, edit of a previous month), Patrimonio composition (owner MUST), "Del trabajo" above its pases presentation.
+      Route: delegated writer (N3a, N3b). Evidence: "#### N3a" and "#### N3b" below; release v1.32.0 / sw v45.
 - [ ] N4 Pre-Alpha code audit + cleanup (risk-reducing only).
 - [ ] N5 Security audit (import/restore/export, dynamic HTML/XSS, storage, SW/cache, deletion, migrations) with regression tests.
 - [ ] N6 Backup/restore/migration end-to-end round trips (old + new data, Trabajo, arrastre, ahorro, deudas, previous years).
 - [ ] N7 Final regression, smoke, Alpha readiness report.
 
 Native review consent log (night run):
+- N3b (8d1ee42..HEAD of N3b, N3a review fixes + R5 part 2 + release v1.32.0): native review consent pending (owner away); not claimed.
+  Writer verification: `npm test` 628 (627 pass, 1 todo), `npm run test:e2e` 204/204, motor goldens byte-identical to 8d1ee42,
+  mutation checks in the N3b section.
 - N3a (7c3dcf1..HEAD of N3a, integrity fixes + R5 part 1): native review consent pending (owner away); not claimed. Writer verification:
   `npm test` 603 (602 pass, 1 todo), `npm run test:e2e` 192/192, motor goldens byte-identical, mutation checks in the N3a section.
 - N2 (ec12149..HEAD of N2): native review consent pending (owner away); not claimed. Writer verification: `npm test` 585 (584 pass,
@@ -775,6 +779,84 @@ Code (index.html at 7a96e62): view `muestraPrimerUso`, `textoOrigen`, `lineasSal
 - RISKS: the first-use card shows on every month of the open current year until answered (non-blocking by design); Editar of a January
   opening carried from December switches the open year (`cambiarAnio`) — covered by reading and `modoApertura` only, no E2E; `guardar()`
   now returns a value (all previous callers ignore it); localStorage still has no transaction (Trabajo write after the year write can fail).
+- NATIVE REVIEW: consent pending (owner away, night-run rule); not claimed.
+
+#### N3b — R5 patrimonio, Del trabajo, programado, release (night run)
+
+- STATUS: done (R5 part 2). With N3a, N3 is complete. Route: delegated writer (one bounded writer; index.html, sw.js, LEEME.md, tests).
+- COMMITS (after 8d1ee42): 99ca49a `fix(r4.6): guardar reports false when nothing was written`, 3183dba `fix(r5): Editar on a carried January
+  only when December is closed`, 308be77 `fix(r5): prefill exact amounts with cents in the balance sheets` (the three: fixes from the N3a
+  review, below), a056e00 `feat(r5): show the auditable Patrimonio composition of a model year`, 7af23d0 `feat(r5): let the excess of a Del
+  trabajo row above its pases be ticked`, 87a0d63 `feat(r5): show ticked rows of a future model month as programado`, 049abc5 `test(r5): check
+  Patrimonio composition, Del trabajo excess and programado months end to end`, 63602f7 `chore(release): v1.32.0 balance carried between
+  months`, bade5e4 `test(r5): D16-14 checks the gross worth row on screen`, plus this record.
+
+##### Fixes from N3a review
+
+1. `guardar()` returned `undefined` before start-up / with no open year, which callers checking `!== false` (`aplicarPase`, `guardarModelo`)
+   took as written. Now `false`. RED: `tests/copias.test.js` "guardar reports false when nothing was written" (got `undefined`); GREEN after.
+2. Editar on a January opening carried from December (`modoApertura` = 'diciembre') was offered while December of the previous year was still
+   future/current (year created ahead by `duplicar`): it switched years and `abrirCierre(11)` returned silently. Now `htmlSaldo` offers Editar
+   in that mode only when that December is `pasado` (the origin "Viene de diciembre AAAA" is still shown); `editarApertura` also returns when
+   December is not closed, refuses in a stale tab (`avisoOtraPestana`) and stops when `guardar()` of the pending edits returns false (no
+   edit is dropped by `cambiarAnio`). RED: 2 tests in `tests/r5.saldos.test.js` (hoy 2026-10-15 and 2026-12-15 showed Editar; the stale and
+   failed-save cases switched year); GREEN after. Mutations: Editar condition removed → 1 fail; save check removed → 1 fail.
+3. `montoEditable` rounded to whole pesos, so confirming an unchanged closing of 199.999,50 stored 200.000 against `calculadoAlConfirmar`
+   199.999,5 (spurious difference shifting the next openings). Now the sheets prefill `1.234,56` when there are cents (read back by
+   `parseMonto`), and the input carries `data-exacto`: an unchanged input is the exact source value (also beyond two decimals). Applies to
+   `abrirCierre` and `editarApertura` (opening and "available now"). RED: 3 tests (`montoEditable` format; unchanged closing → valor =
+   calculadoAlConfirmar = 199999.5, difference 0, October opens at 199999.5; unchanged opening 50000.125 kept, typed "60.000,25" read);
+   GREEN after. Mutation (`data-exacto` shortcut off) → 1 fail.
+
+##### What was built (R5 part 2)
+
+| # | Feature | UI text (exact) | Rule |
+|---|---|---|---|
+| 1 | Dólares > "Patrimonio total" of a model year: rows Disponible a hoy, Ahorro en pesos, Dólares (USD × cotización, estimate), Cripto (estimate), Plata del trabajo → Patrimonio bruto; Deudas (one sub-row per debt) → Patrimonio neto; headline "Patrimonio neto a hoy" (US$ at the cotización; in pesos without one). Every number is a field of `patrimonioNeto` through `filasPatrimonio` / `htmlPatrimonio` (one source). A legacy year renders the old view byte for byte | "Lo que tenés hoy, bolsillo por bolsillo. Lo de los meses que vienen no cuenta." · "Dólares (US$ X a $C, estimado)" · "Deudas (lo que te falta pagar)" · "Dólares y cripto son una estimación: a $C por dólar, la cotización que cargaste el …" · without cotización: "(US$ X, falta la cotización)" / "sin cotización" / "Falta la cotización del dólar (arriba, en Cotización): los dólares y la cripto todavía no se suman." · default cotización never edited: "(US$ X a $1.499, cotización sin cargar)" / "Todavía no cargaste la cotización del dólar: …" | owner MUST (R4.4), D7, Q2, Q6, Q14, §6, D13 |
+| 2 | "Del trabajo" above its pases in a model month: checkbox for the excess (`tieneTilde` + `repartoTrabajo`, the same in-order allocation as `flujosMes`); the row stays read-only; the pase part is always realized | "De esto, $X vino de pases del trabajo; el resto, $Y, lo marcás vos." | R4.2 interpretation 4, §7, L-02 |
+| 3 | Future model month (`esProgramado`): pie from `datosRealizados` (empty → "Noviembre todavía no llegó: lo que cargaste está programado. …"), caps through `gastadoVista` (0, no over-cap alert), debt text from `estadoDeuda(datosRealizados(D))`; rows show a dashed "Programado" mark instead of a tick, a row ticked ahead keeps a button that only unticks (`puedeAlternar` guards the action); section note | "Programado: noviembre todavía no llegó. Lo marcás como pagado/cobrado cuando llegue." · aria "Programado" / "Programado: lo marcaste antes de tiempo. Tocá para desmarcarlo." | N1-A derived from §1 and D3 |
+| 4 | Release: APPVER 1.31.4 → 1.32.0, service-worker cache v44 → v45 (same convention as 3a8a7ae), no new file (precache list unchanged and checked), LEEME changelog entry for R4/R5 | — | Q11 |
+
+- BEFORE → AFTER (hoy 2026-10-15, section 2): the Patrimonio body was "Ahorro líquido en pesos" $600.000 / "Dólares guardados" US$ 1.000 /
+  "Cripto" —, total US$ 1.750 / $2.625.000 with no visible gross or debts → now Disponible $825.000 + Ahorro $600.000 + Dólares $1.500.000 +
+  Cripto — + Trabajo — = bruto $2.925.000; Deudas ($300.000) (Préstamo $300.000); neto $2.625.000 (headline unchanged). L-02 data (row
+  400.000, pase 300.000): no checkbox, disponible 300.000 forever → checkbox; ticked, disponible 400.000. Future November with Expensas
+  90.000 ticked and cap 80.000: "Te pasaste por $10.000" + alert + slice in the pie → "— de $80.000", no alert, empty pie "programado";
+  Préstamo ticked ahead "Cuota 4 de 6" → "Sin pago este mes; va la 4 de 6". Legacy years: unchanged.
+- INTERPRETATIONS (no new money rule): USD/crypto rows are labeled estimates at the stored cotización; the debt sub-rows are
+  `pasivos().detalle`; "Plata del trabajo" is `resumenTrab().disponible` (Q2, R4.2 interpretation 4); the excess is ticked on the row itself
+  (its `pagado`), which is exactly what `flujosMes` already reads.
+- TESTS: new `tests/r5.patrimonio.test.js` (7: legacy Dólares tab byte-identical to 8d1ee42 for 11 datasets against
+  `tests/fixtures/usd-legacy.json`, generated on 8d1ee42 by `tests/fixtures/generar-usd-legacy.js` (refuses without `TUGASTO_GOLDEN_RAZON`),
+  harness `tests/fixtures/usd-vistas.js` renders the real `renderUSD`; rows = `patrimonioNeto` fields, sum = bruto, bruto − deudas = neto,
+  debt detail sums, over every R4-corpus model dataset (>= 15); §6 case on screen; Trabajo + crypto; default and missing cotización;
+  escaped debt names), `tests/r5.mes.test.js` (9: Del trabajo excess via `flujosMes` numbers, covered / legacy, two rows in order, screen;
+  future month pie / caps / debt text / tick state / action guard, each with the current month and a legacy year unchanged),
+  `tests/release.test.js` (3: APPVER = first changelog entry, sw v45, every referenced local file precached and present; RED 2/3 before the
+  bump). Updated: `L-02` (now pins the checkbox), `D16-14` (gross row on screen), harness lists (`repartoTrabajo` in r45-harness /
+  r4.integracion; `gastadoVista`, `esProgramado`, `mesDelModelo` in topes), inventory (`repartoTrabajo`, `gastadoVista`; SOURCES "Patrimonio
+  bruto" adapter `filasPatrimonio`). RED first per feature (composition 5 of 6 failing, Del trabajo 4/4 + L-02, programado 5/5). `npm test`
+  628 (627 pass, 0 fail, 1 todo `L-03d`), was 603.
+- MUTATIONS (each restored): Trabajo row valued 0 → 2 fail; deudas 0 in `filasPatrimonio` → 3 fail; `repartoTrabajo` without consuming the
+  pases in order → 1 fail; `esProgramado` always false → 3 fail; `textoDeuda` back on `D` → 1 fail.
+- E2E (12 new, `npm run test:e2e` 204/204, was 192): model-year composition rows (550.000 + 250.000 + 700.000 = 1.500.000 − 100.000 =
+  1.400.000), rows add up to the headline (US$ 1.120 at 1.250), legacy year without rows; Del trabajo excess: 2 checkboxes, the split text,
+  card 550.000 → click → 650.000; future November: nothing paid-looking, programado mark and note, cap "— de $50.000" and no alert, pie
+  "todavía no llegó", untick then no tick; Ajustes shows "kibFinanzas v" + APPVER (1.32.0). RED: the new run.mjs against a worktree of
+  8d1ee42: 152 pass / 4 fail (the first R5 checks fail and the block aborts).
+- MATRIX: `odd/tasks/repair-sprint-1-r4.5-matrix.md` D16-14 (gross row on screen), C `L-02` (resolved), E.4 N1-A (resolved). `node --test
+  tests/r4.matriz.test.js tests/r4.cobertura.test.js`: 45 (44 pass, 1 todo `L-03d`); D16-15 stays PENDIENTE-R7.
+- GOLDENS: `git diff --quiet 8d1ee42 -- tests/fixtures/motor-golden.json tests/fixtures/motor-golden-r4.json` clean; motor block untouched.
+- OWNER_DECISION_REQUIRED:
+  - N3b-A (LOW) tick in a future model month: (a) built — no tick ahead; a row already ticked ahead shows "programado" and can only be
+    unticked (left ticked, it realizes when the month arrives, as before); (b) allow ticking ahead as a "will be paid" marker (no
+    prevention); (c) clear every tick ahead while the month is future (changes stored data, against D14).
+  - N3b-B (LOW) default cotización: `normalizar` puts 1499 when none is stored, so a truly missing cotización only exists before
+    normalizing. Built: the composition shows the value (it is inside the net) and says "cotización sin cargar"; alternative (b) leave USD
+    and crypto out of the net until the user loads a cotización (motor/golden change in `patrimonioNeto`).
+- RISKS: display rounding — each row is rounded to the peso on screen, so with cents the shown rows can differ from the shown gross by $1
+  (the numbers add up exactly; screen sums tested on whole pesos); in a future model month `textoDeuda` / `htmlTorta` deep-copy the year
+  (`datosRealizados`) per call; `repartoTrabajo` builds `ctxModelo` per "Del trabajo" row (a storage read only for a January carry).
 - NATIVE REVIEW: consent pending (owner away, night-run rule); not claimed.
 
 ## D16 — official acceptance list (verbatim)
