@@ -22,10 +22,16 @@ function appCargar(ls, embebido, today){
     document: {getElementById: function(id){ return id === 'datos' ? datos : id === 'avisos' ? avisos : null; }},
     aplicarTema: function(){}, render: function(){}, avisoSinGuardado: function(){}, vioBienvenida: function(){ return true; }, bienvenida: function(){},
     avisoPrimeraVez: function(){}, revisarCopia: function(){}, avisoCuarentena: function(){}, tieneTrab: function(){ return false; }};
-  var app = la.loadApp({today: today || '2026-10-15', funcs: ['cargar', 'anioActivo', 'recordarAnio', 'leerAnio', 'aniosGuardados', 'leerEmbebido', 'hayDatos',
-    'revGuardada', 'revValida', 'claveCuarentena', 'ponerEnCuarentena', 'semillaExportada', 'anioValido'].filter(function(n){ return la.SRC_FOR_TESTS.indexOf('function ' + n + '(') >= 0; }),
+  var app = la.loadApp({today: today || '2026-10-15', funcs: helpersPresentes(['cargar', 'anioActivo', 'recordarAnio', 'leerAnio', 'aniosGuardados', 'leerEmbebido', 'hayDatos',
+    'revGuardada', 'revValida', 'claveCuarentena', 'ponerEnCuarentena', 'semillaExportada', 'anioValido'], la.SRC_FOR_TESTS),
     vars: ['PREF', 'LSANIO', 'M1', 'M2', 'LSCUAR', 'LSTRAB', 'sucio'], globals: g});
   return app;
+}
+// a helper the harness asks for and the app no longer has is a loud failure (renamed or removed), never silently dropped
+function helpersPresentes(nombres, src){
+  var faltan = nombres.filter(function(n){ return !new RegExp('^function ' + n + '\\s*\\(', 'm').test(src); });
+  if(faltan.length) throw new Error('appCargar: helper(s) missing from index.html: ' + faltan.join(', '));
+  return nombres;
 }
 
 test('N7-1 a fresh PC file of 2027 opens 2027 (calendar 2026), remembers it, and an edit saves under kibo.datos.2027', function(){
@@ -94,6 +100,22 @@ test('N7-2 volverAntesDe130 quarantines an unreadable non-active year before del
   assert.equal(app.g.recargas, 1);
   assert.equal(ls.d['kibo.datos.2027'], undefined);
   assert.equal(ls.d['kibo.cuarentena.2027'], ROTO);
+});
+
+test('N7-2 volverAntesDe130 refuses and keeps everything when the unreadable year cannot be quarantined (native review follow-up, night range T6)', function(){
+  var pre = JSON.stringify({version: 'anterior a 1.30', fecha: '2026-01-01T00:00:00.000Z', datos: {'kibo.datos.2026': '{"a":1}'}});
+  var ls = H.fakeStorage({'kibo.datos.2026': '{"b":2}', 'kibo.esquema': '1.30', 'kibo.respaldo.pre130': pre}, function(k){ return k.indexOf('kibo.cuarentena.') === 0; });
+  ls.d['kibo.datos.2027'] = ROTO;
+  var antes = JSON.stringify(ls.d);
+  var app = H.appAlmacen(ls, null, {LSESQ: 'kibo.esquema', LSPRE130: 'kibo.respaldo.pre130'}, ['volverAntesDe130', 'respaldoPrevio']);
+  app.volverAntesDe130();
+  assert.equal(app.g.recargas, 0, 'no reload');
+  assert.equal(JSON.stringify(ls.d), antes, 'nothing deleted or restored: the unreadable year, the open year, the schema mark and the pre-1.30 copy stay');
+  assert.deepEqual(app.plain(app.g.pildoras), [['No pude guardar una copia de lo que no se puede leer. No cambié nada.', true]]);
+});
+test('appCargar fails loudly when a requested helper is missing (native review follow-up, night range T7)', function(){
+  assert.throws(function(){ helpersPresentes(['cargar', 'noExisteEstaFuncion'], la.SRC_FOR_TESTS); }, /helper\(s\) missing from index\.html: noExisteEstaFuncion/);
+  assert.deepEqual(helpersPresentes(['cargar', 'leerAnio'], la.SRC_FOR_TESTS), ['cargar', 'leerAnio']);
 });
 
 // ── N7-3: every distinct unreadable text is kept, never replaced; backups carry them all and restore brings them back ──
