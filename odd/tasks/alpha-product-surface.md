@@ -48,4 +48,28 @@ Owner brief: "TU GASTO — PRODUCT SURFACE, UX/UI, BRANDING, GITHUB & FINAL ALPH
 
 ## Progress / evidence
 
-(filled per task)
+### P1 — UX/UI audit (done, route: delegated read-only auditor; 44 screenshots at 360/390/430/1280, dark mode)
+
+Realistic model year seeded (hoy 2026-10-15). Full report kept outside the repo (scratch); key results recorded here.
+
+What was implemented but NOT visible or misleading on screen (P0):
+1. Hero says "Disponible final · Octubre $952.000" but it is today's balance; the month-end estimate ($890k) is buried.
+2. A future month's projection is shown in the same bold green as real money.
+3. Three unlabeled totals in a month (hero tiles = collected/paid; section headers = registered incl. pending; "En qué se te va"
+   adds installments).
+4. "El año": two different "December" figures (savings pace vs closing) with no labels; "Ahorro acumulado" is year-end incl.
+   scheduled while Patrimonio is a hoy; "Arranque del año" is last year's savings, not the opening balance.
+5. Dólares year table total counts a future USD inflow; the breakdown (a hoy) does not.
+6. Trabajo "A lo personal" counts a future pase; "Disponible del trabajo" does not (Q4).
+7. "Del trabajo" covered by pases looks uncollected; help text leaks "pases".
+8. First-use question appears above a hero that already shows a number.
+9. Fresh install stacks three prompts and 14 zero rows.
+P1: red used for normal choices; pending/overdue absent from the first screen; FAB covers amounts and duplicates the hero button;
+"USD" tab holds Patrimonio; Ahorro sub-headings larger than the section; debts "Sin pago este mes" reads as nothing due;
+re-confirm block hard to read; Patrimonio answer comes last; update notice shows an old version; legacy years unmarked.
+Layout: no overflow and no clipped money at any width; 31 tap targets < 44 px on the 390 month; 10 px tab labels, 8.5 px chart axes.
+Brand: visible "kibFinanzas"/"KF" in title, header logo, print, Ajustes, footer, welcome, share titles, alerts, export file
+names, manifest, privacidad.html, icons ("K"). Must stay: `kibo.*` keys, SW cache prefix `kibfinanzas-offline-` (old-cache
+cleanup depends on it). Safe: backup `app` field (restore never checks it), manifest id.
+Classification: items 1-3, 7-9 and the P1 list are presentation (no money rule). Items 4-6 are "a hoy" vs year-end/scheduled
+mixing on screen: resolved by labeling and by splitting realized vs scheduled per §1/I5/Q4/Q13 (derived, no new rule).
