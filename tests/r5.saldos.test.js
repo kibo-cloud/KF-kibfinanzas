@@ -17,9 +17,9 @@ function varDeLaApp(n){ return new Function(la.extractVar(n) + ' return ' + n + 
 var R5_FUNCS = ['vistaModelo', 'tilesMes', 'mesDelModelo', 'pasesDelMes', 'lineasSaldo', 'textoOrigen', 'muestraPrimerUso', 'claveAvisoCierre',
   'avisoCierreDescartado', 'descartarAvisoCierre', 'avisoCierrePendiente', 'guardarModelo', 'fijarApertura', 'modoApertura', 'fijarCierreReal',
   'mantenerCierreReal', 'fijarCierreRealValor', 'filaSaldo', 'htmlSaldo', 'htmlAvisosSaldo', 'fARS', 'grupos', 'esc', 'editarApertura'];
-function app(ls, today, extra){
+function app(ls, today, extra, funcs){
   var g = Object.assign({MESES: varDeLaApp('MESES'), oculto: false, PUNTOS: '••••'}, extra || {});
-  return H.appAlmacen(ls, today || '2026-10-15', g, R5_FUNCS);
+  return H.appAlmacen(ls, today || '2026-10-15', g, R5_FUNCS.concat(funcs || []));
 }
 function con(raw, today){ return H.fakeStorage({'kibo.datos.2026': JSON.stringify(M.normalizar(raw, C.hoy(today || '2026-10-15')))}); }
 function vm(a){ return a.vistaModelo(a.D, a.hoy); }
@@ -285,4 +285,58 @@ test('Editar of a carried January never drops unsaved edits: refused in a stale 
   c.editarApertura(0);
   assert.deepEqual(c.hechos.anios, [2026], 'guard: a successful save switches');
   assert.equal(JSON.parse(c.localStorage.d['kibo.datos.2027']).meses[0].ingresos.length, 1, 'the edit was written before switching');
+});
+
+// a sheet input built from the HTML the app passed to abrirHoja: its markup value / data-exacto, and the live value the user leaves as is
+function hojaConInput(){
+  var st = {hojas: [], inputs: {}, avisos: {innerHTML: '', textContent: ''}};
+  function attr(html, id, n){ var m = new RegExp('id="' + id + '"[^>]*?' + n + '="([^"]*)"').exec(html); return m ? m[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&') : null; }
+  st.abrirHoja = function(h){
+    st.hojas.push(h);
+    ['inCierre', 'inApertura'].forEach(function(id){
+      if(h.indexOf('id="' + id + '"') < 0) return;
+      var a = {value: attr(h, id, 'value'), 'data-exacto': attr(h, id, 'data-exacto')};
+      st.inputs[id] = {value: a.value, getAttribute: function(n){ return a.hasOwnProperty(n) ? a[n] : null; },
+        addEventListener: function(){}, focus: function(){}, classList: {add: function(){}, remove: function(){}}};
+    });
+  };
+  st.document = {activeElement: null, getElementById: function(id){ return id === 'avisos' ? st.avisos : (st.inputs[id] || null); }};
+  return st;
+}
+function appHoja(raw, today){
+  var st = hojaConInput(), ls = con(raw, today);
+  var a = app(ls, today, {abrirHoja: st.abrirHoja, document: st.document, avisos: st.avisos, cerrarHoja: function(){}, conScroll: function(){}, renderMes: function(){},
+    MESES: varDeLaApp('MESES')}, ['abrirCierre', 'guardarCierreHoja', 'guardarAperturaHoja', 'leerMontoDe', 'notaEn', 'montoEditable', 'attrExacto', 'montoInput', 'marcarErr']);
+  H.cargarEn(a, ls, 2026); a.st = st; a.ls = ls;
+  return a;
+}
+test('montoEditable prefills cents in the Argentine format and reads back through parseMonto (N3a review)', function(){
+  var a = appHoja(sinSep());
+  [[0, '0'], [1234, '1.234'], [300000.5, '300.000,50'], [-25000.05, '-25.000,05'], [0.07, '0,07'], [1234567.99, '1.234.567,99']].forEach(function(c){
+    assert.equal(a.montoEditable(c[0]), c[1], String(c[0]));
+    assert.equal(M.parseMonto(c[1], true), c[0], c[1] + ' reads back');
+  });
+});
+test('balance sheets with cents: confirming the unchanged closing stores the exact calculated value (difference 0) (N3a review)', function(){
+  var raw = sinSep(); raw.meses[8].gastosVariables.push(C.it('Kiosco', 0.5, true));   // September closes at 199.999,50
+  var a = appHoja(raw);
+  a.abrirCierre(8);
+  assert.equal(a.st.inputs.inCierre.value, '199.999,50', 'prefilled with its cents');
+  a.guardarCierreHoja(8);
+  var cr = H.guardado(a.ls, 2026).meses[8].cierreReal;
+  assert.deepEqual([cr.valor, cr.calculadoAlConfirmar], [199999.5, 199999.5]);
+  var c = M.cadena(M.normalizar(H.guardado(a.ls, 2026), a.hoy), a.hoy, {});
+  assert.deepEqual([c.meses[8].diferencia, c.meses[8].reconfirmar, c.meses[9].apertura], [0, false, 199999.5], 'no spurious difference shifts October');
+});
+test('balance sheets: an unchanged input keeps the exact source value, even beyond two decimals; a typed one is read (N3a review)', function(){
+  var raw = sinSep(); raw.arrastre.inicial.apertura = 50000.125;
+  var a = appHoja(raw);
+  assert.equal(a.modoApertura(a.D, a.hoy), 'apertura');
+  a.editarApertura(8);
+  assert.equal(a.st.inputs.inApertura.value, '50.000,13');
+  a.guardarAperturaHoja('apertura');
+  assert.equal(H.guardado(a.ls, 2026).arrastre.inicial.apertura, 50000.125, 'Editar unchanged: opening unchanged');
+  a.editarApertura(8); a.st.inputs.inApertura.value = '60.000,25';
+  a.guardarAperturaHoja('apertura');
+  assert.equal(H.guardado(a.ls, 2026).arrastre.inicial.apertura, 60000.25, 'a typed amount is read as typed');
 });

@@ -6770,6 +6770,8 @@ function fijarCierreRealValor(j, valor, calculado, hoy){
 function leerMontoDe(id, neg){   // {ok, v, msg}: vacío no vale (hay que escribir un monto, también 0)
   var inp = document.getElementById(id), txt = inp ? String(inp.value).trim() : '', v;
   if(txt === '') return {ok:false, msg:'Escribí un monto.'};
+  var ex = inp && inp.getAttribute ? inp.getAttribute('data-exacto') : null;   // precargado y sin tocar: el valor exacto de origen
+  if(ex !== null && ex !== '' && txt === String(inp.getAttribute('value') || '').trim() && isFinite(+ex)){ marcarErr(inp, false); return {ok:true, v:+ex}; }
   v = parseMonto(txt, neg);
   if(isNaN(v)){ marcarErr(inp, true); return {ok:false, msg:'No entendí «' + txt + '» como número.'}; }
   marcarErr(inp, false);
@@ -6783,7 +6785,14 @@ function primerUso(omitir){
   conScroll(renderMes);
   pildora(omitir ? 'Listo, sin saldo inicial' : 'Saldo guardado');
 }
-function montoEditable(n){ n = Math.round(num(n)); return n < 0 ? '-' + montoInput(-n) : (n === 0 ? '0' : montoInput(n)); }
+// el monto para precargar una hoja de saldos: miles con punto y, si tiene centavos, coma y dos decimales (se lee de vuelta con parseMonto)
+function montoEditable(n){
+  var c = Math.round(num(n) * 100), a = Math.abs(c), ent = Math.floor(a / 100), dec = a % 100;
+  var t = (ent === 0 ? '0' : grupos(String(ent))) + (dec ? ',' + (dec < 10 ? '0' : '') + dec : '');
+  return c < 0 ? '-' + t : t;
+}
+// atributos de un campo precargado: el texto que se ve y el valor exacto de origen (si no lo tocás, se guarda ese, sin redondeo)
+function attrExacto(v, texto){ return ' value="' + esc(texto) + '" data-exacto="' + esc(String(num(v))) + '"'; }
 function editarApertura(j){
   var hoy = hoyApp(), vm = vistaModelo(D, hoy), e = vm && vm.cad.meses[j];
   if(!e || e.legacy) return;
@@ -6801,8 +6810,9 @@ function editarApertura(j){
   abrirHoja('<h3>' + (actual ? '¿Cuánto dinero tenés disponible actualmente?' : '¿Con cuánto dinero empezaste ' + MESES[desde] + '?') + '</h3>'
     + '<div class="texto" style="margin-bottom:12px">' + (actual ? 'Con esto calculo con cuánto empezaste ' + MESES[desde] + '.' : 'Es el disponible inicial de ' + MESES[desde] + '.')
     + ' No se crea ningún movimiento.</div>'
-    + '<input type="text" id="inApertura" class="grande" inputmode="decimal" placeholder="0" autocomplete="off" enterkeyhint="done" value="'
-    + esc(actual ? (vm.cad.resumen.disponibleActual > 0 ? montoInput(vm.cad.resumen.disponibleActual) : '') : montoEditable(e.apertura)) + '">'
+    + '<input type="text" id="inApertura" class="grande" inputmode="decimal" placeholder="0" autocomplete="off" enterkeyhint="done"'
+    + (actual ? (vm.cad.resumen.disponibleActual > 0 ? attrExacto(vm.cad.resumen.disponibleActual, montoEditable(vm.cad.resumen.disponibleActual)) : ' value=""')
+              : attrExacto(e.apertura, montoEditable(e.apertura))) + '>'
     + '<div class="nota mal" id="notaApertura" style="padding:0 0 12px"></div>'
     + '<div class="fila"><button data-act="cerrarHoja">Cancelar</button><button class="pri" data-act="aperturaOk" data-v="' + modo + '">Guardar</button></div>');
   var inp = document.getElementById('inApertura');
@@ -6823,7 +6833,7 @@ function abrirCierre(j){
     + '<div class="texto" style="margin-bottom:12px">¿Es correcto? Si al terminar el mes tenías otra plata, cargá el saldo real. La diferencia queda anotada; no se crea ningún movimiento.</div>'
     + '<div class="sdo hoja-sdo">' + filaSaldo('Según tus registros', fARS(e.cierreCalc)) + '</div>'
     + '<small class="sdo-lbl">Saldo real</small>'
-    + '<input type="text" id="inCierre" class="grande" inputmode="decimal" placeholder="0" autocomplete="off" enterkeyhint="done" value="' + esc(montoEditable(conf ? e.cierreReal : e.cierreCalc)) + '">'
+    + '<input type="text" id="inCierre" class="grande" inputmode="decimal" placeholder="0" autocomplete="off" enterkeyhint="done"' + attrExacto(conf ? e.cierreReal : e.cierreCalc, montoEditable(conf ? e.cierreReal : e.cierreCalc)) + '>'
     + '<div class="sdo hoja-sdo">' + filaSaldo('Diferencia', '<span id="difCierre"></span>') + '</div>'
     + '<div class="nota mal" id="notaCierre" style="padding:0 0 12px"></div>'
     + '<div class="fila"><button data-act="cerrarHoja">Cancelar</button>'
