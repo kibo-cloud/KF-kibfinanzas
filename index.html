@@ -3647,11 +3647,11 @@ var ICO = {
   hola:   '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 10h.01M15 10h.01M8.5 14.5s1.2 2 3.5 2 3.5-2 3.5-2"/></svg>',
   escudo: '<svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>'
 };
-function filaAj(ico, titulo, sub, act, extra, clase){
+function filaAj(ico, titulo, sub, act, extra, clase){   // N5 S-5: titulo y sub (t, clase, id) son texto y se escapan; ico, act, extra y clase los pone el código
   var attrs = act ? ' data-act="' + act + '"' + (extra || '') : (extra || '');
   return '<button class="faj' + (clase ? ' ' + clase : '') + '"' + attrs + '>'
        +   '<span class="ico">' + (ICO[ico] || '') + '</span>'
-       +   '<span class="tx"><b>' + titulo + '</b>' + (sub ? '<small' + (sub.clase ? ' class="' + sub.clase + '"' : '') + (sub.id ? ' id="' + sub.id + '"' : '') + '>' + sub.t + '</small>' : '') + '</span>'
+       +   '<span class="tx"><b>' + esc(titulo) + '</b>' + (sub ? '<small' + (sub.clase ? ' class="' + esc(sub.clase) + '"' : '') + (sub.id ? ' id="' + esc(sub.id) + '"' : '') + '>' + esc(sub.t) + '</small>' : '') + '</span>'
        +   '<i class="chev"></i>'
        + '</button>';
 }
@@ -3916,8 +3916,8 @@ function aniosGuardados(){
 /* ═══ 6 · semilla embebida ═══════════════════════════════ */
 function leerEmbebido(){
   var t = document.getElementById('datos').textContent;
-  var i = t.indexOf(M1), j = t.indexOf(M2);
-  var s = (i > -1 && j > -1) ? t.slice(i + M1.length, j) : t;
+  var i = t.indexOf(M1), j = t.lastIndexOf(M2);   // N5 S-5: la última marca de fin (un nombre podría traer el texto de la marca)
+  var s = (i > -1 && j > i) ? t.slice(i + M1.length, j) : t;
   try{ return normalizar(JSON.parse(s), hoyApp()); }
   catch(e){ return normalizar({}, hoyApp()); }
 }
@@ -4032,7 +4032,7 @@ function hacerCopia(){
 function versionPC(){
   if(sucio) guardar();
   var nombre = 'kibfinanzas-' + D.anio + '.html';
-  var datos = JSON.stringify(D).replace(/</g, '\\u003c');   // que ningún nombre de categoría cierre el <script>
+  var datos = JSON.stringify(D).replace(/</g, '\\u003c').replace(/\*\//g, '*\\/');   // que ningún nombre cierre el <script> ni traiga la marca de fin (N5 S-5: "*/" viaja como "*\/", que JSON lee igual)
   var listo = function(txt){
     var i = txt.indexOf(M1), j = txt.indexOf(M2);
     if(i < 0 || j < 0 || j < i){ alerta('No pude armarlo', 'El archivo de la app no tiene las marcas donde van los datos. Probá de nuevo después de actualizar.'); return; }
@@ -4334,7 +4334,7 @@ function listaHistorial(){
   for(i=0;i<l.length;i++){
     h += '<div class="faj" style="gap:8px">'
        +   '<span class="ico">' + ICO.copia + '</span>'
-       +   '<span class="tx"><b>' + fechaCorta(l[i].f) + '</b><small>' + l[i].kb + ' KB</small></span>'
+       +   '<span class="tx"><b>' + fechaCorta(l[i].f) + '</b><small>' + esc(l[i].kb) + ' KB</small></span>'   // N5 S-5: lo guardado en el historial se escapa
        +   '<button class="mini" data-act="histCompartir" data-n="' + esc(l[i].n) + '">Compartir</button>'
        +   '<button class="mini" data-act="histAbrir" data-n="' + esc(l[i].n) + '">Restaurar</button>'
        + '</div>';
@@ -4471,10 +4471,10 @@ function quitarMov(id){
 }
 var tToast = null;
 var tPild = null, ultPild = 0;
-function pildora(txt, mal){
+function pildora(txt, mal){   // N5 S-5: texto plano, se escapa siempre (como toast)
   var p = document.getElementById('pild');
   if(!p) return;
-  p.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4.5 12.5l5 5.2L19.5 7"/></svg><span>' + txt + '</span>';
+  p.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4.5 12.5l5 5.2L19.5 7"/></svg><span>' + esc(txt) + '</span>';
   p.className = 'pild on' + (mal ? ' aviso' : '');
   ultPild = Date.now();
   if(tPild) clearTimeout(tPild);

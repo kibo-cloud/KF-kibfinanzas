@@ -169,3 +169,60 @@ test('S-3 restoring a file over 10 MB is refused with a visible message and read
   assert.match(app.g.alertas[1][0], /grande/);
   assert.deepEqual(Object.keys(ls.d), []);
 });
+
+// ── S-5: markup robustness ──
+var M1 = '/*DATOS_' + 'INICIO*/', M2 = '/*DATOS_' + 'FIN*/';
+
+test('S-5 listaHistorial escapes the stored size of each saved backup', function(){
+  var app = la.loadApp({funcs: ['listaHistorial', 'esc', 'fechaCorta'], vars: ['ICO'], globals: {
+    hayCarpeta: function(){ return true; },
+    leerHist: function(){ return [{f: '2026-10-01T10:00:00Z', kb: '<img src=x onerror=alert(1)>', n: 'c"1.json'}]; }}});
+  var h = app.listaHistorial();
+  assert.ok(h.indexOf('<img') < 0, h);
+  assert.ok(h.indexOf('&lt;img src=x onerror=alert(1)&gt; KB') >= 0, h);
+});
+
+test('S-5 pildora and filaAj escape their text by default; the constant texts the app passes render unchanged', function(){
+  var p = {innerHTML: '', className: ''};
+  var app = la.loadApp({funcs: ['pildora', 'filaAj', 'esc'], vars: ['ICO'], globals: {
+    document: {getElementById: function(){ return p; }}, setTimeout: function(){ return 1; }, clearTimeout: function(){}, ultPild: 0, tPild: null}});
+  app.pildora('<img src=x onerror=alert(1)>');
+  assert.ok(p.innerHTML.indexOf('<img') < 0 && p.innerHTML.indexOf('&lt;img') >= 0, p.innerHTML);
+  app.pildora('Cambios guardados');
+  assert.ok(p.innerHTML.indexOf('<span>Cambios guardados</span>') >= 0);
+  var f = app.filaAj('copia', '<b>x</b>', {t: '<i>y</i>', clase: 'a"b', id: 'c"d'}, 'copia');
+  assert.ok(f.indexOf('<b>x</b>') < 0 && f.indexOf('<i>y</i>') < 0, f);
+  assert.ok(f.indexOf('&lt;b&gt;x&lt;/b&gt;') >= 0 && f.indexOf('class="a&quot;b"') >= 0 && f.indexOf('id="c&quot;d"') >= 0, f);
+  assert.equal(app.filaAj('zz', 'Dónde viven tus datos', {t: 'Revisando…', id: 'almacMini'}, 'ajVista', ' data-v="datos"'),
+    '<button class="faj" data-act="ajVista" data-v="datos"><span class="ico"></span><span class="tx"><b>Dónde viven tus datos</b><small id="almacMini">Revisando…</small></span><i class="chev"></i></button>');
+});
+
+test('S-5 leerEmbebido does not cut the data when a name contains the end marker', function(){
+  var M = la.loadMotor(), hoy = M.hoyDe(new Date('2026-10-15T12:00:00'));
+  var d = M.normalizar({anio: 2026}, hoy);
+  d.meses[0].gastosVariables[0].nombre = 'raro ' + M2 + ' fin';
+  d.meses[0].gastosVariables[0].monto = 123;
+  var texto = '\n' + M1 + '\n' + JSON.stringify(d) + '\n' + M2 + '\n';
+  var app = la.loadApp({funcs: ['leerEmbebido'], vars: ['M1', 'M2'], globals: {document: {getElementById: function(){ return {textContent: texto}; }}}});
+  var r = app.plain(app.leerEmbebido());
+  assert.equal(r.meses[0].gastosVariables[0].nombre, 'raro ' + M2 + ' fin');
+  assert.equal(r.meses[0].gastosVariables[0].monto, 123);
+});
+
+test('S-5 "Versión para PC" never writes the end marker inside the embedded data', async function(){
+  var M = la.loadMotor(), hoy = M.hoyDe(new Date('2026-10-15T12:00:00'));
+  var bajado = null, base = '<html><script id="datos" type="application/json">\n' + M1 + '\n{\n}\n' + M2 + '\n</script></html>';
+  var app = la.loadApp({funcs: ['versionPC'], vars: ['M1', 'M2'], globals: {
+    sucio: false, window: {fetch: true}, alerta: function(){},
+    fetch: function(){ return Promise.resolve({text: function(){ return base; }}); },
+    descargar: function(t){ bajado = t; }}});
+  app.D = M.normalizar({anio: 2026}, hoy);
+  app.D.meses[0].gastosVariables[0].nombre = 'raro ' + M2 + ' </script> fin';
+  app.versionPC();
+  await new Promise(function(r){ setTimeout(r, 20); });
+  assert.ok(bajado, 'a file was produced');
+  var i = bajado.indexOf(M1), j = bajado.indexOf(M2);
+  assert.equal(bajado.indexOf(M2, j + 1), -1, 'the end marker appears once');
+  var d = JSON.parse(bajado.slice(i + M1.length, j));
+  assert.equal(d.meses[0].gastosVariables[0].nombre, 'raro ' + M2 + ' </script> fin');
+});
