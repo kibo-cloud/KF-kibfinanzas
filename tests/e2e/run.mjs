@@ -87,6 +87,11 @@ async function ev(expr){
 }
 let URL_APP = '';
 async function nav(u){ const loaded = nextLoad(); await send('Page.navigate', { url: u }); await loaded; await sleep(300); }   // load event + a short settle for the app's own start-up timers
+// Condition wait: polls expr until its value equals want or ms pass; returns the last value seen, so check() reports it on a failure.
+async function waitFor(expr, want, ms = 4000, evf = ev){
+  const end = Date.now() + ms;
+  for(;;){ const v = await evf(expr); if(JSON.stringify(v) === JSON.stringify(want) || Date.now() > end) return v; await sleep(50); }
+}
 let total = 0;
 function check(name, got, want){ total++; const ok = JSON.stringify(got) === JSON.stringify(want); if(!ok) fails++; results.push(`${ok ? 'PASS' : 'FAIL'}  ${name}  got=${JSON.stringify(got)}${ok ? '' : ' want=' + JSON.stringify(want)}`); }
 
@@ -593,8 +598,15 @@ try{
     await typeIn(sup, '100.234,56'); await sleep(1400);
     check('D16-16 "100.234,56" is stored as 100234.56', await ev('D.meses[9].gastosVariables[0].monto'), 100234.56);
     check('D16-16 ... and the card moves by exactly that (499.765,44 shown rounded)', await pantalla(), '499765');
-    await typeIn(sup, '1,234.5'); await sleep(300);
-    check('D16-16 "1,234.5" is rejected: the stored amount is unchanged', await ev('D.meses[9].gastosVariables[0].monto'), 100234.56);
+    await typeIn(sup, '1,234.5');
+    const rechazo = `(function(){ var t = document.getElementById('toast'); return [t.classList.contains('on'), t.textContent.indexOf('No entendí «1,234.5» como número') >= 0]; })()`;
+    check('D16-16 "1,234.5" is rejected visibly: the toast says it was not understood', await waitFor(rechazo, [true, true]), [true, true]);
+    check('D16-16 ... the stored amount is unchanged', await ev('D.meses[9].gastosVariables[0].monto'), 100234.56);
+    check('D16-16 ... the field shows the stored amount back and the card did not move',
+      [await ev(`document.querySelector(${JSON.stringify(sup)}).value`), await pantalla()], [await ev('fARS(100234.56)'), '499765']);
+    await ev(`(function(){ var x=document.querySelector(${JSON.stringify(sup)}); x.value='1,234.5'; x.dispatchEvent(new Event('input',{bubbles:true})); return true; })()`);
+    check('D16-16 ... while typing, the field is marked with the error class', await waitFor(`document.querySelector(${JSON.stringify(sup)}).classList.contains('err')`, true), true);
+    await ev(`document.querySelector(${JSON.stringify(sup)}).dispatchEvent(new FocusEvent('focusout',{bubbles:true})); true`);
 
     // D16-02: pending salary, realized expenses
     await seed(anio(600000, 9, octRows(false, true)));
