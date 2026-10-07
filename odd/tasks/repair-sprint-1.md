@@ -616,6 +616,30 @@ Native review consent log (night run):
   N3 (R5) as "programado" in future model months; not an owner decision. N1-B (`duplicar` sets `pagadasAntes` from all 12 months)
   stays OWNER_DECISION_REQUIRED (low; Q14 count-based debts; alternatives in matrix E.4), recommended keep for Alpha with a note.
 
+#### N2 — R4.6 hardening (night run)
+
+##### Semantic sources (R4.6)
+
+One owner per concept of the model (design §1). Every figure of a model month on screen reads the owner directly or through the
+listed adapter; no screen recomputes a concept on its own. Mirrored in `tests/inventario.data.js` `SOURCES` and guarded by
+`tests/inventario.test.js` (owner must be a motor function; this table must name it).
+
+| Concept | Owner | Field / rule | Screen adapter |
+|---|---|---|---|
+| Registrado | `suma` | every loaded amount of a section, any status | section subtotals (`seccion`), future-month CSV fijos/variables |
+| Realizado | `flujosMes` | `ingresosReal` / `gastosReal` / `cuotasReal` / `trabajoRealizado`: ticked rows of a past or current month, pases dated <= hoy | `tilesMes` (card), `serieVista` (year views), `mesEnRojo` |
+| Pendiente | `flujosMes` | `ingresosPend` / `gastosPend` / `cuotasPend`: unticked rows of a past or current month | `cadena` (projection, overdue apart, Q8) |
+| Programado | `flujosMes` | `*Prog`, `trabajoProgramado`, `pasesNetosProg`: everything of a future month | `tilesMes` of a future month |
+| Disponible inicial | `cadena` | `meses[j].apertura`: declared (`iniciarArrastre`) in the migration month, previous closing after, live December closing in January (`ctxModelo` → `cierreAnioAnterior`) | month card (R5: "Saldo inicial") |
+| Resultado del mes | `flujosMes` | `resultado` = realized income − realized expenses − realized installments | red-month rule (`mesEnRojo` adds `trabajoRealizado`, as the card) |
+| Pases netos | `flujosMes` | `pasesNetos` = retiro + venta − ahorro − reposición (+ realized Trabajo pases) | `cadena` |
+| Disponible actual | `cadena` | `resumen.disponibleActual` | `tilesMes` (current month), `patrimonioNeto` |
+| Proyectado al cierre | `cadena` | `meses[j].proyectado`, `resumen.proyectadoAlCierre` | `tilesMes` (future month) |
+| Patrimonio bruto | `patrimonioNeto` | `bruto` | none yet (gross row is R5) |
+| Patrimonio neto | `patrimonioNeto` | `neto` = bruto − `pasivos` | `patrimonioPantalla` |
+
+Legacy months/years (no `arrastre`, or before `desde`) keep `calc()` / `serie()` / `patrimonio()` byte for byte (I6; motor goldens).
+
 ## D16 — official acceptance list (verbatim)
 
 Origin: owner message in the previous Claude Code session (02140968-86ae-44f2-b1ca-4a73731947bc),

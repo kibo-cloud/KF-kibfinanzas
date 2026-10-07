@@ -51,3 +51,19 @@ test('the scan covers both inline blocks: the engine (<script id="motor">) and t
     assert.ok(found.indexOf(n) >= 0, n + ' is scanned');
   });
 });
+
+// R4.6: one semantic source per concept; the owner lives in the motor block and the feature doc table says the same
+test('every model concept has exactly one owner in the motor, and the feature doc table "Semantic sources (R4.6)" matches', function(){
+  var motorAt = SRC.indexOf('<script id="motor">'), appAt = SRC.indexOf('<script>\n(function(){');
+  var doc = fs.readFileSync(path.join(__dirname, '..', 'odd', 'tasks', 'repair-sprint-1.md'), 'utf8');
+  var at0 = doc.indexOf('Semantic sources (R4.6)');
+  assert.ok(at0 > 0, 'the table exists in the feature doc');
+  var tabla = doc.slice(at0);
+  var conceptos = Object.keys(data.SOURCES);
+  assert.equal(conceptos.length, 11);
+  conceptos.forEach(function(c){
+    var f = data.SOURCES[c][0], at = SRC.search(new RegExp('^function ' + f + '\\s*\\(', 'm'));
+    assert.ok(at > motorAt && at < appAt, c + ': owner ' + f + ' is a motor function');
+    assert.ok(tabla.indexOf('| ' + c + ' | `' + f + '`') >= 0, c + ': doc row names ' + f);
+  });
+});

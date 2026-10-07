@@ -13,7 +13,24 @@ var R = 'registrado', Z = 'realizado', M = 'mixto', O = 'otro', N = 'r4';
 var EDIT = 'editor/writer of a single item amount; no aggregation';
 var TRAB = 'Trabajo ledger (facturas/cobros/gastos/pases): own date-based realization, outside the monthly plan semantics';
 
+// R4.6: the single semantic source per concept of the model (design section 1). Every screen figure of a model month reads the owner
+// (directly or through the listed adapter); mirrored by the table "Semantic sources (R4.6)" in odd/tasks/repair-sprint-1.md.
+var SOURCES = {
+  'Registrado':           ['suma', 'every loaded amount of a section, any status'],
+  'Realizado':            ['flujosMes', 'ingresosReal / gastosReal / cuotasReal / trabajoRealizado: ticked rows of a past or current month, pases dated <= hoy'],
+  'Pendiente':            ['flujosMes', 'ingresosPend / gastosPend / cuotasPend: unticked rows of a past or current month'],
+  'Programado':           ['flujosMes', 'ingresosProg / gastosProg / cuotasProg / trabajoProgramado / pasesNetosProg: everything of a future month'],
+  'Disponible inicial':   ['cadena', 'meses[j].apertura: declared (iniciarArrastre) in the migration month, previous closing after, live December closing in January (ctxModelo.cierrePrevio)'],
+  'Resultado del mes':    ['flujosMes', 'resultado = realized income - realized expenses - realized installments'],
+  'Pases netos':          ['flujosMes', 'pasesNetos = retiro + venta - ahorro - reposicion (+ realized Trabajo pases)'],
+  'Disponible actual':    ['cadena', 'resumen.disponibleActual; card through tilesMes'],
+  'Proyectado al cierre': ['cadena', 'meses[j].proyectado / resumen.proyectadoAlCierre; card of a future month through tilesMes'],
+  'Patrimonio bruto':     ['patrimonioNeto', 'bruto (no row on screen until R5)'],
+  'Patrimonio neto':      ['patrimonioNeto', 'neto; screen through patrimonioPantalla']
+};
+
 module.exports = {
+  SOURCES: SOURCES,
   SEMANTICS: [R, Z, M, O, N],
   INVENTORY: {
     normalizar:         [O, 'input normalization; migration default pagado = monto > 0 for past months'],
@@ -24,13 +41,13 @@ module.exports = {
     cobroTxt:           [O, 'displays one item amount split by number of payments'],
     cuotaPaga:          [Z, 'E9 (R2): an installment counts as paid only when the debt row is ticked AND monto > 0'],
     cargarCuotas:       [O, 'writes planned installment amounts into debt rows (E14 fixed in R2: the last installment of the plan takes the rounding remainder)'],
-    proyeccionDeudas:   [R, 'last month with a debt row of monto > 0, paid or not'],
+    proyeccionDeudas:   [R, 'last month with a debt row of monto > 0, paid or not; R4.5 (N1): a model year passes datosRealizados'],
     patrimonio:         [M, 'accumulated savings and USD stock from serie() plus crypto'],
-    flujosMes:          [N, 'R4.2 pure: per-month realized / pending / scheduled flows and transfers split by hoy (not wired to the UI yet)'],
+    flujosMes:          [N, 'R4.2: per-month realized / pending / scheduled flows and transfers split by hoy; single source of Realizado / Pendiente / Programado / Resultado / Pases netos (R4.6), read by the screen through tilesMes, mesEnRojo and cadena'],
     cadena:             [N, 'R4.2 pure: 12-month opening/closing chain over flujosMes, legacy months before arrastre.desde keep calc()'],
     pasivos:            [N, 'R4.2 pure: liabilities a hoy: count-based plan saldo plus unticked rows of debts without a plan'],
     patrimonioNeto:     [N, 'R4.2 pure: net worth a hoy from cadena, serie up to hoy, crypto, trabajo and pasivos (old patrimonio stays pinned)'],
-    ranking:            [Z, 'yearly expense ranking, only paid rows'],
+    ranking:            [Z, 'yearly expense ranking, only paid rows; R4.5 (N1): a model year passes datosRealizados (future rows unticked in a copy)'],
     renderMes:          [M, 'month view: card from tilesMes (R4.4: calc() for legacy months, the cadena for model months), serie() savings'],
     tilesMes:           [N, 'R4.4 month card: calc() itself for a legacy month; model month: realized (past/current) or scheduled (future) flows from flujosMes, Del trabajo from pases, Disponible final from cadena (cierre / disponible actual / proyectado)'],
     gastadoTope:        [Z, 'budget cap consumption: only paid items'],
@@ -40,12 +57,12 @@ module.exports = {
     notaRetiro:         [Z, 'aReponer from serie()'],
     datosTorta:         [Z, 'pie chart: only paid rows'],
     armarCarrusel:      [O, 'false positive: CSS calc( string in a style'],
-    renderAnio:         [M, 'year view: rows from serieVista (R4.5: serie() for a legacy year/month; the month card for a model month, Disponible total = December closing), summary resumenAnio from serie(), ranking realized'],
+    renderAnio:         [M, 'year view: rows from serieVista (R4.5: serie() for a legacy year/month; the month card for a model month, Disponible total = December closing), summary resumenAnio over the realized months of serieVista (N1; red month = card Ingresos - Gastos - Deudas < 0, N2), ranking realized'],
     renderUSD:          [O, 'USD stock/valuation from serie(); Patrimonio total from patrimonioPantalla (R4.4: old patrimonio() for a legacy year, patrimonioNeto a hoy incl. Trabajo for a model year)'],
     refrescar:          [M, 'live refresh: card from tilesMes (R4.4, same rule as renderMes) plus suma() section subtotals'],
     hayDatos:           [R, 'E1 (fixed in R2): any item with monto > 0 (paid or not), any month flow field, or Trabajo data'],
     serieVista:         [N, 'R4.5 year views (renderAnio table/chart/"Año por año", exportarCSV): serie() itself without arrastre; a model month overlays tilesMes (one semantic source with the card)'],
-    duplicar:           [O, 'copies the year: carries serie() stock, zeroes every monto/pagado; R4.3: starts the new year chain from the December closing (cadena)'],
+    duplicar:           [O, 'copies the year: carries serie() stock, zeroes every monto/pagado; R4.3: starts the new year chain from the December closing (cadena); R4.6: refused in a stale tab'],
     ctxModelo:          [O, 'R4.3: builds the motor ctx (Trabajo pases by month, live previous-year closing) for cadena/iniciarArrastre; R4.4: feeds the screen through vistaModelo'],
     gastoRapido:        [O, EDIT],
     sumarAItem:         [O, EDIT + '; forces pagado when the previous monto was 0'],
@@ -81,7 +98,7 @@ module.exports = {
     verGasto:           [O, TRAB],
     borrarGasto:        [O, TRAB],
     csvTrabajo:         [O, TRAB],
-    aplicarPase:        [O, 'writes a pase amount into the "Del trabajo" income row (counted as realized by sumaPagado)'],
+    aplicarPase:        [O, 'writes a pase amount into the "Del trabajo" income row (realized through flujosMes trabajoRealizado in a model month, sumaPagado in a legacy one); R4.6: checks the Trabajo and year revisions before the first write'],
     quitarPase:         [O, TRAB],
     verPase:            [O, TRAB],
     accionTj:           [O, TRAB]
