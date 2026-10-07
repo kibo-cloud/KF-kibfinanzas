@@ -42,7 +42,7 @@ function tiles(app, j){ return app.plain(app.tilesMes(app.D, j, app.vistaModelo(
 // ── storage layer (save, revisions, backup/restore, duplicar, activarSaldos): same stubs as tests/r4.migracion.test.js ──
 var FUNCS_ALMACEN = ['claveMia', 'dos', 'revGuardada', 'escribirConRev', 'avisoOtraPestana', 'hayEdicion', 'alCambiarOtraPestana', 'recargarDesdeAlmacenamiento',
   'asegurarSnapshotR4', 'respaldoR4', 'diasDelRespaldoR4', 'vencerRespaldoR4', 'volverAntesDeR4', 'ctxModelo', 'cierreAnioAnterior', 'activarSaldos',
-  'guardar', 'guardarTrab', 'leerAnio', 'aniosGuardados', 'normTrab', 'leerTrab', 'esISO', 'utcDe', 'hoyISO', 'formaValida', 'escribirAnios', 'armarCopia', 'restaurarTexto', 'duplicar', 'avisarRestauro'];
+  'guardar', 'guardarTrab', 'blobAlDia', 'leerAnio', 'aniosGuardados', 'normTrab', 'leerTrab', 'esISO', 'utcDe', 'hoyISO', 'formaValida', 'escribirAnios', 'armarCopia', 'restaurarTexto', 'duplicar', 'avisarRestauro'];
 var VARS_ALMACEN = ['PREF', 'LSANIO', 'LSCOPIA', 'LSOCULTO', 'LSBIENV', 'LSHIST', 'LSTRAB', 'LSVISTA', 'LSR4', 'CLAVES_PROPIAS', 'sucio', 'arrancado', 'obsoleta', 'pendiente', 'FORMAS'];
 function appAlmacen(ls, today, extra, funcsExtra){
   var g = {localStorage: ls, pildoras: [], recargas: 0, renders: 0, alertas: [], hojas: [], ultPild: 0};

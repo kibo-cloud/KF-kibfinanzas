@@ -143,6 +143,19 @@ test('duplicar when the pending save of this tab is refused (another tab saved t
   assert.deepEqual([b.D.anio, b.obsoleta, b.g.alertas.length], [2026, true, 0]);
 });
 
+test('duplicar in a CLEAN tab that missed the storage event: the stored revision is checked first, nothing is written, the year stays open', function(){
+  var ls = H.fakeStorage({'kibo.datos.2026': JSON.stringify(M.normalizar(C.seccion2(false, false), C.hoy('2026-10-15')))});
+  var abiertos = [], a = H.appAlmacen(ls), b = H.appAlmacen(ls, '2026-10-15', {recordarAnio: function(y){ abiertos.push(y); }});
+  H.cargarEn(a, ls, 2026); H.cargarEn(b, ls, 2026);
+  a.D.meses[8].gastosVariables.push(C.it('Farmacia', 30000, true)); a.D.meses[11].ahorroMesARS = 50000; a.sucio = true; a.guardar();
+  var antes = JSON.stringify(ls.d);
+  assert.deepEqual([b.sucio, b.obsoleta], [false, false], 'tab B has no pending edit and was not marked stale');
+  b.duplicar();
+  assert.equal(JSON.stringify(ls.d), antes, 'nothing stored: no kibo.datos.2027 built from a stale December, no snapshot, no marker');
+  assert.deepEqual([b.D.anio, b.obsoleta, abiertos.length, b.g.alertas.length], [2026, true, 0, 0]);
+  assert.ok(b.g.avisos.innerHTML.indexOf('Hay cambios hechos en otra pestaña') >= 0, 'the stale notice is shown');
+});
+
 // Sheet money / quantity fields (Trabajo, pases): D9 per field type, negatives read only to explain the error
 test('leerMonto / cantidadDe: Argentine money with decimals, negatives and garbage get a visible reason, never a silent value', function(){
   var vals = {};

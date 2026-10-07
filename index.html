@@ -3995,6 +3995,8 @@ function duplicar(){
   // porque otra guardó en el medio, el diciembre que tenemos no es el guardado: tampoco se crea
   if(obsoleta){ avisoOtraPestana(); return; }
   if(sucio){ guardar(); if(obsoleta) return; }
+  // y una pestaña limpia que se perdió el evento `storage`: si lo guardado ya no es la revisión que tenemos, el diciembre en memoria es viejo
+  if(!blobAlDia(PREF + D.anio, D)){ obsoleta = true; avisoOtraPestana(); return; }
   var s = serie(D), n = JSON.parse(JSON.stringify(D)), i, j, k, hoy = hoyApp();
   n.anio = D.anio + 1;
   delete n.arrastre; delete n.rev;   // el año nuevo no hereda el modelo ni la revisión del viejo: arranca los suyos
