@@ -273,6 +273,12 @@ test('D16-14 patrimonio bruto vs neto: bruto 2.925.000 - pasivos 300.000 = neto 
   // the old patrimonio() (year without the model) has no liabilities at all: no gross/net distinction (D4 legacy)
   var al = H.appVista(H.sinModelo(C.seccion2(false, false)));
   assert.equal(al.patrimonioPantalla(al.D, al.hoy).modelo, undefined);
+  // R5 N3b: the gross is now a row on screen (Dólares > Patrimonio total), above the debts and the net
+  var hu = require('./fixtures/usd-vistas').appUSD(C.seccion2(false, false)).usd();
+  assert.match(hu, /data-pat="bruto"><label><b>Patrimonio bruto<\/b><\/label><span>\$2\.925\.000<\/span>/);
+  assert.match(hu, /data-pat="deudas"><label>Deudas \(lo que te falta pagar\)<\/label><span class="mudo"><span class="neg">\(\$300\.000\)<\/span><\/span>/);
+  assert.match(hu, /data-pat="neto"><label><b>Patrimonio neto<\/b><\/label><span><b>\$2\.625\.000<\/b><\/span>/);
+  assert.ok(hu.indexOf('data-pat="bruto"') < hu.indexOf('data-pat="deudas"') && hu.indexOf('data-pat="deudas"') < hu.indexOf('data-pat="neto"'), 'gross, debts, net in that order');
 });
 
 // 15 ── D8 decided, feature R7. Pins TODAY's behavior; the only built guarantee involved is R2 E9 (undo restores the previous state)
