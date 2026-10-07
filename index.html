@@ -2444,10 +2444,9 @@ var MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','
 var CORTOS = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
 
 var D = null, mes = new Date().getMonth(), tab = 'mes';
-var sucio = false, tBuffer = null, tServidor = null, hayLS = true;
+var sucio = false, hayLS = true;
 var arrancado = false, tGuardar = null;
 var obsoleta = false;   // otra pestaña guardó antes que esta (R4.3, Q12): esta no escribe hasta recargar
-var conflictoDatos = null;
 var gr = {monto:0, cat:null, sec:'gastosVariables'};
 
 /* ═══ 1 · datos por defecto: mesVacio y normalizar viven en el motor ═══ */
@@ -3722,7 +3721,6 @@ function aniosGuardados(){
   try{ for(var i=0;i<localStorage.length;i++){ var k = localStorage.key(i); if(k.indexOf(PREF) === 0 && /^\d{4}$/.test(k.slice(PREF.length))) out.push(+k.slice(PREF.length)); } }catch(e){}
   return out.sort();
 }
-function limpiarBuffer(){}
 
 /* ═══ 6 · semilla embebida ═══════════════════════════════ */
 function leerEmbebido(){
