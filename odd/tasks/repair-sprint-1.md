@@ -605,6 +605,8 @@ Checklist (route: delegated writer per task, parent verifies + re-runs suites):
 - [ ] N7 Final regression, smoke, Alpha readiness report.
 
 Native review consent log (night run):
+- N3a (7c3dcf1..HEAD of N3a, integrity fixes + R5 part 1): native review consent pending (owner away); not claimed. Writer verification:
+  `npm test` 603 (602 pass, 1 todo), `npm run test:e2e` 192/192, motor goldens byte-identical, mutation checks in the N3a section.
 - N2 (ec12149..HEAD of N2): native review consent pending (owner away); not claimed. Writer verification: `npm test` 585 (584 pass,
   1 todo risk marker), `npm run test:e2e` 169/169, motor goldens byte-identical, mutation checks recorded in the N2 section.
 - N1 (1d7102b..1d6c734, 8 commits, 297+/21-): native review consent pending (owner away); not claimed. Parent verification:
@@ -682,7 +684,7 @@ listed adapter; no screen recomputes a concept on its own. Mirrored in `tests/in
 | Realizado | `flujosMes` | `ingresosReal` / `gastosReal` / `cuotasReal` / `trabajoRealizado`: ticked rows of a past or current month, pases dated <= hoy | `tilesMes` (card), `serieVista` (year views), `mesEnRojo` |
 | Pendiente | `flujosMes` | `ingresosPend` / `gastosPend` / `cuotasPend`: unticked rows of a past or current month | `cadena` (projection, overdue apart, Q8) |
 | Programado | `flujosMes` | `*Prog`, `trabajoProgramado`, `pasesNetosProg`: everything of a future month | `tilesMes` of a future month |
-| Disponible inicial | `cadena` | `meses[j].apertura`: declared (`iniciarArrastre`) in the migration month, previous closing after, live December closing in January (`ctxModelo` → `cierreAnioAnterior`) | month card (R5: "Saldo inicial") |
+| Disponible inicial | `cadena` | `meses[j].apertura`: declared (`iniciarArrastre`) in the migration month, previous closing after, live December closing in January (`ctxModelo` → `cierreAnioAnterior`) | month card; R5 month lines `lineasSaldo` ("Disponible inicial", origin, Editar) |
 | Resultado del mes | `flujosMes` | `resultado` = realized income − realized expenses − realized installments | red-month rule (`mesEnRojo` adds `trabajoRealizado`, as the card) |
 | Pases netos | `flujosMes` | `pasesNetos` = retiro + venta − ahorro − reposición (+ realized Trabajo pases) | `cadena` |
 | Disponible actual | `cadena` | `resumen.disponibleActual` | `tilesMes` (current month), `patrimonioNeto` |
@@ -691,6 +693,89 @@ listed adapter; no screen recomputes a concept on its own. Mirrored in `tests/in
 | Patrimonio neto | `patrimonioNeto` | `neto` = bruto − `pasivos` | `patrimonioPantalla` |
 
 Legacy months/years (no `arrastre`, or before `desde`) keep `calc()` / `serie()` / `patrimonio()` byte for byte (I6; motor goldens).
+
+#### N3a — R5 balance UX (night run)
+
+- STATUS: done (R5 part 1). N3 stays open: N3b completes it (Patrimonio composition, "Del trabajo" above its pases, APPVER/sw bump).
+  Route: delegated writer (one bounded writer; index.html + several test files).
+- COMMITS (after 7c3dcf1): ad970a4 `fix(r4.6): duplicar checks the stored revision before building the new year`, 98b0e9d `fix(r4.6): a pase
+  aborts when the open-year write fails` (both: integrity fixes from the N2 review, below), e7a1e68 `feat(r5): show the month balance chain
+  with first-use prompt, opening edit and real closing correction`, 4910326 `test(r5): drive D16-05 and D16-17 through the month-view Editar
+  path`, 7a96e62 `test(r5): check the balance UX of the month view end to end`, plus this record.
+
+##### Integrity fixes from N2 review
+
+1. `duplicar` in a CLEAN tab that missed the storage event built the new year from a stale December (only `obsoleta` and a refused pending
+   save were guarded). Fix: `if(!blobAlDia(PREF + D.anio, D)){ obsoleta = true; avisoOtraPestana(); return; }` before building anything
+   (no snapshot, no marker, no year switch). RED: new test in `tests/r4.endurecimiento.test.js` ("duplicar in a CLEAN tab that missed the
+   storage event") failed on 7c3dcf1 (snapshot + `kibo.datos.2027` written from the stale December); GREEN after. Mutation (guard removed):
+   1 fail, restored. Harness lists gained `blobAlDia` (`r45-harness`, `r4.migracion`; `datos.test` stubs it).
+2. A pase into the open year ignored the result of `guardar()`: on a write error (quota) `aplicarPase` returned true and `guardarPase`
+   stored the pase in Trabajo with no row (money in Trabajo only after a reload). Fix: `guardar()` now returns true/false (false on stale tab,
+   revision conflict or write error; callers that ignore it are unchanged); `aplicarPase` reverts the row in memory (removes a row it just
+   created, else restores the amount), restores `sucio` and returns false, so Trabajo is not written; a write error on another year shows
+   "No se pudo guardar"; a missing row / missing year returns `'sinRenglon'` so `quitarPase` keeps its "No encontré el renglón" path and
+   `quitarPase`/`reponerPase` stop on a real failure (the undo stays available). The R4.6 comment on `aplicarPase` now states exactly what is
+   guaranteed: both revisions checked before the first write; the year is written first and Trabajo only after it; NOT guaranteed: a failure
+   of the Trabajo write after the year was written (no transaction in localStorage). RED: `L-11a`, `L-11b`, `L-11c` in
+   `tests/r4.cobertura.test.js` (quota-failing fakeStorage on the year key) failed on ad970a4 (e.g. Trabajo stored 1 pase, row 0); GREEN after.
+   Mutation (`guardar(); return true;` restored): 3 fail, restored.
+
+##### What was built (R5 part 1)
+
+| # | Feature | UI text (exact) | Rule |
+|---|---|---|---|
+| 1 | First-use prompt, inline card above the month card, while the open year contains hoy and has no `arrastre` (data or new device). Guardar → `activarSaldos(valor)`; Omitir → `activarSaldos(null)`; never shown again once `arrastre` exists; never for a year that does not contain hoy | "¿Cuánto dinero tenés disponible actualmente?" · "Lo que tenés para gastar, sin contar tus ahorros. Así el saldo pasa de un mes al otro." · Guardar / Omitir · error "No entendí «X» como número." / "Escribí un monto." | D5, Q1, §8, D9 |
+| 2 | Month balance lines (`#saldoMes`, model months only; legacy months / years render nothing extra): opening + origin + Editar, + Ingresos, − Gastos, − Deudas (if any), − Ahorro, "Retiros y reposiciones del ahorro" (if any), then the month total. Past: "Disponible al cierre"; current: "Disponible actual" + "Proyectado al cierre (estimado)" + overdue apart; future: "Disponible inicial (estimado)" and "Proyectado al cierre (estimado)", title "· programado" | "Saldo de <Mes>" (+ "· a hoy" / "· programado") · origins "Viene del mes anterior" / "Lo cargaste vos" / "Saldo inicial sin configurar" / "Viene de diciembre AAAA" · "Pendientes de meses anteriores: $X (no están en lo proyectado)" · "Cobros pendientes de meses anteriores: $X" | D2, D3, D7/Q8, D17, §1 |
+| 3 | Editar of the opening: migration month while it is the current month → sheet "¿Cuánto dinero tenés disponible actualmente?" re-derived with `iniciarArrastre` (also after `omitido`); migration month already past → sheet "¿Con cuánto dinero empezaste <Mes>?" (the opening itself; `declarado` = apertura + resultado + pases netos of that month, same identity); any later month → the real-closing sheet of the previous month; opening carried from December (`origen arrastre`) → opens December of the previous year. Never creates movements | "No se crea ningún movimiento." | D2, Q1, D14 |
+| 4 | Real closing correction on a past model month: "¿Es correcto?" → sheet "Cierre de <Mes> AAAA", "Según tus registros $calc", "Saldo real" input, live "Diferencia"; Confirmar writes `cierreReal = {valor, calculadoAlConfirmar, confirmadoEl: hoy.iso}`; "Quitar confirmación" removes it. When `reconfirmar`: "Cambió desde que lo confirmaste. El cierre confirmado se mantiene en $X; con tus registros ahora da $Y." with Confirmar de nuevo / Mantener | as quoted | D2, D6 |
+| 5 | Start-of-month notice on the current month of the year of hoy, previous month a model month without `cierreReal`: Confirmar (writes the calculated value as real) / Corregir (correction sheet) / Ahora no (per-device key `kibo.avisoCierre` = "AAAA-MM"; own key, classified as DEVICE in `r4.endurecimiento` and `claves` tests; never travels in the backup). Never blocks | "¿Cerraste <Mes> con $X?" · "Es lo que da con lo que registraste. Si tenías otra plata, corregilo." | D10 |
+| 6 | Editing a past confirmed month: `refrescar` redraws `#saldoMes`, so the kept confirmed value, the difference and the reconfirm question appear at once; unconfirmed → the chain recalculates, nothing extra | — | D6, owner brief |
+| 7 | All writes through `guardarModelo`: stale tab or stored revision ahead → nothing written (notice); pre-R4 snapshot before the first model write on the device; failed save → memory restored. `activarSaldos` gained the same `blobAlDia` precheck (a stale clean tab no longer writes the snapshot/marker before being refused) | "Hay cambios hechos en otra pestaña. Recargá para no perderlos." | Q12, §8, D14 |
+
+Code (index.html at 7a96e62): view `muestraPrimerUso`, `textoOrigen`, `lineasSaldo`, `htmlSaldo`, `avisoCierrePendiente`, `htmlAvisosSaldo`
+(before `renderMes`); writes `guardarModelo`, `modoApertura`, `fijarApertura`, `fijarCierreReal`, `mantenerCierreReal` and the sheet glue
+(before `activarSaldos`); `renderMes`/`refrescar` render `#avisoSaldo` and `#saldoMes`; 10 new `data-act` actions. Only numbers (through
+`fARS`) and fixed labels reach these HTML strings; prefilled input values go through `esc`. No new motor call needs an alias (`cadena`,
+`flujosMes`, `iniciarArrastre` were already aliased; alias test green). No motor change, no APPVER/sw bump.
+
+- INTERPRETATIONS (no new money rule; flagged for owner review):
+  1. Past migration month: the opening is typed directly (D2 "editable directly"); the "available now" question only exists while the
+     migration month is the current one (Q1 derivation needs "so far" = now).
+  2. "Mantener" keeps the confirmed value and records the new calculated value in `calculadoAlConfirmar` (acknowledges the drift so the
+     question does not repeat); the money is unchanged.
+  3. The start-of-month notice is shown only on the current month of the open year that contains hoy, so January never asks about the
+     previous year's December (another blob); the January opening's Editar still reaches it.
+  4. First-use and "available now" amounts are non-negative (money field, D9); the opening and the real closing accept a leading "-".
+  5. "Saldo inicial sin configurar" is the origin text for `omitido` (and for a declared opening with no number).
+- TESTS: `tests/r5.saldos.test.js` (14). RED first: 14/14 failed on 98b0e9d (`var not found: LSAVCIERRE`, functions missing). GREEN 14/14.
+  Covers: first-use condition (data / new device / arrastre / omitido / past and future years), month lines for §2 numbers (Sep 50.000 →
+  200.000 calc / 175.000 real / −25.000; Oct 175.000 → 825.000, projection 580.000, overdue 20.000; Nov 580.000 → 1.280.000) and the
+  add-up identity on 12 model months of three datasets, origin texts, HTML labels per state + reconfirm + legacy empty + an `<img>` row name
+  never rendered, D16-05 / D16-17 via `fijarApertura`, past-migration-month editing (confirmed Sep holds, D6), confirm / remove / refuse
+  current-future-legacy months, Mantener / re-confirm, unconfirmed recalculation with nothing extra, start-of-month notice (dismiss key
+  value, confirmed, migration month, other year), notices HTML, stale clean tab cannot declare / correct / confirm / Mantener and
+  `activarSaldos` writes no snapshot, snapshot before the first model write, quota failure restores memory, refused snapshot writes nothing.
+  `tests/r4.matriz.test.js` D16-05 and D16-17 now also run the Editar path (D16-15 untouched, PENDIENTE-R7). Static guard in
+  `r4.migracion` updated: `activarSaldos` has exactly one caller, `primerUso` (a user action).
+- MUTATIONS (each restored): `guardarModelo` revision precheck removed → 1 fail; `deshacer()` on a failed save removed → 1 fail;
+  `activarSaldos` precheck removed → 1 fail; "Ahora no" check removed → 1 fail; `modoApertura` always 'apertura' → 2 fail.
+- E2E (23 new checks, `npm run test:e2e` 192/192, was 169): first use (invalid "1,234.5" visible error and nothing stored; Guardar 825.000 →
+  opening 225.000, marker, card 825.000, lines), D16-05 Editar (prefilled 825.000 → 850.000, opening 250.000, rows byte-identical),
+  D16-17 Omitir ("Saldo inicial sin configurar", no prompt after reload, Editar 500.000 → opening −100.000), start-of-month notice
+  (text, three answers, Ahora no → `kibo.avisoCierre` 2026-09, hidden after reload; Confirmar stores 300.000), Sep "¿Es correcto?" → live
+  difference ($25.000) → cierreReal {275.000, 300.000, 2026-10-04}, Oct opens 275.000; Luz ticked → reconfirm shown, card kept 275.000,
+  Mantener → calculadoAlConfirmar 280.000; Quitar confirmación → 280.000; stale tab cannot confirm; legacy 2025 year shows none of it.
+  RED: the new run.mjs against a worktree of 98b0e9d: 167 pass / 2 fail (the first R5 check fails — no prompt — and the block aborts).
+- GOLDENS: `git diff --quiet 7c3dcf1 -- tests/fixtures/motor-golden.json tests/fixtures/motor-golden-r4.json` clean (motor untouched).
+- OWNER_DECISION_REQUIRED:
+  - N3a-A (LOW) start-of-month notice in January about the previous year's December: (a) keep as is (no notice; Editar of the January
+    opening reaches December) — recommended for Alfa; (b) show it and write the previous year's blob with its own revision check.
+  - N3a-B (LOW) "Mantener" semantics (interpretation 2): (a) acknowledge the drift (built); (b) keep asking until "Confirmar de nuevo".
+- RISKS: the first-use card shows on every month of the open current year until answered (non-blocking by design); Editar of a January
+  opening carried from December switches the open year (`cambiarAnio`) — covered by reading and `modoApertura` only, no E2E; `guardar()`
+  now returns a value (all previous callers ignore it); localStorage still has no transaction (Trabajo write after the year write can fail).
+- NATIVE REVIEW: consent pending (owner away, night-run rule); not claimed.
 
 ## D16 — official acceptance list (verbatim)
 
