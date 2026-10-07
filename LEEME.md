@@ -1,21 +1,24 @@
-# kibFinanzas
+# TuGasto
+
+TuGasto (antes kibFinanzas). Las copias de seguridad y los datos guardados con el nombre anterior siguen
+abriendo igual: no hay que hacer nada.
 
 Todo vive en el teléfono. Sin servidor, sin cuenta, sin conexión.
 
-En línea: https://kibo-cloud.github.io/KF-kibfinanzas/
+En línea: https://kibo-cloud.github.io/KF-kibfinanzas/ (la dirección todavía lleva el nombre anterior del repositorio)
 Estos 9 archivos son el sitio completo; van todos juntos en la raíz del repo.
 
 ## Instalar desde el celular (sin PC)
 
-1. Descargá kibfinanzas-sitio.zip y abrilo con la app Archivos → Extraer.
+1. Descargá el zip del sitio y abrilo con la app Archivos → Extraer.
 2. En Chrome entrá a github.com, iniciá sesión y creá un repositorio
-   público (por ejemplo `kibfinanzas`).
+   público (por ejemplo `tugasto`).
 3. En el repo: Add file → Upload files → "choose your files" → elegí los
    9 archivos extraídos (mantené apretado para seleccionar varios) →
    Commit changes. Si no ves el botón Add file, activá "Sitio de
    escritorio" en el menú de Chrome.
 4. Settings → Pages → Source: Deploy from a branch, main, / (root) → Save.
-   En un par de minutos aparece la dirección: https://TUUSUARIO.github.io/kibfinanzas/
+   En un par de minutos aparece la dirección: https://TUUSUARIO.github.io/tugasto/
 5. Abrí esa dirección en Chrome, esperá que cargue, menú ⋮ → Instalar app.
 
 ## Copias de seguridad
@@ -29,7 +32,7 @@ una app vacía.
 
 ## Versión para PC
 
-Ajustes → **Guardar la versión para PC** genera un `kibfinanzas-lab-AAAA.html`: la app
+Ajustes → **Guardar la versión para PC** genera un `tugasto-AAAA.html`: la app
 entera en un archivo, con los datos del año abierto embebidos entre
 `/*DATOS_INICIO*/` y `/*DATOS_FIN*/`. Se abre con doble clic en cualquier
 computadora, sin instalar nada. Es una foto del momento: no se sincroniza.
