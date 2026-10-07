@@ -226,3 +226,32 @@ test('S-5 "Versión para PC" never writes the end marker inside the embedded dat
   var d = JSON.parse(bajado.slice(i + M1.length, j));
   assert.equal(d.meses[0].gastosVariables[0].nombre, 'raro ' + M2 + ' </script> fin');
 });
+
+// ── S-4: Content-Security-Policy (no hashes: 'unsafe-inline' for the inline blocks, everything else locked to this origin) ──
+test('S-4 index.html and privacidad.html carry the same CSP meta, before any script, with no eval and no other origin', function(){
+  var fs = require('fs'), path = require('path');
+  var metas = ['index.html', 'privacidad.html'].map(function(f){
+    var src = fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
+    var m = /<meta http-equiv="Content-Security-Policy" content="([^"]+)">/.exec(src);
+    assert.ok(m, f + ' has the CSP meta');
+    var s = src.indexOf('<script');
+    assert.ok(s < 0 || m.index < s, f + ': the CSP comes before the first script');
+    assert.ok(src.indexOf('<meta charset="utf-8">') < m.index, f + ': after the charset');
+    assert.equal(/\son[a-z]+="/i.test(src), false, f + ': no inline event handler attributes');
+    return m[1];
+  });
+  assert.equal(metas[0], metas[1]);
+  var dir = {};
+  metas[0].split(';').forEach(function(p){ var t = p.trim().split(/\s+/); dir[t[0]] = t.slice(1); });
+  assert.deepEqual(dir['object-src'], ["'none'"]);
+  assert.deepEqual(dir['base-uri'], ["'none'"]);
+  assert.deepEqual(dir['form-action'], ["'none'"]);
+  assert.deepEqual(dir['default-src'], ["'self'"]);
+  assert.deepEqual(dir['connect-src'], ["'self'"]);
+  Object.keys(dir).forEach(function(k){
+    dir[k].forEach(function(v){
+      assert.ok(["'self'", "'none'", "'unsafe-inline'", 'data:', 'blob:'].indexOf(v) >= 0, k + ' allows only this origin: ' + v);
+    });
+  });
+  assert.equal(metas[0].indexOf('unsafe-eval'), -1);
+});

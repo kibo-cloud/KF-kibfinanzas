@@ -13,6 +13,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
+import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -20,7 +21,9 @@ const MARKER = '})();\n</script>';
 const HOOK = 'window.__kf={get D(){return D},get mes(){return mes},calc:calc,serie:serie,ranking:ranking,datosTorta:datosTorta,guardar:guardar,activarSaldos:activarSaldos,armarCopia:armarCopia,restaurarTexto:restaurarTexto,get pendiente(){return pendiente},get obsoleta(){return obsoleta},set obsoleta(v){obsoleta=v},get sucio(){return sucio},set sucio(v){sucio=v},APPVER:APPVER,exportarCSV:exportarCSV,patrimonio:patrimonio,patrimonioPantalla:patrimonioPantalla,hoyApp:hoyApp,fARS:fARS,fUSD:fUSD,plain:function(x){return JSON.parse(JSON.stringify(x))}};\n})();\n</script>';
 const DATE_PIN = '<script>(function(){var R=Date,T=new R(2026,9,4,12,0,0).getTime();' +
   'class FD extends R{constructor(...a){if(a.length===0)super(T);else super(...a);}static now(){return T;}}' +
-  'window.Date=FD;})();</script>';
+  'window.Date=FD;' +
+  'document.addEventListener("securitypolicyviolation",function(e){if(window.__cspProbe){window.__cspProbe.push(e.violatedDirective);return;}setTimeout(function(){throw new Error("CSP violation: "+e.violatedDirective+" "+e.blockedURI);});});' +
+  '})();</script>';
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.png': 'image/png',
   '.webmanifest': 'application/manifest+json', '.json': 'application/json', '.css': 'text/css; charset=utf-8' };
 
@@ -393,10 +396,10 @@ try{
           var i = out.indexOf(M1), j = out.indexOf(M2), datos = null;
           try{ datos = JSON.parse(out.slice(i + M1.length, j)); }catch(e){}
           var mo = /<script id="motor">([\s\S]*?)<\/script>/.exec(out), app = out.search(/\(function\(\)\{\r?\n'use strict';/);
-          var nuevo = new DOMParser().parseFromString(out, 'text/html'), compilan = true;
+          var nuevo = new DOMParser().parseFromString(out, 'text/html'), textos = [];
           Array.prototype.forEach.call(nuevo.querySelectorAll('script'), function(s){
             if(s.type === 'application/json') return;
-            try{ new Function(s.textContent); }catch(e){ compilan = false; }
+            textos.push(s.textContent);   // compiled in Node below: new Function here would need 'unsafe-eval' (CSP, N5 S-4)
           });
           var cerrar = document.createElement('button'); cerrar.setAttribute('data-act', 'cerrarHoja'); document.body.appendChild(cerrar); cerrar.click(); document.body.removeChild(cerrar);
           resolve({
@@ -405,14 +408,18 @@ try{
             motorBlocks: out.split('<script id="motor">').length - 1, motorHasMarkers: mo ? mo[1].indexOf('DATOS_') >= 0 : null,
             appAfterMotor: !!mo && app > out.indexOf('<script id="motor">'),
             motorDefinesTGMotor: !!mo && mo[1].indexOf('var TGMotor = (function(){') >= 0,
-            scriptsCompile: compilan,
+            scriptsCompile: null, scriptTexts: textos,
             scriptIds: Array.prototype.map.call(nuevo.querySelectorAll('script'), function(s){ return s.id || '(app)'; })
           });
         });
       })();
     });
   } + ')()';
-  check('"Versión para PC" (real versionPC): data embedded once, motor before the app, every script compiles', await ev(pcCheck),
+  // N5 S-4: the Content-Security-Policy meta is enforced (eval is refused and reported) while the whole app runs under it
+  check('CSP is enforced: an image from another origin is refused and reported as a violation', await ev(`new Promise(function(res){ window.__cspProbe = []; var im = new Image(); im.src = 'http://127.0.0.2:9/x.png'; setTimeout(function(){ var p = window.__cspProbe.slice(); window.__cspProbe = null; res([p, document.querySelectorAll('meta[http-equiv="Content-Security-Policy"]').length]); }, 500); })`), [['img-src'], 1]);
+  const pc = await ev(pcCheck);
+  if(pc && pc.scriptTexts){ pc.scriptsCompile = pc.scriptTexts.every(t => { try{ new vm.Script(t); return true; }catch(e){ return false; } }); delete pc.scriptTexts; }
+  check('"Versión para PC" (real versionPC): data embedded once, motor before the app, every script compiles', pc,
     { captured: true, m1: 1, m2: 1, embeddedYear: true, embeddedMonths: 12, motorBlocks: 1, motorHasMarkers: false, appAfterMotor: true,
       motorDefinesTGMotor: true, scriptsCompile: true, scriptIds: ['(app)', 'datos', 'motor', '(app)'] });   // the first '(app)' is the Date pin the harness injects in <head>
 
