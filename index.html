@@ -6277,9 +6277,17 @@ function renglonTrabajo(d, m, crear){
   if(!crear) return null;
   var it = {nombre:RENGLON_TRABAJO, monto:0, tope:0, pagado:true}; ls.push(it); return it;
 }
+function blobAlDia(clave, obj){   // lo guardado sigue en la revisión que esta pestaña tiene (si no, otra pestaña guardó en el medio)
+  var st = revGuardada(clave);
+  return !st.hay || st.rev === (revValida(obj && obj.rev) || 0);
+}
 function aplicarPase(p, signo){
   if(obsoleta){ avisoOtraPestana(); return false; }   // pestaña vieja (R4.3): no escribe ningún año, tampoco otro que el abierto, hasta recargar
-  var abierto = p.anio === D.anio, d = abierto ? D : leerAnio(p.anio);
+  var abierto = p.anio === D.anio;
+  // R4.6: un pase escribe dos blobs (el año y Trabajo) sin transacción; se revisan las dos revisiones ANTES de escribir el primero,
+  // así un evento `storage` perdido nunca deja el renglón guardado y el pase rechazado (la plata en los dos lados) ni al revés
+  if(!blobAlDia(LSTRAB, T) || (abierto && !blobAlDia(PREF + D.anio, D))){ obsoleta = true; avisoOtraPestana(); return false; }
+  var d = abierto ? D : leerAnio(p.anio);
   if(!d) return false;
   var it = renglonTrabajo(d, p.mes, signo > 0);
   if(!it) return false;
@@ -6330,7 +6338,7 @@ function guardarPase(){
   if(m > r.paraPasar + 0.5){ errorEn('psNota', 'Es más de lo que tenés disponible (' + fARS(r.paraPasar) + ').'); return; }
   if(!anioExiste(d.anio)){ errorEn('psNota', 'El ' + d.anio + ' no está creado en la app. Elegí una fecha de un año que tengas.'); return; }
   var p = {id:tjId(), fecha:d.fecha, monto:m, anio:d.anio, mes:d.mes, creada:new Date().toISOString()};
-  if(!aplicarPase(p, 1)){ errorEn('psNota', 'No pude sumarlo al mes. Probá de nuevo.'); return; }
+  if(!aplicarPase(p, 1)){ errorEn('psNota', obsoleta ? 'Hay cambios hechos en otra pestaña. Recargá antes de pasar.' : 'No pude sumarlo al mes. Probá de nuevo.'); return; }
   T.pases.push(p); tjAntes = null;
   guardarTrab(true); cerrarHoja(); renderTrabajo();
   toast('Pasé ' + fARS(m) + ' a Ingresos de ' + MESES[d.mes] + (d.anio !== D.anio ? ' ' + d.anio : ''), 'Deshacer', 'tjDeshacerPase', p.id);
@@ -6341,6 +6349,7 @@ function quitarPase(id, avisar){
   for(i=0;i<T.pases.length;i++) if(T.pases[i].id === id) p = T.pases[i];
   if(!p) return;
   var ok = aplicarPase(p, -1);
+  if(!ok && obsoleta) return;   // otra pestaña guardó en el medio: no se escribió nada, no se borra nada
   T.pases = T.pases.filter(function(x){ return x.id !== id; });
   tjAntes = null; paseQuitado = p;
   guardarTrab(true); renderTrabajo();
@@ -6352,7 +6361,7 @@ function quitarPase(id, avisar){
 function reponerPase(){
   var p = paseQuitado; if(!p) return;
   paseQuitado = null;
-  if(!aplicarPase(p, 1)){ toast('No pude volver a sumarlo'); return; }
+  if(!aplicarPase(p, 1)){ if(!obsoleta) toast('No pude volver a sumarlo'); return; }
   T.pases.push(p); guardarTrab(true); renderTrabajo();
   toast('Listo, quedó como antes');
 }

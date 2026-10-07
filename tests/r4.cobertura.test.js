@@ -126,7 +126,7 @@ test('L-02 "Del trabajo" amount above its pases: the excess stays pending with n
 
 function paseSobre(nombre){
   var d = C.vacio(2026); C.arrastre(d, 9, 0, 'declarado'); C.mes(d, 9, {ingresos: [C.it(nombre, 100000, false)]});
-  var app = H.appVista(d, H.trab([]), null, null, {funcs: ['renglonTrabajo', 'aplicarPase'], globals: {guardar: function(){}, sucio: false, obsoleta: false, avisoOtraPestana: function(){}}});
+  var app = H.appVista(d, H.trab([]), null, null, {funcs: ['renglonTrabajo', 'revGuardada', 'blobAlDia', 'aplicarPase'], vars: ['LSTRAB'], globals: {guardar: function(){}, sucio: false, obsoleta: false, avisoOtraPestana: function(){}}});
   var p = {id: 'x', fecha: '2026-10-10', monto: 300000, anio: 2026, mes: 9};
   assert.equal(app.aplicarPase(p, 1), true);
   app.T.pases.push(p);
@@ -143,7 +143,7 @@ test('L-03b accent / spacing variant of "Del trabajo" must behave like the exact
 
 function appRenglon(ingresos){
   var d = C.vacio(2026); C.arrastre(d, 9, 0, 'declarado'); C.mes(d, 9, {ingresos: ingresos});
-  return H.appVista(d, H.trab([]), null, null, {funcs: ['renglonTrabajo', 'aplicarPase'], globals: {guardar: function(){}, sucio: false, obsoleta: false, avisoOtraPestana: function(){}}});
+  return H.appVista(d, H.trab([]), null, null, {funcs: ['renglonTrabajo', 'revGuardada', 'blobAlDia', 'aplicarPase'], vars: ['LSTRAB'], globals: {guardar: function(){}, sucio: false, obsoleta: false, avisoOtraPestana: function(){}}});
 }
 test('L-03c the row lookup is the engine matcher: an exact "Del trabajo" row wins over an earlier variant; a variant alone receives and gives back the pase (undo path)', function(){
   var a = appRenglon([C.it('  del  TRABAJO ', 5000, false), C.it('Del trabajo', 100000, false)]), p = {id: 'x', fecha: '2026-10-10', monto: 300000, anio: 2026, mes: 9};
@@ -189,7 +189,7 @@ test('L-05 duplicar through the REAL save path: the new year is written with its
   assert.equal(b.g.alertas[0][0], 'No pude crear el año');
 });
 
-var PASE_FUNCS = ['renglonTrabajo', 'aplicarPase', 'quitarPase', 'guardarPase', 'resumenTrab', 'hoyISO', 'esISO', 'utcDe', 'sumarDias', 'diasEntre', 'ganancia',
+var PASE_FUNCS = ['renglonTrabajo', 'blobAlDia', 'aplicarPase', 'quitarPase', 'reponerPase', 'guardarPase', 'resumenTrab', 'hoyISO', 'esISO', 'utcDe', 'sumarDias', 'diasEntre', 'ganancia',
   'saldoFac', 'venceFac', 'sinAsignar', 'paseAlModelo', 'mesDelModelo', 'pasesDelMes'];
 function appPase(ls, hechos){
   return H.appAlmacen(ls, '2026-10-15', {
@@ -281,12 +281,59 @@ test('L-09 Trabajo restore: a backup without Trabajo leaves the stored Trabajo a
   assert.deepEqual([t.tope, t.rev, app.obsoleta], [44, 7, false]);
 });
 
-test('L-10 known R4.3 risk (accepted, Q12 minimal mechanism): a missed storage event can leave the year row written and the Trabajo pase refused', function(){
-  var ls = almacenConTrabajo(), hechos = {monto: 100000, fecha: '2026-10-10', errores: []};
-  var a = appPase(ls, hechos), b = appPase(ls, hechos);
+// L-10 (was a pinned risk, fixed in R4.6): the pase writes two blobs (the year row and Trabajo) with no transaction. Both revisions are
+// checked BEFORE the first write, so a missed storage event can no longer leave one blob written and the other refused.
+function appPaseToasts(ls, hechos, toasts){
+  return H.appAlmacen(ls, '2026-10-15', {
+    leerMonto: function(){ return {ok: true, v: hechos.monto}; },
+    destinoPase: function(){ return {fecha: hechos.fecha, anio: +hechos.fecha.slice(0, 4), mes: +hechos.fecha.slice(5, 7) - 1}; },
+    errorEn: function(id, msg){ hechos.errores.push(msg); }, anioExiste: function(){ return true; }, cerrarHoja: function(){}, renderTrabajo: function(){},
+    MESES: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'], tjId: function(){ return 'nuevo'; }, fARS: function(n){ return String(n); },
+    tjAntes: null, paseQuitado: null, tieneTrab: function(){ return true; }, toast: function(m){ toasts.push(m); }
+  }, PASE_FUNCS);
+}
+test('L-10 a missed storage event on Trabajo: the pase into the OPEN year writes neither blob (no money in both pockets)', function(){
+  var ls = almacenConTrabajo(), hechos = {monto: 100000, fecha: '2026-10-10', errores: []}, toasts = [];
+  var a = appPase(ls, hechos), b = appPaseToasts(ls, hechos, toasts);
   H.cargarEn(a, ls, 2026); a.T = a.leerTrab(); H.cargarEn(b, ls, 2026); b.T = b.leerTrab();
   a.T.tope = 7; a.guardarTrab(true);   // another tab saves Trabajo; tab B has not processed the storage event yet
+  var y26 = ls.d['kibo.datos.2026'], tr = ls.d['kibo.trabajo'];
   b.guardarPase();
-  var y = H.guardado(ls, 2026), t = JSON.parse(ls.d['kibo.trabajo']);
-  assert.deepEqual([y.meses[9].ingresos[0].monto, t.pases.length, b.obsoleta], [100000, 0, true], 'pinned: the row is stored, the pase is not (tab B now shows the notice)');
+  assert.equal(ls.d['kibo.datos.2026'], y26, 'the year row is not written (before R4.6 it was: +100.000 while Trabajo kept the money)');
+  assert.equal(ls.d['kibo.trabajo'], tr, 'Trabajo keeps the other tab\'s save');
+  assert.deepEqual([b.obsoleta, b.T.pases.length, (b.D.meses[9].ingresos || []).length, toasts.length], [true, 0, 0, 0], 'nothing changes in memory, no "Pasé" toast');
+  assert.ok(b.g.avisos.innerHTML.indexOf('Hay cambios hechos en otra pestaña') >= 0, 'the stale notice is shown');
+  assert.equal(hechos.errores.length, 1, 'the sheet says why nothing happened');
+});
+test('L-10b a missed storage event on Trabajo: removing a pase writes neither blob (the money never vanishes from both pockets)', function(){
+  var ls = almacenConTrabajo(), hechos = {monto: 100000, fecha: '2026-10-10', errores: []}, toasts = [];
+  var a = appPase(ls, hechos);
+  H.cargarEn(a, ls, 2026); a.T = a.leerTrab(); a.guardarPase();
+  var b = appPaseToasts(ls, hechos, toasts);
+  H.cargarEn(b, ls, 2026); b.T = b.leerTrab();
+  a.T.tope = 7; a.guardarTrab(true);   // tab A saves Trabajo again; tab B misses the event
+  var y26 = ls.d['kibo.datos.2026'], tr = ls.d['kibo.trabajo'];
+  b.quitarPase('nuevo', true);
+  assert.equal(ls.d['kibo.datos.2026'], y26, 'the row keeps the pase that Trabajo still has');
+  assert.equal(ls.d['kibo.trabajo'], tr);
+  assert.deepEqual([b.obsoleta, b.T.pases.length, b.D.meses[9].ingresos[0].monto, toasts.length], [true, 1, 100000, 0]);
+});
+test('L-10c a missed storage event on the OPEN year: the pase writes neither blob and never says "Pasé"', function(){
+  var ls = almacenConTrabajo(), hechos = {monto: 100000, fecha: '2026-10-10', errores: []}, toasts = [];
+  var a = appPase(ls, hechos), b = appPaseToasts(ls, hechos, toasts);
+  H.cargarEn(a, ls, 2026); a.T = a.leerTrab(); H.cargarEn(b, ls, 2026); b.T = b.leerTrab();
+  a.D.meses[0].ahorroMesARS = 1; a.sucio = true; a.guardar();   // another tab saves the year; tab B misses the event
+  var y26 = ls.d['kibo.datos.2026'], tr = ls.d['kibo.trabajo'];
+  b.guardarPase();
+  assert.deepEqual([ls.d['kibo.datos.2026'] === y26, ls.d['kibo.trabajo'] === tr], [true, true]);
+  assert.deepEqual([b.obsoleta, b.T.pases.length, toasts.length], [true, 0, 0]);
+});
+test('L-10d reponerPase (undo of a removal) checks both revisions first: a stale Trabajo leaves both blobs as they are', function(){
+  var ls = almacenConTrabajo(), hechos = {monto: 100000, fecha: '2026-10-10', errores: []}, toasts = [];
+  var b = appPaseToasts(ls, hechos, toasts);
+  H.cargarEn(b, ls, 2026); b.T = b.leerTrab(); b.guardarPase(); b.quitarPase('nuevo', true);
+  var a = appPase(ls, hechos); H.cargarEn(a, ls, 2026); a.T = a.leerTrab(); a.T.tope = 9; a.guardarTrab(true);
+  var y26 = ls.d['kibo.datos.2026'], tr = ls.d['kibo.trabajo'];
+  b.reponerPase();
+  assert.deepEqual([ls.d['kibo.datos.2026'] === y26, ls.d['kibo.trabajo'] === tr, b.obsoleta, b.T.pases.length], [true, true, true, 0]);
 });
