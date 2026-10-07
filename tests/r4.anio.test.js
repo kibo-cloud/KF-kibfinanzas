@@ -141,7 +141,7 @@ test('model rule: in a model year "Total Disponible" and "Cierre" = December clo
   });
 });
 
-// native review follow-up (night range T2): the year summary reads the year it is given
+// native review follow-ups (night range T2): the year summary reads the year it is given; serieVista marks its own model rows
 test('mesEnRojo / resumenAnio read the year they are given, not the open one', function(){
   var rojo = C.seccion2(false, false); rojo.meses[9].gastosVariables = [C.it('Viaje', 2000000, true)];   // October spends more than it earns
   var app = V.appAnio(rojo, {2025: C.vacio(2025)}), d = app.D, vm = app.vistaModelo(d, app.hoy), s = app.serieVista(d, app.hoy);
@@ -156,6 +156,19 @@ test('mesEnRojo / resumenAnio read the year they are given, not the open one', f
   app.D = d;
   assert.equal(app.anio().indexOf(ref) >= 0, true, 'renderAnio passes the open year');
 });
+test('serieVista marks every overlaid model row itself (.modelo), whatever tilesMes returns; legacy rows stay unmarked', function(){
+  var app = V.appAnio(C.seccion2(false, false), {2025: C.vacio(2025)}), real = app.tilesMes;
+  app.tilesMes = function(d, j, vm){ var t = real(d, j, vm); delete t.modelo; return t; };
+  var s = app.serieVista(app.D, app.hoy), vm = app.vistaModelo(app.D, app.hoy);
+  app.tilesMes = real;
+  var marcas = app.plain(s.map(function(r){ return r.modelo === true; })), esperado = app.plain(vm.cad.meses.map(function(e){ return !e.legacy; }));
+  assert.deepEqual(marcas, esperado);
+  assert.deepEqual([marcas.slice(0, 8).indexOf(true), marcas.slice(8).indexOf(false)], [-1, -1], 'non-vacuous: legacy January..August, model September..December');
+  var s2 = app.serieVista(app.D, app.hoy);
+  assert.deepEqual(app.plain(s2), app.plain(app.serieVista(app.D, app.hoy)), 'deterministic');
+  assert.deepEqual(app.plain(s2).map(function(r){ return r.modelo === true; }), esperado, 'same marks with the real tilesMes');
+});
+
 // N1 item 1 (R4.5 close, design §1): Deudas in a model month = realizado ? cuotasReal : cuotasProg (one source: flujosMes via tilesMes)
 function deudasFila(d, otros){
   var app = V.appAnio(d, otros || {2025: C.vacio(2025)}), html = app.anio();

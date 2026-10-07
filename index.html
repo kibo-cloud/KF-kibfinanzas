@@ -2735,6 +2735,7 @@ function serieVista(d, hoy){
     if(vm.cad.meses[j].legacy) continue;
     t = tilesMes(d, j, vm);
     for(k in t) if(t.hasOwnProperty(k)) s[j][k] = t[k];
+    s[j].modelo = true;
   }
   return s;
 }
