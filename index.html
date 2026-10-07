@@ -87,7 +87,7 @@ body{
   background:var(--bg); color:var(--txt);
   font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;
   font-size:17px; line-height:1.35; -webkit-font-smoothing:antialiased;
-  padding-bottom:calc(150px + env(safe-area-inset-bottom));
+  padding-bottom:calc(84px + var(--fab-libre) + env(safe-area-inset-bottom));   /* P3a: lo último de la página sube por encima del botón Gasto */
 }
 button,input,select{font:inherit;color:inherit}
 button{background:none;border:0;padding:0;cursor:pointer}
@@ -562,19 +562,27 @@ body:before{content:'';position:fixed;left:0;right:0;top:0;height:240px;z-index:
   background:radial-gradient(115% 80% at 50% 0%, var(--halo) 0%, rgba(0,0,0,0) 72%)}
 nav button.on .np{background:var(--acc-soft)}
 .np{display:flex;align-items:center;justify-content:center;width:52px;height:30px;border-radius:15px;transition:background .22s ease}
-.accesos{display:flex;justify-content:space-around;gap:8px;padding:16px 4px 4px;margin-top:12px;border-top:1px solid var(--sep)}
-.acc1{display:flex;flex-direction:column;align-items:center;gap:7px;flex:1;min-width:0;color:var(--txt2);font-size:12px;font-weight:500}
-.acc1 i{display:flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:50%;
-  background:var(--acc-soft);color:var(--acc);transition:transform .14s ease}
-.acc1:active i{transform:scale(.9)}
-.acc1 svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-.acc1 span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .sechd .ic{display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:9px;
   background:var(--acc-soft);color:var(--acc);flex:0 0 auto;margin-right:10px}
 .sechd .ic svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .final{text-align:center}
 .final>small{display:block;margin-bottom:2px}
 .final-fila{justify-content:center}
+/* P3a: la tarjeta principal: un solo número grande, lo que falta en chips, el cierre estimado en gris */
+.hero .final{border-top:0;padding-top:2px}
+.hero .hero-lbl{display:block;font-size:15px;font-weight:600;color:var(--txt2);margin-bottom:0}
+.hero-sub{font-size:15px;color:var(--txt2);margin-top:2px;font-variant-numeric:tabular-nums}
+.hero-sub:empty{display:none}
+.hero-sub b{color:var(--txt);font-weight:600}
+.hero-chips{display:flex;flex-wrap:wrap;justify-content:center;column-gap:8px;margin-top:2px}
+.hero-chips:empty{display:none}
+.hero-chips>.chip{margin:8px 0 2px}
+.chip-t{display:inline-flex;align-items:center;min-height:var(--tap);padding:0 2px}
+.chip-t .chip{font-size:var(--fs-cap);min-height:30px;padding:4px 12px;border-radius:15px}
+.chip-t:active .chip{opacity:.7}
+.hero .tri{margin:12px 0 0;padding-top:12px;border-top:1px solid var(--sep)}
+.hero-proyectado{border-style:dashed}
+.hero-nota{padding:10px 2px 0;text-align:center}
 .final .big{font-size:var(--fs-hero);font-weight:700;letter-spacing:-.035em}
 .resumen{background:var(--card);border:1px solid var(--sep);border-radius:var(--r);box-shadow:var(--shadow);
   margin-top:8px;padding:18px 18px 14px;position:relative;overflow:hidden}
@@ -635,6 +643,8 @@ nav button.on .np{background:var(--acc-soft)}
 .faj .ico{transition:transform .15s}
 .faj:active .ico{transform:scale(.9)}
 .fab{transition:transform .12s}
+.fab.fuera{transform:translateY(calc(100% + 110px))}   /* P3a: al bajar leyendo se corre para no tapar montos; vuelve al subir */
+.sec,#saldoMes{scroll-margin-top:72px}
 .fab:active{transform:scale(.92)}
 .mas:active,.acciones button:active{opacity:.55}
 
@@ -2892,6 +2902,78 @@ function htmlAvisosSaldo(d, j, vm, hoy){
     + '<button class="mini" data-act="cierreAbrir" data-m="' + a.mes + '">Corregir</button>'
     + '<button class="mini" data-act="avCierreNo" data-m="' + a.mes + '">Ahora no</button></div></div>';
 }
+/* ═══ P3a: la tarjeta principal del mes ═══
+   Solo presenta lo que ya calcula la cadena (cadena/flujosMes, los mismos números de tilesMes y lineasSaldo): ninguna regla de plata nueva.
+   modo: 'hoy' (mes en curso: "Tenés hoy" + "Al cierre" estimado + lo que falta), 'cerrado' (mes pasado: "Cerraste con" + confirmado o no),
+   'proyectado' (mes futuro: "Proyectado para <Mes>", gris, programado) o 'simple' (mes o año sin arrastre: el cálculo simple de siempre). */
+function estadoHero(d, j, vm, hoy){
+  var e = vm && vm.cad.meses[j], res;
+  if(!e || e.legacy) return {modo: 'simple', estado: estadoMes(d.anio, j, hoy)};
+  if(e.estado === 'pasado') return {modo: 'cerrado', estado: e.estado, valor: e.cierre, confirmado: e.cierreReal !== null};
+  if(e.estado === 'futuro') return {modo: 'proyectado', estado: e.estado, valor: e.proyectado};
+  res = vm.cad.resumen;
+  return {modo: 'hoy', estado: e.estado, valor: e.cierreCalc, alCierre: e.proyectado,
+          falta: {cobrar: e.pendienteIngresos, pagar: e.pendienteGastos + e.pendienteCuotas, atrasado: res.vencidos, atrasadoCobros: res.vencidosIngresos}};
+}
+// la clase del número grande: rojo solo si el saldo real es negativo; lo proyectado es gris (ámbar si da negativo); el cálculo simple de
+// un año sin respuesta del primer uso va en gris, debajo de la pregunta
+function claseHero(modo, v, apagado){
+  if(modo === 'proyectado') return v < 0 ? 'ambar' : 'proy';
+  if(apagado) return 'proy';
+  return v < 0 ? 'mal' : 'ok';
+}
+function subHero(h){
+  if(h.modo === 'hoy') return 'Al cierre: <b>' + fARS(h.alCierre) + '</b> · estimado';
+  if(h.modo === 'proyectado') return 'Estimado con lo que cargaste';
+  return '';
+}
+function chipT(cls, txt, v){ return '<button class="chip-t" data-act="irA" data-v="' + v + '"><span class="chip ' + cls + '">' + txt + '</span></button>'; }
+function chipsHero(h){
+  if(h.modo === 'cerrado') return h.confirmado ? '<span class="chip real">Confirmado</span>' : '<span class="chip pend">Sin confirmar</span>';
+  if(h.modo === 'proyectado') return '<span class="chip prog">Programado</span>';
+  if(h.modo === 'simple') return '<span class="chip prog">Cálculo simple</span>';
+  var f = h.falta, o = '';
+  if(f.cobrar > 0) o += chipT('pend', 'Te falta cobrar ' + fARS(f.cobrar), 'cobrar');
+  if(f.pagar > 0) o += chipT('pend', 'Te falta pagar ' + fARS(f.pagar), 'pagar');
+  if(f.atrasado > 0) o += chipT('atras', 'Atrasado ' + fARS(f.atrasado), 'atrasado');
+  if(f.atrasadoCobros > 0) o += chipT('atras', 'Sin cobrar de antes ' + fARS(f.atrasadoCobros), 'atrasado');
+  return o;
+}
+function etiquetaHero(h, j){
+  return h.modo === 'hoy' ? 'Tenés hoy' : h.modo === 'cerrado' ? 'Cerraste con' : h.modo === 'proyectado' ? 'Proyectado para ' + MESES[j] : 'Disponible final';
+}
+// c = tilesMes del mes (la misma tarjeta de siempre); notas = las pistas de abajo; apagado = cálculo simple debajo de la pregunta del primer uso
+function htmlHero(d, j, vm, hoy, c, notas, apagado){
+  var h = estadoHero(d, j, vm, hoy), sub = subHero(h), fut = h.modo === 'proyectado';
+  return '<div class="saldo hero hero-' + h.modo + (apagado ? ' hero-apagado' : '') + '" id="hero" data-modo="' + h.modo + '">'
+     +   '<div class="final"><small class="hero-lbl">' + etiquetaHero(h, j) + '</small>'
+     +     '<div class="final-fila"><div class="big ' + claseHero(h.modo, c.disponibleFinal, apagado) + '" id="bigFinal">' + fARS(c.disponibleFinal) + '</div>'
+     +     botonOjo() + '</div>'
+     +     '<div class="hero-sub" id="heroSub">' + sub + '</div>'
+     +     '<div class="hero-chips" id="heroChips">' + chipsHero(h) + '</div></div>'
+     +   '<div class="tri">'
+     +     '<div><small>' + (fut ? 'A cobrar' : 'Cobrado') + '</small><b>' + fARS(c.totalIngresos) + '</b></div>'
+     +     '<div><small>' + (fut ? 'A pagar' : 'Pagado') + '</small><b>' + fARS(c.totalGastos) + '</b></div>'
+     +     '<div><small>Ahorro</small><b>' + fARS(c.ahorroMesARS) + '</b></div>'
+     +   '</div>'
+     +   '<div class="barras">'
+     +     barra('Gastos sobre ingresos', c.pctGastos, false, 'bGa')
+     +     barra('Ahorro sobre ingresos', c.pctAhorro, true, 'bAh')
+     +   '</div>'
+     +   (notas || '')
+     + '</div>';
+}
+// los chips de lo que falta llevan a los renglones: cobrar → Ingresos, pagar → la primera sección con algo sin pagar, atrasado → el saldo
+function irA(v){
+  var el = null, ks = ['gastosFijos', 'gastosVariables', 'deudas'], i, f;
+  var sec = function(k){ return document.querySelector('#v-mes .sec[data-sec="' + k + '"]'); };
+  if(v === 'cobrar') el = sec('ingresos');
+  else if(v === 'pagar'){ for(i=0;i<ks.length && !el;i++){ f = document.getElementById('falta-' + ks[i]); if(f && f.textContent) el = sec(ks[i]); } if(!el) el = sec('gastosFijos'); }
+  else el = document.getElementById('sdoAtrasado') || document.getElementById('saldoMes');
+  if(!el) return;
+  if(el.classList.contains('sec') && el.classList.contains('cerrada')){ D.ui.col[el.getAttribute('data-sec')] = false; el.classList.remove('cerrada'); tocar(); }
+  if(el.scrollIntoView) el.scrollIntoView({behavior: menosMovimiento() ? 'auto' : 'smooth', block: 'start'});
+}
 function renderMes(){
   var hoy = hoyApp(), vm = vistaModelo(D, hoy), m = D.meses[mes], c = tilesMes(D, mes, vm), h = '';
   h += '<div class="meses" id="selMes">';
@@ -2899,31 +2981,15 @@ function renderMes(){
   h += '</div>';
   h += '<div id="avisoSaldo">' + htmlAvisosSaldo(D, mes, vm, hoy) + '</div>';   // R5: primer uso (D5) o "¿Cerraste … con …?" (D10)
 
+  var aRep = serie(D)[mes].aReponer, topesM = pasadas(m).length;
   h += '<div class="carr" id="carrMes"><div class="carr-pista" id="carrPista"><div class="carr-slide">'
-     +   '<div class="saldo">'
-     +   '<div class="tri">'
-     +     '<div><small>Ingresos</small><b class="ok">'+fARS(c.totalIngresos)+'</b></div>'
-     +     '<div><small>Gastos</small><b>'+fARS(c.totalGastos)+'</b></div>'
-     +     '<div><small>Ahorro</small><b>'+fARS(c.ahorroMesARS)+'</b></div>'
-     +   '</div>'
-     +   '<div class="final"><small>Disponible final · '+MESES[mes]+'</small>'
-     +     '<div class="final-fila"><div class="big '+(c.disponibleFinal<0?'mal':'ok')+'" id="bigFinal">'+fARS(c.disponibleFinal)+'</div>'
-     +     botonOjo() + '</div></div>'
-     +   '<div class="barras">'
-     +     barra('Gastos sobre ingresos', c.pctGastos, false, 'bGa')
-     +     barra('Ahorro sobre ingresos', c.pctAhorro, true, 'bAh')
-     +   '</div>'
-     +   '<div class="accesos">'
-     +     '<button class="acc1" data-act="rapido"><i><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></i><span>Gasto</span></button>'
-     +     '<button class="acc1" data-act="copia"><i><svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></i><span>Copia</span></button>'
-     +     '<button class="acc1" data-act="tab" data-t="anio"><i><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></i><span>El año</span></button>'
-     +     '<button class="acc1" data-act="tab" data-t="usd"><i><svg viewBox="0 0 24 24"><path d="M12 2v20M17 6.5C17 4.6 14.8 3.5 12 3.5S7 4.6 7 6.9s2.4 3.1 5 3.6 5 1.3 5 3.6-2.2 3.4-5 3.4-5-1.1-5-3"/></svg></i><span>Dólares</span></button>'
-     +   '</div>'
-     +   '<div class="nota mal" id="notaReponer" style="display:'+(serie(D)[mes].aReponer>0?'block':'none')+';margin-top:10px">'
-     +     'A reponer al ahorro: <b>'+fARS(serie(D)[mes].aReponer)+'</b></div>'
-     +   '<div class="nota mal" id="notaTopes" style="display:'+(pasadas(m).length?'block':'none')+';margin-top:2px">'
-     +     textoTopes(m)+'</div>'
-     + '</div></div>'
+     +   htmlHero(D, mes, vm, hoy, c,
+           // P3a: una sola pista a la vez, en ámbar (no son problemas): primero lo que falta reponer al ahorro, después el tope pasado
+           '<div class="nota ambar hero-nota" id="notaReponer" style="display:'+(aRep>0?'block':'none')+'">'
+         +   'A reponer al ahorro: <b>'+fARS(aRep)+'</b></div>'
+         + '<div class="nota ambar hero-nota" id="notaTopes" style="display:'+(topesM && !(aRep>0)?'block':'none')+'">'
+         +   textoTopes(m)+'</div>')
+     + '</div>'
      + '<div class="carr-slide"><div class="saldo" id="cardTorta">' + htmlTorta(m, c) + '</div></div>'
      + '</div>'
      + '<div class="carr-dots">'
@@ -3817,8 +3883,10 @@ function refrescar(){
     if(e) e.textContent = fARS(suma(m[SECS[i].k]));
   }
   var sa = document.getElementById('sub-ahorro'); if(sa) sa.textContent = fARS(c.ahorroMesARS);
-  var big = document.getElementById('bigFinal');
-  if(big){ big.textContent = fARS(c.disponibleFinal); big.className = 'big ' + (c.disponibleFinal<0?'mal':'ok'); }
+  var big = document.getElementById('bigFinal'), hero = document.getElementById('hero'), eh = estadoHero(D, mes, vm, hoy);
+  if(big){ big.textContent = fARS(c.disponibleFinal); big.className = 'big ' + claseHero(eh.modo, c.disponibleFinal, !!(hero && hero.classList.contains('hero-apagado'))); }
+  var hs = document.getElementById('heroSub'); if(hs) hs.innerHTML = subHero(eh);
+  var hc = document.getElementById('heroChips'); if(hc) hc.innerHTML = chipsHero(eh);
   pintarTorta();
   var tri = document.querySelectorAll('#v-mes .tri b');
   if(tri.length === 3){ tri[0].textContent = fARS(c.totalIngresos); tri[1].textContent = fARS(c.totalGastos); tri[2].textContent = fARS(c.ahorroMesARS); }
@@ -3846,7 +3914,7 @@ function refrescar(){
     }
   }
   var nt = document.getElementById('notaTopes');
-  if(nt){ nt.style.display = pasadas(m).length ? 'block' : 'none'; nt.innerHTML = textoTopes(m); }
+  if(nt){ nt.style.display = pasadas(m).length && !(ar > 0) ? 'block' : 'none'; nt.innerHTML = textoTopes(m); }   // P3a: una pista a la vez
   var bf = document.getElementById('bigFinal');
   if(bf){
     var nuevoTxt = fARS(c.disponibleFinal);
@@ -4888,6 +4956,7 @@ document.addEventListener('click', function(ev){
   if(a === 'plan'){ abrirPlan(+b.getAttribute('data-i')); return; }
   if(a === 'cobro'){ abrirComoCobras(+b.getAttribute('data-i')); return; }
   if(a === 'carrIr'){ irSlide(+b.getAttribute('data-v')); return; }
+  if(a === 'irA'){ irA(b.getAttribute('data-v')); return; }
   if(a === 'icFrec'){
     var nf = b.getAttribute('data-v'), eraSem = cbx.frec === 'semanal', esSem = nf === 'semanal';
     cbx.frec = nf; marcarChips('icFrec', b);
@@ -4905,7 +4974,7 @@ document.addEventListener('click', function(ev){
   if(a === 'guardarPlan'){ guardarPlan(false); return; }
   if(a === 'quitarPlan'){ guardarPlan(true); return; }
   if(a === 'colAyuda'){ var ka = b.getAttribute('data-k'); ayudaAbierta[ka] = !ayudaAbierta[ka]; plegarAnim(b.parentNode, !ayudaAbierta[ka]); return; }
-  if(a === 'gastoRapido' || a === 'rapido'){ gastoRapido(); return; }   // el FAB y el botón "Gasto" de la tarjeta abren la misma hoja
+  if(a === 'gastoRapido' || a === 'rapido'){ gastoRapido(); return; }   // el FAB (P3a: único botón "Gasto"; 'rapido' queda para el atajo)
   if(a === 'chip'){
     var cs = document.querySelectorAll('#grChips button');
     for(var j=0;j<cs.length;j++) cs[j].classList.toggle('on', cs[j] === b);
@@ -7161,6 +7230,13 @@ document.addEventListener('touchend', function(e){
 }, {passive:true});
 
 if(location.search.indexOf('gasto=1') > -1) setTimeout(gastoRapido, 350);
+// P3a: el botón Gasto se corre mientras bajás (para no tapar los montos de la derecha) y vuelve apenas subís o cerca del principio
+var fabY = 0;
+window.addEventListener('scroll', function(){
+  var y = window.pageYOffset || document.documentElement.scrollTop || 0, f = document.getElementById('fab');
+  if(f){ if(y > fabY + 6 && y > 120) f.classList.add('fuera'); else if(y < fabY - 6 || y <= 120) f.classList.remove('fuera'); }
+  fabY = y;
+}, {passive:true});
 
 if('serviceWorker' in navigator && location.protocol === 'https:'){
   navigator.serviceWorker.register('./sw.js')['catch'](function(){});

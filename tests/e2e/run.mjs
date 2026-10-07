@@ -319,14 +319,11 @@ try{
   const focusOut = sel => ev(`document.querySelector(${JSON.stringify(sel)}).dispatchEvent(new FocusEvent('focusout',{bubbles:true})); true`);
   const hasCls = (sel, c) => ev(`document.querySelector(${JSON.stringify(sel)}).classList.contains(${JSON.stringify(c)})`);
   const toastTxt = () => ev(`(function(){ var t=document.getElementById('toast'); return t.classList.contains('on') ? t.textContent : ''; })()`);
-  // (1) the card "Gasto" button opens the same quick-expense sheet as the FAB
-  check('card Gasto button exists', await ev(`!!document.querySelector('[data-act=rapido]')`), true);
-  await ev(`document.querySelector('[data-act=rapido]').click(); true`); await sleep(300);
-  check('card Gasto button opens the quick-expense sheet', await ev(`!!document.getElementById('grMonto') && document.getElementById('velo').classList.contains('on')`), true);
+  // (1) P3a: the FAB is the only "Gasto" button (the card one duplicated it and was removed) and opens the quick-expense sheet
+  check('P3a: no card Gasto button; the FAB is the only one', await ev(`[!!document.querySelector('#v-mes [data-act=rapido]'), document.querySelectorAll('[data-act=gastoRapido]').length]`), [false, 1]);
   const cerrarHoja = async () => { await ev(`(function(){ var b = document.querySelector('#hoja [data-act=cerrarHoja]'); if(b) b.click(); return true; })()`); await sleep(400); };
-  await cerrarHoja();
   await ev(`document.querySelector('[data-act=gastoRapido]').click(); true`); await sleep(300);
-  check('FAB opens the same sheet', await ev(`!!document.getElementById('grMonto')`), true);
+  check('FAB opens the quick-expense sheet', await ev(`!!document.getElementById('grMonto') && document.getElementById('velo').classList.contains('on')`), true);
   await cerrarHoja();
   // (2) number parsing: visible error, nothing stored; crypto quantity keeps decimals
   const alq = 'input.monto[data-k=gastosFijos][data-i="0"]';
