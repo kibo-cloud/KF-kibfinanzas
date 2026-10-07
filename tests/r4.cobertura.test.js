@@ -273,6 +273,24 @@ test('L-07b removing a pase from a STALE tab changes nothing (memory, Trabajo, o
   assert.ok(app.g.avisos.innerHTML.indexOf('Hay cambios hechos en otra pestaña') >= 0, 'the stale notice is shown instead');
 });
 
+test('L-07c a pase into ANOTHER year from a tab that missed the storage event (Trabajo saved in another tab) writes nothing in either blob', function(){
+  var ls = almacenConTrabajo(), hechos = {monto: 100000, fecha: '2025-12-10', errores: []}, a = appPase(ls, hechos), b = appPase(ls, hechos);
+  H.cargarEn(a, ls, 2026); a.T = a.leerTrab(); H.cargarEn(b, ls, 2026); b.T = b.leerTrab();
+  a.T.tope = 77; assert.equal(a.guardarTrab(true), true, 'tab A moved Trabajo');
+  assert.deepEqual([b.obsoleta, b.sucio], [false, false], 'tab B is clean and never got the event');
+  var antes = JSON.stringify(ls.d), y25 = ls.d['kibo.datos.2025'];
+  assert.equal(b.aplicarPase({anio: 2025, mes: 11, monto: 100000}, 1), false, 'the precheck refuses before the first write');
+  assert.equal(ls.d['kibo.datos.2025'], y25, 'the other year is not written (its row would count a pase Trabajo does not have)');
+  assert.equal(JSON.stringify(ls.d), antes, 'nothing else either');
+  assert.equal(b.obsoleta, true, 'the tab is marked stale');
+  b.obsoleta = false; b.g.avisos.innerHTML = '';
+  b.guardarPase();
+  assert.equal(JSON.stringify(ls.d), antes, 'the pase sheet writes neither the other year nor Trabajo');
+  assert.equal(b.T.pases.length, 0, 'no pase in memory');
+  assert.equal(b.obsoleta, true);
+  assert.ok(b.g.avisos.innerHTML.indexOf('Hay cambios hechos en otra pestaña') >= 0, 'the stale notice is shown');
+});
+
 test('L-08 deshacerTj keeps the revision of what is stored now, so the undo saves; a newer save of another tab still wins', function(){
   var ls = H.fakeStorage({'kibo.trabajo': JSON.stringify(Object.assign(H.trab([]), {tope: 10, rev: 5}))});
   var app = H.appAlmacen(ls, '2026-10-15', {tjAntes: null, tab: 'mes'}, ['deshacerTj', 'antesDeCambiar']);
