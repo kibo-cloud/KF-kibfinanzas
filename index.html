@@ -3955,13 +3955,19 @@ function anioActivo(){
   return a || new Date().getFullYear();
 }
 function recordarAnio(a){ try{ localStorage.setItem(LSANIO, String(a)); }catch(e){} }
+// N7: un archivo "Versión para PC" trae adentro el año que estaba abierto (ya guardado alguna vez o con datos); la semilla de la app no
+function semillaExportada(d){ return !!(d && (d.actualizado || hayDatos(d, false))); }
 function cargar(){
   var a = anioActivo(), d = leerAnio(a);
   if(!d){
     var lista = aniosGuardados();
     if(lista.length){ a = lista[lista.length-1]; d = leerAnio(a); }
   }
-  if(d){ D = d; } else { D = leerEmbebido(); D.anio = a; }
+  if(d){ D = d; }
+  else {   // nada guardado en este navegador: la semilla. Si es un archivo exportado, abre SU año (y queda recordado abajo), no el del calendario
+    D = leerEmbebido();
+    if(!(semillaExportada(D) && anioValido(D.anio))) D.anio = a;
+  }
   recordarAnio(D.anio);
   arrancado = true; sucio = false; mes = Math.min(mes, 11);
   aplicarTema(); render();

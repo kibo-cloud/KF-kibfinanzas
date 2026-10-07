@@ -14,7 +14,7 @@ import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
 import vm from 'node:vm';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const MARKER = '})();\n</script>';
@@ -422,6 +422,29 @@ try{
   check('"Versión para PC" (real versionPC): data embedded once, motor before the app, every script compiles', pc,
     { captured: true, m1: 1, m2: 1, embeddedYear: true, embeddedMonths: 12, motorBlocks: 1, motorHasMarkers: false, appAfterMotor: true,
       motorDefinesTGMotor: true, scriptsCompile: true, scriptIds: ['(app)', 'datos', 'motor', '(app)'] });   // the first '(app)' is the Date pin the harness injects in <head>
+
+  // N7: the exported file OPENED (file://, its own empty storage) shows the year it carries, not the calendar one (pinned to 2026), and an edit saves under that year
+  const ms27 = []; for(let i=0;i<12;i++) ms27.push(mes([], [], [], [])); ms27[9] = mes([it('Sueldo 2027', 270000, true)], [], [], []);
+  await ev(`localStorage.setItem('kibo.datos.2027', ${JSON.stringify(JSON.stringify({anio: 2027, meses: ms27}))}); localStorage.setItem('kibo.anio', '2027'); true`);
+  await nav(URL_APP);
+  check('N7 PC file: the app has 2027 open before exporting', await ev('D.anio'), 2027);
+  const pc27 = await ev(`new Promise(function(resolve){ var orig = URL.createObjectURL, capt = null, t0 = performance.now();
+    URL.createObjectURL = function(b){ capt = b; return orig.call(URL, b); };
+    var btn = document.createElement('button'); btn.setAttribute('data-act', 'verpc'); document.body.appendChild(btn); btn.click(); document.body.removeChild(btn);
+    (function esperar(){ if(!capt && performance.now() - t0 < 8000) return setTimeout(esperar, 100); URL.createObjectURL = orig; if(!capt) return resolve(null); capt.text().then(resolve); })(); })`);
+  check('N7 PC file: the 2027 file was built', typeof pc27 === 'string' && pc27.indexOf('Sueldo 2027') > 0, true);
+  const pcDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tugasto-e2e-pc-')); tmpDirs.push(pcDir);
+  const pcUrl = pathToFileURL(path.join(pcDir, 'kibfinanzas-2027.html')).href;
+  fs.writeFileSync(path.join(pcDir, 'kibfinanzas-2027.html'), pc27 || '');
+  await nav(pcUrl);
+  await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida', '1'); localStorage.setItem('kibo.anio', '2026'); true`);   // a stale remembered year, nothing stored
+  await nav(pcUrl);
+  check('N7 PC file opened via file://: shows 2027 (title and header), its data, and remembers 2027', await ev(`[location.protocol, D.anio, document.querySelector('#titulo .anio').textContent, document.title, D.meses[9].ingresos[0].nombre, localStorage.getItem('kibo.anio')]`),
+    ['file:', 2027, '2027', 'kibFinanzas · 2027', 'Sueldo 2027', '2027']);
+  await ev(`D.meses[9].ingresos[0].monto = 271000; sucio = true; guardar(); true`);
+  check('N7 PC file opened via file://: an edit saves under kibo.datos.2027 (nothing under 2026)', await ev(`[(function(t){ return t ? JSON.parse(t).meses[9].ingresos[0].monto : null; })(localStorage.getItem('kibo.datos.2027')), localStorage.getItem('kibo.datos.2026')]`), [271000, null]);
+  await ev(`localStorage.clear(); true`);
+  await nav(URL_APP);
 
   // ── R4.3: several tabs, model fields on reload, backup -> restore, back to pre-R4 ──
   const oct = (sueldo) => { const ms = []; for(let i=0;i<12;i++) ms.push(mes([], [], [], []));
