@@ -159,8 +159,8 @@ test('duplicar resets pagado to false, zeroes amounts and keeps the marker', fun
     today: '2026-12-15',
     funcs: EXTRA.concat(['estadoDeuda', 'duplicar']),
     globals: {
-      sucio: false, arrancado: false, obsoleta: false,
-      guardar: function(){}, PREF: 'kibo.datos.', blobAlDia: function(){ return true; }, leerAnio: function(){ return null; }, recordarAnio: function(){}, render: function(){},
+      sucio: false, arrancado: false, obsoleta: false, hayLS: true,
+      guardar: function(){}, PREF: 'kibo.datos.', blobAlDia: function(){ return true; }, leerAnio: function(){ return null; }, revGuardada: function(){ return {hay: false, rev: 0}; }, recordarAnio: function(){}, render: function(){},
       alerta: function(t){ calls.alerta = t; }
     }
   });

@@ -2173,7 +2173,7 @@ function datosTorta(m, j){
   }
   return l;
 }
-/* ---- R4.2: modelo financiero nuevo (contrato en odd/tasks/repair-sprint-1-r4-design.md). Funciones puras; la app todavía no las llama.
+/* ---- R4.2: modelo financiero nuevo (contrato en odd/tasks/repair-sprint-1-r4-design.md). Funciones puras; la app las usa desde R4.4/R5 (vistaModelo, patrimonioNeto).
    Todo lo temporal recibe `hoy`. ctx = {pasesTrabajo:{'YYYY-MM':[{fecha,monto}]}, cierrePrevio:number, trabajoDisponible:number} lo arma la app. ---- */
 // 'pasado' | 'actual' | 'futuro' de un mes (j, 0-based) del año `anio` respecto de hoy
 function estadoMes(anio, j, hoy){
@@ -3016,7 +3016,7 @@ function seccion(S, m){
      + '<span class="sub" id="sub-'+S.k+'">'+fARS(sub)+'</span><i class="chev"></i></button>';
   h += '<div class="cuerpo">';
   for(var i=0;i<lista.length;i++){
-    var marc = tieneTilde(D, mes, S.k, lista[i]);   // "Del trabajo" ya está cobrado: no se tilda (salvo Q3, ver tieneTilde)
+    var marc = tieneTilde(D, mes, S.k, lista[i]);   // "Del trabajo" ya está cobrado: no se tilda (salvo Q3 y lo que pasa de sus pases, R5: ver tieneTilde)
     var pal = S.k === 'ingresos' ? 'cobrado' : 'pagado', antes = marc && prog && estaPagado(mes, lista[i]);   // R5: tildado antes de tiempo
     var pg = marc && !prog && estaPagado(mes, lista[i]);
     var vt = S.k === 'ingresos' && esRenglonTrabajo(lista[i].nombre) && pasesDelMes(D.anio, mes) > 0;   // lo carga Trabajo con sus pases
@@ -3851,6 +3851,7 @@ function guardar(){
   D.actualizado = new Date().toISOString();
   var eraSucio = sucio, recupero = !hayLS, r = escribirConRev(PREF + D.anio, D);
   if(r === 'conflicto'){ D.actualizado = ant; obsoleta = true; avisoOtraPestana(); return false; }
+  if(r === 'roto'){ D.actualizado = ant; avisoCuarentena(D.anio); return false; }   // N4 I-3: no se pisa un año que no se puede leer
   if(r === 'ok'){ sucio = false; hayLS = true; }   // si ahora guarda, el navegador volvió a funcionar
   else hayLS = false;
   if(recupero && hayLS){ var av = document.getElementById('avisos'); if(av && av.textContent.indexOf('no está guardando') > -1) av.innerHTML = ''; }
@@ -3861,22 +3862,40 @@ function guardar(){
   if(eraSucio && !hayLS) pildora('No se pudo guardar', true);
   return hayLS;   // true solo si quedó escrito (lo usan los que escriben dos blobs, como un pase)
 }
-function leerAnio(a){
-  try{ var s = localStorage.getItem(PREF + a); return s ? normalizar(JSON.parse(s), hoyApp()) : null; }
+function leerAnio(a){   // null si no hay año guardado o si lo guardado no se puede leer (N4 I-3: ese texto no se pisa, ver escribirConRev)
+  try{ var s = localStorage.getItem(PREF + a), o = s ? JSON.parse(s) : null; return o && typeof o === 'object' && !Array.isArray(o) ? normalizar(o, hoyApp()) : null; }
   catch(e){ return null; }
 }
 /* ═══ revisión por blob: varias pestañas (R4.3, Q12) ═══
    Cada blob guardado (un año, o Trabajo) lleva `rev`, un entero que sube en cada guardado. Antes de escribir se relee el rev guardado:
    si no es el que esta pestaña cargó, otra pestaña guardó en el medio y NO se escribe (la última pestaña no pisa a la primera). */
-function revGuardada(clave){   // {hay, rev} del blob que está guardado ahora
+function revGuardada(clave){   // {hay, rev} del blob que está guardado ahora; roto + texto si está pero no se puede leer (N4 I-3)
   var s, o;
   try{ s = localStorage.getItem(clave); }catch(e){ return {hay:false, rev:0}; }
   if(s === null || s === undefined) return {hay:false, rev:0};
-  try{ o = JSON.parse(s); }catch(e){ return {hay:true, rev:0}; }
-  return {hay:true, rev: revValida(o && o.rev) || 0};
+  try{ o = JSON.parse(s); }catch(e){ return {hay:true, rev:0, roto:true, texto:s}; }
+  if(!o || typeof o !== 'object' || Array.isArray(o)) return {hay:true, rev:0, roto:true, texto:s};
+  return {hay:true, rev: revValida(o.rev) || 0};
 }
-function escribirConRev(clave, obj){   // 'ok' | 'conflicto' (otra pestaña guardó antes: no se escribe) | 'error' (el navegador no deja guardar)
+/* N4 I-3: un blob guardado que no se puede leer nunca se pisa en silencio. Antes, su texto se copia tal cual a kibo.cuarentena.AAAA
+   (o kibo.cuarentena.trabajo). Esa clave es del teléfono a propósito (claveMia no la incluye): así ninguna vuelta atrás ni restauración
+   que borra claves propias la borra nunca; la copia de seguridad la lleva aparte (armarCopia: campo `cuarentena`). La app no la borra. */
+function claveCuarentena(clave){ return LSCUAR + (clave === LSTRAB ? 'trabajo' : String(clave).slice(PREF.length)); }
+function ponerEnCuarentena(clave, texto){   // true si la copia quedó guardada (o ya estaba); nunca reemplaza una copia anterior
+  var k = claveCuarentena(clave);
+  try{ if(localStorage.getItem(k) === null) localStorage.setItem(k, texto); return localStorage.getItem(k) !== null; }catch(e){ return false; }
+}
+function avisoCuarentena(anio){
+  var e = document.getElementById('avisos'); if(!e) return;
+  e.innerHTML = '<div class="aviso" data-av="cuarentena"><p>No pude leer los datos de ' + esc(anio) + '. Guardé una copia; no se van a pisar.'
+    + ' Si tenés una copia de seguridad, restaurala.</p><div class="fila"><button class="mini on" data-act="restaurar">Restaurar una copia</button></div></div>';
+}
+function escribirConRev(clave, obj){   // 'ok' | 'conflicto' (otra pestaña guardó antes: no se escribe) | 'error' (el navegador no deja guardar) | 'roto' (N4 I-3)
   var st = revGuardada(clave), mia = revValida(obj.rev) || 0, tenia = obj.rev;
+  if(st.roto){   // lo guardado no se puede leer: el año no se escribe hasta restaurar una copia; Trabajo sí, una vez copiado a cuarentena
+    if(!ponerEnCuarentena(clave, st.texto) || clave !== LSTRAB) return 'roto';
+    st = {hay:false, rev:0};
+  }
   if(st.hay && st.rev !== mia) return 'conflicto';   // si el blob ya no existe no hay nada que pisar: se escribe
   obj.rev = mia + 1;
   try{ localStorage.setItem(clave, JSON.stringify(obj)); return 'ok'; }
@@ -3949,6 +3968,8 @@ function cargar(){
   if(!hayLS) avisoSinGuardado();
   else if(!hayDatos(D, tieneTrab()) && !aniosGuardados().length && !vioBienvenida()) bienvenida();
   else if(!hayDatos(D, tieneTrab()) && !aniosGuardados().length) avisoPrimeraVez(); else revisarCopia();
+  var rg = revGuardada(PREF + D.anio);
+  if(rg.roto){ ponerEnCuarentena(PREF + D.anio, rg.texto); avisoCuarentena(D.anio); }   // N4 I-3
   if(navigator.storage && navigator.storage.persist) navigator.storage.persist()['catch'](function(){});
 }
 function cambiarAnio(a){
@@ -3967,11 +3988,24 @@ function listarAnios(){
 /* ═══ 8 · copias de seguridad ═══════════════════════════════════ */
 function armarCopia(){
   if(sucio) guardar();
-  var anios = {}, l = aniosGuardados();
-  for(var i=0;i<l.length;i++){ var d = leerAnio(l[i]); if(d) anios[l[i]] = d; }
-  anios[D.anio] = D;
+  var anios = {}, l = aniosGuardados(), cuar = {}, hayCuar = false, st, i, k;
+  for(i=0;i<l.length;i++){
+    var d = leerAnio(l[i]);
+    if(d) anios[l[i]] = d;
+    else if((st = revGuardada(PREF + l[i])).roto) ponerEnCuarentena(PREF + l[i], st.texto);   // N4 I-3: no se omite en silencio (va en `cuarentena`)
+  }
+  // N4 I-4: una pestaña vieja (obsoleta, o lo guardado ya no es su revisión) exporta lo GUARDADO, no su memoria
+  if(!obsoleta && !revGuardada(PREF + D.anio).roto && blobAlDia(PREF + D.anio, D)) anios[D.anio] = D;
   var copia = {app:'kibFinanzas', version:1, creada:new Date().toISOString(), anios:anios};
-  if(T && (T.activo || tieneTrab())) copia.trabajo = T;   // campo nuevo: las versiones viejas lo ignoran
+  var tr = T && !obsoleta && blobAlDia(LSTRAB, T) ? T : leerTrab();
+  if(tr && (tr.activo || tr.facturas.length || tr.cobros.length || tr.pases.length || tr.gastos.length || tr.productos.length || tr.tope)) copia.trabajo = tr;   // campo nuevo: las versiones viejas lo ignoran
+  try{
+    for(i=0;i<localStorage.length;i++){
+      k = localStorage.key(i);
+      if(k && k.indexOf(LSCUAR) === 0){ cuar[k.slice(LSCUAR.length)] = localStorage.getItem(k); hayCuar = true; }
+    }
+  }catch(e){}
+  if(hayCuar) copia.cuarentena = cuar;   // N4 I-3: el texto que no se pudo leer viaja tal cual (campo nuevo: las versiones viejas lo ignoran)
   return copia;
 }
 function fechaArchivo(){ var d = new Date(); function p(x){ return (x<10?'0':'')+x; } return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
@@ -4069,7 +4103,8 @@ function escribirAnios(anios, claves){
   if(modelo) asegurarSnapshotR4();   // la copia trae el modelo de saldos: antes de escribir queda guardado lo que había (si no entra, la restauración sigue: la pidió el usuario)
   for(i=0;i<lista.length;i++){
     d = lista[i]; st = revGuardada(PREF + d.anio);
-    if(st.hay) d.rev = Math.max(st.rev, d.rev || 0) + 1;   // la restauración solo avanza la revisión: ninguna pestaña con una revisión anterior puede pisarla
+    if(st.roto && !ponerEnCuarentena(PREF + d.anio, st.texto)){ fallaron.push(d.anio); continue; }   // N4 I-3: el texto ilegible se copia antes de reemplazarlo
+    d.rev = Math.max(st.rev, d.rev || 0) + 1;   // la restauración solo avanza la revisión (N4 I-5: siempre, exista o no la clave): ninguna pestaña con una revisión anterior puede pisarla
     try{ localStorage.setItem(PREF + d.anio, JSON.stringify(d)); if(d.anio > ultimo) ultimo = d.anio; }
     catch(e){ fallaron.push(d.anio); }
   }
@@ -4102,6 +4137,9 @@ function restaurarTexto(txt){
     pendiente = function(){
       obsoleta = false;   // restaurar reemplaza todo: no hay nada que "recargar" de otra pestaña
       var r = escribirAnios(anios, claves), trabajoFallo = false, stT;
+      if(j.cuarentena && typeof j.cuarentena === 'object') Object.keys(j.cuarentena).forEach(function(k){   // N4 I-3: solo si acá no hay una
+        if((anioValido(k) || k === 'trabajo') && typeof j.cuarentena[k] === 'string') ponerEnCuarentena(k === 'trabajo' ? LSTRAB : PREF + k, j.cuarentena[k]);
+      });
       if(j.trabajo && typeof j.trabajo === 'object'){
         T = normTrab(j.trabajo); stT = revGuardada(LSTRAB);
         if(stT.hay) T.rev = stT.rev;   // escribirConRev exige la revisión guardada y suma 1: queda por encima de lo que cualquier pestaña tenga cargado
@@ -4168,9 +4206,9 @@ function imprimir(){
   if(estabaOculto){ oculto = false; aplicarOculto(); }
   var b = document.querySelector('#nav button[data-t="anio"]');
   if(b && tab !== 'anio') b.click(); else if(estabaOculto) render();
-  var volver = function(){ if(!estabaOculto || oculto) return; oculto = true; aplicarOculto(); render(); };
+  var volver = function(){ window.removeEventListener('afterprint', volver); if(!estabaOculto || oculto) return; oculto = true; aplicarOculto(); render(); };
   setTimeout(function(){
-    window.addEventListener('afterprint', volver);
+    window.addEventListener('afterprint', volver, {once:true});   // N4 I-6: no se acumula un oyente por impresión
     window.print();
     setTimeout(volver, 1500);
   }, 150);
@@ -4225,16 +4263,22 @@ function duplicar(){
     m.ahorroMesARS = 0; m.ahorroMesUSD = 0; m.compraARS = 0; m.compraUSD = 0;
     m.retiroARS = 0; m.ventaUSD = 0; m.ventaARS = 0; m.reposicionARS = 0; m.movimientos = [];
   }
-  if(leerAnio(n.anio)){ alerta('Ese año ya existe', 'El ' + n.anio + ' ya está guardado en este teléfono. Cambiá de año desde Ajustes en vez de crearlo de nuevo.'); return; }
-  var viejo = D.anio;
-  D = n; recordarAnio(D.anio); mes = 0; arrancado = true;
+  if(revGuardada(PREF + n.anio).hay){ alerta('Ese año ya existe', 'El ' + n.anio + ' ya está guardado en este teléfono. Cambiá de año desde Ajustes en vez de crearlo de nuevo.'); return; }
+  var viejo = D.anio, previo = D, mesPrevio = mes, obsPrevia = obsoleta, lsPrevio = hayLS;
+  D = n; mes = 0; arrancado = true;
   var cargadas = 0;
   Object.keys(D.planDeudas).forEach(function(nn){
     var pp = D.planDeudas[nn];
     if(!pp.cuotas || !pp.total) return;
     cargadas += cargarCuotas(D, nn, 0, hoyApp()).poner;
   });
-  guardar(); render();
+  if(guardar() === false){   // N4 I-2: el año nuevo no quedó guardado: todo vuelve a como estaba (ni cambio de año, ni marca de año abierto)
+    D = previo; mes = mesPrevio; obsoleta = obsPrevia; hayLS = lsPrevio; sucio = false;
+    render();
+    alerta('No pude crear el año', 'No pude guardar el ' + n.anio + ' en este teléfono, así que no cambié nada: seguís en el ' + viejo + '. Puede que el navegador no tenga más lugar. Liberá espacio y probá de nuevo.');
+    return;
+  }
+  recordarAnio(D.anio); render();
   alerta('Listo el ' + D.anio, 'Creé el año con los meses en cero, las mismas categorías y el cierre de '
     + viejo + ' como saldo inicial.'
     + (cargadas ? ' Además dejé cargadas ' + cargadas + ' cuotas de las deudas que seguían abiertas.' : '')
@@ -6701,6 +6745,7 @@ function accionTj(a, b){
 var LSESQ = 'kibo.esquema', LSPRE130 = 'kibo.respaldo.pre130', ESQUEMA = '1.30';
 // claves de esta app (la copia y la restauración solo tocan estas; otra app del mismo sitio puede usar "kibo.algo"): kibo.datos.AAAA + estas
 var LSR4 = 'kibo.modeloSaldos', LSPRER4 = 'kibo.respaldo.pre-r4';   // marca "este teléfono ya empezó el modelo de saldos" y la copia de lo que había justo antes (como pre130)
+var LSCUAR = 'kibo.cuarentena.';   // N4 I-3: texto tal cual de un blob que no se pudo leer (kibo.cuarentena.AAAA, kibo.cuarentena.trabajo); es del teléfono, nunca se borra
 var LSAVCIERRE = 'kibo.avisoCierre';   // R5 (D10): mes cuyo aviso "¿Cerraste … con …?" se descartó con "Ahora no"; es del teléfono, no viaja en la copia
 var CLAVES_PROPIAS = [LSANIO, LSCOPIA, LSOCULTO, LSBIENV, LSHIST, LSTRAB, LSVISTA, LSR4, LSAVCIERRE];
 function claveMia(k){

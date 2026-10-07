@@ -249,10 +249,10 @@ function fakeStorage(init, rechaza){
     removeItem: function(k){ delete d[k]; }
   };
 }
-var FUNCS = ['claveMia', 'dos', 'revGuardada', 'escribirConRev', 'avisoOtraPestana', 'hayEdicion', 'alCambiarOtraPestana', 'recargarDesdeAlmacenamiento',
+var FUNCS = ['claveMia', 'dos', 'revGuardada', 'claveCuarentena', 'ponerEnCuarentena', 'avisoCuarentena', 'esc', 'escribirConRev', 'avisoOtraPestana', 'hayEdicion', 'alCambiarOtraPestana', 'recargarDesdeAlmacenamiento',
   'asegurarSnapshotR4', 'respaldoR4', 'diasDelRespaldoR4', 'vencerRespaldoR4', 'volverAntesDeR4', 'ctxModelo', 'cierreAnioAnterior', 'activarSaldos',
   'guardar', 'guardarTrab', 'blobAlDia', 'leerAnio', 'aniosGuardados', 'normTrab', 'leerTrab', 'anioValido', 'escribirAnios', 'armarCopia', 'restaurarTexto', 'avisoCopiaGrande', 'duplicar', 'avisarRestauro'];
-var VARS = ['PREF', 'LSANIO', 'LSCOPIA', 'LSOCULTO', 'LSBIENV', 'LSHIST', 'LSTRAB', 'LSVISTA', 'LSR4', 'LSAVCIERRE', 'CLAVES_PROPIAS', 'sucio', 'arrancado', 'obsoleta', 'pendiente', 'MAX_COPIA'];
+var VARS = ['PREF', 'LSANIO', 'LSCOPIA', 'LSOCULTO', 'LSBIENV', 'LSHIST', 'LSTRAB', 'LSVISTA', 'LSR4', 'LSAVCIERRE', 'CLAVES_PROPIAS', 'sucio', 'arrancado', 'obsoleta', 'pendiente', 'MAX_COPIA', 'LSCUAR'];
 function nuevaApp(ls, today, extra){
   var g = {localStorage: ls, pildoras: [], recargas: 0, renders: 0, alertas: [], hojas: [], ultPild: 0};
   g.avisos = {innerHTML: '', textContent: ''};
@@ -564,7 +564,7 @@ test('backup -> restore through the real app functions: arrastre, cierreReal and
   var b = guardado(ls2, 2026);
   assert.deepEqual(b.arrastre, plain(d.arrastre));
   assert.deepEqual(b.meses[8].cierreReal, plain(d.meses[8].cierreReal));
-  assert.equal(b.rev, 4);
+  assert.equal(b.rev, 5, 'N4 I-5: a restored year always moves its revision forward: max(stored, own 4) + 1, also onto an empty device');
   assert.ok(ls2.d['kibo.modeloSaldos'], 'restoring an R4 backup onto a device marks it as migrated');
   assert.equal(ls2.d['kibo.respaldo.pre-r4'], undefined, 'nothing to snapshot on an empty device');
   assert.deepEqual(plain(M.cadena(M.normalizar(b, HOY), HOY, {})), plain(M.cadena(d, HOY, {})), 'same chain after the round trip');
