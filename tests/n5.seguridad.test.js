@@ -96,3 +96,41 @@ test('S-1 ranking, pasivos and proyeccionDeudas count rows named like Object.pro
   assert.deepEqual(pr.map(function(x){ return x.nombre; }), ['constructor']);
   assert.equal(({}).monto, undefined);
 });
+
+// ── S-2: restore only writes real year keys ──
+var H = require('./fixtures/r45-harness');
+function copiaCon(claves){ var o = {}; claves.forEach(function(k){ o[k] = C.vacio(2026); }); return JSON.stringify({app: 'kibFinanzas', version: 1, anios: o}); }
+
+test('S-2 escribirAnios writes only valid year keys (1900-2200, no leading zero) and reports the rest as skipped', function(){
+  var ls = H.fakeStorage({});
+  var app = H.appAlmacen(ls);
+  var claves = ['0000', '0999', '12345', '1899', '2201', '2026'], anios = JSON.parse(copiaCon(claves)).anios;
+  var r = app.plain(app.escribirAnios(anios, claves));
+  assert.deepEqual(Object.keys(ls.d), ['kibo.datos.2026']);
+  Object.keys(ls.d).forEach(function(k){ assert.ok(app.claveMia(k), k); });
+  assert.equal(r.ultimo, 2026);
+  assert.deepEqual(r.fallaron, []);
+  assert.deepEqual(r.saltados, ['0000', '0999', '12345', '1899', '2201']);
+});
+
+test('S-2 restaurarTexto offers only the valid years and tells which entries it skipped', function(){
+  var ls = H.fakeStorage({});
+  var app = H.appAlmacen(ls); app.D = app.normalizar({anio: 2026}, app.hoy);
+  app.restaurarTexto(copiaCon(['0999', '2026']));
+  assert.equal(app.g.hojas.length, 1);
+  assert.ok(app.g.hojas[0].indexOf('<b>2026</b>') >= 0, app.g.hojas[0]);
+  assert.ok(app.g.hojas[0].indexOf('0999') < 0, 'the invalid key is not offered as a year');
+  app.pendiente();
+  assert.deepEqual(Object.keys(ls.d).filter(function(k){ return k.indexOf('kibo.datos.') === 0; }), ['kibo.datos.2026']);
+  assert.equal(app.g.alertas.length, 1);
+  assert.ok(app.g.alertas[0][1].indexOf('0999') >= 0, app.g.alertas[0][1]);
+});
+
+test('S-2 a backup whose only keys are invalid years is reported as empty and writes nothing', function(){
+  var ls = H.fakeStorage({});
+  var app = H.appAlmacen(ls); app.D = app.normalizar({anio: 2026}, app.hoy);
+  app.restaurarTexto(copiaCon(['0000', '12345']));
+  assert.equal(app.pendiente, null);
+  assert.deepEqual(app.g.alertas.map(function(a){ return a[0]; }), ['Copia vacía']);
+  assert.deepEqual(Object.keys(ls.d), []);
+});

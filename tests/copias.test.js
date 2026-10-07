@@ -8,19 +8,20 @@ function storage(rechaza){
   var d = {};
   return {d: d, setItem: function(k, v){ if(rechaza(k)) throw new Error('QuotaExceededError'); d[k] = String(v); }, getItem: function(k){ return d.hasOwnProperty(k) ? d[k] : null; }};
 }
+var VARS_CLAVES = ['PREF', 'LSANIO', 'LSCOPIA', 'LSOCULTO', 'LSBIENV', 'LSHIST', 'LSTRAB', 'LSVISTA', 'LSR4', 'LSAVCIERRE', 'CLAVES_PROPIAS'];
 function copia(anios){ var o = {}; anios.forEach(function(a){ o[a] = {anio: a, meses: []}; }); return o; }
 
 test('escribirAnios stores every year when storage works', function(){
   var ls = storage(function(){ return false; });
-  var app = loadApp({funcs: ['escribirAnios', 'normalizar', 'revGuardada'], vars: ['PREF'], globals: {localStorage: ls}});
+  var app = loadApp({funcs: ['escribirAnios', 'anioValido', 'claveMia', 'normalizar', 'revGuardada'], vars: VARS_CLAVES, globals: {localStorage: ls}});
   var r = app.plain(app.escribirAnios(copia([2024, 2025, 2026]), ['2024', '2025', '2026']));
-  assert.deepEqual(r, {ultimo: 2026, fallaron: []});
+  assert.deepEqual(r, {ultimo: 2026, fallaron: [], saltados: []});
   assert.deepEqual(Object.keys(ls.d).sort(), ['kibo.datos.2024', 'kibo.datos.2025', 'kibo.datos.2026']);
 });
 
 test('escribirAnios reports the years whose write failed and never counts them as restored', function(){
   var ls = storage(function(k){ return k === 'kibo.datos.2025' || k === 'kibo.datos.2026'; });
-  var app = loadApp({funcs: ['escribirAnios', 'normalizar', 'revGuardada'], vars: ['PREF'], globals: {localStorage: ls}});
+  var app = loadApp({funcs: ['escribirAnios', 'anioValido', 'claveMia', 'normalizar', 'revGuardada'], vars: VARS_CLAVES, globals: {localStorage: ls}});
   var r = app.plain(app.escribirAnios(copia([2024, 2025, 2026]), ['2024', '2025', '2026']));
   assert.deepEqual(r.fallaron, [2025, 2026]);
   assert.equal(r.ultimo, 2024);   // the last year that really got written
@@ -29,9 +30,9 @@ test('escribirAnios reports the years whose write failed and never counts them a
 
 test('escribirAnios: when nothing could be written there is no year to open', function(){
   var ls = storage(function(){ return true; });
-  var app = loadApp({funcs: ['escribirAnios', 'normalizar', 'revGuardada'], vars: ['PREF'], globals: {localStorage: ls}});
+  var app = loadApp({funcs: ['escribirAnios', 'anioValido', 'claveMia', 'normalizar', 'revGuardada'], vars: VARS_CLAVES, globals: {localStorage: ls}});
   var r = app.plain(app.escribirAnios(copia([2026]), ['2026']));
-  assert.deepEqual(r, {ultimo: 0, fallaron: [2026]});
+  assert.deepEqual(r, {ultimo: 0, fallaron: [2026], saltados: []});
 });
 
 function avisoApp(){

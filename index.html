@@ -4050,10 +4050,13 @@ function restaurarCopia(f){
   r.onload = function(){ restaurarTexto(r.result); };
   r.readAsText(f);
 }
-// guarda cada año de la copia; devuelve el último que entró y los que no (almacenamiento lleno o bloqueado)
+// N5 S-2: una clave de año de una copia vale solo si es un año de verdad (1900 a 2200, cuatro cifras sin cero adelante)
+function anioValido(k){ var t = String(k); return /^[1-9]\d{3}$/.test(t) && +t >= 1900 && +t <= 2200; }
+// guarda cada año de la copia; devuelve el último que entró, los que no (almacenamiento lleno o bloqueado) y los que no son un año válido (saltados)
 function escribirAnios(anios, claves){
-  var ultimo = 0, fallaron = [], lista = [], modelo = false, i, d, st;
+  var ultimo = 0, fallaron = [], saltados = [], lista = [], modelo = false, i, d, st;
   for(i=0;i<claves.length;i++){
+    if(!anioValido(claves[i]) || !claveMia(PREF + (+claves[i]))){ saltados.push(String(claves[i])); continue; }   // nunca se escribe una clave que no es de esta app
     if(anios[claves[i]] && typeof anios[claves[i]] === 'object') anios[claves[i]].anio = +claves[i];   // la migración usa el año de la clave
     d = normalizar(anios[claves[i]], hoyApp()); d.anio = +claves[i];
     if(d.arrastre || d.meses.some(function(m){ return !!m.cierreReal; })) modelo = true;
@@ -4066,15 +4069,19 @@ function escribirAnios(anios, claves){
     try{ localStorage.setItem(PREF + d.anio, JSON.stringify(d)); if(d.anio > ultimo) ultimo = d.anio; }
     catch(e){ fallaron.push(d.anio); }
   }
-  return {ultimo:ultimo, fallaron:fallaron};
+  return {ultimo:ultimo, fallaron:fallaron, saltados:saltados};
 }
-function avisarRestauro(total, fallaron, trabajoFallo){
-  if(!fallaron.length && !trabajoFallo){ toast('Restauré ' + total + (total === 1 ? ' año' : ' años')); return; }
+function avisarRestauro(total, fallaron, trabajoFallo, saltados){
+  saltados = saltados || [];   // claves de la copia que no son un año válido: solo cifras (las filtra restaurarTexto), no hace falta escaparlas
+  var nota = saltados.length ? 'Salteé lo que no es un año válido: <b>' + saltados.join(', ') + '</b>.' : '';
+  if(!fallaron.length && !trabajoFallo && !nota){ toast('Restauré ' + total + (total === 1 ? ' año' : ' años')); return; }
+  if(!fallaron.length && !trabajoFallo){ alerta('Restauré ' + total + (total === 1 ? ' año' : ' años'), nota + ' Lo demás de la copia quedó guardado.'); return; }
   var ok = total - fallaron.length, falta = fallaron.slice();
   if(trabajoFallo) falta.push('datos de trabajo');
   alerta('No pude restaurar todo',
     (ok > 0 ? 'Se guardó ' + ok + (ok === 1 ? ' año' : ' años') + ' de la copia, pero no entró: ' : (fallaron.length ? 'No se guardó ningún año de la copia. ' : '') + 'No entró: ')
-    + '<b>' + falta.join(', ') + '</b>.<br><br>Puede ser que el navegador no tenga más lugar o que tenga el almacenamiento bloqueado. Lo que ya había de eso en este teléfono sigue como estaba. Liberá espacio y probá de nuevo, o abrí la copia en otro navegador.');
+    + '<b>' + falta.join(', ') + '</b>.<br><br>Puede ser que el navegador no tenga más lugar o que tenga el almacenamiento bloqueado. Lo que ya había de eso en este teléfono sigue como estaba. Liberá espacio y probá de nuevo, o abrí la copia en otro navegador.'
+    + (nota ? '<br><br>' + nota : ''));
 }
 function restaurarTexto(txt){
   (function(){
@@ -4083,7 +4090,8 @@ function restaurarTexto(txt){
     var anios = j && j.anios && typeof j.anios === 'object' ? j.anios
               : (j && Array.isArray(j.meses) ? (function(o){ var t = {}; t[num(j.anio)||new Date().getFullYear()] = j; return t; })() : null);
     if(!anios){ alerta('Ese archivo no se pudo leer', 'No parece una copia de kibFinanzas.'); return; }
-    var claves = Object.keys(anios).filter(function(k){ return /^\d{4}$/.test(k); });
+    var numericas = Object.keys(anios).filter(function(k){ return /^\d+$/.test(k); });
+    var claves = numericas.filter(anioValido), saltados = numericas.filter(function(k){ return !anioValido(k); });   // N5 S-2
     if(!claves.length){ alerta('Copia vacía', 'El archivo no tiene ningún año adentro.'); return; }
     var teniaDatos = hayDatos(D, tieneTrab());
     pendiente = function(){
@@ -4098,7 +4106,7 @@ function restaurarTexto(txt){
       var abrir = teniaDatos && claves.indexOf(String(D.anio)) > -1 ? D.anio : r.ultimo;
       if(abrir) recordarAnio(abrir);
       cargar();
-      avisarRestauro(claves.length, r.fallaron, trabajoFallo);
+      avisarRestauro(claves.length, r.fallaron, trabajoFallo, saltados.concat(r.saltados));
     };
     abrirHoja('<h3>Restaurar copia</h3><div class="texto" style="margin-bottom:16px">La copia trae ' + claves.length + (claves.length === 1 ? ' año: ' : ' años: ')
       + '<b>' + claves.join(', ') + '</b>. Va a <b>reemplazar</b> lo que tengas guardado de esos años en este teléfono.'
