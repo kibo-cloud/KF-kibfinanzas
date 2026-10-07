@@ -689,7 +689,7 @@ listed adapter; no screen recomputes a concept on its own. Mirrored in `tests/in
 | Pases netos | `flujosMes` | `pasesNetos` = retiro + venta − ahorro − reposición (+ realized Trabajo pases) | `cadena` |
 | Disponible actual | `cadena` | `resumen.disponibleActual` | `tilesMes` (current month), `patrimonioNeto` |
 | Proyectado al cierre | `cadena` | `meses[j].proyectado`, `resumen.proyectadoAlCierre` | `tilesMes` (future month) |
-| Patrimonio bruto | `patrimonioNeto` | `bruto` | none yet (gross row is R5) |
+| Patrimonio bruto | `patrimonioNeto` | `bruto` | `filasPatrimonio` (R5 N3b: Dólares > Patrimonio total of a model year) |
 | Patrimonio neto | `patrimonioNeto` | `neto` = bruto − `pasivos` | `patrimonioPantalla` |
 
 Legacy months/years (no `arrastre`, or before `desde`) keep `calc()` / `serie()` / `patrimonio()` byte for byte (I6; motor goldens).

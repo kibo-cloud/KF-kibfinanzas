@@ -3366,6 +3366,49 @@ function patrimonioPantalla(d, hoy){
   var pn = patrimonioNeto(d, hoy, vm.ctx), cot = num(d.cotizacionUSD);
   return {ahorroARS: pn.ahorroARS, usd: pn.usd, criptoUSD: pn.criptoUSD, patrimonioUSD: cot > 0 ? pn.neto / cot : 0, patrimonioARS: pn.neto, modelo: pn};
 }
+// R5 (D7, Q2, Q6, Q14, §6): la composición auditable del patrimonio de un año con modelo. Cada número es un campo de patrimonioNeto
+// (una sola fuente, D13): disponible + ahorro + dólares + cripto + Trabajo = bruto; bruto - deudas = neto. Sin cotización, dólares y cripto
+// no se valúan (patrimonioNeto los cuenta en 0) y la fila lo dice en lugar de mostrar un número inventado. Con la cotización que trae la app
+// (normalizar pone 1499 y nunca se editó: sin fecha) el número se muestra, porque está en el total, pero dice que no la cargaste.
+function filasPatrimonio(pn){
+  var sinCot = !(pn.cotizacion > 0);
+  return {
+    filas: [
+      {k:'disponible', valor:pn.disponible},
+      {k:'ahorro', valor:pn.ahorroARS},
+      {k:'usd', valor:pn.usdARS, usd:pn.usd, estimado:true, falta:sinCot && pn.usd !== 0},
+      {k:'cripto', valor:pn.criptoARS, usd:pn.criptoUSD, estimado:true, falta:sinCot && pn.criptoUSD !== 0},
+      {k:'trabajo', valor:pn.trabajo}
+    ],
+    bruto: pn.bruto, deudas: pn.pasivos, detalleDeudas: pn.pasivosDetalle, neto: pn.neto,
+    cotizacion: pn.cotizacion, cotizacionFecha: pn.cotizacionFecha, sinCotizacion: sinCot, cotizacionPorDefecto: !sinCot && !pn.cotizacionFecha
+  };
+}
+function htmlPatrimonio(p){
+  var f = filasPatrimonio(p.modelo), h = '', i, x, det;
+  var etq = {disponible:'Disponible a hoy', ahorro:'Ahorro en pesos', usd:'Dólares', cripto:'Cripto', trabajo:'Plata del trabajo'};
+  h += '<div class="nota">Lo que tenés hoy, bolsillo por bolsillo. Lo de los meses que vienen no cuenta.</div>';
+  for(i=0;i<f.filas.length;i++){
+    x = f.filas[i]; det = '';
+    if(x.estimado && x.falta) det = ' <small class="mudo">(' + fUSD(x.usd) + ', falta la cotización)</small>';
+    else if(x.estimado && x.usd) det = ' <small class="mudo">(' + fUSD(x.usd) + ' a ' + fARS(f.cotizacion) + (f.cotizacionPorDefecto ? ', cotización sin cargar' : ', estimado') + ')</small>';
+    h += '<div class="fila-in" data-pat="' + x.k + '"><label>' + etq[x.k] + det + '</label><span class="mudo">' + (x.falta ? 'sin cotización' : hARS(x.valor)) + '</span></div>';
+  }
+  h += '<div class="fila-in" data-pat="bruto"><label><b>Patrimonio bruto</b></label><span>' + hARS(f.bruto) + '</span></div>';
+  h += '<div class="fila-in" data-pat="deudas"><label>Deudas (lo que te falta pagar)</label><span class="mudo">' + hARS(-f.deudas) + '</span></div>';
+  for(i=0;i<f.detalleDeudas.length;i++){
+    h += '<div class="fila-in" data-pat="deuda"><label class="mudo" style="font-size:14px;padding-left:12px">' + esc(f.detalleDeudas[i].nombre) + '</label>'
+       + '<span class="mudo" style="font-size:14px">' + fARS(f.detalleDeudas[i].saldo) + '</span></div>';
+  }
+  h += '<div class="fila-in" data-pat="neto"><label><b>Patrimonio neto</b></label><span><b>' + hARS(f.neto) + '</b></span></div>';
+  h += '<div class="nota">' + (f.sinCotizacion
+      ? 'Falta la cotización del dólar (arriba, en Cotización): los dólares y la cripto todavía no se suman.'
+      : (f.cotizacionPorDefecto
+        ? 'Todavía no cargaste la cotización del dólar: dólares y cripto están calculados a ' + fARS(f.cotizacion) + ', la que trae la app. Cargá la tuya arriba, en Cotización.'
+        : 'Dólares y cripto son una estimación: a ' + fARS(f.cotizacion) + ' por dólar, la cotización que cargaste el ' + fechaCorta(f.cotizacionFecha) + '.'))
+     + ' Las deudas son las cuotas que te faltan de cada plan y lo que no tildaste de deudas sin plan hasta hoy.</div>';
+  return h;
+}
 function renderUSD(){
   var s = serie(D), p = patrimonioPantalla(D, hoyApp()), h = '', i;
   h += plegable('usdCotiz', 'Cotización', fARS(D.cotizacionUSD),
@@ -3407,20 +3450,23 @@ function renderUSD(){
   hC += '<button class="mas" data-act="addCripto">+ Agregar activo</button>';
   h += plegable('usdCripto', 'Cripto', D.cripto.length ? fUSD(p.criptoUSD) : 'sin activos', hC, D.cripto.length > 0);
 
-  h += plegable('usdPatri', 'Patrimonio total', fUSD(p.patrimonioUSD),
-        '<div class="fila-in"><label>Ahorro líquido en pesos</label><span class="mudo">'+hARS(p.ahorroARS)+'</span></div>'
+  // año con modelo: la composición auditable (R5); sin cotización el total va en pesos (no hay dólares que mostrar). Año sin modelo: igual que siempre
+  var enPesos = !!p.modelo && !(p.modelo.cotizacion > 0), fBig = enPesos ? fARS : fUSD, vBig = enPesos ? p.patrimonioARS : p.patrimonioUSD;
+  h += plegable('usdPatri', 'Patrimonio total', fBig(vBig),
+        (p.modelo ? htmlPatrimonio(p)
+      : '<div class="fila-in"><label>Ahorro líquido en pesos</label><span class="mudo">'+hARS(p.ahorroARS)+'</span></div>'
       + '<div class="fila-in"><label>Dólares guardados</label><span class="mudo">'+hUSD(p.usd)+'</span></div>'
-      + '<div class="fila-in"><label>Cripto</label><span class="mudo">'+hUSD(p.criptoUSD)+'</span></div>'
+      + '<div class="fila-in"><label>Cripto</label><span class="mudo">'+hUSD(p.criptoUSD)+'</span></div>')
       + '<div class="fila-in"><label>Dólares del año anterior</label>'
       +   '<input class="monto usd" inputmode="decimal" data-campo="usdAnioAnterior" value="'+fUSD(D.usdAnioAnterior)+'"></div>'
       + '<div style="padding:16px;border-top:1px solid var(--sep)">'
-      +   '<small class="mudo" style="font-size:12px">Todo junto</small>'
-      +   '<div class="big ok" id="bigPatri" style="font-size:30px;font-weight:700;letter-spacing:-.03em">'+fUSD(p.patrimonioUSD)+'</div>'
-      +   '<div class="mudo" style="font-size:15px">'+fARS(p.patrimonioARS)+'</div>'
+      +   '<small class="mudo" style="font-size:12px">'+(p.modelo ? 'Patrimonio neto a hoy' : 'Todo junto')+'</small>'
+      +   '<div class="big ok" id="bigPatri" style="font-size:30px;font-weight:700;letter-spacing:-.03em">'+fBig(vBig)+'</div>'
+      +   '<div class="mudo" style="font-size:15px">'+(enPesos ? 'Sin cotización del dólar' : fARS(p.patrimonioARS))+'</div>'
       + '</div>')
      + '<div style="height:20px"></div>';
   document.getElementById('v-usd').innerHTML = h;
-  contar('bigPatri', p.patrimonioUSD, function(v){ return fUSD(v); });
+  contar('bigPatri', vBig, function(v){ return fBig(v); });
 }
 
 

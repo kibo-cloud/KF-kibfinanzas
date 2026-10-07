@@ -25,7 +25,7 @@ var SOURCES = {
   'Pases netos':          ['flujosMes', 'pasesNetos = retiro + venta - ahorro - reposicion (+ realized Trabajo pases)'],
   'Disponible actual':    ['cadena', 'resumen.disponibleActual; card through tilesMes'],
   'Proyectado al cierre': ['cadena', 'meses[j].proyectado / resumen.proyectadoAlCierre; card of a future month through tilesMes'],
-  'Patrimonio bruto':     ['patrimonioNeto', 'bruto (no row on screen until R5)'],
+  'Patrimonio bruto':     ['patrimonioNeto', 'bruto; row on screen through filasPatrimonio (R5, Dólares > Patrimonio total of a model year)'],
   'Patrimonio neto':      ['patrimonioNeto', 'neto; screen through patrimonioPantalla']
 };
 
@@ -58,7 +58,7 @@ module.exports = {
     datosTorta:         [Z, 'pie chart: only paid rows'],
     armarCarrusel:      [O, 'false positive: CSS calc( string in a style'],
     renderAnio:         [M, 'year view: rows from serieVista (R4.5: serie() for a legacy year/month; the month card for a model month, Disponible total = December closing), summary resumenAnio over the realized months of serieVista (N1; red month = card Ingresos - Gastos - Deudas < 0, N2), ranking realized'],
-    renderUSD:          [O, 'USD stock/valuation from serie(); Patrimonio total from patrimonioPantalla (R4.4: old patrimonio() for a legacy year, patrimonioNeto a hoy incl. Trabajo for a model year)'],
+    renderUSD:          [O, 'USD stock/valuation from serie(); Patrimonio total from patrimonioPantalla (R4.4: old patrimonio() for a legacy year, patrimonioNeto a hoy incl. Trabajo for a model year; R5: its composition rows through filasPatrimonio / htmlPatrimonio)'],
     refrescar:          [M, 'live refresh: card from tilesMes (R4.4, same rule as renderMes) plus suma() section subtotals'],
     hayDatos:           [R, 'E1 (fixed in R2): any item with monto > 0 (paid or not), any month flow field, or Trabajo data'],
     serieVista:         [N, 'R4.5 year views (renderAnio table/chart/"Año por año", exportarCSV): serie() itself without arrastre; a model month overlays tilesMes (one semantic source with the card)'],
