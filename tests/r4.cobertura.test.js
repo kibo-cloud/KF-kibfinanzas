@@ -354,3 +354,48 @@ test('L-10d reponerPase (undo of a removal) checks both revisions first: a stale
   b.reponerPase();
   assert.deepEqual([ls.d['kibo.datos.2026'] === y26, ls.d['kibo.trabajo'] === tr, b.obsoleta, b.T.pases.length], [true, true, true, 0]);
 });
+
+// L-11 (N2 review): the pase writes the open year first; when that write FAILS (quota / browser refuses, not another tab) nothing else
+// may happen: the row goes back in memory, Trabajo is not written and the user sees "No se pudo guardar".
+function almacenQueFalla(){
+  var falla = {anio: false}, ls = H.fakeStorage({'kibo.datos.2026': JSON.stringify(C.vacio(2026)), 'kibo.trabajo': JSON.stringify(Object.assign(H.trab([]), {rev: 1}))},
+    function(k){ return falla.anio && k === 'kibo.datos.2026'; });
+  return {ls: ls, falla: falla};
+}
+test('L-11a a pase into the open year whose write fails: no row stored, no pase in Trabajo, memory as before, visible failure', function(){
+  var a = almacenQueFalla(), ls = a.ls, hechos = {monto: 100000, fecha: '2026-10-10', errores: []}, toasts = [];
+  var b = appPaseToasts(ls, hechos, toasts);
+  H.cargarEn(b, ls, 2026); b.T = b.leerTrab();
+  a.falla.anio = true;
+  var y26 = ls.d['kibo.datos.2026'], tr = ls.d['kibo.trabajo'];
+  b.guardarPase();
+  assert.equal(ls.d['kibo.datos.2026'], y26, 'the year is not written');
+  assert.equal(ls.d['kibo.trabajo'], tr, 'Trabajo is not written (before the fix: 1 pase stored with no row)');
+  assert.deepEqual([b.T.pases.length, b.D.meses[9].ingresos.length, toasts.length, hechos.errores.length], [0, 0, 0, 1], 'memory as before, no "Pasé", the sheet says it failed');
+  assert.ok(b.g.pildoras.some(function(p){ return p[0] === 'No se pudo guardar' && p[1]; }), 'the existing save-failure feedback is shown');
+  assert.equal(b.obsoleta, false, 'a refused write is not another tab');
+});
+test('L-11b removing a pase whose open-year write fails: the row keeps it, Trabajo keeps it, nothing says it was removed', function(){
+  var a = almacenQueFalla(), ls = a.ls, hechos = {monto: 100000, fecha: '2026-10-10', errores: []}, toasts = [];
+  var b = appPaseToasts(ls, hechos, toasts);
+  H.cargarEn(b, ls, 2026); b.T = b.leerTrab(); b.guardarPase();
+  assert.equal(H.guardado(ls, 2026).meses[9].ingresos[0].monto, 100000);
+  a.falla.anio = true; toasts.length = 0; b.g.pildoras.length = 0;
+  var y26 = ls.d['kibo.datos.2026'], tr = ls.d['kibo.trabajo'];
+  b.quitarPase('nuevo', true);
+  assert.deepEqual([ls.d['kibo.datos.2026'] === y26, ls.d['kibo.trabajo'] === tr], [true, true]);
+  assert.deepEqual([b.T.pases.length, b.D.meses[9].ingresos[0].monto, toasts.length], [1, 100000, 0]);
+  assert.ok(b.g.pildoras.some(function(p){ return p[0] === 'No se pudo guardar' && p[1]; }));
+});
+test('L-11c undoing a removal (reponerPase) whose open-year write fails: nothing changes and the undo stays available', function(){
+  var a = almacenQueFalla(), ls = a.ls, hechos = {monto: 100000, fecha: '2026-10-10', errores: []}, toasts = [];
+  var b = appPaseToasts(ls, hechos, toasts);
+  H.cargarEn(b, ls, 2026); b.T = b.leerTrab(); b.guardarPase(); b.quitarPase('nuevo', true);
+  assert.equal(H.guardado(ls, 2026).meses[9].ingresos[0].monto, 0);
+  a.falla.anio = true; toasts.length = 0;
+  var y26 = ls.d['kibo.datos.2026'], tr = ls.d['kibo.trabajo'];
+  b.reponerPase();
+  assert.deepEqual([ls.d['kibo.datos.2026'] === y26, ls.d['kibo.trabajo'] === tr], [true, true]);
+  assert.deepEqual([b.T.pases.length, b.D.meses[9].ingresos[0].monto], [0, 0]);
+  assert.ok(b.paseQuitado && b.paseQuitado.id === 'nuevo', 'the undo can be tried again');
+});

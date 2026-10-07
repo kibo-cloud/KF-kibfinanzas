@@ -3655,11 +3655,11 @@ function tocar(){
 function guardar(){
   if(!arrancado || !D) return;
   if(tGuardar){ clearTimeout(tGuardar); tGuardar = null; }
-  if(obsoleta){ avisoOtraPestana(); return; }
+  if(obsoleta){ avisoOtraPestana(); return false; }
   var ant = D.actualizado;
   D.actualizado = new Date().toISOString();
   var eraSucio = sucio, recupero = !hayLS, r = escribirConRev(PREF + D.anio, D);
-  if(r === 'conflicto'){ D.actualizado = ant; obsoleta = true; avisoOtraPestana(); return; }
+  if(r === 'conflicto'){ D.actualizado = ant; obsoleta = true; avisoOtraPestana(); return false; }
   if(r === 'ok'){ sucio = false; hayLS = true; }   // si ahora guarda, el navegador volvió a funcionar
   else hayLS = false;
   if(recupero && hayLS){ var av = document.getElementById('avisos'); if(av && av.textContent.indexOf('no está guardando') > -1) av.innerHTML = ''; }
@@ -3668,6 +3668,7 @@ function guardar(){
   // la píldora aparece cuando terminaste de escribir, no en cada tecla
   if(eraSucio && hayLS && Date.now() - ultPild > 7000) pildora('Cambios guardados');
   if(eraSucio && !hayLS) pildora('No se pudo guardar', true);
+  return hayLS;   // true solo si quedó escrito (lo usan los que escriben dos blobs, como un pase)
 }
 function leerAnio(a){
   try{ var s = localStorage.getItem(PREF + a); return s ? normalizar(JSON.parse(s), hoyApp()) : null; }
@@ -6286,20 +6287,33 @@ function blobAlDia(clave, obj){   // lo guardado sigue en la revisión que esta 
   var st = revGuardada(clave);
   return !st.hay || st.rev === (revValida(obj && obj.rev) || 0);
 }
+/* Un pase escribe dos blobs sin transacción: PRIMERO el año del renglón, DESPUÉS Trabajo (lo hace quien llama, solo si esto dio true).
+   Garantías (R4.6): (1) antes de escribir nada se revisan las dos revisiones (un evento `storage` perdido no deja un blob escrito y el otro
+   rechazado); (2) si la escritura del año falla (otra pestaña o el navegador no deja guardar), el renglón vuelve a como estaba en memoria y
+   se devuelve false, así Trabajo no se escribe. Lo que NO se garantiza: si el año se escribió y después falla la escritura de Trabajo, quedan
+   distintos (no hay transacción en localStorage).
+   Devuelve true (escrito), false (no se escribió nada) o 'sinRenglon' (no hay renglón para descontar o ese año no existe: no se escribió). */
 function aplicarPase(p, signo){
   if(obsoleta){ avisoOtraPestana(); return false; }   // pestaña vieja (R4.3): no escribe ningún año, tampoco otro que el abierto, hasta recargar
   var abierto = p.anio === D.anio;
-  // R4.6: un pase escribe dos blobs (el año y Trabajo) sin transacción; se revisan las dos revisiones ANTES de escribir el primero,
-  // así un evento `storage` perdido nunca deja el renglón guardado y el pase rechazado (la plata en los dos lados) ni al revés
   if(!blobAlDia(LSTRAB, T) || (abierto && !blobAlDia(PREF + D.anio, D))){ obsoleta = true; avisoOtraPestana(); return false; }
   var d = abierto ? D : leerAnio(p.anio);
-  if(!d) return false;
-  var it = renglonTrabajo(d, p.mes, signo > 0);
-  if(!it) return false;
+  if(!d) return 'sinRenglon';
+  var ls = d.meses[p.mes].ingresos, largo = ls.length, it = renglonTrabajo(d, p.mes, signo > 0);
+  if(!it) return 'sinRenglon';
+  var antes = it.monto, eraSucio = sucio;
   it.monto = Math.max(0, Math.round(num(it.monto) + signo * p.monto));
-  if(abierto){ sucio = true; guardar(); return true; }
+  if(abierto){
+    sucio = true;
+    if(guardar() !== false) return true;
+    if(ls.length > largo) ls.splice(largo, 1); else it.monto = antes;   // no quedó escrito: el renglón vuelve a como estaba
+    sucio = eraSucio;
+    return false;
+  }
   d.actualizado = new Date().toISOString();                 // otro año: se escribe ese año guardado, el abierto no se toca
-  return escribirConRev(PREF + d.anio, d) === 'ok';
+  var r = escribirConRev(PREF + d.anio, d);
+  if(r === 'error') pildora('No se pudo guardar', true);
+  return r === 'ok';
 }
 function fechaPaseDefecto(){
   // si tenés abierto el año de hoy, va a hoy; si tenés abierto otro año, va al mes que estás mirando de ese año
@@ -6343,7 +6357,7 @@ function guardarPase(){
   if(m > r.paraPasar + 0.5){ errorEn('psNota', 'Es más de lo que tenés disponible (' + fARS(r.paraPasar) + ').'); return; }
   if(!anioExiste(d.anio)){ errorEn('psNota', 'El ' + d.anio + ' no está creado en la app. Elegí una fecha de un año que tengas.'); return; }
   var p = {id:tjId(), fecha:d.fecha, monto:m, anio:d.anio, mes:d.mes, creada:new Date().toISOString()};
-  if(!aplicarPase(p, 1)){ errorEn('psNota', obsoleta ? 'Hay cambios hechos en otra pestaña. Recargá antes de pasar.' : 'No pude sumarlo al mes. Probá de nuevo.'); return; }
+  if(aplicarPase(p, 1) !== true){ errorEn('psNota', obsoleta ? 'Hay cambios hechos en otra pestaña. Recargá antes de pasar.' : 'No pude sumarlo al mes. Probá de nuevo.'); return; }
   T.pases.push(p); tjAntes = null;
   guardarTrab(true); cerrarHoja(); renderTrabajo();
   toast('Pasé ' + fARS(m) + ' a Ingresos de ' + MESES[d.mes] + (d.anio !== D.anio ? ' ' + d.anio : ''), 'Deshacer', 'tjDeshacerPase', p.id);
@@ -6353,8 +6367,8 @@ function quitarPase(id, avisar){
   var p = null, i;
   for(i=0;i<T.pases.length;i++) if(T.pases[i].id === id) p = T.pases[i];
   if(!p) return;
-  var ok = aplicarPase(p, -1);
-  if(!ok && obsoleta) return;   // otra pestaña guardó en el medio: no se escribió nada, no se borra nada
+  var r = aplicarPase(p, -1), ok = r === true;
+  if(r === false) return;   // otra pestaña guardó en el medio o no se pudo guardar: no se escribió nada, no se borra nada
   T.pases = T.pases.filter(function(x){ return x.id !== id; });
   tjAntes = null; paseQuitado = p;
   guardarTrab(true); renderTrabajo();
@@ -6365,8 +6379,8 @@ function quitarPase(id, avisar){
 }
 function reponerPase(){
   var p = paseQuitado; if(!p) return;
+  if(aplicarPase(p, 1) !== true){ if(!obsoleta) toast('No pude volver a sumarlo'); return; }   // el deshacer sigue disponible
   paseQuitado = null;
-  if(!aplicarPase(p, 1)){ if(!obsoleta) toast('No pude volver a sumarlo'); return; }
   T.pases.push(p); guardarTrab(true); renderTrabajo();
   toast('Listo, quedó como antes');
 }
