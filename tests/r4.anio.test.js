@@ -11,8 +11,8 @@ var V = require('./fixtures/anio-vistas');
 var BASE = require('./fixtures/anio-legacy.json');
 
 function sha(t){ return crypto.createHash('sha256').update(t).digest('hex'); }
-function l01(anio){   // the L-01 dataset: unticked "Del trabajo" without pases (Q3), scheduled November savings
-  var d = C.vacio(anio || 2026); C.arrastre(d, 9, 0, 'declarado');
+function l01(anio, apertura){   // the L-01 dataset: unticked "Del trabajo" without pases (Q3), scheduled November savings; opening 0 unless given
+  var d = C.vacio(anio || 2026); C.arrastre(d, 9, apertura || 0, 'declarado');
   C.mes(d, 9, {ingresos: [C.it('Sueldo', 500000, true), C.it('Del trabajo', 80000, false)], gastosFijos: [C.it('Alquiler', 100000, true)], ahorroMesARS: 50000});
   C.mes(d, 10, {ahorroMesARS: 200000});
   return d;
@@ -62,8 +62,15 @@ test('year views, model year (L-01): every "Los doce meses" row shows the month 
   assert.deepEqual([x.t[10][COL.disp], x.t[11][COL.disp]], [f(230000), f(230000)], 'Nov / Dec = projected 430.000 - 200.000');
   assert.notEqual(x.t[9][COL.ing], f(580000), 'guard: not the serie() Ingresos (Del trabajo always realized)');
   assert.notEqual(x.t[9][COL.disp], f(430000), 'guard: not the month flow');
-  assert.deepEqual([tot[COL.ing], tot[COL.gas], tot[COL.disp], tot[COL.acu]], [f(sumar(x.v.t, 'totalIngresos')), f(sumar(x.v.t, 'totalGastos')), f(x.v.t[11].disponibleFinal), f(250000)]);
+  assert.deepEqual([tot[COL.ing], tot[COL.gas], tot[COL.acu]], [f(sumar(x.v.t, 'totalIngresos')), f(sumar(x.v.t, 'totalGastos')), f(250000)]);
   assert.ok(x.html.indexOf('Cierre ' + f(230000)) > 0, 'header "Cierre" = December card value');
+  // with opening 0, December (230.000) equals the old serie() sum of the monthly flows (430.000 - 200.000), so a Total Disponible
+  // check on this dataset could pass by coincidence: it is made on the same dataset with a declared opening of 100.000 instead
+  var y = tablaModelo(l01(2026, 100000)), dic = y.v.t[11].disponibleFinal, viejo = sumar(y.s, 'disponibleFinal'), cards = sumar(y.v.t, 'disponibleFinal');
+  assert.deepEqual([dic, viejo], [330000, 230000], 'December 330.000; the old serie() sum stays 230.000');
+  assert.ok(cards !== dic, 'nor the sum of the card balances');
+  assert.equal(y.t[12][COL.disp], f(dic), 'Total Disponible = December card value');
+  assert.ok(y.t[12][COL.disp] !== f(viejo) && y.t[12][COL.disp] !== f(cards), 'not a sum of monthly balances');
 });
 test('year views, model year (section 2): legacy August, confirmed September, current October, scheduled November', function(){
   var x = tablaModelo(C.seccion2(false, false)), f = x.app.fARS, tot = x.t[12];
