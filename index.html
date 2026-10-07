@@ -4484,6 +4484,9 @@ function sumarGasto(){
   if(gr.cat === null){ toast('Tocá una categoría para saber dónde sumarlo'); return; }
   var it = D.meses[mes][gr.sec][gr.cat], pp = it.pagado === true;
   sumarAItem(it, gr.monto);
+  // N4 I-1 (§1 Programado + N3b-A (a), "no se tilda por adelantado"): en un mes FUTURO del modelo el gasto rápido suma el monto pero no
+  // tilda el renglón (queda programado); los meses pasado/actual y los años legacy siguen como siempre
+  if(mesDelModelo(D, mes) && estadoMes(D.anio, mes, hoyApp()) === 'futuro') it.pagado = pp;
   var id = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
   D.meses[mes].movimientos.push({id:id, fecha:new Date().toISOString(), sec:gr.sec, nombre:it.nombre, monto:gr.monto, pp:pp});
   cerrarHoja(); tocar(); conScroll(renderMes);

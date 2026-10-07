@@ -5,7 +5,7 @@ var assert = require('node:assert/strict');
 var loadApp = require('./load-app').loadApp;
 
 var app = loadApp({
-  funcs: ['sumarGasto', 'quitarMov', 'esc', 'fARS', 'grupos'],
+  funcs: ['sumarGasto', 'quitarMov', 'esc', 'fARS', 'grupos', 'mesDelModelo'],
   vars: ['gr'],
   globals: {
     oculto: false, PUNTOS: '..', document: {getElementById: function(){ return null; }},

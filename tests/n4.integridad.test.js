@@ -8,6 +8,42 @@ var H = require('./fixtures/r45-harness');
 var M = la.loadMotor();
 var HOY = C.hoy('2026-10-15');
 
+// ── I-1: quick expense in a future model month adds the amount but does not tick ahead ──
+function gastoApp(d, mes, sec, cat, monto){
+  var g = {gr: {monto: monto, cat: cat, sec: sec}, toasts: [], document: {getElementById: function(){ return null; }}};
+  g.cerrarHoja = function(){}; g.tocar = function(){}; g.conScroll = function(){}; g.renderMes = function(){}; g.fARS = function(v){ return '$' + v; };
+  g.toast = function(t){ g.toasts.push(t); };
+  var app = la.loadApp({today: '2026-10-15', funcs: ['sumarGasto', 'mesDelModelo'], globals: g});
+  d = C.copy(d); if(!d.meses[mes].gastosVariables) d.meses[mes].gastosVariables = [C.it('Supermercado', 0, false)];
+  app.D = M.normalizar(d, HOY); app.mes = mes;
+  return app;
+}
+function modelo(){ var d = C.vacio(2026); d.arrastre = {desde: 0, inicial: {apertura: 100000, origen: 'declarado'}}; return d; }
+
+test('I-1 quick expense on an empty row of a FUTURE model month: amount added, row left programado (not ticked)', function(){
+  var app = gastoApp(modelo(), 11, 'gastosVariables', 0, 5000);
+  app.sumarGasto();
+  var it = app.D.meses[11].gastosVariables[0];
+  assert.deepEqual([it.monto, it.pagado], [5000, false]);
+  var mv = app.D.meses[11].movimientos[0];
+  assert.deepEqual([mv.monto, mv.pp], [5000, false], 'Deshacer restores the untouched state');
+});
+
+test('I-1 a row already ticked ahead keeps its tick (nothing is unticked either)', function(){
+  var d = modelo(); d.meses[11].gastosVariables = [{nombre: 'Supermercado', monto: 0, pagado: true}];
+  var app = gastoApp(d, 11, 'gastosVariables', 0, 5000);
+  app.sumarGasto();
+  assert.deepEqual([app.D.meses[11].gastosVariables[0].monto, app.D.meses[11].gastosVariables[0].pagado], [5000, true]);
+});
+
+test('I-1 current and past model months and legacy years keep the old behavior (an empty row becomes paid)', function(){
+  [[modelo(), 9], [modelo(), 3], [C.vacio(2026), 11], [C.vacio(2026), 9]].forEach(function(c){
+    var app = gastoApp(c[0], c[1], 'gastosVariables', 0, 5000);
+    app.sumarGasto();
+    assert.deepEqual([app.D.meses[c[1]].gastosVariables[0].monto, app.D.meses[c[1]].gastosVariables[0].pagado], [5000, true], 'month ' + c[1] + (c[0].arrastre ? ' model' : ' legacy'));
+  });
+});
+
 // ── I-2: duplicar reports success only when the new year was saved ──
 test('I-2 duplicar when the new year cannot be stored: nothing half-done, previous year/state kept, the user is told', function(){
   var abiertos = [];
