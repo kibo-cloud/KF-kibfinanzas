@@ -3879,11 +3879,19 @@ function revGuardada(clave){   // {hay, rev} del blob que está guardado ahora; 
 }
 /* N4 I-3: un blob guardado que no se puede leer nunca se pisa en silencio. Antes, su texto se copia tal cual a kibo.cuarentena.AAAA
    (o kibo.cuarentena.trabajo). Esa clave es del teléfono a propósito (claveMia no la incluye): así ninguna vuelta atrás ni restauración
-   que borra claves propias la borra nunca; la copia de seguridad la lleva aparte (armarCopia: campo `cuarentena`). La app no la borra. */
+   que borra claves propias la borra nunca; la copia de seguridad la lleva aparte (armarCopia: campo `cuarentena`). La app no la borra.
+   N7: cada texto distinto se guarda: si la clave ya tiene otro texto, va a kibo.cuarentena.AAAA.2, .3… (el mismo texto no se repite). */
 function claveCuarentena(clave){ return LSCUAR + (clave === LSTRAB ? 'trabajo' : String(clave).slice(PREF.length)); }
-function ponerEnCuarentena(clave, texto){   // true si la copia quedó guardada (o ya estaba); nunca reemplaza una copia anterior
-  var k = claveCuarentena(clave);
-  try{ if(localStorage.getItem(k) === null) localStorage.setItem(k, texto); return localStorage.getItem(k) !== null; }catch(e){ return false; }
+function ponerEnCuarentena(clave, texto){   // true si este texto quedó guardado (o ya estaba en alguna copia); nunca reemplaza ni borra una copia anterior
+  var base = claveCuarentena(clave), k, v, n;
+  try{
+    for(n = 1; ; n++){
+      k = n === 1 ? base : base + '.' + n;
+      v = localStorage.getItem(k);
+      if(v === texto) return true;
+      if(v === null){ localStorage.setItem(k, texto); return localStorage.getItem(k) === texto; }
+    }
+  }catch(e){ return false; }
 }
 function avisoCuarentena(anio){
   var e = document.getElementById('avisos'); if(!e) return;
@@ -4143,8 +4151,9 @@ function restaurarTexto(txt){
     pendiente = function(){
       obsoleta = false;   // restaurar reemplaza todo: no hay nada que "recargar" de otra pestaña
       var r = escribirAnios(anios, claves), trabajoFallo = false, stT;
-      if(j.cuarentena && typeof j.cuarentena === 'object') Object.keys(j.cuarentena).forEach(function(k){   // N4 I-3: solo si acá no hay una
-        if((anioValido(k) || k === 'trabajo') && typeof j.cuarentena[k] === 'string') ponerEnCuarentena(k === 'trabajo' ? LSTRAB : PREF + k, j.cuarentena[k]);
+      if(j.cuarentena && typeof j.cuarentena === 'object') Object.keys(j.cuarentena).forEach(function(k){   // N4 I-3 / N7: cada texto vuelve una vez, sin pisar los de acá
+        var m = /^(\d{4}|trabajo)(?:\.[1-9]\d*)?$/.exec(k);
+        if(m && (m[1] === 'trabajo' || anioValido(m[1])) && typeof j.cuarentena[k] === 'string') ponerEnCuarentena(m[1] === 'trabajo' ? LSTRAB : PREF + m[1], j.cuarentena[k]);
       });
       if(j.trabajo && typeof j.trabajo === 'object'){
         T = normTrab(j.trabajo); stT = revGuardada(LSTRAB);

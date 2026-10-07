@@ -95,3 +95,47 @@ test('N7-2 volverAntesDe130 quarantines an unreadable non-active year before del
   assert.equal(ls.d['kibo.datos.2027'], undefined);
   assert.equal(ls.d['kibo.cuarentena.2027'], ROTO);
 });
+
+// ── N7-3: every distinct unreadable text is kept, never replaced; backups carry them all and restore brings them back ──
+test('N7-3 a second, different corruption of Trabajo is kept next to the first before Trabajo is written again', function(){
+  var ls = H.fakeStorage({'kibo.trabajo': '{primero'});
+  var app = H.appAlmacen(ls); app.T = app.leerTrab();
+  assert.equal(app.guardarTrab(true), true);
+  ls.d['kibo.trabajo'] = '{segundo';
+  app.T = app.leerTrab();
+  assert.equal(app.guardarTrab(true), true);
+  ls.d['kibo.trabajo'] = '{primero';   // the same text again: no duplicate copy
+  app.T = app.leerTrab(); app.guardarTrab(true);
+  var copias = Object.keys(ls.d).filter(function(k){ return k.indexOf('kibo.cuarentena.') === 0; }).sort();
+  assert.deepEqual(copias.map(function(k){ return ls.d[k]; }).sort(), ['{primero', '{segundo']);
+  assert.equal(ls.d['kibo.cuarentena.trabajo'], '{primero', 'the first copy keeps its key');
+});
+
+test('N7-3 a restore over a year whose unreadable text changed keeps both texts', function(){
+  var ls = H.fakeStorage({'kibo.datos.2026': ROTO});
+  var app = H.appAlmacen(ls); app.D = M.normalizar({anio: 2026}, HOY); app.sucio = true;
+  assert.equal(app.guardar(), false);   // quarantined (first text)
+  ls.d['kibo.datos.2026'] = ROTO + 'otro';
+  app.restaurarTexto(JSON.stringify({app: 'kibFinanzas', version: 1, anios: {2026: C.vacio(2026)}}));
+  app.pendiente();
+  assert.equal(JSON.parse(ls.d['kibo.datos.2026']).anio, 2026);
+  var textos = Object.keys(ls.d).filter(function(k){ return k.indexOf('kibo.cuarentena.2026') === 0; }).map(function(k){ return ls.d[k]; }).sort();
+  assert.deepEqual(textos, [ROTO, ROTO + 'otro']);
+});
+
+test('N7-3 armarCopia carries every quarantined text and a restore on a wiped phone brings them all back (no duplicates)', function(){
+  var ls = H.fakeStorage({'kibo.trabajo': '{a'});
+  var app = H.appAlmacen(ls); app.T = app.leerTrab(); app.guardarTrab(true);
+  ls.d['kibo.trabajo'] = '{b'; app.T = app.leerTrab(); app.guardarTrab(true);
+  ls.d['kibo.datos.2025'] = 'x1'; app.D = M.normalizar(C.vacio(2026), HOY);
+  var cp = app.plain(app.armarCopia());
+  assert.deepEqual(Object.keys(cp.cuarentena).map(function(k){ return cp.cuarentena[k]; }).sort(), ['x1', '{a', '{b']);
+  var limpio = H.fakeStorage({});
+  var b = H.appAlmacen(limpio); b.D = M.normalizar(C.vacio(2026), HOY);
+  b.restaurarTexto(JSON.stringify(Object.assign({}, cp, {anios: {2026: C.vacio(2026)}}))); b.pendiente();
+  var vuelta = function(){ return Object.keys(limpio.d).filter(function(k){ return k.indexOf('kibo.cuarentena.') === 0; }).map(function(k){ return limpio.d[k]; }).sort(); };
+  assert.deepEqual(vuelta(), ['x1', '{a', '{b']);
+  b.restaurarTexto(JSON.stringify(Object.assign({}, cp, {anios: {2026: C.vacio(2026)}}))); b.pendiente();
+  assert.deepEqual(vuelta(), ['x1', '{a', '{b'], 'restoring the same backup twice adds nothing');
+  assert.equal(b.claveMia('kibo.cuarentena.trabajo.2'), false, 'every copy is a device key');
+});
