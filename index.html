@@ -5028,8 +5028,12 @@ function aplicarTema(){
 }
 
 /* ═══ 13 · recuperación del buffer ══════════════════════════════ */
+function sinTaparCuarentena(e){   // N4 I-3: otro aviso nunca tapa el de datos ilegibles: se le agrega abajo
+  var q = e && e.querySelector ? e.querySelector('[data-av="cuarentena"]') : null; return q ? q.outerHTML : '';
+}
 function aviso(html, cerrable){
-  document.getElementById('avisos').innerHTML =
+  var e = document.getElementById('avisos');
+  e.innerHTML = sinTaparCuarentena(e) +
     '<div class="aviso"><p>' + html + '</p>'
     + (cerrable === false ? '' : '<div class="fila"><button class="mini" data-act="cerrarAviso">Entendido</button></div>')
     + '</div>';
@@ -7023,7 +7027,7 @@ function activarSaldos(declarado){
 }
 function avisoActualizado(){
   var e = document.getElementById('avisos'); if(!e) return;   // reemplaza al recordatorio de copia: este ya lo incluye
-  e.innerHTML = '<div class="aviso"><p>Actualizaste a la <b>versión 1.30</b>. Tus datos quedaron como estaban y ahora tenés la pestaña <b>Trabajo</b> si vendés o facturás por tu cuenta. Por las dudas, hacé una copia de seguridad antes de seguir.</p>'
+  e.innerHTML = sinTaparCuarentena(e) + '<div class="aviso"><p>Actualizaste a la <b>versión 1.30</b>. Tus datos quedaron como estaban y ahora tenés la pestaña <b>Trabajo</b> si vendés o facturás por tu cuenta. Por las dudas, hacé una copia de seguridad antes de seguir.</p>'
     + '<div class="fila"><button class="mini on" data-act="copia">Hacer copia ahora</button>'
     + '<button class="mini" data-act="cerrarAviso">Después</button></div></div>';
 }

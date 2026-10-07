@@ -862,6 +862,18 @@ try{
       await ev(`[D.anio, D.arrastre === undefined, JSON.stringify(serie(D)) === JSON.stringify(serie(TGMotor.normalizar(${JSON.stringify(viejo6)}, hoyApp())))]`), [2024, true, true]);
   }
 
+  // ── N4 I-3: an unreadable stored year is quarantined, warned about, and never overwritten ──
+  {
+    const roto = '{"anio":2026,"meses":[{"ingresos":[{"nombre":"Sueldo","monto":900000';
+    await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); localStorage.setItem('kibo.anio','2026'); localStorage.setItem('kibo.datos.2026', ${JSON.stringify(roto)}); true`);
+    await nav(URL_APP); await sleep(1300);
+    check('N4 I-3 e2e: the warning shows and the raw text is copied to quarantine',
+      await ev(`[document.getElementById('avisos').textContent.indexOf('No pude leer los datos de 2026. Guardé una copia; no se van a pisar.') >= 0, localStorage.getItem('kibo.cuarentena.2026') === ${JSON.stringify(roto)}]`), [true, true]);
+    await ev(`D.meses[9].ingresos[0] = {nombre: 'Sueldo', monto: 5, pagado: true}; sucio = true; guardar(); true`); await sleep(300);
+    check('N4 I-3 e2e: a save does not overwrite the unreadable year', await ev(`localStorage.getItem('kibo.datos.2026') === ${JSON.stringify(roto)}`), true);
+    check('N4 I-3 e2e: the backup carries the raw text', await ev(`armarCopia().cuarentena[2026] === ${JSON.stringify(roto)}`), true);
+  }
+
   check('no uncaught page errors', pageErrs, []);
 }catch(e){ fails++; results.push('ERROR ' + e.message); }
 finally{
