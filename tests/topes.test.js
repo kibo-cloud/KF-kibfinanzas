@@ -4,7 +4,7 @@ var test = require('node:test');
 var assert = require('node:assert/strict');
 var loadApp = require('./load-app').loadApp;
 
-var app = loadApp({today: '2026-06-15', funcs: ['gastadoTope', 'filaTope', 'pasadas', 'textoTopes', 'fARS', 'grupos', 'esc'],
+var app = loadApp({today: '2026-06-15', funcs: ['gastadoTope', 'gastadoVista', 'esProgramado', 'mesDelModelo', 'filaTope', 'pasadas', 'textoTopes', 'fARS', 'grupos', 'esc'],
                    vars: ['TOPEABLE', 'PUNTOS'], globals: {oculto: false}});
 
 // Rendered bar: {txt, pct, mal} parsed from filaTope's HTML

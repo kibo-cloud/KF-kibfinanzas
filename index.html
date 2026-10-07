@@ -184,6 +184,7 @@ input.err{box-shadow:inset 0 0 0 1.5px var(--neg);border-radius:8px;color:var(--
 .chk svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
 .chk.on{background:var(--acc);border-color:var(--acc);color:#fff}
 .chk:active{transform:scale(.88)}
+.chk.prog{border-style:dashed;opacity:.75}   /* R5: mes futuro del modelo, programado */
 .item.pago input.nombre{color:var(--txt2)}
 .item.pago input.monto{color:var(--txt2)}
 .orden{border:1px solid var(--sep);border-radius:12px;overflow:hidden}
@@ -2551,7 +2552,7 @@ function cobroTxt(it){
   return det;
 }
 function textoDeuda(nombre, i){
-  var e = estadoDeuda(D, nombre, i, hoyApp());
+  var hoy = hoyApp(), e = estadoDeuda(datosRealizados(D, hoy), nombre, i, hoy);   // R5: una cuota tildada en un mes futuro del modelo todavía no está paga
   if(!e) return 'Cargar cuotas';
   if(e.restantes === 0 && e.esteMes) return 'Última cuota: la ' + e.pagadas + ' de ' + e.plan.cuotas + '. Terminada.';
   if(e.restantes === 0) return 'Terminada: ' + e.plan.cuotas + ' cuotas pagas.';
@@ -2899,7 +2900,7 @@ function barra(txt, pct, verde, id){
        + '<div class="pista"><i id="'+id+'" class="'+(verde?'verde':'')+'" style="width:'+w+'%"></i></div></div>';
 }
 function filaTope(k, i, it){
-  var tope = num(it.tope), gastado = gastadoTope(it, mes), pct = tope > 0 ? gastado / tope : 0;
+  var tope = num(it.tope), gastado = gastadoVista(it, mes), pct = tope > 0 ? gastado / tope : 0;
   var pasado = gastado > tope;
   var txt = pasado ? 'Te pasaste por ' + fARS(gastado - tope) + ' del tope de ' + fARS(tope)
                    : fARS(gastado) + ' de ' + fARS(tope);
@@ -2919,7 +2920,7 @@ function pasadas(m){
   for(s=0;s<SECS.length;s++){
     k = SECS[s].k; if(!TOPEABLE[k]) continue;
     l = m[k];
-    for(i=0;i<l.length;i++){ if(num(l[i].tope) > 0 && gastadoTope(l[i], mes) > num(l[i].tope)) out.push(l[i].nombre); }
+    for(i=0;i<l.length;i++){ if(num(l[i].tope) > 0 && gastadoVista(l[i], mes) > num(l[i].tope)) out.push(l[i].nombre); }
   }
   return out;
 }
@@ -3005,7 +3006,7 @@ function guardarTopes(k, adelante){
   toast(cambiados ? (adelante ? 'Topes guardados de ' + MESES[mes].toLowerCase() + ' en adelante' : 'Topes guardados en ' + MESES[mes].toLowerCase()) : 'Sin cambios');
 }
 function seccion(S, m){
-  var lista = m[S.k], sub = suma(lista), h = '';
+  var lista = m[S.k], sub = suma(lista), h = '', prog = esProgramado(D, mes, hoyApp()), hayProg = false;
   h += '<div class="sec '+(abierta(S.k)?'':'cerrada')+'" data-sec="'+S.k+'">';
   h += '<button class="sechd" data-act="col" data-k="'+S.k+'">'
      + (ICOSEC[S.k] ? '<span class="ic">'+ICOSEC[S.k]+'</span>' : '')
@@ -3014,14 +3015,18 @@ function seccion(S, m){
   h += '<div class="cuerpo">';
   for(var i=0;i<lista.length;i++){
     var marc = tieneTilde(D, mes, S.k, lista[i]);   // "Del trabajo" ya está cobrado: no se tilda (salvo Q3, ver tieneTilde)
-    var pg = marc && estaPagado(mes, lista[i]), pal = S.k === 'ingresos' ? 'cobrado' : 'pagado';
+    var pal = S.k === 'ingresos' ? 'cobrado' : 'pagado', antes = marc && prog && estaPagado(mes, lista[i]);   // R5: tildado antes de tiempo
+    var pg = marc && !prog && estaPagado(mes, lista[i]);
     var vt = S.k === 'ingresos' && esRenglonTrabajo(lista[i].nombre) && pasesDelMes(D.anio, mes) > 0;   // lo carga Trabajo con sus pases
     h += '<div class="item'+(pg?' pago':'')+(vt?' deltrab':'')+'">'
-       +   (marc ? '<button class="chk'+(pg?' on':'')+'" data-act="pagar" data-k="'+S.k+'" data-i="'+i+'" aria-label="'+(pg?'Marcar como no '+pal:'Marcar como '+pal)+'"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>' : '')
+       +   (marc && prog ? (antes ? '<button class="chk prog" data-act="pagar" data-k="'+S.k+'" data-i="'+i+'" aria-label="Programado: lo marcaste antes de tiempo. Tocá para desmarcarlo."><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>'
+                                 : '<span class="chk prog" role="img" aria-label="Programado" title="Programado"></span>')
+       :   marc ? '<button class="chk'+(pg?' on':'')+'" data-act="pagar" data-k="'+S.k+'" data-i="'+i+'" aria-label="'+(pg?'Marcar como no '+pal:'Marcar como '+pal)+'"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>' : '')
        +   '<input class="nombre" data-k="'+S.k+'" data-i="'+i+'" value="'+esc(lista[i].nombre)+'" aria-label="Nombre"'+(vt?' readonly':'')+'>'
        +   '<input class="monto" inputmode="decimal" enterkeyhint="done" data-k="'+S.k+'" data-i="'+i+'" value="'+fARS(lista[i].monto)+'" aria-label="Monto"'+(vt?' readonly':'')+'>'
        +   '<button class="x" data-act="'+(vt?'tjDelTrabajo':'del')+'" data-k="'+S.k+'" data-i="'+i+'" aria-label="Borrar">×</button>'
        + '</div>';
+    if(marc && prog) hayProg = true;
     if(vt){
       var rt = marc ? repartoTrabajo(D, mes, lista[i]) : null;   // R5: por encima de sus pases, el resto se tilda como un ingreso común
       h += '<div class="nota tj-vienede">Viene de Trabajo: lo que pasaste a lo personal este mes. Se cambia desde esa pestaña.'
@@ -3038,6 +3043,7 @@ function seccion(S, m){
       h += '<button class="dinfo'+(planDe(D, lista[i].nombre)?'':' vacia')+'" data-act="plan" data-i="'+i+'">'+textoDeuda(lista[i].nombre, mes)+'</button>';
     }
   }
+  if(hayProg) h += '<div class="nota">Programado: ' + MESES[mes].toLowerCase() + ' todavía no llegó. Lo marcás como ' + (S.k === 'ingresos' ? 'cobrado' : 'pagado') + ' cuando llegue.</div>';
   if(!lista.length) h += '<div class="nota">Todavía no hay ítems acá. Agregá el primero.</div>';
   if(S.k !== 'gastosVariables' && mes > 0 && sub === 0 && suma(D.meses[mes-1][S.k]) > 0){
     h += '<button class="mas" data-act="copiar" data-k="'+S.k+'">Copiar los montos de '+MESES[mes-1].toLowerCase()+'</button>';
@@ -3117,8 +3123,14 @@ function mesesCargados(s){
    Torta SVG hecha a mano, sin librerías. Los colores salen de variables CSS,
    así que el tema claro y el oscuro se resuelven solos. */
 function htmlTorta(m, c){
-  var l = datosTorta(m, mes), total = 0, i;
+  var hoy = hoyApp(), prog = esProgramado(D, mes, hoy);
+  var l = datosTorta(prog ? datosRealizados(D, hoy).meses[mes] : m, mes), total = 0, i;   // R5: en un mes programado nada está pagado
   for(i=0;i<l.length;i++) total += l[i].v;
+  if(!total && prog){
+    return '<div class="final"><small>Gastos de ' + MESES[mes] + '</small>'
+         + '<div class="final-fila"><div class="big">' + fARS(0) + '</div></div></div>'
+         + '<div class="nota" style="text-align:center;padding:14px 10px 6px">' + MESES[mes] + ' todavía no llegó: lo que cargaste está programado. Cuando lo pagues, acá vas a ver en qué se te va la plata.</div>';
+  }
   if(!total){
     return '<div class="final"><small>Gastos de ' + MESES[mes] + '</small>'
          + '<div class="final-fila"><div class="big">' + fARS(0) + '</div></div></div>'
@@ -3226,6 +3238,12 @@ function datosRealizados(d, hoy){
   }
   return c;
 }
+// R5 (N1-A, §1 y D3): en un mes FUTURO del modelo nada está pagado todavía; lo tildado antes de tiempo es programado. Las vistas del mes
+// (torta, topes, texto de la deuda, tildes) lo leen por acá; los datos guardados no se tocan y el motor no cambia (como datosRealizados)
+function esProgramado(d, j, hoy){ return mesDelModelo(d, j) && estadoMes(d.anio, j, hoy) === 'futuro'; }
+function gastadoVista(it, j){ return gastadoTope(esProgramado(D, j, hoyApp()) ? {monto: it.monto, pagado: false} : it, j); }
+// en un mes programado solo se puede destildar lo que se marcó antes de tiempo; tildar espera a que llegue el mes
+function puedeAlternar(j, it){ return !(esProgramado(D, j, hoyApp()) && !estaPagado(j, it)); }
 // mes en rojo: en un mes del modelo, lo que muestra la tarjeta (Ingresos con los pases de Trabajo ya hechos − Gastos − Deudas) < 0, nunca
 // el saldo encadenado; en uno legacy, el flujo de siempre
 function mesEnRojo(s, i, vm){
@@ -3768,7 +3786,7 @@ function refrescar(){
     for(var z=0;z<ll.length;z++){
       var bt = document.getElementById('tb-'+kk+'-'+z), tt = document.getElementById('tt-'+kk+'-'+z);
       if(!bt || !tt) continue;
-      var tp = num(ll[z].tope), gs = gastadoTope(ll[z], mes), ps = gs > tp;
+      var tp = num(ll[z].tope), gs = gastadoVista(ll[z], mes), ps = gs > tp;
       bt.style.width = Math.max(0, Math.min(100, (tp>0?gs/tp:0)*100)) + '%';
       bt.className = ps ? 'mal' : '';
       tt.className = ps ? 'mal' : '';
@@ -4731,7 +4749,7 @@ document.addEventListener('click', function(ev){
   if(a === 'topes'){ abrirTopes(b.getAttribute('data-k')); return; }
   if(a === 'pagar'){
     var kp = b.getAttribute('data-k'), ip = +b.getAttribute('data-i'), itp = D.meses[mes][kp][ip];
-    if(itp){ alternarPago(mes, itp); tocar(); guardar(); conScroll(renderMes); }
+    if(itp && puedeAlternar(mes, itp)){ alternarPago(mes, itp); tocar(); guardar(); conScroll(renderMes); }
     return;
   }
   if(a === 'ordenar'){ abrirOrden(b.getAttribute('data-k')); return; }

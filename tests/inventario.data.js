@@ -61,6 +61,7 @@ module.exports = {
     renderAnio:         [M, 'year view: rows from serieVista (R4.5: serie() for a legacy year/month; the month card for a model month, Disponible total = December closing), summary resumenAnio over the realized months of serieVista (N1; red month = card Ingresos - Gastos - Deudas < 0, N2), ranking realized'],
     renderUSD:          [O, 'USD stock/valuation from serie(); Patrimonio total from patrimonioPantalla (R4.4: old patrimonio() for a legacy year, patrimonioNeto a hoy incl. Trabajo for a model year; R5: its composition rows through filasPatrimonio / htmlPatrimonio)'],
     refrescar:          [M, 'live refresh: card from tilesMes (R4.4, same rule as renderMes) plus suma() section subtotals'],
+    gastadoVista:       [Z, 'R5 (N1-A): what a capped row consumed on the month screen: gastadoTope (ticked only), and 0 in a future model month (programado, esProgramado)'],
     hayDatos:           [R, 'E1 (fixed in R2): any item with monto > 0 (paid or not), any month flow field, or Trabajo data'],
     serieVista:         [N, 'R4.5 year views (renderAnio table/chart/"Año por año", exportarCSV): serie() itself without arrastre; a model month overlays tilesMes (one semantic source with the card)'],
     duplicar:           [O, 'copies the year: carries serie() stock, zeroes every monto/pagado; R4.3: starts the new year chain from the December closing (cadena); R4.6: refused in a stale tab'],
