@@ -171,10 +171,12 @@ test('duplicar resets pagado to false, zeroes amounts and keeps the marker', fun
   app.duplicar();
   assert.equal(app.D.anio, 2027);
   assert.equal(app.D.pagoExplicito, true);
+  var filas = 0;
   app.D.meses.forEach(function(m){
     KEYS.forEach(function(k){
-      m[k].forEach(function(it){ assert.strictEqual(it.pagado, false); assert.equal(it.monto, 0); });
+      m[k].forEach(function(it){ assert.strictEqual(it.pagado, false); assert.equal(it.monto, 0); filas++; });
     });
   });
+  assert.ok(filas >= 2, 'guard: the copied rows (incl. the two ticked ones) were checked, not an empty year');
   assert.match(calls.alerta, /Listo el 2027/);
 });

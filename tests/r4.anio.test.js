@@ -118,10 +118,13 @@ test('year views: renderAnio and exportarCSV read the rows through serieVista (o
   assert.match(la.extractFunction('renderAnio'), /serieVista\(dA, hoy\)/);
   assert.match(la.extractFunction('exportarCSV'), /serieVista\(D, hoyApp\(\)\)/);
   assert.match(la.extractFunction('serieVista'), /tilesMes\(d, j, vm\)/);
+  var n = 0;
   V.corpus().forEach(function(c){
     var app = V.appAnio(c.d);
     assert.deepEqual(app.plain(app.serieVista(app.D, app.hoy)), app.plain(app.serie(app.D)), c.nombre);
+    n++;
   });
+  assert.equal(n, 9, 'guard: every corpus dataset was compared');
 });
 
 // Model rule (owner, 2026-10-06): in a year WITH arrastre, "Total Disponible" and the header "Cierre" are the available balance at the

@@ -34,13 +34,16 @@ function pick(o){ var r = {}; CAMPOS.forEach(function(k){ r[k] = o[k]; }); retur
 
 // ── legacy isolation (D4, I6): no arrastre -> the card is calc() itself, the net worth is the old patrimonio() ──
 test('legacy year: no model view, every month card equals calc() byte for byte, net worth equals the old patrimonio()', function(){
+  var n = 0;
   base.datasets().forEach(function(ds){
     var d = ds[1]; if(!d || typeof d !== 'object' || !Array.isArray(d.meses)) return;
+    n++;
     var app = nuevaApp(d, trab([{fecha: '2026-10-05', monto: 300000}, {fecha: '2026-11-05', monto: 200000}]));
     assert.equal(app.vistaModelo(app.D, app.hoy), null, ds[0] + ': no model view');
     for(var j = 0; j < 12; j++) assert.deepEqual(tiles(app, j), app.plain(app.calc(app.D.meses[j])), ds[0] + ' month ' + j);
     assert.deepEqual(app.plain(app.patrimonioPantalla(app.D, app.hoy)), app.plain(app.patrimonio(app.D)), ds[0] + ': patrimonio');
   });
+  assert.equal(n, 6, 'guard: the 6 year datasets of the corpus were compared (the others are not year blobs)');
 });
 test('legacy year: "Del trabajo" keeps no checkbox, every other marcable row keeps it', function(){
   var d = C.vacio(2026);

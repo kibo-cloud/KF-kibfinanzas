@@ -79,7 +79,10 @@ test('C-20 cierre/reapertura: confirming a closing and removing the confirmation
 
 // ── R: before -> migration -> after report (tests/fixtures/r45-antes-despues.js, design section 8/9, D4, D14, I6) ──
 test('R-01 before -> migration -> after: the migration only adds arrastre; legacy months, serie and the old outputs are untouched; Oct shows the declared value', function(){
-  AD.informe().forEach(function(r){
+  var inf = AD.informe();
+  assert.equal(inf.length, 12, 'guard: 6 datasets x (declared, skipped); an empty report would pass vacuously');
+  assert.equal(inf.filter(function(r){ return r.arrastre.inicial.origen === 'declarado'; }).length, 6, 'guard: the declared branch runs');
+  inf.forEach(function(r){
     var tag = r.n + ' / ' + r.arrastre.inicial.origen;
     assert.equal(JSON.stringify(r.mesesDespues), JSON.stringify(r.mesesAntes), tag + ': months');
     assert.equal(JSON.stringify(r.serieDespues), JSON.stringify(r.serieAntes), tag + ': serie');
@@ -89,7 +92,9 @@ test('R-01 before -> migration -> after: the migration only adds arrastre; legac
   });
 });
 test('R-02 years without arrastre (older and later year) show no model at all after the migration of another year', function(){
-  AD.aniosSinArrastre().forEach(function(a){ assert.equal(a.modelo, null, a.n); });
+  var l = AD.aniosSinArrastre();
+  assert.equal(l.length, 3, 'guard: the loop is not vacuous');
+  l.forEach(function(a){ assert.equal(a.modelo, null, a.n); });
 });
 
 // ── L: R4.4 leftovers, pinned and classified (odd/tasks/repair-sprint-1-r4.5-matrix.md section C) ──
