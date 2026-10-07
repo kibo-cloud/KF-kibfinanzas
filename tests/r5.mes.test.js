@@ -11,7 +11,7 @@ var H = require('./fixtures/r45-harness');
 var M = la.loadMotor();
 var SRC = la.SRC_FOR_TESTS;
 function existe(n){ return new RegExp('^function ' + n + '\\s*\\(', 'm').test(SRC); }
-var FUNCS = ['seccion', 'abierta', 'fARS', 'grupos', 'esc', 'filaTope', 'textoDeuda', 'repartoTrabajo', 'esProgramado', 'gastadoVista', 'datosRealizados',
+var FUNCS = ['seccion', 'abierta', 'fARS', 'grupos', 'esc', 'filaTope', 'textoDeuda', 'cuotaAdelantada', 'repartoTrabajo', 'esProgramado', 'gastadoVista', 'datosRealizados',
   'htmlTorta', 'pasadas', 'textoTopes', 'puedeAlternar', 'fPct'].filter(existe);
 var VARS = ['ICOSEC', 'MARCABLE', 'TOPEABLE', 'MESES', 'oculto', 'PUNTOS', 'TORTA_MAX', 'SECS'].filter(function(v){ return new RegExp('^var ' + v + '\\s*=', 'm').test(SRC); });
 
@@ -114,6 +114,39 @@ test('future model month: the debt row text ignores installments ticked ahead; l
   assert.match(app.textoDeuda('Préstamo', 10), /^Sin pago este mes; va la 4 de 6/);
   var leg = appMes(futuro(false), null, 10);
   assert.match(leg.textoDeuda('Préstamo', 10), /^Cuota 4 de 6/, 'legacy year: a ticked row is paid (unchanged)');
+});
+// native review follow-up (night range T2): the realized copy of the year is made only when it can change the debt text, i.e. when an
+// installment of a programado month is ticked ahead; every other path reads D itself and says exactly what the copy would say
+function textoConCopia(app, nombre, j){   // reference: always through datosRealizados, as before the follow-up
+  var real = app.datosRealizados, n = 0, t;
+  app.datosRealizados = function(d, h){ n++; return real(d, h); };
+  t = app.textoDeuda(nombre, j);
+  app.datosRealizados = real;
+  return {t: t, copias: n};
+}
+test('the debt row text copies the year only when an installment of a programado month is ticked ahead (same text either way)', function(){
+  var casos = [
+    ['legacy year', appMes(futuro(false), null, 10), [8, 9, 10], 0],
+    ['model year, nothing ticked ahead', appMes(C.seccion2(false, false), null, 10), [8, 9, 10, 11], 0],
+    ['model year, an installment ticked ahead', appMes(futuro(true), null, 10), [8, 9, 10, 11], 1]
+  ], n = 0;
+  casos.forEach(function(c){
+    var app = c[1];
+    c[2].forEach(function(j){
+      var ref = app.estadoDeuda(app.datosRealizados(app.D, app.hoy), 'Préstamo', j, app.hoy), r = textoConCopia(app, 'Préstamo', j);
+      assert.equal(r.copias, c[3], c[0] + ', month ' + j + ': copies');
+      assert.ok(ref, c[0] + ': the plan exists');
+      assert.equal(r.t, app.textoDeuda('Préstamo', j), c[0] + ', month ' + j + ': deterministic');
+      assert.match(r.t, ref.esteMes ? new RegExp('Cuota ' + ref.cuotaN + ' de ') : new RegExp('va la ' + ref.cuotaN + ' de '), c[0] + ', month ' + j + ': same installment as the realized view');
+      assert.equal(r.t.indexOf('quedan ' + ref.restantes) >= 0 || ref.restantes === 0, true, c[0] + ', month ' + j + ': same remaining as the realized view');
+      if(ref.fin) assert.ok(r.t.indexOf('terminás en ' + app.MESES[ref.fin.mes].toLowerCase()) >= 0, c[0] + ', month ' + j + ': same end month as the realized view');
+      n++;
+    });
+  });
+  assert.equal(n, 11, 'non-vacuous');
+  // the ticked-ahead installment of November must not move the end date of the current month's text (why the copy is kept there)
+  var con = appMes(futuro(true), null, 9), sin = appMes(C.seccion2(false, false), null, 9);
+  assert.equal(con.textoDeuda('Préstamo', 9), sin.textoDeuda('Préstamo', 9));
 });
 test('future model month on screen: rows say "programado" instead of a tick state; a row ticked ahead can only be unticked', function(){
   var app = appMes(futuro(true), null, 10), h = sec(app, 'ingresos');

@@ -2553,8 +2553,13 @@ function cobroTxt(it){
   if(n > 1) det += ' · ' + n + ' pagos de ' + fARS(cada);
   return det;
 }
+// lo único de datosRealizados que lee estadoDeuda son las cuotas tildadas de los meses programados: sin ninguna, el año guardado dice lo mismo
+function cuotaAdelantada(d, hoy){
+  for(var j=0;j<12;j++) if(esProgramado(d, j, hoy) && (d.meses[j].deudas || []).some(function(it){ return estaPagado(j, it); })) return true;
+  return false;
+}
 function textoDeuda(nombre, i){
-  var hoy = hoyApp(), e = estadoDeuda(datosRealizados(D, hoy), nombre, i, hoy);   // R5: una cuota tildada en un mes futuro del modelo todavía no está paga
+  var hoy = hoyApp(), e = estadoDeuda(cuotaAdelantada(D, hoy) ? datosRealizados(D, hoy) : D, nombre, i, hoy);   // R5: una cuota tildada en un mes futuro del modelo todavía no está paga
   if(!e) return 'Cargar cuotas';
   if(e.restantes === 0 && e.esteMes) return 'Última cuota: la ' + e.pagadas + ' de ' + e.plan.cuotas + '. Terminada.';
   if(e.restantes === 0) return 'Terminada: ' + e.plan.cuotas + ' cuotas pagas.';
