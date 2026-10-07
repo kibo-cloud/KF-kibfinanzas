@@ -1,82 +1,26 @@
-/* KCO — Centro Operativo Personal — service worker */
-'use strict';
+/* kibFinanzas · service worker
+   Deja la app entera en caché para que abra sin conexión y la actualiza
+   en segundo plano cuando hay señal. Los datos no pasan por acá: viven
+   en el almacenamiento del navegador. */
+var VERSION = 'kibfinanzas-offline-v45';
+var PREFIJO = 'kibfinanzas-offline-';   // solo borra cachés que empiecen con esto: la app real vive en la misma dirección base
+var BASE = ['./', './index.html', './manifest.webmanifest', './favicon-64.png', './privacidad.html',
+            './icono-192.png', './icono-512.png', './maskable-512.png', './apple-180.png'];
 
-var VERSION = '2.0.0';
-var CACHE = 'kibco-v16';
-
-var ARCHIVOS = [
-  './',
-  './index.html',
-  './kco-core.js',
-  './kco-app.js',
-  './manifest.webmanifest',
-  './icono-192.png',
-  './icono-512.png'
-];
-
-self.addEventListener('install', function (ev) {
-  ev.waitUntil(
-    caches.open(CACHE).then(function (cache) {
-      /* cache: 'reload' saltea la cache HTTP: una version nueva nunca se arma
-         con archivos viejos que el navegador tenia guardados. */
-      var pedidos = [], i;
-      for (i = 0; i < ARCHIVOS.length; i++) {
-        pedidos.push(new Request(ARCHIVOS[i], { cache: 'reload' }));
-      }
-      return cache.addAll(pedidos);
-    }).then(function () {
-      return self.skipWaiting();
-    })
-  );
+self.addEventListener('install', function(e){
+  e.waitUntil(caches.open(VERSION).then(function(c){ return c.addAll(BASE); }).then(function(){ return self.skipWaiting(); }));
 });
-
-self.addEventListener('activate', function (ev) {
-  ev.waitUntil(
-    caches.keys().then(function (nombres) {
-      var borrados = [];
-      var i;
-      for (i = 0; i < nombres.length; i++) {
-        var n = nombres[i];
-        /* Solo tocamos cache de KCO. Nunca kibo- (KF) ni kibolab- (LAB). */
-        if (n.indexOf('kibco-') === 0 && n !== CACHE) {
-          borrados.push(caches.delete(n));
-        }
-      }
-      return Promise.all(borrados);
-    }).then(function () {
-      return self.clients.claim();
-    })
-  );
+self.addEventListener('activate', function(e){
+  e.waitUntil(caches.keys().then(function(ks){
+    return Promise.all(ks.filter(function(k){ return k !== VERSION && k.indexOf(PREFIJO) === 0; }).map(function(k){ return caches.delete(k); }));
+  }).then(function(){ return self.clients.claim(); }));
 });
-
-self.addEventListener('message', function (ev) {
-  if (ev.data && ev.data.tipo === 'version' && ev.ports && ev.ports[0]) {
-    ev.ports[0].postMessage({ version: VERSION, cache: CACHE });
-  }
-});
-
-self.addEventListener('fetch', function (ev) {
-  var req = ev.request;
-  if (req.method !== 'GET') { return; }
-  if (req.url.indexOf('http') !== 0) { return; }
-
-  ev.respondWith(
-    caches.match(req).then(function (cacheada) {
-      if (cacheada) { return cacheada; }
-      return fetch(req).then(function (resp) {
-        if (resp && resp.status === 200 && resp.type === 'basic') {
-          var copia = resp.clone();
-          caches.open(CACHE).then(function (cache) {
-            cache.put(req, copia);
-          });
-        }
-        return resp;
-      }).catch(function () {
-        if (req.mode === 'navigate') {
-          return caches.match('./index.html');
-        }
-        return new Response('', { status: 503, statusText: 'Sin conexion' });
-      });
-    })
-  );
+self.addEventListener('fetch', function(e){
+  if(e.request.method !== 'GET' || new URL(e.request.url).origin !== self.location.origin) return;
+  e.respondWith(caches.open(VERSION).then(function(c){
+    return c.match(e.request, {ignoreSearch:true}).then(function(hit){
+      var red = fetch(e.request).then(function(r){ if(r && r.ok) c.put(e.request, r.clone()); return r; })['catch'](function(){ return hit; });
+      return hit || red;
+    });
+  }));
 });

@@ -1,16 +1,15 @@
 {
-  "name": "KCO — Centro Operativo",
-  "short_name": "KCO",
-  "description": "Centro de control personal: ver la situacion, decidir el proximo paso, actuar y registrar el avance de trabajo, hogar y proyectos.",
+  "name": "kibFinanzas",
+  "short_name": "kibFinanzas",
+  "description": "Presupuesto personal: ingresos, gastos, ahorro, dólares y deudas.",
+  "id": "./",
   "start_url": "./",
   "scope": "./",
-  "id": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0D0F12",
-  "theme_color": "#0D0F12",
   "lang": "es-AR",
-  "dir": "ltr",
+  "background_color": "#f2f2f7",
+  "theme_color": "#1f9d55",
   "icons": [
     {
       "src": "./icono-192.png",
@@ -25,10 +24,24 @@
       "purpose": "any"
     },
     {
-      "src": "./icono-512.png",
+      "src": "./maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Gasto rápido",
+      "short_name": "Gasto",
+      "description": "Sumar un gasto sin abrir el mes",
+      "url": "./?gasto=1",
+      "icons": [
+        {
+          "src": "./icono-192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }
