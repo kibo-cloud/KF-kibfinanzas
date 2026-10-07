@@ -1023,6 +1023,10 @@ Advisory triage (all non-blocking):
   (index.html ~6949-6954: `mantenerCierreHoja` and `mantenerCierreReal` read `hoyApp()` twice; across a month boundary the precheck
   can pass and the write refuse, with no pill; nothing is written) — accepted as LOW residual, no code change. Every code commit of
   the branch since 0cd42de is now covered by an acknowledged native review; reviewed boundary = 6ff871d (this note is passive docs).
+- ALPHA READINESS (parent, 2026-10-07): `ALPHA_CANDIDATE`. No CRITICAL or HIGH risk open; native review complete; 679 tests
+  (678 pass, 1 todo L-03d), E2E 218/218, goldens identical, smoke (app flow, PC export via file://, offline) PASS. Open MEDIUM:
+  N2-B legacy two-row "Del trabajo" data (L-03d), non-transactional Trabajo write after a successful year write, CSP with
+  'unsafe-inline'. Open owner decisions (built defaults in place, none blocking): N1-B, N2-B, N3a-A/B, N3b-A/B, N4-A/B.
 
 ## D16 — official acceptance list (verbatim)
 
