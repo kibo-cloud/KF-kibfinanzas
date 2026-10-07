@@ -159,7 +159,7 @@ test('duplicar resets pagado to false, zeroes amounts and keeps the marker', fun
     today: '2026-12-15',
     funcs: EXTRA.concat(['estadoDeuda', 'duplicar']),
     globals: {
-      sucio: false, arrancado: false,
+      sucio: false, arrancado: false, obsoleta: false,
       guardar: function(){}, leerAnio: function(){ return null; }, recordarAnio: function(){}, render: function(){},
       alerta: function(t){ calls.alerta = t; }
     }

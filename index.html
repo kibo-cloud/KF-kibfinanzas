@@ -3993,6 +3993,10 @@ function exportarCSV(){
   descargar('\ufeff' + l.join('\r\n'), 'kibfinanzas-'+D.anio+'.csv', 'text/csv;charset=utf-8');
 }
 function duplicar(){
+  // R4.6: una pestaña vieja no crea el año nuevo (no escribe nada hasta recargar); y si lo pendiente de esta pestaña no se pudo guardar
+  // porque otra guardó en el medio, el diciembre que tenemos no es el guardado: tampoco se crea
+  if(obsoleta){ avisoOtraPestana(); return; }
+  if(sucio){ guardar(); if(obsoleta) return; }
   var s = serie(D), n = JSON.parse(JSON.stringify(D)), i, j, k, hoy = hoyApp();
   n.anio = D.anio + 1;
   delete n.arrastre; delete n.rev;   // el año nuevo no hereda el modelo ni la revisión del viejo: arranca los suyos
@@ -4016,7 +4020,6 @@ function duplicar(){
     m.ahorroMesARS = 0; m.ahorroMesUSD = 0; m.compraARS = 0; m.compraUSD = 0;
     m.retiroARS = 0; m.ventaUSD = 0; m.ventaARS = 0; m.reposicionARS = 0; m.movimientos = [];
   }
-  if(sucio) guardar();
   if(leerAnio(n.anio)){ alerta('Ese año ya existe', 'El ' + n.anio + ' ya está guardado en este teléfono. Cambiá de año desde Ajustes en vez de crearlo de nuevo.'); return; }
   var viejo = D.anio;
   D = n; recordarAnio(D.anio); mes = 0; arrancado = true;
