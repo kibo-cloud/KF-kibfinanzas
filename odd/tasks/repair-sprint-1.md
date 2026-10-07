@@ -609,6 +609,10 @@ Checklist (route: delegated writer per task, parent verifies + re-runs suites):
       Route: independent review + smoke (parent), then delegated writer for the three fixes. Evidence: "#### N7 — final verification" below.
 
 Native review consent log (night run):
+- 2026-10-07: the owner granted consent and the whole night range 0cd42de..1528a44 was natively reviewed as 7 slices (T1..T7), all
+  APPROVED with no correction and acknowledged; this supersedes every "consent pending" entry below (kept as history). Reviewed boundary
+  now 1528a44. The follow-up slice 1528a44..HEAD (fixes of the review advisories) is pending its own native review; not claimed.
+  Details: "#### Native review of the night range (2026-10-07)" below.
 - N4/N5/N6 (7bb5480..HEAD of N4-N6, 9 code/test commits + this record): native review consent pending (owner away); not claimed.
 - N7 (0daa848..HEAD: a3c0916, 685296a, f8821b5 + this record): native review consent pending (owner away); not claimed.
   Writer verification: `npm test` 661 (660 pass, 1 todo `L-03d`), `npm run test:e2e` 214/214, motor goldens byte-identical to 7bb5480,
@@ -975,6 +979,45 @@ Alpha checklist:
 | Unit / E2E / goldens | PASS | 670 (669 + 1 todo) / 218 / goldens clean |
 | Mutation checks | PASS (partial) | N7 fixes mutated; S-3/S-4/S-5 mutations not run |
 | Security audit | PASS | N5; residual: CSP keeps `'unsafe-inline'` |
+
+#### Native review of the night range (2026-10-07)
+
+The owner granted consent for 7 slices; each was reviewed in a detached worktree, reliability lens, APPROVED with no correction, and
+acknowledged (authority burned):
+
+| Slice | Range | Lineage |
+| --- | --- | --- |
+| T1 | 0cd42de..8085ef0 | review-bccbbdef747ab3c5 |
+| T2 | 8085ef0..1d6c734 | review-d225a0bd645bab5c |
+| T3 | 1d6c734..7c3dcf1 | review-1cc24265990764ff |
+| T4 | 7c3dcf1..8d1ee42 | review-ff932fea6c351705 |
+| T5 | 8d1ee42..7bb5480 | review-9e3389c3fb0f4fe4 |
+| T6 | 7bb5480..0daa848 | review-01202ef982ddb626 |
+| T7 | 0daa848..1528a44 | review-eca95cd56e2ca17d |
+
+Advisory triage (all non-blocking):
+- Already fixed at 1528a44: T4 R3-diciembre-branch (3183dba) and T4 R3-guardar-undefined (99ca49a); T6 R3-quarantine-second-text-lost
+  and R3-restore-order-trabajo-quarantine (f8821b5).
+- By design: T5 R3-reparto-pases-futuros is consistent with `flujosMes` (R4.2 interpretation 4: the scheduled pases of the month count
+  when deciding the excess of "Del trabajo"); no change.
+- OWNER_DECISION_REQUIRED, unchanged: T2 R3-trabajo-matcher-two-rows-diverge is the same class as N2-B (L-03d); T7 R3-quarantine-unbounded
+  is N4-B.
+- Fixed by the follow-up slice (1528a44..HEAD), RED first or mutation-checked:
+  - 28ff05b `mantenerCierreReal` refuses a month that is not past; the "Mantener" button (`mantenerCierreHoja`) reports a refusal as such
+    and shows "No se pudo guardar" once on a write failure (it was shown twice). RED: a confirmed month that is current again was written.
+  - e83c617 `textoDeuda` copies the year only when an installment of a programado month is ticked ahead (`cuotaAdelantada`). Copying only
+    when the viewed month is programado (the advisory's wording) would change the text of a current month whose later installment was
+    ticked ahead (the end date moves): a test pins it and that mutation fails it.
+  - 4ab2d03 `mesEnRojo` / `resumenAnio` take the year they summarize (`d`), not the global `D`; no behavior change.
+  - 3c169d9 `serieVista` marks its overlaid model rows `.modelo = true` itself; no behavior change.
+  - c807c83 L-07c: a pase into another year from a tab that missed the Trabajo storage event writes neither blob.
+  - 09a6a79 the semantic-sources test finds the app script start with LF or CRLF.
+  - 2c0fd3c `volverAntesDe130` refuse-and-keep path covered; `appCargar` in `tests/n7.final.test.js` fails loudly on a missing helper.
+  - 4fd3c77 L-01: the Total Disponible check runs on an opening of 100.000 (December 330.000 vs the old serie() sum 230.000), so it
+    cannot pass by coincidence.
+  - b23171d labels the follow-up tests with their slice.
+- Verification of the follow-up slice: `npm test` 679 (678 pass, 1 todo `L-03d`), `npm run test:e2e` 218/218, motor goldens
+  byte-identical to 1528a44, APPVER 1.32.0 and sw v45 unchanged.
 
 ## D16 — official acceptance list (verbatim)
 
