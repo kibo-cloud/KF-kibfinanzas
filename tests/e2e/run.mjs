@@ -434,13 +434,13 @@ try{
     (function esperar(){ if(!capt && performance.now() - t0 < 8000) return setTimeout(esperar, 100); URL.createObjectURL = orig; if(!capt) return resolve(null); capt.text().then(resolve); })(); })`);
   check('N7 PC file: the 2027 file was built', typeof pc27 === 'string' && pc27.indexOf('Sueldo 2027') > 0, true);
   const pcDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tugasto-e2e-pc-')); tmpDirs.push(pcDir);
-  const pcUrl = pathToFileURL(path.join(pcDir, 'kibfinanzas-2027.html')).href;
-  fs.writeFileSync(path.join(pcDir, 'kibfinanzas-2027.html'), pc27 || '');
+  const pcUrl = pathToFileURL(path.join(pcDir, 'tugasto-2027.html')).href;
+  fs.writeFileSync(path.join(pcDir, 'tugasto-2027.html'), pc27 || '');
   await nav(pcUrl);
   await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida', '1'); localStorage.setItem('kibo.anio', '2026'); true`);   // a stale remembered year, nothing stored
   await nav(pcUrl);
   check('N7 PC file opened via file://: shows 2027 (title and header), its data, and remembers 2027', await ev(`[location.protocol, D.anio, document.querySelector('#titulo .anio').textContent, document.title, D.meses[9].ingresos[0].nombre, localStorage.getItem('kibo.anio')]`),
-    ['file:', 2027, '2027', 'kibFinanzas · 2027', 'Sueldo 2027', '2027']);
+    ['file:', 2027, '2027', 'TuGasto · 2027', 'Sueldo 2027', '2027']);
   await ev(`D.meses[9].ingresos[0].monto = 271000; sucio = true; guardar(); true`);
   check('N7 PC file opened via file://: an edit saves under kibo.datos.2027 (nothing under 2026)', await ev(`[(function(t){ return t ? JSON.parse(t).meses[9].ingresos[0].monto : null; })(localStorage.getItem('kibo.datos.2027')), localStorage.getItem('kibo.datos.2026')]`), [271000, null]);
   await ev(`localStorage.clear(); true`);
@@ -641,7 +641,7 @@ try{
     await ev(`document.querySelector('#v-mes .chk.prog[data-act=pagar]').click(); true`); await sleep(1400);
     check('R5 future model month: unticking works, and then the row cannot be ticked ahead', await ev(`[D.meses[10].gastosFijos[0].pagado, document.querySelectorAll('#v-mes [data-act=pagar][data-k=gastosFijos]').length, document.querySelectorAll('#v-mes span.chk.prog').length >= 1]`), [false, 0, true]);
     await irTab('ajustes');
-    check('R5 release: the version shown in Ajustes is APPVER', await ev(`document.querySelector('#v-ajustes .pie').textContent.indexOf('kibFinanzas v' + APPVER) === 0`), true);
+    check('R5 release: the version shown in Ajustes is APPVER', await ev(`document.querySelector('#v-ajustes .pie').textContent.indexOf('TuGasto v' + APPVER) === 0`), true);
   }
 
   // ── R4.5: D16 cases about what the screen shows (tests/r4.matriz.test.js holds the model side; hoy here is 2026-10-04) ──

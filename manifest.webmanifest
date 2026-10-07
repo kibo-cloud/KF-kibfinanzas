@@ -1,7 +1,7 @@
 {
-  "name": "kibFinanzas",
-  "short_name": "kibFinanzas",
-  "description": "Presupuesto personal: ingresos, gastos, ahorro, dólares y deudas.",
+  "name": "TuGasto",
+  "short_name": "TuGasto",
+  "description": "TuGasto: presupuesto personal con ingresos, gastos, ahorro, dólares y deudas.",
   "id": "./",
   "start_url": "./",
   "scope": "./",

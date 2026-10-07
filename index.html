@@ -5,13 +5,13 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
-<title>kibFinanzas</title>
+<title>TuGasto</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="theme-color" content="#1f9d55" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#161618" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="kibFinanzas">
+<meta name="apple-mobile-web-app-title" content="TuGasto">
 <link rel="apple-touch-icon" href="./apple-180.png">
 <link rel="icon" type="image/png" sizes="64x64" href="./favicon-64.png">
 <style>
@@ -708,7 +708,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--acc);outline-offset
 
 <header>
   <div class="wrap hd">
-    <h1 id="titulo" title="kibFinanzas"><span class="kf">KF</span><span class="anio"></span></h1>
+    <h1 id="titulo" title="TuGasto"><span class="kf">TG</span><span class="anio"></span></h1>
     <div class="estado"><i class="dot" id="dot"></i><span id="txtEstado">Listo</span></div>
     <button class="btn-guardar" data-act="guardar">Guardar</button>
   </div>
@@ -2577,8 +2577,8 @@ function conScroll(fn){
 }
 function render(){
   document.querySelector('#titulo .anio').textContent = D.anio;
-  var pt = document.getElementById('printTit'); if(pt) pt.textContent = 'kibFinanzas · ' + D.anio + ' · impreso el ' + fechaCorta(new Date().toISOString());
-  document.title = 'kibFinanzas · ' + D.anio;
+  var pt = document.getElementById('printTit'); if(pt) pt.textContent = 'TuGasto · ' + D.anio + ' · impreso el ' + fechaCorta(new Date().toISOString());
+  document.title = 'TuGasto · ' + D.anio;
   if(tab === 'mes') renderMes();
   if(tab === 'anio') renderAnio();
   if(tab === 'usd') renderUSD();
@@ -3674,7 +3674,7 @@ function renderAjustes(){
     h += '<button class="volver" data-act="ajRaiz"><i></i>Ajustes</button><h2 class="subtit">Método de uso</h2>' + manual() + '<div style="height:20px"></div>';
   } else if(ajVista === 'privacidad'){
     h += '<button class="volver" data-act="ajRaiz"><i></i>Ajustes</button><h2 class="subtit">Privacidad</h2>'
-       + '<div class="texto"><p>kibFinanzas no recolecta ningún dato. No hay servidor, ni cuenta, ni publicidad, ni estadísticas. Tus números viven en este teléfono y solo salen si vos exportás una copia.</p>'
+       + '<div class="texto"><p>TuGasto no recolecta ningún dato. No hay servidor, ni cuenta, ni publicidad, ni estadísticas. Tus números viven en este teléfono y solo salen si vos exportás una copia.</p>'
        + '<p>La app no pide acceso a contactos, ubicación, cámara ni archivos. La única salida de datos es la que iniciás vos al hacer una copia de seguridad, y ese archivo lo controlás vos.</p></div>'
        + '<div class="lista" style="margin-top:14px">'
        + '<a class="faj" href="./privacidad.html" target="_blank" rel="noopener"><span class="ico">' + ICO.escudo + '</span><span class="tx"><b>Política de privacidad completa</b><small>Se abre en el navegador</small></span><i class="chev"></i></a>'
@@ -3728,7 +3728,7 @@ function renderAjustes(){
        + filaAj('hola', 'Pantalla de bienvenida', {t:'La que aparece la primera vez'}, 'verBienvenida')
        + filaAj('escudo', 'Privacidad', {t:'No se recolecta ningún dato'}, 'ajVista', ' data-v="privacidad"')
        + '</div>';
-    h += '<div class="pie">kibFinanzas v' + APPVER + '<br>Desarrollado por Kevin Vasquez</div>';
+    h += '<div class="pie">TuGasto v' + APPVER + '<br>Desarrollado por Kevin Vasquez</div>';
   }
   document.getElementById('v-ajustes').innerHTML = h;
   listarAnios();
@@ -4016,7 +4016,7 @@ function armarCopia(){
   }
   // N4 I-4: una pestaña vieja (obsoleta, o lo guardado ya no es su revisión) exporta lo GUARDADO, no su memoria
   if(!obsoleta && !revGuardada(PREF + D.anio).roto && blobAlDia(PREF + D.anio, D)) anios[D.anio] = D;
-  var copia = {app:'kibFinanzas', version:1, creada:new Date().toISOString(), anios:anios};
+  var copia = {app:'TuGasto', version:1, creada:new Date().toISOString(), anios:anios};
   var tr = T && !obsoleta && blobAlDia(LSTRAB, T) ? T : leerTrab();
   if(tr && (tr.activo || tr.facturas.length || tr.cobros.length || tr.pases.length || tr.gastos.length || tr.productos.length || tr.tope)) copia.trabajo = tr;   // campo nuevo: las versiones viejas lo ignoran
   try{
@@ -4058,7 +4058,7 @@ function archivoCompartible(texto, base){
   return null;
 }
 function hacerCopia(){
-  var texto = JSON.stringify(armarCopia(), null, 1), base = 'kibfinanzas-copia-' + fechaArchivo();
+  var texto = JSON.stringify(armarCopia(), null, 1), base = 'tugasto-copia-' + fechaArchivo();
   var nombre = base + '.json';
   var f = archivoCompartible(texto, base);
   var puedeCompartir = !!f;
@@ -4071,7 +4071,7 @@ function hacerCopia(){
   guardarEnCarpeta(texto, nombre);
   ultimaCopiaTexto = texto; ultimaCopiaNombre = nombre;
   if(puedeCompartir){
-    navigator.share({files:[f], title:'Copia de kibFinanzas'}).then(listo)['catch'](function(e){
+    navigator.share({files:[f], title:'Copia de TuGasto'}).then(listo)['catch'](function(e){
       if(e && e.name === 'AbortError') return;
       descargar(texto, nombre, 'application/json'); listo();
       alertaCompartir('La copia quedó en Descargas',
@@ -4086,7 +4086,7 @@ function hacerCopia(){
 }
 function versionPC(){
   if(sucio) guardar();
-  var nombre = 'kibfinanzas-' + D.anio + '.html';
+  var nombre = 'tugasto-' + D.anio + '.html';
   var datos = JSON.stringify(D).replace(/</g, '\\u003c').replace(/\*\//g, '*\\/');   // que ningún nombre cierre el <script> ni traiga la marca de fin (N5 S-5: "*/" viaja como "*\/", que JSON lee igual)
   var listo = function(txt){
     var i = txt.indexOf(M1), j = txt.indexOf(M2);
@@ -4101,7 +4101,7 @@ function versionPC(){
   });
 }
 var MAX_COPIA = 10 * 1024 * 1024;   // N5 S-3: una copia real pesa unos pocos cientos de KB; más de 10 MB no se lee
-function avisoCopiaGrande(){ alerta('Ese archivo es muy grande', 'Pesa más de 10 MB, y una copia de kibFinanzas pesa mucho menos. No parece una copia: no cambié nada.'); }
+function avisoCopiaGrande(){ alerta('Ese archivo es muy grande', 'Pesa más de 10 MB, y una copia de TuGasto pesa mucho menos. No parece una copia: no cambié nada.'); }
 function restaurarCopia(f){
   if(f && f.size > MAX_COPIA){ avisoCopiaGrande(); return; }
   var r = new FileReader();
@@ -4146,10 +4146,10 @@ function restaurarTexto(txt){
   (function(){
     var j;
     if(typeof txt === 'string' && txt.length > MAX_COPIA){ avisoCopiaGrande(); return; }
-    try{ j = JSON.parse(txt); }catch(e){ alerta('Ese archivo no se pudo leer', 'No parece una copia de kibFinanzas.'); return; }
+    try{ j = JSON.parse(txt); }catch(e){ alerta('Ese archivo no se pudo leer', 'No parece una copia de TuGasto.'); return; }
     var anios = j && j.anios && typeof j.anios === 'object' ? j.anios
               : (j && Array.isArray(j.meses) ? (function(o){ var t = {}; t[num(j.anio)||new Date().getFullYear()] = j; return t; })() : null);
-    if(!anios){ alerta('Ese archivo no se pudo leer', 'No parece una copia de kibFinanzas.'); return; }
+    if(!anios){ alerta('Ese archivo no se pudo leer', 'No parece una copia de TuGasto.'); return; }
     var numericas = Object.keys(anios).filter(function(k){ return /^\d+$/.test(k); });
     var claves = numericas.filter(anioValido), saltados = numericas.filter(function(k){ return !anioValido(k); });   // N5 S-2
     if(!claves.length){ alerta('Copia vacía', 'El archivo no tiene ningún año adentro.'); return; }
@@ -4191,7 +4191,7 @@ function cerrarBienvenida(){
   if(!hayDatos(D, tieneTrab()) && !aniosGuardados().length) avisoPrimeraVez();
 }
 function bienvenida(){
-  abrirHoja('<h3>Bienvenido a kibFinanzas</h3>'
+  abrirHoja('<h3>Bienvenido a TuGasto</h3>'
     + '<div class="texto" style="margin-bottom:16px">'
     +   '<p><b>Es tu presupuesto del mes, sin vueltas.</b> Cargás lo que entra, los gastos fijos, los variables y las deudas, y te dice con cuánto te quedás. También lleva el ahorro en pesos, en dólares y el patrimonio.</p>'
     +   '<p><b>Todo vive en este teléfono.</b> No hay servidor, ni cuenta, ni clave, ni internet. Nadie más ve tus números, ni siquiera nosotros. Funciona igual en el subte o en el campo.</p>'
@@ -4251,7 +4251,7 @@ function exportarCSV(){
             x.ahorroMesARS, x.compraARS, x.compraUSD, Math.round(x.cotizacionPagada*100)/100, x.sacadoARS, x.ventaUSD, x.reposicionARS, x.aReponer, x.totalDeudas, x.disponibleFinal, x.ahorroAcumulado, x.usdMes, x.usdAcumulado]
            .map(function(v,k){ return k===0 ? c(v) : String(v).replace('.',','); }).join(';'));
   }
-  descargar('\ufeff' + l.join('\r\n'), 'kibfinanzas-'+D.anio+'.csv', 'text/csv;charset=utf-8');
+  descargar('\ufeff' + l.join('\r\n'), 'tugasto-'+D.anio+'.csv', 'text/csv;charset=utf-8');
 }
 function duplicar(){
   // R4.6: una pestaña vieja no crea el año nuevo (no escribe nada hasta recargar); y si lo pendiente de esta pestaña no se pudo guardar
@@ -4443,7 +4443,7 @@ function probarCompartir(){
   if(!navigator.share){ alerta('No se puede', 'Este navegador no tiene menú de compartir. La copia quedó en Descargas.'); return; }
   var f = null;
   try{ f = new File([ultimaCopiaTexto], ultimaCopiaNombre.replace(/\.json$/, '.txt'), {type:'text/plain'}); }catch(e){}
-  var envio = f ? {files:[f], title:'Copia de kibFinanzas'} : {title:'Copia de kibFinanzas', text:ultimaCopiaTexto};
+  var envio = f ? {files:[f], title:'Copia de TuGasto'} : {title:'Copia de TuGasto', text:ultimaCopiaTexto};
   navigator.share(envio)['catch'](function(e){
     if(e && e.name === 'AbortError') return;
     alerta('No dejó compartir', 'Tu navegador rechazó el envío (<b>' + ((e && e.name) || 'sin nombre') + '</b>). La copia igual está en Descargas: compartila desde la app Archivos.');
@@ -6519,7 +6519,7 @@ function csvTrabajo(){
   var l = [], i, j, r = resumenTrab(), fs = T.facturas.slice(), cs = T.cobros.slice(), gs = T.gastos.slice(), ps = T.pases.slice();
   var porFecha = function(a, b){ return a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0; };
   fs.sort(porFecha); cs.sort(porFecha); gs.sort(porFecha); ps.sort(porFecha);
-  l.push('kibFinanzas · Trabajo por mi cuenta · exportado el ' + fDiaLargo(hoyISO()));
+  l.push('TuGasto · Trabajo por mi cuenta · exportado el ' + fDiaLargo(hoyISO()));
   l.push('');
   l.push('VENTAS Y FACTURAS');
   var hoyC = hoyISO();
@@ -6559,7 +6559,7 @@ function csvTrabajo(){
   l.push(['Por cobrar', n(r.porCobrar)].join(';'));
   l.push(['Facturado en los últimos 12 meses', n(r.facturado12)].join(';'));
   if(T.tope) l.push(['Tope del monotributo', n(T.tope)].join(';'));
-  descargar('\ufeff' + l.join('\r\n'), 'kibfinanzas-trabajo-' + fechaArchivo() + '.csv', 'text/csv;charset=utf-8');
+  descargar('\ufeff' + l.join('\r\n'), 'tugasto-trabajo-' + fechaArchivo() + '.csv', 'text/csv;charset=utf-8');
 }
 /* pasar a lo personal: suma a un renglón de Ingresos, sin tocar ninguna fórmula del mes */
 function renglonTrabajo(d, m, crear){
