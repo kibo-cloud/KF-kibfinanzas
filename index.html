@@ -1869,9 +1869,10 @@ function normalizar(d, hoy){
   }
   d.meses.length = 12;
   d.pagoExplicito = true;   // marca: desde acá el estado de pago es siempre explícito
-  if(!d.planDeudas || typeof d.planDeudas!=='object') d.planDeudas = {};
-  Object.keys(d.planDeudas).forEach(function(k){
-    var p = d.planDeudas[k] || {};
+  var pdOrig = d.planDeudas && typeof d.planDeudas==='object' ? d.planDeudas : {};
+  d.planDeudas = Object.create(null);   // N5 S-1: llaves = nombres de deudas que escribe el usuario ("constructor", "__proto__"): sin prototipo
+  Object.keys(pdOrig).forEach(function(k){
+    var p = pdOrig[k] || {};
     d.planDeudas[k] = {recargo:num(p.recargo), total:num(p.total), cuotas:Math.max(0, Math.round(num(p.cuotas))), pagadasAntes:Math.max(0, Math.round(num(p.pagadasAntes)))};
   });
   if(!d.ui || typeof d.ui!=='object') d.ui = {};
@@ -2040,7 +2041,7 @@ function clave(x){
   return o;
 }
 function esRenglonTrabajo(n){ return clave(n) === clave(RENGLON_TRABAJO); }
-function planDe(d, nombre){ return d.planDeudas[String(nombre||'').trim()] || null; }
+function planDe(d, nombre){ var k = String(nombre||'').trim(); return Object.prototype.hasOwnProperty.call(d.planDeudas, k) ? d.planDeudas[k] || null : null; }   // N5 S-1: solo un plan propio, nunca algo heredado ("constructor")
 function cuotaPaga(j, it){ return estaPagado(j, it) && num(it.monto) > 0; }   // una cuota cuenta como paga si está tildada Y tiene monto
 function estadoDeuda(d, nombre, i, hoy){
   var p = planDe(d, nombre); if(!p || !p.cuotas) return null;
@@ -2105,7 +2106,7 @@ function cargarCuotas(d, nombre, desde, hoy){
   return pc;
 }
 function proyeccionDeudas(d, hoy){
-  var out = [], vistos = {};
+  var out = [], vistos = Object.create(null);   // N5 S-1: llaves = nombres del usuario
   for(var i=0;i<12;i++){
     var ls = d.meses[i].deudas;
     for(var q=0;q<ls.length;q++){
@@ -2137,7 +2138,7 @@ function patrimonio(d){
   };
 }
 function ranking(d){
-  var map = {}, i, j;
+  var map = Object.create(null), i, j;   // N5 S-1: llaves = nombres del usuario
   for(i=0;i<12;i++){
     var m = d.meses[i], ls = m.gastosFijos.concat(m.gastosVariables);
     for(j=0;j<ls.length;j++){
@@ -2289,7 +2290,7 @@ function iniciarArrastre(d, hoy, declarado, ctx){
 }
 // liabilities a hoy (Q6, Q14): saldo por cuotas de cada plan (con las vencidas y las futuras) + filas sin tildar de deudas sin plan en meses pasado/actual
 function pasivos(d, hoy){
-  var iHoy = Math.min(11, mesTope(d.anio, hoy)), detalle = [], total = 0, libres = {}, orden = [], j, q, e, n;
+  var iHoy = Math.min(11, mesTope(d.anio, hoy)), detalle = [], total = 0, libres = Object.create(null), orden = [], j, q, e, n;
   Object.keys(d.planDeudas || {}).forEach(function(k){
     var p = d.planDeudas[k]; if(!p || !p.cuotas) return;
     e = estadoDeuda(d, k, iHoy, hoy); if(!e) return;
@@ -4189,6 +4190,7 @@ function duplicar(){
   if(!blobAlDia(PREF + D.anio, D)){ obsoleta = true; avisoOtraPestana(); return; }
   var s = serie(D), n = JSON.parse(JSON.stringify(D)), i, j, k, hoy = hoyApp();
   n.anio = D.anio + 1;
+  n.planDeudas = Object.assign(Object.create(null), n.planDeudas);   // N5 S-1: como lo deja normalizar (llaves = nombres del usuario)
   delete n.arrastre; delete n.rev;   // el año nuevo no hereda el modelo ni la revisión del viejo: arranca los suyos
   if(D.arrastre){   // R4.3: el saldo del año nuevo arranca del cierre de diciembre (el confirmado si existe, si no el calculado) y guarda cuánto calculaba, para detectar deriva
     var dic = cadena(D, hoy, ctxModelo(D, hoy)).meses[11];
@@ -4389,7 +4391,7 @@ var pendiente = null;
 
 function gastoRapido(){
   var m = D.meses[mes];
-  var todas = [], usos = {}, q;
+  var todas = [], usos = Object.create(null), q;   // N5 S-1: llaves = nombres del usuario
   for(q=0;q<m.gastosVariables.length;q++) todas.push({nombre:m.gastosVariables[q].nombre, sec:'gastosVariables', i:q, n:0});
   for(q=0;q<m.gastosFijos.length;q++) todas.push({nombre:m.gastosFijos[q].nombre, sec:'gastosFijos', i:q, n:0});
   for(q=0;q<m.movimientos.length;q++){ var nm = m.movimientos[q].nombre; usos[nm] = (usos[nm]||0) + 1; }
@@ -4879,7 +4881,7 @@ function aplicarInput(t, final){
   if(t.classList.contains('nombre')){
     if(t.getAttribute('data-k') === 'deudas'){
       var viejo = String(it.nombre||'').trim(), nuevo = String(v).trim();
-      if(viejo !== nuevo && D.planDeudas[viejo] && !D.planDeudas[nuevo]){
+      if(viejo !== nuevo && planDe(D, viejo) && !planDe(D, nuevo)){
         D.planDeudas[nuevo] = D.planDeudas[viejo]; delete D.planDeudas[viejo];
         // una deuda con plan es la misma en todos los meses: el nombre viaja con ella
         for(var mj=0;mj<12;mj++){ var ld = D.meses[mj].deudas; for(var mq=0;mq<ld.length;mq++) if(ld[mq] !== it && String(ld[mq].nombre||'').trim() === viejo) ld[mq].nombre = v; }
@@ -5072,7 +5074,7 @@ function rangoTxt(f){
   return t + ' del ' + fDia(f.desde) + ' al ' + fDia(sumarDias(f.desde, largoPeriodo(f.periodo)));
 }
 function fuentes(){
-  var visto = {}, out = [], i, n;
+  var visto = Object.create(null), out = [], i, n;
   for(i=0;i<T.facturas.length;i++){ n = T.facturas[i].fuente; if(n && !visto[clave(n)]){ visto[clave(n)] = 1; out.push(n); } }
   return out.sort();
 }
@@ -5237,7 +5239,7 @@ function resumenTrab(){
     r.sinAsignar += sinAsignar(c);
   }
   r.pasado = 0; r.pasadoMes = 0; r.pasadoProgramado = 0;
-  var anios = {};
+  var anios = Object.create(null);
   for(i=0;i<T.pases.length;i++){
     r.pasado += T.pases[i].monto; if(T.pases[i].fecha.slice(0,7) === mesAct) r.pasadoMes += T.pases[i].monto;
     if(T.pases[i].fecha > hoy && paseAlModelo(T.pases[i], anios)) r.pasadoProgramado += T.pases[i].monto;   // Q4: programado en los dos lados hasta su fecha
@@ -5249,7 +5251,7 @@ function resumenTrab(){
     if(g.fecha <= hoy){ r.gastado += g.monto; if(g.fecha.slice(0,7) === mesAct) r.gastadoMes += g.monto; }
     else r.gastoFuturo += g.monto;   // programado: se descuenta cuando llega el día
   }
-  var mf = {}, of = [];
+  var mf = Object.create(null), of = [];   // N5 S-1: llaves = fuentes que escribe el usuario
   for(i=0;i<T.facturas.length;i++){
     var fh = T.facturas[i];
     if(fh.fecha === hoy && fh.contado){
@@ -5282,7 +5284,7 @@ function resumenTrab(){
 // ¿el pase cae en un mes del modelo de saldos? Solo ahí un pase con fecha futura queda programado (Q4). En un mes legacy el renglón
 // "Del trabajo" ya lo cuenta como ingreso, así que Trabajo lo sigue descontando en el momento, como siempre (D4: nada se cuenta dos veces).
 function paseAlModelo(p, anios){
-  if(!anios.hasOwnProperty(p.anio)) anios[p.anio] = D && D.anio === p.anio ? D : leerAnio(p.anio);
+  if(!Object.prototype.hasOwnProperty.call(anios, p.anio)) anios[p.anio] = D && D.anio === p.anio ? D : leerAnio(p.anio);
   return mesDelModelo(anios[p.anio], p.mes);
 }
 // la plata del trabajo como bolsillo del patrimonio (Q2)
@@ -5295,7 +5297,7 @@ function marcarVencidos(){
 }
 function gasPorId(id){ for(var i=0;i<T.gastos.length;i++) if(T.gastos[i].id === id) return T.gastos[i]; return null; }
 function statsClientes(){
-  var m = {}, orden = [], i, j, k;
+  var m = Object.create(null), orden = [], i, j, k;
   for(i=0;i<T.facturas.length;i++){
     var f = T.facturas[i]; if(f.tipo !== 'factura' || f.contado) continue;
     k = clave(f.cliente || 'Sin cliente');
@@ -5314,7 +5316,7 @@ function statsClientes(){
 }
 function mismoCliente(a, b){ return clave(a) === clave(b); }
 function clientes(){
-  var visto = {}, out = [], i, n;
+  var visto = Object.create(null), out = [], i, n;
   for(i=0;i<T.facturas.length;i++){ n = T.facturas[i].cliente; if(n && !visto[clave(n)]){ visto[clave(n)] = 1; out.push(n); } }
   return out.sort();
 }
@@ -5479,7 +5481,7 @@ function cuerpoClientes(){
            : '<div class="tj-vacio">Cuando cobres facturas a plazo, acá vas a ver cuánto tarda de verdad cada cliente.</div>';
 }
 function cobranza(){
-  var hoy = hoyISO(), lim = sumarDias(hoy, 7), g = {}, orden = [], i, k;
+  var hoy = hoyISO(), lim = sumarDias(hoy, 7), g = Object.create(null), orden = [], i, k;
   for(i=0;i<T.facturas.length;i++){
     var f = T.facturas[i], s = saldoFac(f); if(!s || f.contado) continue;
     var v = venceFac(f); if(v > lim) continue;
@@ -5557,7 +5559,7 @@ function colorValido(k){ for(var i=0;i<COLCARP.length;i++) if(COLCARP[i][0] === 
 function hexColor(k){ for(var i=0;i<COLCARP.length;i++) if(COLCARP[i][0] === k) return COLCARP[i][2]; return '#8b8d98'; }
 function carpetas(){
   // una entrada por carpeta (sin tildes ni mayúsculas cuentan igual); General va al final
-  var vistas = {}, out = [], gen = 0, i;
+  var vistas = Object.create(null), out = [], gen = 0, i;   // N5 S-1: llaves = carpetas del usuario
   for(i=0;i<T.productos.length;i++){
     var p = T.productos[i];
     if(!p.carpeta){ gen++; continue; }
