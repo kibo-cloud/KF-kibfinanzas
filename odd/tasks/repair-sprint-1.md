@@ -600,12 +600,17 @@ Checklist (route: delegated writer per task, parent verifies + re-runs suites):
 - [x] N3 R5: opening / available UX (first-use prompt via `activarSaldos`, "Saldo inicial · Editar", "Viene del mes anterior", real
       closing correction, edit of a previous month), Patrimonio composition (owner MUST), "Del trabajo" above its pases presentation.
       Route: delegated writer (N3a, N3b). Evidence: "#### N3a" and "#### N3b" below; release v1.32.0 / sw v45.
-- [ ] N4 Pre-Alpha code audit + cleanup (risk-reducing only).
-- [ ] N5 Security audit (import/restore/export, dynamic HTML/XSS, storage, SW/cache, deletion, migrations) with regression tests.
-- [ ] N6 Backup/restore/migration end-to-end round trips (old + new data, Trabajo, arrastre, ahorro, deudas, previous years).
+- [x] N4 Pre-Alpha code audit + cleanup (risk-reducing only). Route: delegated writer. Evidence: "#### N4/N5/N6" below; I-1..I-7 fixed.
+- [x] N5 Security audit (import/restore/export, dynamic HTML/XSS, storage, SW/cache, deletion, migrations) with regression tests.
+      Route: delegated writer. Evidence: "#### N4/N5/N6" below; S-1..S-5 fixed (S-4 CSP added without hashes).
+- [x] N6 Backup/restore/migration end-to-end round trips (old + new data, Trabajo, arrastre, ahorro, deudas, previous years).
+      Route: delegated writer. Evidence: "#### N4/N5/N6" below; no new bug, round trips pinned in unit + E2E.
 - [ ] N7 Final regression, smoke, Alpha readiness report.
 
 Native review consent log (night run):
+- N4/N5/N6 (7bb5480..HEAD of N4-N6, 9 code/test commits + this record): native review consent pending (owner away); not claimed.
+  Writer verification: `npm test` 661 (660 pass, 1 todo `L-03d`), `npm run test:e2e` 214/214, motor goldens byte-identical to 7bb5480,
+  mutation checks in the N4/N5/N6 section.
 - N3b (8d1ee42..HEAD of N3b, N3a review fixes + R5 part 2 + release v1.32.0): native review consent pending (owner away); not claimed.
   Writer verification: `npm test` 628 (627 pass, 1 todo), `npm run test:e2e` 204/204, motor goldens byte-identical to 8d1ee42,
   mutation checks in the N3b section.
@@ -857,6 +862,68 @@ Code (index.html at 7a96e62): view `muestraPrimerUso`, `textoOrigen`, `lineasSal
 - RISKS: display rounding — each row is rounded to the peso on screen, so with cents the shown rows can differ from the shown gross by $1
   (the numbers add up exactly; screen sums tested on whole pesos); in a future model month `textoDeuda` / `htmlTorta` deep-copy the year
   (`datosRealizados`) per call; `repartoTrabajo` builds `ctxModelo` per "Del trabajo" row (a storage read only for a January carry).
+- NATIVE REVIEW: consent pending (owner away, night-run rule); not claimed.
+
+#### N4/N5/N6 — audit, security, backup/restore (night run)
+
+- STATUS: done. Route: one bounded delegated writer (index.html, privacidad.html, tests, this document). Findings come from the two
+  pre-Alpha auditors (security auditor "S-*", integrity auditor A "I-*" = A1/B1..B6); their probe scripts reproduced every finding at 7bb5480.
+- COMMITS (after 7bb5480): 5979bca `security: key user-named maps without a prototype (S-1)`, 95a20e7 `security: restore only real year keys
+  (S-2)`, b59e208 `security: keep date fields as text and cap restore size (S-3)`, 251ddc1 `security: escape history size, pill and settings
+  rows; keep data markers intact (S-5)`, 7627ed9 `security: add a Content-Security-Policy meta to the app and privacy pages (S-4)`, b628e2b
+  `fix(r4.6): never overwrite unreadable data, export stored data from stale tabs, report failed new years (I-2..I-7)`, 04d2a10 `fix(r5): a
+  quick expense in a future model month stays programado (I-1)`, b454346 `test(n6): backup, modify everything and restore round trips in unit
+  and E2E`, ccff9b0 `fix(r4.6): keep the unreadable-data warning visible at start-up (I-3)`, plus this record. No commit carries AI trailers.
+- PROCESS NOTE (recorded, history not rewritten): every commit ran `npm test` green before committing; the E2E suite was run at the end.
+  b628e2b..04d2a10 leave one existing E2E check (`R4.3 c`, restored `rev`) failing because I-5 intentionally moves the revision forward;
+  b454346 updates that expectation. Bisect over E2E between those commits must account for it.
+
+| # | Source / severity | Finding | Fix | RED (before) → GREEN |
+|---|---|---|---|---|
+| S-1 | security / MEDIUM | maps keyed by user names were `{}`: a client/source/folder/expense/debt named `__proto__`/`constructor` vanished from Clientes, Cobranza, fuentes, carpetas, ranking, pasivos, proyección, and `planDe(d,'constructor')` returned `Object` | `Object.create(null)` for statsClientes `m`, cobranza `g`, clientes/fuentes `visto`, carpetas `vistas`, resumenTrab `mf`/`anios`, gastoRapido `usos`, motor `ranking.map`, `proyeccionDeudas.vistos`, `pasivos.libres`; `normalizar` builds `planDeudas` without prototype; `planDe` reads own keys only; rename and `duplicar` use the same | `tests/n5.seguridad.test.js` S-1: 5/5 failing (e.g. Clientes listed 2 of 4 names; `planDe(...,'__proto__')` returned `{}`) → 5/5 |
+| S-2 | security / LOW-MED | restore accepted any 4-digit key and `escribirAnios` wrote `kibo.datos.0`, `.999`, `.12345` (not own keys) | `anioValido` (`/^[1-9]\d{3}$/`, 1900-2200) in `restaurarTexto` and `escribirAnios`, plus `claveMia(PREF+anio)` before each write; skipped keys reported (`saltados`) in the restore message | 3/3 failing → 3/3 |
+| S-3 | security / LOW | `actualizado`/`cotizacionFecha` kept any type; no restore size cap | both kept only as strings (unknown fields still survive, design §8); `MAX_COPIA` 10 MB checked in `restaurarCopia` (before reading) and `restaurarTexto` ("Ese archivo es muy grande") | 2/2 failing → 2/2 |
+| S-4 | security / LOW | no CSP | meta CSP in index.html and privacidad.html: `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'` (no hashes, so nothing goes stale; no `unsafe-eval`) | new static test (same meta in both pages, before any script, only self/none/inline/data/blob, no inline `on*=` handlers); E2E: any CSP violation becomes a page error, a cross-origin image is refused (`img-src` reported), "Versión para PC" scripts compiled in Node |
+| S-5 | security / LOW | `l[i].kb` raw in `listaHistorial`; `pildora`/`filaAj` raw; `leerEmbebido` cut the data at the first `/*DATOS_FIN*/` (a name could contain it) | `esc(l[i].kb)`; `pildora` and `filaAj` (titulo, sub.t/clase/id) escape by default (constant texts render byte-identical, tested); `leerEmbebido` reads up to the LAST end marker; `versionPC` writes `*/` as `*\/` (JSON reads it the same) | 4/4 failing → 4/4 |
+| I-1 | auditor A1 / MEDIUM | quick expense in a FUTURE model month ticked an empty row (realized ahead) | derived, not new: §1 Programado ("nothing in a future month is realized") + N3b-A option (a) "no ticking ahead" → in a future month of the model `sumarGasto` adds the amount and leaves the tick as it was; current/past months and legacy years unchanged; D16-15 untouched (PENDIENTE-R7) | `tests/n4.integridad.test.js` I-1: 1/3 failing (`pagado` true) → 3/3; `tests/movimientos.test.js` harness list |
+| I-2 | auditor B1 / MEDIUM | `duplicar` said "Listo" when the new year was not saved (year switched, `kibo.anio` pointed to nothing) | checks `guardar()`; on failure restores `D`, `mes`, `obsoleta`, `hayLS`, never calls `recordarAnio`, alerts "No pude crear el año" | 1/1 failing → 1/1 |
+| I-3 | auditor B2 / MEDIUM | an unreadable year blob read as "no year" and was overwritten by the next save (rev 0) | `revGuardada` reports `roto` (parse error or not an object); the raw text is copied as is to `kibo.cuarentena.<anio>` (never replaced, never deleted); year writes return `'roto'` until a backup restore (`escribirAnios` copies to quarantine first); warning "No pude leer los datos de AAAA. Guardé una copia; no se van a pisar." at start-up and on save (other start-up notices add themselves below it); `armarCopia` carries the raw texts in a new `cuarentena` field and never exports unsaved memory as that year; restore brings a backup's quarantine when absent; `duplicar` sees the year as existing. Trabajo: same copy to `kibo.cuarentena.trabajo`, then written (no in-app recovery path; see N4-A). Quarantine keys are device keys (not `claveMia`) so no rollback/restore path that deletes own keys can remove them | 7/8 failing (the device-key guard passed) → 8/8; E2E 3 checks |
+| I-4 | auditor B3 / LOW-MED | `armarCopia` in a stale tab exported stale memory | exports `leerAnio`/`leerTrab` when `obsoleta` or `!blobAlDia` | 1/1 failing (exported cot 1000, stored 2000) → 1/1 |
+| I-5 | auditor B4 / LOW | restore kept the backup's `rev` when the key did not exist | always `rev = max(stored, own) + 1` | 1/1 failing → 1/1; updated `r4.migracion` "backup -> restore" (4 → 5) and E2E `R4.3 c` |
+| I-6 | auditor B5 / LOW | `imprimir` added a permanent `afterprint` listener per print | `{once:true}` and removed in `volver` | 1/1 failing (3 listeners) → 1/1 |
+| I-7 | auditor B6 / LOW | stale comments | R4.2 header ("la app las usa desde R4.4/R5"), Mes `tieneTilde` comment (R5 excess); the `|| 2026` fallback of `normalizar` is KEPT (callers always set the year from the key; a `hoy`-based fallback would change motor output) with a comment | comments only |
+
+- MUTATIONS (each restored with the saved fixed file; counts over the focused files): S-1 cobranza `g = {}` → 1 fail; `planDe` without the own-key
+  check + `ranking` back to `{}` → 2 fail; S-2 guard removed → 1 fail; I-1 line removed → 1; I-2 save result ignored → 1; I-3 `roto` not
+  blocked → 3; I-3 `duplicar` back to `leerAnio` → 1; I-4 stale memory exported → 1; I-5 rev only when the key existed → 2; I-6 permanent
+  listener → 1; N6 `armarCopia` drops Trabajo → 1 (unit) and the E2E N6 block aborts; `armarCopia` drops 2025 → 1; restore ignores Trabajo → 2.
+  Not run: S-3, S-4, S-5 mutations (their RED runs above fail on exactly the removed lines).
+- N6 (tests only; no new bug found): `tests/n6.copias.test.js` (4) — a device with a legacy 2025, a 2026 model year (arrastre, confirmed
+  September closing, ahorro, USD bought, crypto, a debt plan, a "Del trabajo" row, a movement) and Trabajo (cobro, factura, realized + future
+  pase) is backed up with the real `armarCopia`, everything is changed (2026 edited and de-modeled, 2025 deleted, Trabajo emptied, 2027
+  added), then restored with the real `restaurarTexto` → `pendiente`: stored years (minus rev), Trabajo (minus rev/actualizado), the chain,
+  12 month cards, `patrimonioPantalla`, `resumenTrab`, El año HTML and CSV of both years equal the backup; 2027 is left alone; revisions only
+  move forward. A 7f7ad40-era multi-year backup with Trabajo and a bare pre-R4 single-year export restore cleanly (stored = today's
+  `normalizar` of the old blob, no model invented, same `serie`). E2E (6 + 3 for I-3): the same through the real "Reemplazar" button and a
+  reload, comparing storage and the Mes card, CSV, Dólares/Patrimonio, El año and Trabajo screens; an old backup on a wiped phone.
+- VERIFICATION: `npm test` 661 (660 pass, 0 fail, 1 todo `L-03d`), was 628; `npm run test:e2e` 214/214, was 204; `git diff --quiet 7bb5480 --
+  tests/fixtures/motor-golden.json tests/fixtures/motor-golden-r4.json` clean (the motor changes are prototype-free maps, own-key `planDe`, string-only
+  date fields and comments). Release: APPVER stays 1.32.0 and the service-worker cache v45 (nothing was published since; no new file, the precache
+  list is unchanged and `tests/release.test.js` passes).
+- RESIDUAL RISKS: (1) CSP keeps `'unsafe-inline'` for scripts and styles (the app is two inline blocks and the "Versión para PC" file must stay
+  one self-contained file): it does not stop an injected inline script; it does block loading from or sending to other origins through
+  fetch/XHR, images, objects, forms and `<base>`; navigation-based exfiltration and `frame-ancestors` (not available in a meta) are not covered.
+  The PC file opened from `file://` carries the same CSP; its scripts compile (E2E) but it was not opened from `file://` in a browser here.
+  (2) `normTrab` keeps `ui.col` as `{}` keyed by folder keys (only booleans copied through `hasOwnProperty`); a folder named `constructor`
+  can read an inherited truthy value for its collapsed state (cosmetic). (3) Quarantine keys are never cleaned up and have no UI beyond the
+  warning (one copy per year at most, never replaced). (4) A failed `duplicar` of a model year keeps the pre-R4 safety snapshot it took first
+  (a backup of what was there; harmless). (5) The I-1 toast still says "Sumé $X a Y" in a future month (the row shows "Programado").
+- OWNER_DECISION_REQUIRED:
+  - N4-A (LOW) unreadable Trabajo blob: built (a) copy to `kibo.cuarentena.trabajo`, then the next save writes Trabajo (there is no in-app way
+    to recover it, and blocking would leave the Trabajo tab unusable); (b) block Trabajo writes until a backup is restored, as for years;
+    (c) show a Trabajo-specific warning with a "Descargar el texto" action.
+  - N4-B (LOW) quarantine lifecycle: built (a) kept forever, travels in backups; (b) an Ajustes row to download and delete each quarantined
+    text; (c) delete it automatically once the year is readable again (against "never delete the raw text").
 - NATIVE REVIEW: consent pending (owner away, night-run rule); not claimed.
 
 ## D16 — official acceptance list (verbatim)
