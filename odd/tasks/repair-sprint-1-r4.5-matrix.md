@@ -271,3 +271,12 @@ Line endings: a8a3a84 and 6de98fb wrote `tests/r4.anio.test.js` with CRLF; 08b8c
   only, nothing changes in memory or storage); RED `L-07b` (pase removed from memory), GREEN after.
 - `num()` (= `parseFloat`, unchanged since before R1) reads a legacy text amount "1.500" as 1.5; the app never stores formatted text since R2 (D9),
   so only hand-edited or very old blobs are affected.
+- **N2-B (MEDIUM, OWNER_DECISION_REQUIRED) — L-03b resolved for new data only; legacy two-row data remains.** Data saved under the old
+  matcher can hold `[variant unticked, exact "Del trabajo" ticked]` rows in one month (the old matcher created the exact row for the
+  pase next to the user's variant row). `flujosMes` allocates the pase to the "Del trabajo" rows in order, so the variant absorbs it and
+  the user's unticked amount becomes realized. Probe: Oct `[Dél trabajo 100.000 ✗, Del trabajo 300.000 ✓]` + pase 300.000 dated
+  2026-10-05 → `[ingresosReal, trabajoRealizado, ingresosPend]` = `[100.000, 300.000, 0]`, expected `[0, 300.000, 100.000]`. Pinned as
+  a risk marker: `L-03d` (node:test `todo`; when it passes, the risk was fixed). Alternatives: (a) leave it and show a notice when a month
+  holds more than one "Del trabajo" row (no money rule changes); (b) the engine allocates pases to the ticked exact row first (changes motor
+  goldens → needs a golden diff report); (c) one-time conservative migration merging the rows (data rewrite). Recommendation: (a) for
+  Alpha, (b) in a later engine slice with its diff report.

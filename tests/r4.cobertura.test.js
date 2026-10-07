@@ -159,6 +159,18 @@ test('L-03c the row lookup is the engine matcher: an exact "Del trabajo" row win
   assert.doesNotMatch(la.extractFunction('deshacerTj'), /ingresos|renglonTrabajo/, 'deshacerTj restores the Trabajo store only, it never looks up the row');
 });
 
+// RISK MARKER (N2, OWNER_DECISION_REQUIRED, matrix F): L-03b is resolved for NEW data only. Data saved under the old matcher can hold a
+// variant row (unticked) BEFORE the exact ticked "Del trabajo" row that received the pase; the engine allocates the pase to the rows in
+// order, so the variant absorbs it and the user's unticked amount reads as realized. Fixing it needs a rule (engine allocation order ->
+// golden diff report, or a data merge). This test is `todo` on purpose: when it starts passing, the risk was fixed.
+test('L-03d legacy two-row data: a variant unticked row before the exact ticked "Del trabajo" row must stay pending', {todo: 'OWNER_DECISION_REQUIRED N2-B: engine allocates pases to "Del trabajo" rows in order; legacy two-row data is not rewritten'}, function(){
+  var d = C.vacio(2026); C.arrastre(d, 9, 0, 'declarado');
+  C.mes(d, 9, {ingresos: [C.it('Dél trabajo', 100000, false), C.it('Del trabajo', 300000, true)]});
+  var app = H.appVista(d, H.trab([{fecha: '2026-10-05', monto: 300000}])), vm = app.vistaModelo(app.D, app.hoy);
+  var f = plain(M.flujosMes(app.D, 9, app.hoy, vm.ctx));
+  assert.deepEqual([f.ingresosReal, f.trabajoRealizado, f.ingresosPend], [0, 300000, 100000], 'observed today: [100000, 300000, 0] (the 100.000 the user did not tick counts as realized)');
+});
+
 test('L-04 explicaDisp with a scheduled pase: only the pases already out are explained, and the text adds up to the big number', function(){
   var app = H.appVista(null, null, null, null, {funcs: ['explicaDisp', 'fARS', 'grupos'], globals: {oculto: false, PUNTOS: '..'}});
   var r = {cobrado: 1000000, gastado: 100000, pasado: 500000, pasadoProgramado: 200000};
