@@ -897,6 +897,46 @@ try{
     check('N4 I-3 e2e: the backup carries the raw text', await ev(`armarCopia().cuarentena[2026] === ${JSON.stringify(roto)}`), true);
   }
 
+  // ── P2 branding: the visible product name is TuGasto (title, header mark, Ajustes, exports, manifest, every tab) ──
+  {
+    await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); localStorage.setItem('kibo.anio','2026'); localStorage.setItem('kibo.datos.2026', ${JSON.stringify(JSON.stringify(legacy))});
+      localStorage.setItem('kibo.trabajo', JSON.stringify({version: 1, activo: true, modo: 'simple', facturas: [], cobros: [], pases: [], gastos: [], productos: [], tope: 0, rev: 1})); true`);   // Trabajo on, so its tab and CSV exist
+    await nav(URL_APP); await sleep(800);
+    check('P2 brand: document.title starts with "TuGasto"', await ev(`[document.title.indexOf('TuGasto') === 0, document.title]`), [true, 'TuGasto · 2026']);
+    check('P2 brand: the header shows the TG mark, titled TuGasto', await ev(`[document.querySelector('#titulo .kf').textContent, document.getElementById('titulo').title]`), ['TG', 'TuGasto']);
+    check('P2 brand: the manifest the page links is named TuGasto', await ev(`fetch(document.querySelector('link[rel=manifest]').href).then(function(r){ return r.json(); }).then(function(m){ return [m.name, m.short_name]; })`), ['TuGasto', 'TuGasto']);
+    // every text node and every user-facing attribute of the rendered DOM, per tab: no old brand anywhere
+    const viejaMarca = `(function(){ var out = [], re = /kib ?finanzas/i, mono = /\\bKF\\b/, t = function(s){ return re.test(s) || mono.test(s); };
+      var w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT), n; while((n = w.nextNode())) if(t(n.nodeValue)) out.push(n.nodeValue.trim().slice(0, 60));
+      Array.prototype.forEach.call(document.querySelectorAll('[title],[aria-label],[placeholder],[alt]'), function(e){ ['title', 'aria-label', 'placeholder', 'alt'].forEach(function(a){ var v = e.getAttribute(a); if(v && t(v)) out.push(a + '=' + v); }); });
+      if(t(document.title)) out.push('title=' + document.title); return out; })()`;
+    for(const tab of ['mes', 'anio', 'usd', 'trabajo', 'ajustes']){
+      await ev(`document.querySelector('[data-act=tab][data-t=${tab}]').click(); true`); await sleep(500);
+      check(`P2 brand: no visible kibFinanzas/KF text in the rendered "${tab}" tab`, await ev(viejaMarca), []);
+    }
+    await ev(`(function(){ var b = document.createElement('button'); b.setAttribute('data-act', 'verBienvenida'); document.body.appendChild(b); b.click(); document.body.removeChild(b); return true; })()`); await sleep(300);   // Ajustes → the welcome sheet
+    check('P2 brand: the welcome sheet says "Bienvenido a TuGasto"', await ev(`document.getElementById('hoja').textContent.indexOf('Bienvenido a TuGasto') >= 0`), true);
+    check('P2 brand: no visible kibFinanzas/KF text with the welcome sheet open', await ev(viejaMarca), []);
+    await ev(`(function(){ var h = document.querySelector('#hoja [data-act=cerrar]'); if(h) h.click(); return true; })()`); await sleep(300);
+    check('P2 brand: the Ajustes footer starts with "TuGasto v"', await ev(`document.querySelector('#v-ajustes .pie').textContent.indexOf('TuGasto v' + APPVER) === 0`), true);
+    // exported file names, through the real actions (Web Share disabled so the backup takes the download path)
+    const nombres = await ev(`(async function(){ var n = [], o = HTMLAnchorElement.prototype.click, ou = URL.createObjectURL, csvT = null;
+      Object.defineProperty(navigator, 'share', {value: undefined, configurable: true});
+      HTMLAnchorElement.prototype.click = function(){ if(this.download) n.push(this.download); };
+      URL.createObjectURL = function(b){ if(n.length === 3) csvT = b; return ou.call(URL, b); };
+      var dar = function(a){ var b = document.createElement('button'); b.setAttribute('data-act', a); document.body.appendChild(b); b.click(); document.body.removeChild(b); };
+      try{
+        dar('copia'); dar('expcsv'); dar('verpc');
+        for(var i = 0; i < 80 && n.length < 3; i++) await new Promise(function(r){ setTimeout(r, 100); });
+        dar('tjCSV');
+      } finally { HTMLAnchorElement.prototype.click = o; URL.createObjectURL = ou; delete navigator.share; }
+      var primera = csvT ? (await csvT.text()).replace(/^\\ufeff/, '').split('\\r\\n')[0] : null;
+      return {nombres: n.map(function(x){ return x.replace(/\\d{4}-\\d{2}-\\d{2}/, 'FECHA'); }), primera: primera && primera.replace(/exportado el .*$/, 'exportado el …')}; })()`);
+    check('P2 brand: exported file names start with "tugasto-"', nombres.nombres, ['tugasto-copia-FECHA.json', 'tugasto-2026.csv', 'tugasto-2026.html', 'tugasto-trabajo-FECHA.csv']);
+    check('P2 brand: the Trabajo CSV first line names TuGasto', nombres.primera, 'TuGasto · Trabajo por mi cuenta · exportado el …');
+    await ev(`(function(){ var h = document.querySelector('#hoja [data-act=cerrar]'); if(h) h.click(); return true; })()`); await sleep(300);
+  }
+
   check('no uncaught page errors', pageErrs, []);
 }catch(e){ fails++; results.push('ERROR ' + e.message); }
 finally{
