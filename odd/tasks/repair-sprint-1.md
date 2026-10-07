@@ -605,10 +605,12 @@ Checklist (route: delegated writer per task, parent verifies + re-runs suites):
       Route: delegated writer. Evidence: "#### N4/N5/N6" below; S-1..S-5 fixed (S-4 CSP added without hashes).
 - [x] N6 Backup/restore/migration end-to-end round trips (old + new data, Trabajo, arrastre, ahorro, deudas, previous years).
       Route: delegated writer. Evidence: "#### N4/N5/N6" below; no new bug, round trips pinned in unit + E2E.
-- [ ] N7 Final regression, smoke, Alpha readiness report.
+- [x] N7 Final regression, smoke, Alpha readiness report.
+      Route: independent review + smoke (parent), then delegated writer for the three fixes. Evidence: "#### N7 — final verification" below.
 
 Native review consent log (night run):
 - N4/N5/N6 (7bb5480..HEAD of N4-N6, 9 code/test commits + this record): native review consent pending (owner away); not claimed.
+- N7 (0daa848..HEAD: a3c0916, 685296a, f8821b5 + this record): native review consent pending (owner away); not claimed.
   Writer verification: `npm test` 661 (660 pass, 1 todo `L-03d`), `npm run test:e2e` 214/214, motor goldens byte-identical to 7bb5480,
   mutation checks in the N4/N5/N6 section.
 - N3b (8d1ee42..HEAD of N3b, N3a review fixes + R5 part 2 + release v1.32.0): native review consent pending (owner away); not claimed.
@@ -925,6 +927,54 @@ Code (index.html at 7a96e62): view `muestraPrimerUso`, `textoOrigen`, `lineasSal
   - N4-B (LOW) quarantine lifecycle: built (a) kept forever, travels in backups; (b) an Ajustes row to download and delete each quarantined
     text; (c) delete it automatically once the year is readable again (against "never delete the raw text").
 - NATIVE REVIEW: consent pending (owner away, night-run rule); not claimed.
+
+#### N7 — final verification (night run)
+
+- INDEPENDENT REVIEW of `7bb5480..0daa848` (N4/N5/N6): no CRITICAL or HIGH finding. Three findings were fixed below (one MEDIUM pre-existing,
+  two LOW).
+- SMOKE: (a) app flow (load, edit, save, reload, backup -> modify -> restore round trip) PASS with 0 page errors and 0 CSP violations;
+  (b) "Versión para PC" exported and opened via `file://` PASS except the year defect (fixed in N7-1); (c) offline reload with the service
+  worker v45 cache PASS.
+- N7-1 (MEDIUM, pre-existing since 7f7ad40) `cargar()` replaced the embedded year of a fresh PC file with `kibo.anio` or the calendar
+  year, so a 2027 export opened as 2026 and saved under `kibo.datos.2026`. Fix: with nothing stored and an exported seed
+  (`semillaExportada`: saved before or has data) the embedded year is kept and remembered in that file's storage; the shipped seed and
+  stored data behave as before. RED: 2 of 3 unit tests failed (`actual 2026` / `[2025,'2025']`), the "normal app unchanged" guard passed;
+  the new E2E opens the exported 2027 file via `file://` with a stale `kibo.anio` and failed 2 checks (`2026` shown, no
+  `kibo.datos.2027`). GREEN: 3/3 unit, E2E 218/218 (title and header show 2027, data present, `kibo.anio` = 2027, an edit saves under
+  `kibo.datos.2027`, nothing under 2026). Mutation: keeping the embedded year for any seed fails the "normal app unchanged" guard. Commit a3c0916.
+- N7-2 (LOW) `volverAntesDeR4` / `volverAntesDe130` deleted every own key, including an unreadable year or Trabajo blob created after the
+  snapshot. Fix: `cuarentenaAntesDeBorrar` copies such text to quarantine first; if the copy cannot be stored nothing is deleted (red pill,
+  the snapshot stays). RED: 3/3 failed. GREEN: 3/3; the existing rollback tests (claves, r4.migracion) load the helper. Mutation: helper
+  ignoring unreadable blobs fails 3/3; dropping the guard from `volverAntesDe130` fails its test. Commit 685296a.
+- N7-3 (LOW) `ponerEnCuarentena` treated any existing copy as stored, so a second, different unreadable text of the same key was lost.
+  Fix: each distinct text goes to the next free key (`kibo.cuarentena.AAAA`, `.2`, `.3`…), the same text is never stored twice, nothing
+  is overwritten or deleted; `armarCopia` already carries every quarantine key; restore maps suffixed keys back without duplicates.
+  RED: 3/3 failed. GREEN: 3/3. Mutations: old "any copy counts" rule fails 3; no de-duplication fails 2; restore ignoring suffixed keys fails 1.
+  Commit f8821b5. This supersedes N4/N5/N6 residual risk (3) "one copy per year at most".
+- FINAL REGRESSION: `npm test` 670 (669 pass, 0 fail, 1 todo `L-03d`), was 661; `npm run test:e2e` 218/218, was 214; `git diff --quiet
+  0daa848 -- tests/fixtures/motor-golden.json tests/fixtures/motor-golden-r4.json` clean. APPVER 1.32.0 and sw v45 unchanged.
+- ENVIRONMENT NOTE: drive C: was full during this run (ENOSPC); the suites were run with `TEMP`/`TMP` on another drive, same commands.
+
+Alpha checklist:
+
+| Area | Status | Evidence / note |
+| --- | --- | --- |
+| Saldo inicial / arrastre / disponible | PASS | R4.x, N1, N3a; goldens unchanged |
+| Ingresos / gastos / pendientes | PASS | R2, N1-x, D16 list |
+| Ahorro | PASS | s4, I3 conservation property |
+| Trabajo / pases | RISK | L-03d OWNER_DECISION_REQUIRED N2-B open; no transaction across the year + Trabajo writes (a crash between them can split a pase) |
+| Deudas / patrimonio | PASS | N1-1, N1-4, N3b |
+| Meses futuros | PASS | I5 time isolation, N1-x |
+| Años nuevos | PASS | L-05, duplicar tests, I-2 |
+| Modificación histórica | PASS | s4 past transfer edit, C-20 |
+| Multi-tab / stale / rev / storage events | PASS | R4.3, L-07..L-11, I-4/I-5 |
+| Backup / restore | PASS | N6 round trips (unit + E2E), N7-3 |
+| Migración | PASS | R-01/R-02, N6 old backups, N7-2 rollbacks |
+| Presentation screens | PASS | year views, N3a/N3b, E2E screens |
+| Versión para PC | PASS after fix | N7-1 unit + E2E `file://` open |
+| Unit / E2E / goldens | PASS | 670 (669 + 1 todo) / 218 / goldens clean |
+| Mutation checks | PASS (partial) | N7 fixes mutated; S-3/S-4/S-5 mutations not run |
+| Security audit | PASS | N5; residual: CSP keeps `'unsafe-inline'` |
 
 ## D16 — official acceptance list (verbatim)
 
