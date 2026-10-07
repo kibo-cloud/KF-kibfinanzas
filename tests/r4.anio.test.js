@@ -148,7 +148,7 @@ test('model rule: in a model year "Total Disponible" and "Cierre" = December clo
   });
 });
 
-// native review follow-ups (night range T2): the year summary reads the year it is given; serieVista marks its own model rows
+// native review follow-ups (night range T1/T2): the year summary reads the year it is given; serieVista marks its own model rows
 test('mesEnRojo / resumenAnio read the year they are given, not the open one', function(){
   var rojo = C.seccion2(false, false); rojo.meses[9].gastosVariables = [C.it('Viaje', 2000000, true)];   // October spends more than it earns
   var app = V.appAnio(rojo, {2025: C.vacio(2025)}), d = app.D, vm = app.vistaModelo(d, app.hoy), s = app.serieVista(d, app.hoy);

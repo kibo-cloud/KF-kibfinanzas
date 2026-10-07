@@ -102,7 +102,7 @@ test('N7-2 volverAntesDe130 quarantines an unreadable non-active year before del
   assert.equal(ls.d['kibo.cuarentena.2027'], ROTO);
 });
 
-test('N7-2 volverAntesDe130 refuses and keeps everything when the unreadable year cannot be quarantined (native review follow-up, night range T6)', function(){
+test('N7-2 volverAntesDe130 refuses and keeps everything when the unreadable year cannot be quarantined (native review follow-up, night range T7)', function(){
   var pre = JSON.stringify({version: 'anterior a 1.30', fecha: '2026-01-01T00:00:00.000Z', datos: {'kibo.datos.2026': '{"a":1}'}});
   var ls = H.fakeStorage({'kibo.datos.2026': '{"b":2}', 'kibo.esquema': '1.30', 'kibo.respaldo.pre130': pre}, function(k){ return k.indexOf('kibo.cuarentena.') === 0; });
   ls.d['kibo.datos.2027'] = ROTO;

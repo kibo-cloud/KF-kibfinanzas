@@ -115,7 +115,7 @@ test('future model month: the debt row text ignores installments ticked ahead; l
   var leg = appMes(futuro(false), null, 10);
   assert.match(leg.textoDeuda('Préstamo', 10), /^Cuota 4 de 6/, 'legacy year: a ticked row is paid (unchanged)');
 });
-// native review follow-up (night range T2): the realized copy of the year is made only when it can change the debt text, i.e. when an
+// native review follow-up (night range T5): the realized copy of the year is made only when it can change the debt text, i.e. when an
 // installment of a programado month is ticked ahead; every other path reads D itself and says exactly what the copy would say
 function textoConCopia(app, nombre, j){   // reference: always through datosRealizados, as before the follow-up
   var real = app.datosRealizados, n = 0, t;

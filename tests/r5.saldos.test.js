@@ -341,7 +341,7 @@ test('balance sheets: an unchanged input keeps the exact source value, even beyo
   assert.equal(H.guardado(a.ls, 2026).arrastre.inicial.apertura, 60000.25, 'a typed amount is read as typed');
 });
 
-// ── native review follow-up (night range T3): "Mantener" refuses a month that is not past, and reports a refusal apart from a write failure ──
+// ── native review follow-up (night range T4): "Mantener" refuses a month that is not past, and reports a refusal apart from a write failure ──
 function appMantener(ls, today){
   var a = app(ls, today, {conScroll: function(f){ f(); }, renderMes: function(){ a.g.renders++; }}, ['mantenerCierreHoja']);
   H.cargarEn(a, ls, 2026);

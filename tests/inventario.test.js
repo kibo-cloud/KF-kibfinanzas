@@ -54,7 +54,7 @@ test('the scan covers both inline blocks: the engine (<script id="motor">) and t
   });
 });
 
-test('the app script start is found with LF and with CRLF line endings (native review follow-up, night range T6)', function(){
+test('the app script start is found with LF and with CRLF line endings (native review follow-up, night range T3)', function(){
   var lf = SRC.replace(/\r\n/g, '\n'), crlf = lf.replace(/\n/g, '\r\n');
   [lf, crlf].forEach(function(src, i){
     var motorAt = src.indexOf('<script id="motor">'), appAt = inicioApp(src), nombre = i ? 'CRLF' : 'LF';
