@@ -573,6 +573,45 @@ try{
     check('R4.4 Q3: unticked it is pending, not in the card (100.000 + 200.000 - 50.000)', await pantalla(), '250000');
     await ev(`document.querySelector('[data-act=pagar][data-k=ingresos][data-i="1"]').click(); true`); await sleep(1400);
     check('R4.4 Q3: ticked it is realized', [await ev(`D.meses[9].ingresos[1].pagado`), await pantalla()], [true, '330000']);
+
+    // ── R5 N3b: Patrimonio composition (owner MUST), "Del trabajo" above its pases, future model month = programado, version shown ──
+    const patFilas = () => ev(`Array.prototype.map.call(document.querySelectorAll('#v-usd [data-pat]'), function(r){ return [r.getAttribute('data-pat'), r.querySelector('label').textContent, r.querySelector('span').textContent]; })`);
+    const r5y = JSON.parse(JSON.stringify(modelY));
+    r5y.cotizacionFecha = '2026-10-01T12:00:00.000Z';
+    r5y.meses[9].deudas = [it('Tarjeta', 100000, false)];
+    await seed(r5y, trabR44); await irTab('usd');
+    check('R5 Patrimonio composition, model year: pockets, gross, debts and net on screen (550.000 + 250.000 + 700.000 = 1.500.000 - 100.000 = 1.400.000)',
+      await patFilas(), await ev(`[['disponible', 'Disponible a hoy', fARS(550000)], ['ahorro', 'Ahorro en pesos', fARS(250000)], ['usd', 'Dólares', '—'], ['cripto', 'Cripto', '—'],
+        ['trabajo', 'Plata del trabajo', fARS(700000)], ['bruto', 'Patrimonio bruto', fARS(1500000)], ['deudas', 'Deudas (lo que te falta pagar)', '(' + fARS(100000) + ')'],
+        ['deuda', 'Tarjeta', fARS(100000)], ['neto', 'Patrimonio neto', fARS(1400000)]]`));
+    check('R5 Patrimonio composition: the rows add up to the gross and gross - debts = the headline net (patrimonioPantalla, one source)',
+      await ev(`(function(){ var m = patrimonioPantalla(D, hoyApp()).modelo; return [m.disponible + m.ahorroARS + m.usdARS + m.criptoARS + m.trabajo === m.bruto, m.bruto - m.pasivos === m.neto, m.neto]; })()`), [true, true, 1400000]);
+    check('R5 Patrimonio composition: headline = net in dollars at the stored cotización (1.400.000 / 1.250)', await patri(), await ev(`[fUSD(1120), fARS(1400000)]`));
+    await seed(legacyY, trabR44); await irTab('usd');
+    check('R5 Patrimonio, legacy year: no composition rows, the old three rows', await ev(`[document.querySelectorAll('#v-usd [data-pat]').length, document.getElementById('v-usd').textContent.indexOf('Ahorro líquido en pesos') >= 0, document.getElementById('v-usd').textContent.indexOf('Todo junto') >= 0]`), [0, true, true]);
+    // "Del trabajo" 400.000 unticked, one realized pase of 300.000: the excess 100.000 is tickable (real click path)
+    const ex = JSON.parse(JSON.stringify(modelY));
+    ex.meses[9].ingresos[1] = it('Del trabajo', 400000, false); ex.meses[10].ingresos = [];
+    await seed(ex, Object.assign({}, trabR44, {pases: [trabR44.pases[0]]}));
+    check('R5 Del trabajo above its pases: the excess has a checkbox (Sueldo + Del trabajo)', await ev(`document.querySelectorAll('[data-act=pagar][data-k=ingresos]').length`), 2);
+    check('R5 Del trabajo above its pases: the split is said in plain words', await ev(`document.querySelector('#v-mes .tj-vienede').textContent.indexOf('De esto, ' + fARS(300000) + ' vino de pases del trabajo; el resto, ' + fARS(100000) + ', lo marcás vos.') >= 0`), true);
+    check('R5 Del trabajo above its pases: unticked, only the pase counts (100.000 + 200.000 + 300.000 - 50.000)', await pantalla(), '550000');
+    await ev(`document.querySelector('[data-act=pagar][data-k=ingresos][data-i="1"]').click(); true`); await sleep(1400);
+    check('R5 Del trabajo above its pases: ticked, the excess is realized (+100.000)', [await ev(`D.meses[9].ingresos[1].pagado`), await pantalla()], [true, '650000']);
+    // a future model month: rows ticked ahead are programado (pie, cap alert, tick state)
+    const fu = JSON.parse(JSON.stringify(modelY));
+    fu.meses[10].gastosFijos = [{nombre: 'Expensas', monto: 80000, pagado: true, tope: 50000}];
+    await seed(fu, trabR44);
+    await ev(`document.querySelector('[data-act=mes][data-m="10"]').click(); true`); await sleep(1400);
+    check('R5 future model month: no row looks paid; the ticked one shows "programado" and can only be unticked',
+      await ev(`[document.querySelectorAll('#v-mes .item.pago').length, document.querySelectorAll('#v-mes .chk.prog[data-act=pagar]').length, document.querySelector('#v-mes .chk.prog[data-act=pagar]').getAttribute('aria-label'), document.getElementById('v-mes').textContent.indexOf('Programado: noviembre todavía no llegó') >= 0]`),
+      [0, 1, 'Programado: lo marcaste antes de tiempo. Tocá para desmarcarlo.', true]);
+    check('R5 future model month: the cap is not consumed and there is no over-cap alert; the pie says it is programado',
+      await ev(`[document.getElementById('tt-gastosFijos-0').textContent, document.getElementById('notaTopes').style.display, document.getElementById('cardTorta').textContent.indexOf('Noviembre todavía no llegó') >= 0]`), await ev(`['— de ' + fARS(50000), 'none', true]`));
+    await ev(`document.querySelector('#v-mes .chk.prog[data-act=pagar]').click(); true`); await sleep(1400);
+    check('R5 future model month: unticking works, and then the row cannot be ticked ahead', await ev(`[D.meses[10].gastosFijos[0].pagado, document.querySelectorAll('#v-mes [data-act=pagar][data-k=gastosFijos]').length, document.querySelectorAll('#v-mes span.chk.prog').length >= 1]`), [false, 0, true]);
+    await irTab('ajustes');
+    check('R5 release: the version shown in Ajustes is APPVER', await ev(`document.querySelector('#v-ajustes .pie').textContent.indexOf('kibFinanzas v' + APPVER) === 0`), true);
   }
 
   // ── R4.5: D16 cases about what the screen shows (tests/r4.matriz.test.js holds the model side; hoy here is 2026-10-04) ──
