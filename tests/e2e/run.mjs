@@ -496,7 +496,7 @@ try{
   await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); true`); await nav(URL_APP);
   check('R4.3 c: a wiped phone has no model', await ev(`D.arrastre === undefined`), true);
   await ev(`restaurarTexto(${JSON.stringify(copiaTxt)}); pendiente(); true`); await sleep(500);
-  check('R4.3 c: restore brings arrastre, cierreReal and rev back', await ev(`plain({arrastre: D.arrastre, cierre: D.meses[8].cierreReal, rev: D.rev})`), modeloAntes);
+  check('R4.3 c: restore brings arrastre and cierreReal back; the revision moves forward (N4 I-5: max(stored, own) + 1)', await ev(`plain({arrastre: D.arrastre, cierre: D.meses[8].cierreReal, rev: D.rev})`), Object.assign({}, modeloAntes, {rev: modeloAntes.rev + 1}));
   check('R4.3 c: ... and the restored phone is marked as migrated', await ev(`!!localStorage.getItem('kibo.modeloSaldos')`), true);
   // an older backup without the model leaves the year without it
   const viejoTxt = JSON.stringify({app: 'kibFinanzas', version: 1, anios: {2026: JSON.parse(blobR4)}});
@@ -799,6 +799,67 @@ try{
     await seed(leg25);
     check('R5 legacy 2025 year: no first-use prompt, no notice, no balance lines, the card is the old calc()',
       [await hay('#primerUso'), await hay('#avisoCierre'), await texto('#saldoMes'), await pantalla()], [false, false, '', '600000']);
+  }
+
+  // ── N6: backup -> modify everything -> restore through the real confirm button; storage AND screens equal the backup ──
+  {
+    const doce6 = () => { const ms = []; for(let i=0;i<12;i++) ms.push(mes([], [], [], [])); return ms; };
+    const ms25 = doce6(); ms25[11] = Object.assign(mes([it('Sueldo', 800000, true)], [it('Alquiler', 300000, true)], [it('Super', 90000, true)], []), {ahorroMesARS: 120000, compraARS: 60000, compraUSD: 40, ahorroMesUSD: 40});
+    const y25 = {anio: 2025, pagoExplicito: true, cotizacionUSD: 1250, meses: ms25, rev: 3};
+    const ms26 = doce6();
+    ms26[8] = Object.assign(mes([it('Sueldo', 1000000, true)], [it('Alquiler', 400000, true)], [it('Super', 100000, true)], [it('Préstamo', 100000, true)]),
+      {ahorroMesARS: 150000, compraARS: 125000, compraUSD: 100, cierreReal: {valor: 175000, calculadoAlConfirmar: 200000, confirmadoEl: '2026-10-01'}});
+    ms26[9] = mes([it('Sueldo', 1000000, true), it('Del trabajo', 100000, true)], [it('Alquiler', 400000, false)], [], [it('Préstamo', 100000, false)]);
+    const y26 = {anio: 2026, pagoExplicito: true, cotizacionUSD: 1250, cotizacionFecha: '2026-10-01', ahorroAnioAnterior: 500000, usdAnioAnterior: 1000, rev: 9,
+      cripto: [{activo: 'BTC', cantidad: 0.01, precioUSD: 60000}], planDeudas: {'Préstamo': {total: 600000, recargo: 0, cuotas: 6, pagadasAntes: 2}},
+      arrastre: {desde: 8, inicial: {apertura: 50000, declarado: 50000, declaradoEl: '2026-09-01', origen: 'declarado'}}, meses: ms26};
+    const tr6 = {version: 1, activo: true, modo: 'simple', facturas: [], gastos: [], productos: [], tope: 5, rev: 4,
+      cobros: [{id: 'c1', cliente: '', monto: 900000, fecha: '2026-01-01', forma: 'transferencia', aplic: []}],
+      pases: [{id: 'p1', fecha: '2026-10-02', monto: 100000, anio: 2026, mes: 9}, {id: 'p2', fecha: '2026-11-20', monto: 50000, anio: 2026, mes: 10}]};
+    const tab6 = async (t, ms = 1400) => { await ev(`document.querySelector('[data-act=tab][data-t=${t}]').click(); true`); await sleep(ms); };
+    const foto6 = async () => {
+      const st = await ev(`(function(){ function s(k){ var o = JSON.parse(localStorage.getItem(k)); if(!o) return null; delete o.rev; return o; } var t = s('kibo.trabajo'); if(t) delete t.actualizado; return {y25: s('kibo.datos.2025'), y26: s('kibo.datos.2026'), trab: t}; })()`);
+      const card = await ev(`(${bigFinal}).replace(/[^\\d-]/g,'')`);
+      const csv = await ev(`(async function(){ var o = URL.createObjectURL, b = null; URL.createObjectURL = function(x){ b = x; return o.call(URL, x); }; try{ exportarCSV(); } finally{ URL.createObjectURL = o; } return await b.text(); })()`);
+      await tab6('usd'); const patri6 = await ev(`document.getElementById('bigPatri').textContent + ' | ' + document.getElementById('bigPatri').nextElementSibling.textContent + ' | ' + document.getElementById('v-usd').textContent`);
+      await tab6('anio'); const anio6 = await ev(`document.getElementById('v-anio').textContent`);
+      await tab6('trabajo'); const tj6 = await ev(`document.getElementById('tjDisp').textContent`);
+      await tab6('mes', 800);
+      return {st, card, csv, patri: patri6, anio: anio6, trabajo: tj6};
+    };
+    await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); localStorage.setItem('kibo.anio','2026');
+      localStorage.setItem('kibo.datos.2025', ${JSON.stringify(JSON.stringify(y25))}); localStorage.setItem('kibo.datos.2026', ${JSON.stringify(JSON.stringify(y26))});
+      localStorage.setItem('kibo.trabajo', ${JSON.stringify(JSON.stringify(tr6))}); true`);
+    await nav(URL_APP); await sleep(1300);
+    const antes6 = await foto6();
+    const copia6 = await ev(`JSON.stringify(armarCopia())`);
+    check('N6 e2e: the backup holds both years and Trabajo with both pases', await ev(`(function(c){ c = JSON.parse(c); return [Object.keys(c.anios).sort(), c.trabajo.pases.length, !!c.anios[2026].arrastre, !!c.anios[2026].meses[8].cierreReal]; })(${JSON.stringify(copia6)})`), [['2025', '2026'], 2, true, true]);
+    // modify everything: other 2026 numbers, 2025 gone, empty Trabajo, a new 2027
+    await ev(`(function(){ var y = JSON.parse(localStorage.getItem('kibo.datos.2026')); y.meses[9].ingresos[0].monto = 1; y.cripto = []; y.cotizacionUSD = 999; delete y.arrastre; y.rev++;
+      localStorage.setItem('kibo.datos.2026', JSON.stringify(y)); localStorage.removeItem('kibo.datos.2025');
+      localStorage.setItem('kibo.trabajo', JSON.stringify({version: 1, activo: true, modo: 'simple', facturas: [], cobros: [], pases: [], gastos: [], productos: [], tope: 0, rev: 7}));
+      localStorage.setItem('kibo.datos.2027', JSON.stringify({anio: 2027, pagoExplicito: true, meses: []})); return true; })()`);
+    await nav(URL_APP); await sleep(1300);
+    const cambiado6 = await foto6();
+    check('N6 e2e: after the changes the screens differ from the backup (non-vacuous)', [cambiado6.card === antes6.card, cambiado6.csv === antes6.csv, cambiado6.patri === antes6.patri], [false, false, false]);
+    // restore through the real sheet button, then reload
+    await ev(`restaurarTexto(${JSON.stringify(copia6)}); true`); await sleep(300);
+    await ev(`document.querySelector('#hoja [data-act=confirmar]').click(); true`); await sleep(800);
+    await nav(URL_APP); await sleep(1300);
+    check('N6 e2e: a year that is not in the backup is left alone; revisions moved forward', await ev(`[!!localStorage.getItem('kibo.datos.2027'), JSON.parse(localStorage.getItem('kibo.datos.2026')).rev > 10]`), [true, true]);
+    await ev(`localStorage.removeItem('kibo.datos.2027'); true`); await nav(URL_APP); await sleep(1300);   // so "Año por año" lists the same years as before
+    const despues6 = await foto6();
+    const esperado6 = (() => { const c = JSON.parse(copia6), sr = (o) => { o = JSON.parse(JSON.stringify(o)); delete o.rev; return o; }; const t = sr(c.trabajo); delete t.actualizado; return {y25: sr(c.anios[2025]), y26: sr(c.anios[2026]), trab: t}; })();
+    check('N6 e2e: stored years (minus rev) and Trabajo (minus rev/actualizado) equal the backup', despues6.st, esperado6);
+    check('N6 e2e: month card, CSV, Patrimonio, El año and Trabajo screens equal the backup', [despues6.card, despues6.csv, despues6.patri, despues6.anio, despues6.trabajo], [antes6.card, antes6.csv, antes6.patri, antes6.anio, antes6.trabajo]);
+    // an old pre-R4 (7f7ad40-era) backup on a wiped phone: restores cleanly and reads exactly as that data always read
+    const viejo6 = {anio: 2024, version: 1, actualizado: '2024-07-20T10:00:00.000Z', cotizacionUSD: 1400, planDeudas: {'Préstamo': {total: 600, recargo: 0, cuotas: 12, pagadasAntes: 1}},
+      meses: Array.from({length: 12}, (_, i) => ({ingresos: [{nombre: 'Sueldo', monto: i < 6 ? '1000' : 0}], gastosFijos: [{nombre: 'Alquiler', monto: 300}], gastosVariables: [], deudas: [{nombre: 'Préstamo', monto: 50}], ahorroMesARS: 20, movimientos: []}))};
+    await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); true`); await nav(URL_APP); await sleep(800);
+    await ev(`restaurarTexto(${JSON.stringify(JSON.stringify({app: 'kibFinanzas', version: 1, anios: {2024: viejo6}}))}); true`); await sleep(300);
+    await ev(`document.querySelector('#hoja [data-act=confirmar]').click(); true`); await sleep(800);
+    check('N6 e2e: an old pre-R4 backup restores into its year, without a model, with the same year numbers',
+      await ev(`[D.anio, D.arrastre === undefined, JSON.stringify(serie(D)) === JSON.stringify(serie(TGMotor.normalizar(${JSON.stringify(viejo6)}, hoyApp())))]`), [2024, true, true]);
   }
 
   check('no uncaught page errors', pageErrs, []);
