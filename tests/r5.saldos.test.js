@@ -16,7 +16,7 @@ function varDeLaApp(n){ return new Function(la.extractVar(n) + ' return ' + n + 
 
 var R5_FUNCS = ['vistaModelo', 'tilesMes', 'mesDelModelo', 'pasesDelMes', 'lineasSaldo', 'textoOrigen', 'muestraPrimerUso', 'claveAvisoCierre',
   'avisoCierreDescartado', 'descartarAvisoCierre', 'avisoCierrePendiente', 'guardarModelo', 'fijarApertura', 'modoApertura', 'fijarCierreReal',
-  'mantenerCierreReal', 'fijarCierreRealValor', 'filaSaldo', 'htmlSaldo', 'htmlAvisosSaldo', 'fARS', 'grupos', 'esc'];
+  'mantenerCierreReal', 'fijarCierreRealValor', 'filaSaldo', 'htmlSaldo', 'htmlAvisosSaldo', 'fARS', 'grupos', 'esc', 'editarApertura'];
 function app(ls, today, extra){
   var g = Object.assign({MESES: varDeLaApp('MESES'), oculto: false, PUNTOS: '••••'}, extra || {});
   return H.appAlmacen(ls, today || '2026-10-15', g, R5_FUNCS);
@@ -242,4 +242,47 @@ test('guarded save path: snapshot before the first model write on this device; a
   var c = app(l3); H.cargarEn(c, l3, 2026);
   assert.equal(c.fijarCierreReal(8, 1), false);
   assert.equal(H.guardado(l3, 2026).meses[8].cierreReal, undefined);
+});
+
+// ── fixes from the N3a review ──
+// a 2027 year created ahead (duplicar) whose January opening is carried from December 2026; 2026 is stored with the model
+function eneroArrastrado(today, rechaza){
+  var h = C.hoy(today), d26 = M.normalizar(C.seccion2(false, false), h), d27 = M.normalizar(C.vacio(2027), h);
+  d27.arrastre = {desde: 0, inicial: {apertura: 1000, origen: 'arrastre', calculadoOrigen: 1000}};
+  var ls = H.fakeStorage({'kibo.datos.2026': JSON.stringify(d26), 'kibo.datos.2027': JSON.stringify(d27)}, rechaza);
+  var hechos = {anios: [], cierres: []};
+  var a = app(ls, today, {cambiarAnio: function(x){ hechos.anios.push(x); }, renderMes: function(){}, abrirCierre: function(j){ hechos.cierres.push(j); }});
+  H.cargarEn(a, ls, 2027); a.hechos = hechos;
+  return a;
+}
+function tieneEditar(a){ return a.htmlSaldo(a.D, 0, vm(a)).indexOf('data-act="editarApertura"') >= 0; }
+test('Editar of a January carried from December: offered only once that December is closed (N3a review)', function(){
+  ['2026-10-15', '2026-12-15'].forEach(function(t){
+    var a = eneroArrastrado(t);
+    assert.equal(a.modoApertura(a.D, a.hoy), 'diciembre', t + ': carried opening');
+    assert.equal(tieneEditar(a), false, t + ': December 2026 is not closed yet: no Editar');
+    assert.match(a.htmlSaldo(a.D, 0, vm(a)), /Viene de diciembre 2026/, t + ': the origin is still said');
+    a.editarApertura(0);
+    assert.deepEqual(a.hechos.anios, [], t + ': no year switch');
+  });
+  var b = eneroArrastrado('2027-02-10');
+  assert.equal(tieneEditar(b), true, 'December 2026 closed: Editar offered');
+  b.editarApertura(0);
+  assert.deepEqual([b.hechos.anios, b.hechos.cierres], [[2026], [11]], 'goes to the December closing');
+});
+test('Editar of a carried January never drops unsaved edits: refused in a stale tab and when the save fails (N3a review)', function(){
+  var a = eneroArrastrado('2027-02-10');
+  a.obsoleta = true; a.editarApertura(0);
+  assert.deepEqual(a.hechos.anios, [], 'stale tab: no year switch');
+  assert.match(a.g.avisos.innerHTML, /otra pestaña/, 'stale tab: the notice is shown');
+  var b = eneroArrastrado('2027-02-10', function(k){ return k === 'kibo.datos.2027'; });
+  b.D.meses[0].ingresos.push({nombre: 'Sueldo', monto: 5, pagado: false}); b.sucio = true;
+  b.editarApertura(0);
+  assert.deepEqual(b.hechos.anios, [], 'failed save: no year switch');
+  assert.equal(b.D.meses[0].ingresos.length, 1, 'the unsaved edit is still in memory');
+  var c = eneroArrastrado('2027-02-10');
+  c.D.meses[0].ingresos.push({nombre: 'Sueldo', monto: 5, pagado: false}); c.sucio = true;
+  c.editarApertura(0);
+  assert.deepEqual(c.hechos.anios, [2026], 'guard: a successful save switches');
+  assert.equal(JSON.parse(c.localStorage.d['kibo.datos.2027']).meses[0].ingresos.length, 1, 'the edit was written before switching');
 });

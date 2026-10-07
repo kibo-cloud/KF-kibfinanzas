@@ -2770,6 +2770,7 @@ function filaSaldo(txt, v, cls){ return '<div class="sdo-f' + (cls ? ' ' + cls :
 function htmlSaldo(d, j, vm){
   var l = lineasSaldo(d, j, vm); if(!l) return '';
   var est = l.estado, h = '', editable = est !== 'futuro' || l.desde;
+  if(l.desde && modoApertura(d, vm.hoy) === 'diciembre' && estadoMes(d.anio - 1, 11, vm.hoy) !== 'pasado') editable = false;   // diciembre todavía no cerró: no hay cierre que corregir
   h += '<div class="saldo sdo"><div class="sdo-tit">Saldo de ' + MESES[j]
      + (est === 'actual' ? ' · a hoy' : (est === 'futuro' ? ' · programado' : '')) + '</div>';
   h += filaSaldo(est === 'futuro' && !l.desde ? 'Disponible inicial (estimado)' : 'Disponible inicial', fARS(l.apertura), 'sdo-ap');
@@ -6789,8 +6790,11 @@ function editarApertura(j){
   if(j > vm.cad.resumen.desde){ abrirCierre(j - 1); return; }   // la apertura de este mes ES el cierre del anterior (D2)
   var modo = modoApertura(D, hoy), desde = vm.cad.resumen.desde;
   if(modo === 'diciembre'){
+    if(estadoMes(D.anio - 1, 11, hoy) !== 'pasado') return;   // diciembre todavía no cerró: su cierre no se puede corregir (htmlSaldo no ofrece Editar)
+    if(obsoleta){ avisoOtraPestana(); return; }   // pestaña vieja: cambiar de año tiraría lo que no se guardó
     var prev = leerAnio(D.anio - 1);
     if(!prev || !prev.arrastre){ alerta('Viene del año anterior', 'Este saldo sale del cierre de diciembre ' + (D.anio - 1) + ', que no está en este teléfono con saldos.'); return; }
+    if(sucio && guardar() === false) return;   // lo que no quedó guardado no se pierde al cambiar de año
     cambiarAnio(D.anio - 1); mes = 11; renderMes(); abrirCierre(11); return;
   }
   var actual = modo === 'actual';
