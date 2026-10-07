@@ -3757,7 +3757,7 @@ function tocar(){
   tGuardar = setTimeout(guardar, 300);
 }
 function guardar(){
-  if(!arrancado || !D) return;
+  if(!arrancado || !D) return false;   // nada escrito: los que miran el resultado (`!== false`) no lo toman como guardado
   if(tGuardar){ clearTimeout(tGuardar); tGuardar = null; }
   if(obsoleta){ avisoOtraPestana(); return false; }
   var ant = D.actualizado;

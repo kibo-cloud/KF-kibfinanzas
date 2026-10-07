@@ -82,6 +82,18 @@ function guardarApp(ls){
   return app;
 }
 
+test('guardar reports false when nothing was written: before start-up or with no open year (N3a review)', function(){
+  var ls = storage(function(){ return false; });
+  var app = guardarApp(ls);
+  app.arrancado = false; app.sucio = true;
+  assert.equal(app.guardar(), false, 'not started: false, never undefined (callers test !== false)');
+  assert.equal(ls.getItem('kibo.datos.2026'), null, 'nothing written');
+  app.arrancado = true; app.D = null;
+  assert.equal(app.guardar(), false, 'no open year: false');
+  app.D = {anio: 2026};
+  assert.equal(app.guardar(), true, 'guard: a real save still reports true');
+});
+
 test('guardar: a failed save turns hayLS off and tells the user', function(){
   var app = guardarApp(storage(function(){ return true; }));
   app.sucio = true; app.guardar();
