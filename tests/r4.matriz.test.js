@@ -2,7 +2,8 @@
 // R4.5: the 17 OFFICIAL D16 acceptance cases (odd/tasks/repair-sprint-1.md "D16 — official acceptance list (verbatim)"), one test each,
 // against the current code. Expected values come from the approved contract (odd/tasks/repair-sprint-1-r4-design.md); each test cites
 // its source. The INPUT / EXPECTED / ACTUAL / EVIDENCE table lives in odd/tasks/repair-sprint-1-r4.5-matrix.md.
-// Cases 5 and 17 are validated on the model/migration (their UI is R5); case 15 pins the current behavior (feature R7, rule D8).
+// Cases 5 and 17 are validated on the model/migration and, since R5 (N3a), also through the month-view Editar path; case 15 pins the
+// current behavior (feature R7, rule D8).
 var test = require('node:test');
 var assert = require('node:assert/strict');
 var la = require('./load-app');
@@ -24,6 +25,9 @@ var SUELDO = function(p){ return C.it('Sueldo', 1000000, p); };
 var GASTOS = {gastosFijos: [C.it('Alquiler', 400000, true)], gastosVariables: [C.it('Super', 100000, true)]};
 function con(o, extra){ var r = {}; Object.keys(o).forEach(function(k){ r[k] = o[k]; }); Object.keys(extra).forEach(function(k){ r[k] = extra[k]; }); return r; }
 var CARD = ['totalIngresos', 'totalGastos', 'ahorroMesARS', 'disponibleFinal'];
+// R5 (N3a): the month-view write path (Editar of the opening) on the same storage harness
+var R5 = ['vistaModelo', 'tilesMes', 'mesDelModelo', 'pasesDelMes', 'guardarModelo', 'modoApertura', 'fijarApertura', 'lineasSaldo', 'textoOrigen', 'filaSaldo', 'htmlSaldo', 'fARS', 'grupos', 'esc'];
+function appR5(ls){ return H.appAlmacen(ls, '2026-10-15', {MESES: ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'], oculto: false, PUNTOS: ''}, R5); }
 function card(app, j){ var t = H.tiles(app, j), o = {}; CARD.forEach(function(k){ o[k] = t[k]; }); return o; }
 
 // 1 ── §1 Resultado del mes / Disponible actual, I1; §2(b)
@@ -85,7 +89,7 @@ test('D16-04 saldo inicial + ahorro: savings leave Disponible and enter Ahorro A
 });
 
 // 5 ── §8 first use (Q1, D5), D2 (correct the opening / the real closing), D6; model and migration only (the Editar screen is R5)
-test('D16-05 saldo inicial corregido manualmente (model): declared -> derived opening; a corrected opening or real closing moves the chain by exactly the difference', function(){
+test('D16-05 saldo inicial corregido manualmente (model + Editar): declared -> derived opening; a corrected opening or real closing moves the chain by exactly the difference', function(){
   var raw = H.sinModelo(C.seccion2(false, false)), d = M.normalizar(C.copy(raw), HOY);
   var ar = plain(M.iniciarArrastre(d, HOY, 825000, {}));
   assert.deepEqual(ar, {desde: 9, inicial: {apertura: 175000, declarado: 825000, declaradoEl: '2026-10-15', origen: 'declarado'}});
@@ -105,6 +109,16 @@ test('D16-05 saldo inicial corregido manualmente (model): declared -> derived op
   assert.equal(app.activarSaldos(825000), true);
   assert.equal(app.activarSaldos(900000), false);
   assert.equal(H.guardado(ls, 2026).arrastre.inicial.apertura, 175000);
+  // R5: the same correction through Editar of the month view: available now 850.000 -> opening 200.000 (+25.000), no movement (D2)
+  var ls5 = H.fakeStorage({'kibo.datos.2026': JSON.stringify(raw)}), a5 = appR5(ls5);
+  H.cargarEn(a5, ls5, 2026);
+  assert.equal(a5.activarSaldos(825000), true);
+  var meses5 = JSON.stringify(H.guardado(ls5, 2026).meses);
+  assert.equal(a5.fijarApertura(850000, a5.modoApertura(a5.D, a5.hoy)), true);
+  var g5 = H.guardado(ls5, 2026), c5 = M.cadena(M.normalizar(g5, HOY), HOY, {});
+  assert.deepEqual([g5.arrastre.inicial.apertura, g5.arrastre.inicial.origen, c5.resumen.disponibleActual, c5.meses[10].proyectado], [200000, 'declarado', 850000, 1305000]);
+  assert.equal(JSON.stringify(g5.meses), meses5, 'Editar creates no movement');
+  assert.equal(H.tiles(H.appVista(g5), 9).disponibleFinal, 850000);
 });
 
 // 6 ── D6, §2(d) case B, §4 "edit a past transfer, month confirmed"
@@ -300,7 +314,7 @@ test('D16-16 formatos argentinos de números: money and quantity parsers; parsed
 });
 
 // 17 ── D5 (skip -> $0 "not configured"), §8 (skip => valor null, origen 'omitido', opening 0); model and migration only (prompt is R5)
-test('D16-17 primer mes sin saldo inicial (model): skipped -> origen omitido, opening 0 flagged, available = what the month registered', function(){
+test('D16-17 primer mes sin saldo inicial (model + Omitir, then Editar): skipped -> origen omitido, opening 0 flagged, available = what the month registered', function(){
   var raw = H.sinModelo(C.seccion2(false, false)), d = M.normalizar(C.copy(raw), HOY);
   var ar = plain(M.iniciarArrastre(d, HOY, null, {}));
   assert.deepEqual(ar, {desde: 9, inicial: {apertura: null, declarado: null, declaradoEl: '2026-10-15', origen: 'omitido'}});
@@ -313,6 +327,13 @@ test('D16-17 primer mes sin saldo inicial (model): skipped -> origen omitido, op
   H.cargarEn(app, ls, 2026);
   assert.equal(app.activarSaldos(null), true);
   assert.deepEqual(H.guardado(ls, 2026).arrastre.inicial, {apertura: null, declarado: null, declaradoEl: '2026-10-15', origen: 'omitido'});
-  assert.equal(app.activarSaldos(500000), false, 'a later declaration needs the Editar of R5');
+  assert.equal(app.activarSaldos(500000), false, 'a later declaration goes through Editar (R5), not the first-use path');
   assert.equal(H.tiles(H.appVista(H.guardado(ls, 2026)), 9).disponibleFinal, 650000);
+  // R5: the month view says it explicitly, and Editar declares it later
+  var a5 = appR5(ls); H.cargarEn(a5, ls, 2026);
+  assert.ok(a5.htmlSaldo(a5.D, 9, a5.vistaModelo(a5.D, a5.hoy)).indexOf('Saldo inicial sin configurar') >= 0);
+  assert.equal(a5.fijarApertura(500000, a5.modoApertura(a5.D, a5.hoy)), true);
+  var g = H.guardado(ls, 2026);
+  assert.deepEqual([g.arrastre.inicial.origen, g.arrastre.inicial.declarado, g.arrastre.inicial.apertura], ['declarado', 500000, -150000]);
+  assert.equal(H.tiles(H.appVista(g), 9).disponibleFinal, 500000);
 });
