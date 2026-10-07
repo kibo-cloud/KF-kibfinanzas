@@ -603,7 +603,18 @@ Checklist (route: delegated writer per task, parent verifies + re-runs suites):
 - [ ] N6 Backup/restore/migration end-to-end round trips (old + new data, Trabajo, arrastre, ahorro, deudas, previous years).
 - [ ] N7 Final regression, smoke, Alpha readiness report.
 
-Native review consent log (night run): see each task's evidence.
+Native review consent log (night run):
+- N1 (1d7102b..1d6c734, 8 commits, 297+/21-): native review consent pending (owner away); not claimed. Parent verification:
+  `npm test` 571/571 (0 todo), `npm run test:e2e` 166/166, motor goldens byte-identical, tree clean. Independent read-only review
+  launched (results below when available).
+- N1 process defects (recorded, history NOT rewritten — branch kept intact by rule "never destroy existing work"): 69c65a1 was
+  committed with 2 failing tests (missing `estadoMes` alias; fixed in ecda44f, the next commit); a8a3a84 and 6de98fb wrote
+  `tests/r4.anio.test.js` with CRLF (restored to LF in 08b8cf0), so those two commits show the whole file as changed. Any bisect
+  over 69c65a1 must skip it. Owner may squash before merge.
+- Parent triage of N1 OWNER_DECISION items: N1-A (future ticked rows treated as paid by pie / budget bars / debt row on the month
+  screen) is DERIVED from §1 ("nothing in a future month is Realizado") and D3 ("scheduled ... clearly distinguished"): handled in
+  N3 (R5) as "programado" in future model months; not an owner decision. N1-B (`duplicar` sets `pagadasAntes` from all 12 months)
+  stays OWNER_DECISION_REQUIRED (low; Q14 count-based debts; alternatives in matrix E.4), recommended keep for Alpha with a note.
 
 ## D16 — official acceptance list (verbatim)
 
