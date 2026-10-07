@@ -3103,10 +3103,12 @@ function datosRealizados(d, hoy){
   }
   return c;
 }
-// mes en rojo: en un mes del modelo, el Resultado del modelo < 0 (nunca el saldo encadenado); en uno legacy, el flujo de siempre
+// mes en rojo: en un mes del modelo, lo que muestra la tarjeta (Ingresos con los pases de Trabajo ya hechos − Gastos − Deudas) < 0, nunca
+// el saldo encadenado; en uno legacy, el flujo de siempre
 function mesEnRojo(s, i, vm){
   if(!vm || vm.cad.meses[i].legacy) return s[i].disponibleFinal < 0;
-  return flujosMes(D, i, vm.hoy, vm.ctx).resultado < 0;
+  var f = flujosMes(D, i, vm.hoy, vm.ctx);
+  return f.resultado + f.trabajoRealizado < 0;
 }
 function resumenAnio(s, vm){
   var act = vm ? mesesTranscurridos(s, vm) : mesesCargados(s), i, n = act.length;

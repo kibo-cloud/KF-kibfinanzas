@@ -267,3 +267,18 @@ test('N1-4 legacy guard: a year without arrastre keeps ranking() and proyeccionD
   assert.ok(txt(seccion(html, 'anDeudas')).indexOf('Préstamo4 de 6') >= 0);
   assert.equal(app.datosRealizados(app.D, app.hoy), app.D, 'legacy: the same object');
 });
+
+// N2 (independent review of N1): the red-month rule of a realized model month reads what the card / row shows (Ingresos incl. the
+// realized Trabajo pases, R4.4 interpretation 2), not flujosMes().resultado alone (which leaves the pases out as internal transfers)
+test('N2 red month, model year: a month funded by a realized Trabajo pase is not "gastaste más de lo que entró"', function(){
+  var d = C.vacio(2026); C.arrastre(d, 8, 0, 'declarado');
+  C.mes(d, 8, {ingresos: [C.it('Sueldo', 100000, true)], gastosFijos: [C.it('Luz', 10000, true)]});
+  C.mes(d, 9, {ingresos: [C.it('Del trabajo', 300000, true)], gastosFijos: [C.it('Alquiler', 100000, true)]});
+  var app = V.appAnio(d, {}, V.TRAB_PASES()), h = app.anio(), f = app.fARS;
+  assert.deepEqual(V.tabla(h, 'anTabla')[9].slice(1, 3), [f(300000), f(100000)], 'the October row: 300.000 in, 100.000 out');
+  var r = h.slice(h.indexOf('class="resumen'), h.indexOf('res-pie')).replace(/<[^>]+>/g, ' ');
+  assert.equal(r.indexOf('gastaste más de lo que entró'), -1, 'no month spent more than it received');
+  C.mes(d, 9, {ingresos: [C.it('Del trabajo', 300000, true)], gastosFijos: [C.it('Alquiler', 400000, true)]});
+  var h2 = V.appAnio(d, {}, V.TRAB_PASES()).anio(), r2 = h2.slice(h2.indexOf('class="resumen'), h2.indexOf('res-pie')).replace(/<[^>]+>/g, ' ');
+  assert.ok(/En\s+Octubre\s+gastaste más de lo que entró/.test(r2), 'still red when the pase does not cover the expenses (300.000 - 400.000)');
+});
