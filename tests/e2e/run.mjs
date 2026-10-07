@@ -642,6 +642,119 @@ try{
     check('D16-06 Sep card keeps the confirmed closing (calculated is now 180.000)', await pantalla(), '175000');
   }
 
+  // ── R5 (N3a): balance UX of the month view, driven by real clicks (hoy here is 2026-10-04; tests/r5.saldos.test.js holds the unit side) ──
+  {
+    const doce = () => { const ms = []; for(let i=0;i<12;i++) ms.push(mes([], [], [], [])); return ms; };
+    const base = (anioN, ms, extra) => Object.assign({anio: anioN, pagoExplicito: true, cotizacionUSD: 1500, meses: ms}, extra || {});
+    const seed = async (year) => { await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); localStorage.setItem('kibo.anio','${year.anio}'); localStorage.setItem('kibo.datos.${year.anio}', ${JSON.stringify(JSON.stringify(year))}); true`); await nav(URL_APP); await sleep(1300); };
+    const pantalla = () => ev(`(${bigFinal}).replace(/[^\\d-]/g,'')`);
+    const clic = async (sel, ms = 1400) => { await ev(`document.querySelector(${JSON.stringify(sel)}).click(); true`); await sleep(ms); };
+    const poner = (sel, v) => ev(`(function(){ var x=document.querySelector(${JSON.stringify(sel)}); x.value=${JSON.stringify(v)}; x.dispatchEvent(new Event('input',{bubbles:true})); return true; })()`);
+    const hay = (sel) => ev(`!!document.querySelector(${JSON.stringify(sel)})`);
+    const texto = (sel) => ev(`(document.querySelector(${JSON.stringify(sel)}) || {textContent: ''}).textContent`);
+    const guardado = (y) => ev(`JSON.parse(localStorage.getItem('kibo.datos.${y}'))`);
+    const octLegacy = () => { const ms = doce(); ms[9] = mes([it('Sueldo', 1000000, true)], [it('Alquiler', 400000, true)], [], []); return base(2026, ms); };
+
+    // first use, Guardar: an invalid amount is rejected visibly, then 825.000 is declared (Q1: opening = 825.000 - 600.000 of October so far)
+    await seed(octLegacy());
+    check('R5 first use: the prompt shows on a year with data and no arrastre; no balance lines yet',
+      [await hay('#primerUso'), await texto('#primerUso p b'), await texto('#saldoMes'), await pantalla()], [true, '¿Cuánto dinero tenés disponible actualmente?', '', '600000']);
+    await poner('#inPrimerUso', '1,234.5'); await clic('[data-act=primerUsoOk]', 300);
+    check('R5 first use: "1,234.5" is not understood, visibly, and nothing is stored (D9)',
+      [await texto('#notaPrimerUso'), await ev('D.arrastre === undefined'), await ev(`localStorage.getItem('kibo.modeloSaldos')`), await ev(`document.getElementById('inPrimerUso').classList.contains('err')`)],
+      ['No entendí «1,234.5» como número.', true, null, true]);
+    await poner('#inPrimerUso', '825.000'); await clic('[data-act=primerUsoOk]');
+    const g1 = await guardado(2026);
+    check('R5 first use Guardar: arrastre declared (opening derived), snapshot marker, prompt gone, the card shows the declared money',
+      [g1.arrastre.desde, g1.arrastre.inicial.apertura, g1.arrastre.inicial.declarado, g1.arrastre.inicial.origen, !!(await ev(`localStorage.getItem('kibo.modeloSaldos')`)), await hay('#primerUso'), await pantalla()],
+      [9, 225000, 825000, 'declarado', true, false, '825000']);
+    const s1 = await texto('#saldoMes');
+    check('R5 month lines: opening with its origin, flows, available now and the estimated projection',
+      ['Disponible inicial', 'Lo cargaste vos', 'Editar', 'Disponible actual', 'Proyectado al cierre (estimado)'].map(t => s1.indexOf(t) >= 0).concat([s1.indexOf(await ev('fARS(225000)')) >= 0]),
+      [true, true, true, true, true, true]);
+
+    // D16-05 through the screen: Editar of the opening in the migration month re-declares the money available now; no movement is created
+    const meses0 = JSON.stringify(g1.meses);
+    await clic('[data-act=editarApertura]', 300);
+    check('D16-05 Editar opens the declaration sheet prefilled with the money available now',
+      [await texto('#hoja h3'), await ev(`document.getElementById('inApertura').value`)], ['¿Cuánto dinero tenés disponible actualmente?', '825.000']);
+    await poner('#inApertura', '850.000'); await clic('[data-act=aperturaOk]');
+    const g2 = await guardado(2026);
+    check('D16-05 Editar: opening 250.000 (+25.000), the card 850.000, the rows untouched (D2, D14)',
+      [g2.arrastre.inicial.apertura, g2.arrastre.inicial.declarado, await pantalla(), JSON.stringify(g2.meses) === meses0, await hay('#hoja h3')], [250000, 850000, '850000', true, false]);
+
+    // D16-17 through the screen: Omitir, the line says it is not configured, the prompt never returns; Editar declares it later
+    await seed(octLegacy());
+    await clic('[data-act=primerUsoNo]');
+    const g3 = await guardado(2026);
+    check('D16-17 Omitir: origen omitido, shown as "Saldo inicial sin configurar", available = what October registered',
+      [g3.arrastre.inicial.origen, g3.arrastre.inicial.apertura, (await texto('#saldoMes')).indexOf('Saldo inicial sin configurar') >= 0, await hay('#primerUso'), await pantalla()],
+      ['omitido', null, true, false, '600000']);
+    await nav(URL_APP); await sleep(1300);
+    check('D16-17 after a reload the first-use prompt does not come back', await hay('#primerUso'), false);
+    await clic('[data-act=editarApertura]', 300); await poner('#inApertura', '500.000'); await clic('[data-act=aperturaOk]');
+    const g4 = await guardado(2026);
+    check('D16-17 Editar declares it later: origen declarado, opening -100.000, card 500.000',
+      [g4.arrastre.inicial.origen, g4.arrastre.inicial.apertura, await pantalla()], ['declarado', -100000, '500000']);
+
+    // a model year from September: start-of-month notice (D10), real closing correction with difference (D2), reconfirm (D6)
+    const sepModelo = () => { const ms = doce();
+      ms[8] = Object.assign(mes([it('Sueldo', 1000000, true)], [it('Alquiler', 400000, true), it('Luz', 20000, false)], [it('Super', 200000, true)], []), {ahorroMesARS: 150000});
+      return base(2026, ms, {arrastre: {desde: 8, inicial: {apertura: 50000, declarado: 50000, declaradoEl: '2026-09-01', origen: 'declarado'}}}); };
+    await seed(sepModelo());
+    check('R5 start of October: "¿Cerraste Septiembre con $300.000?" with Confirmar / Corregir / Ahora no',
+      [await texto('#avisoCierre p'), await hay('#avisoCierre [data-act=avCierreOk]'), await hay('#avisoCierre [data-act=cierreAbrir]'), await hay('#avisoCierre [data-act=avCierreNo]')],
+      ['¿Cerraste Septiembre con ' + await ev('fARS(300000)') + '?Es lo que da con lo que registraste. Si tenías otra plata, corregilo.', true, true, true]);
+    await clic('#avisoCierre [data-act=avCierreNo]', 300);
+    check('R5 "Ahora no" hides it for September on this device and writes nothing in the year',
+      [await hay('#avisoCierre'), await ev(`localStorage.getItem('kibo.avisoCierre')`), (await guardado(2026)).meses[8].cierreReal === undefined], [false, '2026-09', true]);
+    await nav(URL_APP); await sleep(1300);
+    check('R5 ... and it stays hidden after a reload', await hay('#avisoCierre'), false);
+
+    await ev(`document.querySelector('[data-act=mes][data-m="8"]').click(); true`); await sleep(1400);
+    check('R5 September (past): "Disponible al cierre" and "¿Es correcto?"',
+      [(await texto('#saldoMes')).indexOf('Disponible al cierre') >= 0, await hay('#saldoMes [data-act=cierreAbrir]'), await pantalla()], [true, true, '300000']);
+    await clic('#saldoMes [data-act=cierreAbrir]', 300);
+    check('R5 the correction sheet shows what the records say', (await texto('#hoja')).indexOf('Según tus registros' + await ev('fARS(300000)')) >= 0, true);
+    await poner('#inCierre', '275.000'); await sleep(100);
+    check('R5 typing the real balance shows the difference live', await texto('#difCierre'), await ev('fARS(-25000)'));
+    await clic('[data-act=cierreOk]');
+    const g5 = await guardado(2026);
+    check('R5 Confirmar writes cierreReal (informational difference, no movement) and September closes at 275.000',
+      [JSON.stringify(g5.meses[8].cierreReal), await pantalla(), (await texto('#saldoMes')).indexOf('Diferencia' + await ev('fARS(-25000)')) >= 0],
+      ['{"valor":275000,"calculadoAlConfirmar":300000,"confirmadoEl":"2026-10-04"}', '275000', true]);
+    await ev(`document.querySelector('[data-act=mes][data-m="9"]').click(); true`); await sleep(1400);
+    check('R5 October opens from the confirmed closing; the notice is gone', [await pantalla(), await hay('#avisoCierre')], ['275000', false]);
+
+    // edit the confirmed past month: Luz ticked -> calculated 280.000, the confirmed 275.000 is kept and reconfirmation is asked (D6)
+    await ev(`document.querySelector('[data-act=mes][data-m="8"]').click(); true`); await sleep(1400);
+    await clic('[data-act=pagar][data-k=gastosFijos][data-i="1"]');
+    check('R5 reconfirm: the confirmed value is kept, the difference shows, Confirmar de nuevo / Mantener are offered',
+      [await pantalla(), (await texto('#avisoReconfirmar')).indexOf('Cambió desde que lo confirmaste') >= 0, await hay('#saldoMes [data-act=cierreMantener]')], ['275000', true, true]);
+    await clic('#saldoMes [data-act=cierreMantener]');
+    const g6 = await guardado(2026);
+    check('R5 Mantener keeps 275.000 and records the new calculated value; the question goes away',
+      [g6.meses[8].cierreReal.valor, g6.meses[8].cierreReal.calculadoAlConfirmar, await hay('#avisoReconfirmar'), await pantalla()], [275000, 280000, false, '275000']);
+    await clic('#saldoMes [data-act=cierreAbrir]', 300); await clic('[data-act=cierreQuitar]');
+    check('R5 removing the confirmation goes back to the calculated closing', [(await guardado(2026)).meses[8].cierreReal === undefined, await pantalla()], [true, '280000']);
+
+    // start-of-month Confirmar, and a STALE tab that cannot confirm anything (Q12)
+    await seed(sepModelo());
+    await clic('#avisoCierre [data-act=avCierreOk]');
+    check('R5 the notice Confirmar stores the calculated closing as the real one', JSON.stringify((await guardado(2026)).meses[8].cierreReal), '{"valor":300000,"calculadoAlConfirmar":300000,"confirmadoEl":"2026-10-04"}');
+    await seed(sepModelo());
+    await ev('obsoleta = true; true');
+    await clic('#avisoCierre [data-act=cierreAbrir]', 300); await poner('#inCierre', '1'); await clic('[data-act=cierreOk]', 300);
+    check('R5 a stale tab cannot confirm a closing: nothing stored, the other-tab notice shows',
+      [(await guardado(2026)).meses[8].cierreReal === undefined, (await texto('#avisos')).indexOf('Hay cambios hechos en otra pestaña') >= 0], [true, true]);
+
+    // a legacy year that does not contain hoy shows none of it
+    const leg25 = (() => { const ms = doce(); ms[9] = mes([it('Sueldo', 1000000, true)], [it('Alquiler', 400000, true)], [], []); return base(2025, ms); })();
+    await seed(leg25);
+    check('R5 legacy 2025 year: no first-use prompt, no notice, no balance lines, the card is the old calc()',
+      [await hay('#primerUso'), await hay('#avisoCierre'), await texto('#saldoMes'), await pantalla()], [false, false, '', '600000']);
+  }
+
   check('no uncaught page errors', pageErrs, []);
 }catch(e){ fails++; results.push('ERROR ' + e.message); }
 finally{
