@@ -9,6 +9,8 @@ var data = require('./inventario.data');
 
 var SRC = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 var CONSUMER = /\.monto\b|\b(suma|sumaPagado|calc|serie)\s*\(/;
+// where the app script starts: `<script>` then `(function(){` on the next line, whatever the line ending of the checkout (LF or CRLF)
+function inicioApp(src){ return src.search(/<script>\r?\n\(function\(\)\{/); }
 
 function scan(){
   var re = /^function (\w+)\s*\(/gm, m, found = [];
@@ -38,7 +40,7 @@ test('money consumers in index.html match the documented inventory', function(){
 
 test('the scan covers both inline blocks: the engine (<script id="motor">) and the app script', function(){
   var found = scan();
-  var motorAt = SRC.indexOf('<script id="motor">'), appAt = SRC.indexOf('<script>\n(function(){');
+  var motorAt = SRC.indexOf('<script id="motor">'), appAt = inicioApp(SRC);
   assert.ok(motorAt > 0 && appAt > motorAt, 'motor block precedes the app script');
   ['calc', 'serie', 'suma', 'sumaPagado', 'ranking', 'gastadoTope', 'hayDatos'].forEach(function(n){
     var at = SRC.search(new RegExp('^function ' + n + '\\s*\\(', 'm'));
@@ -52,9 +54,18 @@ test('the scan covers both inline blocks: the engine (<script id="motor">) and t
   });
 });
 
+test('the app script start is found with LF and with CRLF line endings (native review follow-up, night range T6)', function(){
+  var lf = SRC.replace(/\r\n/g, '\n'), crlf = lf.replace(/\n/g, '\r\n');
+  [lf, crlf].forEach(function(src, i){
+    var motorAt = src.indexOf('<script id="motor">'), appAt = inicioApp(src), nombre = i ? 'CRLF' : 'LF';
+    assert.ok(motorAt > 0 && appAt > motorAt, nombre + ': motor block precedes the app script');
+    assert.ok(src.slice(appAt).search(/^function renderMes\s*\(/m) > 0, nombre + ': the app functions follow it');
+  });
+});
+
 // R4.6: one semantic source per concept; the owner lives in the motor block and the feature doc table says the same
 test('every model concept has exactly one owner in the motor, and the feature doc table "Semantic sources (R4.6)" matches', function(){
-  var motorAt = SRC.indexOf('<script id="motor">'), appAt = SRC.indexOf('<script>\n(function(){');
+  var motorAt = SRC.indexOf('<script id="motor">'), appAt = inicioApp(SRC);
   var doc = fs.readFileSync(path.join(__dirname, '..', 'odd', 'tasks', 'repair-sprint-1.md'), 'utf8');
   var at0 = doc.indexOf('Semantic sources (R4.6)');
   assert.ok(at0 > 0, 'the table exists in the feature doc');
