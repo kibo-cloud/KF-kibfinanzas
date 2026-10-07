@@ -26,7 +26,7 @@ function trab(pases, cobrado){
 var TRAB_VACIO = {facturas: [], cobros: [], pases: [], gastos: [], productos: [], tope: 0};
 
 // ── screen view model (month card, Trabajo, net worth): same function list as tests/r4.integracion.test.js ──
-var FUNCS_VISTA = ['dos', 'leerAnio', 'ctxModelo', 'cierreAnioAnterior', 'vistaModelo', 'tilesMes', 'mesDelModelo', 'tieneTilde', 'pasesDelMes',
+var FUNCS_VISTA = ['dos', 'leerAnio', 'ctxModelo', 'cierreAnioAnterior', 'vistaModelo', 'tilesMes', 'mesDelModelo', 'tieneTilde', 'repartoTrabajo', 'pasesDelMes',
   'hoyISO', 'esISO', 'utcDe', 'sumarDias', 'diasEntre', 'ganancia', 'saldoFac', 'venceFac', 'sinAsignar', 'tieneTrab', 'resumenTrab',
   'paseAlModelo', 'trabajoDisponible', 'patrimonioPantalla'];
 function appVista(d, T, otros, today, extra){

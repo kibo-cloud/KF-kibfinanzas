@@ -120,12 +120,15 @@ test('L-01 "El año" table, year CSV and "Año por año" read the month card (ch
   assert.deepEqual(V.tabla(app.anio(), 'anAnios')[1].slice(0, 3), ['2026', f(500000), f(100000)], '"Año por año" = card rows');
 });
 
-test('L-02 "Del trabajo" amount above its pases: the excess stays pending with no checkbox and a read-only row (R5 UX debt)', function(){
+test('L-02 "Del trabajo" amount above its pases: the excess is pending with its own checkbox (R5 N3b); the row stays read-only', function(){
   var d = C.vacio(2026); C.arrastre(d, 9, 0, 'declarado'); C.mes(d, 9, {ingresos: [C.it('Del trabajo', 400000, false)]});
   var app = H.appVista(d, H.trab([{fecha: '2026-10-10', monto: 300000}])), vm = app.vistaModelo(app.D, app.hoy);
   var f = plain(M.flujosMes(app.D, 9, app.hoy, vm.ctx));
   assert.deepEqual([f.trabajoRealizado, f.ingresosReal, f.ingresosPend, vm.cad.resumen.disponibleActual, vm.cad.resumen.proyectadoAlCierre], [300000, 0, 100000, 300000, 400000]);
-  assert.equal(app.tieneTilde(app.D, 9, 'ingresos', app.D.meses[9].ingresos[0]), false, 'no checkbox: the excess can never be ticked');
+  assert.equal(app.tieneTilde(app.D, 9, 'ingresos', app.D.meses[9].ingresos[0]), true, 'R5 N3b: the excess has a checkbox (was locked forever)');
+  app.D.meses[9].ingresos[0].pagado = true;
+  var g = plain(M.flujosMes(app.D, 9, app.hoy, vm.ctx));
+  assert.deepEqual([g.trabajoRealizado, g.ingresosReal, g.ingresosPend, app.vistaModelo(app.D, app.hoy).cad.resumen.disponibleActual], [300000, 100000, 0, 400000], 'ticked: the excess is realized');
   assert.match(la.extractFunction('seccion'), /var vt = S\.k === 'ingresos' && esRenglonTrabajo\(lista\[i\]\.nombre\) && pasesDelMes\(D\.anio, mes\) > 0/);
 });
 

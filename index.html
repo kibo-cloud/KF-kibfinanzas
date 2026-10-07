@@ -2730,11 +2730,27 @@ function serieVista(d, hoy){
   }
   return s;
 }
-// ¿la fila lleva tilde de pagado/cobrado? "Del trabajo" no, salvo en un mes del modelo sin pases: ahí es un ingreso común (Q3)
+// ¿la fila lleva tilde de pagado/cobrado? "Del trabajo" no, salvo en un mes del modelo sin pases (Q3) o con un monto por encima de sus pases
+// (R5, interpretación 4 de R4.2): lo que los pases no cubren es un ingreso común con su propio tilde
 function tieneTilde(d, j, k, it){
   if(!MARCABLE[k]) return false;
   if(k !== 'ingresos' || !esRenglonTrabajo(it.nombre)) return true;
-  return mesDelModelo(d, j) && !(pasesDelMes(d.anio, j) > 0);
+  if(!mesDelModelo(d, j)) return false;
+  if(!(pasesDelMes(d.anio, j) > 0)) return true;
+  var r = repartoTrabajo(d, j, it);
+  return !!r && r.exceso > 0;
+}
+// cuánto de un renglón "Del trabajo" de un mes del modelo cubren los pases de Trabajo y cuánto queda por encima ({pases, exceso}); el mismo
+// reparto que flujosMes (§7): los pases del mes cubren los renglones "Del trabajo" en orden. null si it no es un renglón "Del trabajo" del mes
+function repartoTrabajo(d, j, it){
+  var lp = ctxModelo(d, hoyApp()).pasesTrabajo[d.anio + '-' + dos(j + 1)] || [], resto = 0, ls = d.meses[j].ingresos, i, mo, abs;
+  for(i=0;i<lp.length;i++){ mo = num(lp[i] && lp[i].monto); if(mo > 0) resto += mo; }
+  for(i=0;i<ls.length;i++){
+    if(!esRenglonTrabajo(ls[i].nombre)) continue;
+    mo = num(ls[i].monto); abs = Math.max(0, Math.min(mo, resto)); resto -= abs;
+    if(ls[i] === it) return {pases: abs, exceso: mo - abs};
+  }
+  return null;
 }
 /* ═══ R5: el saldo del mes (D2, D5, D6, D7/Q8, D10, D17) ═══
    Solo presenta lo que ya calcula la cadena (cadena/flujosMes); no hay ninguna regla de plata nueva acá. */
@@ -3006,7 +3022,11 @@ function seccion(S, m){
        +   '<input class="monto" inputmode="decimal" enterkeyhint="done" data-k="'+S.k+'" data-i="'+i+'" value="'+fARS(lista[i].monto)+'" aria-label="Monto"'+(vt?' readonly':'')+'>'
        +   '<button class="x" data-act="'+(vt?'tjDelTrabajo':'del')+'" data-k="'+S.k+'" data-i="'+i+'" aria-label="Borrar">×</button>'
        + '</div>';
-    if(vt) h += '<div class="nota tj-vienede">Viene de Trabajo: lo que pasaste a lo personal este mes. Se cambia desde esa pestaña.</div>';
+    if(vt){
+      var rt = marc ? repartoTrabajo(D, mes, lista[i]) : null;   // R5: por encima de sus pases, el resto se tilda como un ingreso común
+      h += '<div class="nota tj-vienede">Viene de Trabajo: lo que pasaste a lo personal este mes. Se cambia desde esa pestaña.'
+         + (rt ? ' De esto, ' + fARS(rt.pases) + ' vino de pases del trabajo; el resto, ' + fARS(rt.exceso) + ', lo marcás vos.' : '') + '</div>';
+    }
     if(TOPEABLE[S.k] && num(lista[i].tope) > 0){
       h += filaTope(S.k, i, lista[i]);
     }
