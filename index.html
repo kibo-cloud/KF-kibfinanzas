@@ -3253,12 +3253,12 @@ function gastadoVista(it, j){ return gastadoTope(esProgramado(D, j, hoyApp()) ? 
 function puedeAlternar(j, it){ return !(esProgramado(D, j, hoyApp()) && !estaPagado(j, it)); }
 // mes en rojo: en un mes del modelo, lo que muestra la tarjeta (Ingresos con los pases de Trabajo ya hechos − Gastos − Deudas) < 0, nunca
 // el saldo encadenado; en uno legacy, el flujo de siempre
-function mesEnRojo(s, i, vm){
+function mesEnRojo(d, s, i, vm){   // d: el año de s y vm (no el abierto)
   if(!vm || vm.cad.meses[i].legacy) return s[i].disponibleFinal < 0;
-  var f = flujosMes(D, i, vm.hoy, vm.ctx);
+  var f = flujosMes(d, i, vm.hoy, vm.ctx);
   return f.resultado + f.trabajoRealizado < 0;
 }
-function resumenAnio(s, vm){
+function resumenAnio(d, s, vm){   // d: el año de s y vm
   var act = vm ? mesesTranscurridos(s, vm) : mesesCargados(s), i, n = act.length;
   if(n < 2) return '<div class="resumen vacio">'
     + '<div class="res-txt"><p>Cargá ' + (n === 0 ? 'un par de meses' : 'un mes más') + ' y acá te resumo el año: cuánto entra, cuánto se va y con cuánto cerrás.</p></div></div>';
@@ -3268,7 +3268,7 @@ function resumenAnio(s, vm){
     sumG += c.totalGastos; sumI += c.totalIngresos; sumA += c.ahorroMesARS;
     if(c.totalGastos > s[peor].totalGastos) peor = act[i];
     if(c.totalGastos < s[mejor].totalGastos) mejor = act[i];
-    if(mesEnRojo(s, act[i], vm)) rojos.push(MESES[act[i]]);
+    if(mesEnRojo(d, s, act[i], vm)) rojos.push(MESES[act[i]]);
   }
   var promG = Math.round(sumG/n), promI = Math.round(sumI/n), promA = Math.round(sumA/n);
   var pct = sumI > 0 ? sumA/sumI : 0, ultimo = act[n-1], faltan = 11 - ultimo;
@@ -3283,12 +3283,12 @@ function resumenAnio(s, vm){
   if(rojos.length) h += '<p class="mal">' + (rojos.length === 1 ? 'En <b>'+rojos[0]+'</b> gastaste' : 'En <b>'+rojos.length+' meses</b> gastaste')
      + ' más de lo que entró.</p>';
   h += '</div><div class="res-pie">' + (vm ? 'Promedio de ' + n + ' ' + (n === 1 ? 'mes ya transcurrido' : 'meses ya transcurridos')
-     : n + ' ' + (n === 1 ? 'mes cargado' : 'meses cargados')) + ' de ' + D.anio + '</div></div>';
+     : n + ' ' + (n === 1 ? 'mes cargado' : 'meses cargados')) + ' de ' + d.anio + '</div></div>';
   return h;
 }
 function renderAnio(){
   var hoy = hoyApp(), s = serieVista(D, hoy), h = '', i;
-  h += resumenAnio(s, vistaModelo(D, hoy));   // sin arrastre: serie() y los meses cargados, como siempre
+  h += resumenAnio(D, s, vistaModelo(D, hoy));   // sin arrastre: serie() y los meses cargados, como siempre
   var T = {i:0,g:0,a:0,c:0,d:0,f:0,s:0,r:0};
   var hT = '<div class="tabla"><table><thead><tr>'
      + '<th>Mes</th><th>Ingresos</th><th>Gastos</th><th>Ahorro</th><th>A dólares</th><th>Saqué</th><th>Repuse</th><th>Deudas</th><th>Disponible</th><th>Acumulado</th>'

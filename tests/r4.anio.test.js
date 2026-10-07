@@ -141,6 +141,21 @@ test('model rule: in a model year "Total Disponible" and "Cierre" = December clo
   });
 });
 
+// native review follow-up (night range T2): the year summary reads the year it is given
+test('mesEnRojo / resumenAnio read the year they are given, not the open one', function(){
+  var rojo = C.seccion2(false, false); rojo.meses[9].gastosVariables = [C.it('Viaje', 2000000, true)];   // October spends more than it earns
+  var app = V.appAnio(rojo, {2025: C.vacio(2025)}), d = app.D, vm = app.vistaModelo(d, app.hoy), s = app.serieVista(d, app.hoy);
+  assert.equal(app.mesEnRojo(d, s, 9, vm), true, 'October is red in its own year');
+  assert.equal(app.mesEnRojo(d, s, 8, vm), false, 'September is not');
+  var ref = app.resumenAnio(d, s, vm);
+  assert.ok(ref.indexOf('En <b>Octubre</b> gastaste más de lo que entró.') > 0, 'the summary names the red month');
+  var otro = C.seccion2(false, false); otro.anio = 2027; C.arrastre(otro, 8, 50000, 'declarado');
+  app.D = app.normalizar(otro, app.hoy);   // another year is open: the given one still decides
+  assert.equal(app.mesEnRojo(d, s, 9, vm), true);
+  assert.equal(app.resumenAnio(d, s, vm), ref, 'same summary, same year in the footer');
+  app.D = d;
+  assert.equal(app.anio().indexOf(ref) >= 0, true, 'renderAnio passes the open year');
+});
 // N1 item 1 (R4.5 close, design §1): Deudas in a model month = realizado ? cuotasReal : cuotasProg (one source: flujosMes via tilesMes)
 function deudasFila(d, otros){
   var app = V.appAnio(d, otros || {2025: C.vacio(2025)}), html = app.anio();
