@@ -1018,6 +1018,11 @@ Advisory triage (all non-blocking):
   - b23171d labels the follow-up tests with their slice.
 - Verification of the follow-up slice: `npm test` 679 (678 pass, 1 todo `L-03d`), `npm run test:e2e` 218/218, motor goldens
   byte-identical to 1528a44, APPVER 1.32.0 and sw v45 unchanged.
+- T8 (follow-up slice 1528a44..6ff871d, 8 files, 253 lines, medium): owner granted consent; reliability lens APPROVED with no
+  correction; acknowledged (review-b4a2b0e28f039237, authority burned). Advisory SUGGESTION `R3-mantener-double-clock-read`
+  (index.html ~6949-6954: `mantenerCierreHoja` and `mantenerCierreReal` read `hoyApp()` twice; across a month boundary the precheck
+  can pass and the write refuse, with no pill; nothing is written) — accepted as LOW residual, no code change. Every code commit of
+  the branch since 0cd42de is now covered by an acknowledged native review; reviewed boundary = 6ff871d (this note is passive docs).
 
 ## D16 — official acceptance list (verbatim)
 
