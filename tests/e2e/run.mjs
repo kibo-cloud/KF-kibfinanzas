@@ -935,6 +935,109 @@ try{
     await ev(`(function(){ var h = document.querySelector('#hoja [data-act=cerrar]'); if(h) h.click(); return true; })()`); await sleep(300);
   }
 
+  // ── P3a redesign of the month view: what the screen SAYS (texts, states, colors) and that it fits (tap targets, no overflow) ──
+  // hoy here is 2026-10-04. Model year from September: Sep confirmed at 275.000 while its records now give 300.000 (Luz unpaid);
+  // Oct: Sueldo paid, "Del trabajo" 400.000 with one 300.000 pase on 2/10, Aguinaldo and Internet unpaid, installment 10 of 12 unpaid;
+  // Nov: Sueldo ticked ahead. Expected: Oct available = 275.000 + 1.000.000 + 300.000 - 400.000 = 1.175.000; to collect 100.000 + 120.000;
+  // to pay 22.000 + 100.000; closing estimate 1.175.000 + 220.000 - 122.000 = 1.273.000; overdue 20.000 (Sep Luz).
+  {
+    const ms = []; for(let i=0;i<12;i++) ms.push(mes([], [], [], []));
+    ms[8] = Object.assign(mes([it('Sueldo', 1000000, true)], [it('Alquiler', 400000, true), it('Luz', 20000, false)], [it('Super', 200000, true)], []),
+      {ahorroMesARS: 150000, cierreReal: {valor: 275000, calculadoAlConfirmar: 280000, confirmadoEl: '2026-10-01'}});
+    ms[9] = mes([it('Sueldo', 1000000, true), it('Del trabajo', 400000, false), it('Aguinaldo', 120000, false)], [it('Alquiler', 400000, true), it('Internet', 22000, false)], [], [it('Préstamo', 100000, false)]);
+    ms[10] = mes([it('Sueldo', 1000000, true)], [it('Alquiler', 400000, false)], [], [it('Préstamo', 100000, false)]);
+    const y = {anio: 2026, pagoExplicito: true, cotizacionUSD: 1500, meses: ms, planDeudas: {'Préstamo': {total: 1200000, recargo: 0, cuotas: 12, pagadasAntes: 9}},
+      arrastre: {desde: 8, inicial: {apertura: 50000, declarado: 50000, declaradoEl: '2026-09-01', origen: 'declarado'}}};
+    const tj = {version: 1, activo: true, modo: 'simple', facturas: [], gastos: [], productos: [], tope: 0,
+      cobros: [{id: 'c1', cliente: '', monto: 1000000, fecha: '2026-01-01', forma: 'transferencia', aplic: []}], pases: [{id: 'p1', fecha: '2026-10-02', monto: 300000, anio: 2026, mes: 9}]};
+    const seed = async (year, trabajo) => { await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); localStorage.setItem('kibo.ultimaCopia', new Date().toISOString()); localStorage.setItem('kibo.anio','${year.anio}');
+      localStorage.setItem('kibo.datos.${year.anio}', ${JSON.stringify(JSON.stringify(year))}); ${trabajo ? `localStorage.setItem('kibo.trabajo', ${JSON.stringify(JSON.stringify(trabajo))});` : ''} true`); await nav(URL_APP); await sleep(1300); };
+    const texto = (sel) => ev(`(document.querySelector(${JSON.stringify(sel)}) || {textContent: ''}).textContent`);
+    const textos = (sel) => ev(`Array.prototype.map.call(document.querySelectorAll(${JSON.stringify(sel)}), function(e){ return e.textContent; })`);
+    const irMes = async (m) => { await ev(`document.querySelector('[data-act=mes][data-m="${m}"]').click(); true`); await sleep(1400); };
+    const F = (n) => ev(`fARS(${n})`);
+    const fila = (txt) => ev(`(function(){ var r = Array.prototype.filter.call(document.querySelectorAll('#saldoMes .sdo-f'), function(f){ return f.querySelector('span').textContent === ${JSON.stringify(txt)}; })[0]; return r ? r.querySelector('b').textContent : null; })()`);
+    const guardado = () => ev(`JSON.parse(localStorage.getItem('kibo.datos.2026'))`);
+    const colorAcc = `(function(){ var d = document.createElement('div'); d.style.color = 'var(--acc)'; document.body.appendChild(d); var c = getComputedStyle(d).color; document.body.removeChild(d); return c; })()`;
+
+    await seed(y, tj);
+    check('P3a current month: the hero says "Tenés hoy" with the available money, the same as the balance block "Disponible actual"',
+      [await texto('#hero .hero-lbl'), await texto('#bigFinal'), await fila('Disponible actual')], ['Tenés hoy', await F(1175000), await F(1175000)]);
+    check('P3a current month: the estimated closing below the hero, not green, equal to the balance block projection',
+      [await texto('#heroSub'), await fila('Proyectado al cierre (estimado)'), await ev(`getComputedStyle(document.querySelector('#heroSub')).color !== ${colorAcc}`)],
+      ['Al cierre: ' + await F(1273000) + ' · estimado', await F(1273000), true]);
+    check('P3a current month: pending chips with the engine amounts (to collect, to pay, overdue)', await textos('#heroChips .chip'),
+      ['Te falta cobrar ' + await F(220000), 'Te falta pagar ' + await F(122000), 'Atrasado ' + await F(20000)]);
+    check('P3a hero tiles are labeled Cobrado / Pagado (what was realized)', await textos('#hero .tri small'), ['Cobrado', 'Pagado', 'Ahorro']);
+    check('P3a no hero buttons that repeat the tab bar', await ev(`[!!document.querySelector('#v-mes [data-act=tab]'), document.getElementById('hero').textContent.indexOf('El año') < 0]`), [false, true]);
+    await ev(`document.querySelector('#heroChips [data-v=pagar]').click(); true`); await sleep(1000);
+    check('P3a the "Te falta pagar" chip takes you to the first section with something unpaid', await ev(`(function(){ var t = document.querySelector('.sec[data-sec=gastosFijos]').getBoundingClientRect().top; return t >= 0 && t < 160; })()`), true);
+    check('P3a section header: total and "falta $X"', [await texto('#sub-ingresos'), await texto('#falta-ingresos'), await texto('#falta-gastosFijos')],
+      [await F(1520000), 'falta ' + await F(220000), 'falta ' + await F(22000)]);
+    check('P3a row states: pending rows say "Falta", paid rows have the solid check', [await textos('#v-mes .sec[data-sec=gastosFijos] .item .est'), await ev(`document.querySelectorAll('#v-mes .sec[data-sec=gastosFijos] .item.pago .chk.on').length`)], [['Falta'], 1]);
+    check('P3a Del trabajo partial state in plain words', await texto('#v-mes .tj-vienede'), 'Cobrado ' + await F(300000) + ' de ' + await F(400000) + ': lo que pasaste desde Trabajo. Los ' + await F(100000) + ' que faltan tildalos cuando los cobres.');
+    check('P3a debt row: "Cuota 10 de 12 · pendiente"', (await texto('#v-mes [data-act=plan]')).indexOf('Cuota 10 de 12 · pendiente') === 0, true);
+    check('P3a the opening shows where it comes from as a chip, and Editar is a 44 px target', [await texto('#saldoMes .sdo-orig .chip'),
+      await ev(`(function(){ var r = document.querySelector('#saldoMes [data-act=editarApertura]').getBoundingClientRect(); return r.width >= 44 && r.height >= 44; })()`)], ['Corregido en Septiembre', true]);
+
+    await irMes(10);
+    check('P3a future month: "Proyectado para Noviembre" with a Programado chip, never the green hero', [await texto('#hero .hero-lbl'), await textos('#heroChips .chip'),
+      await ev(`document.getElementById('bigFinal').className`), await ev(`getComputedStyle(document.getElementById('bigFinal')).color !== ${colorAcc}`)],
+      ['Proyectado para Noviembre', ['Programado'], 'big proy', true]);
+    check('P3a future month: the row ticked ahead shows the dashed ring and the "Programado" chip', [await textos('#v-mes .sec[data-sec=ingresos] .item.progr .est'), await ev(`document.querySelectorAll('#v-mes .sec[data-sec=ingresos] .item.progr .chk.prog').length`)], [['Programado'], 1]);
+
+    await irMes(8);
+    check('P3a past month: "Cerraste con" the confirmed closing, "Confirmado"', [await texto('#hero .hero-lbl'), await texto('#bigFinal'), await textos('#heroChips .chip')], ['Cerraste con', await F(275000), ['Confirmado']]);
+    check('P3a re-confirm block: plain text and the two choices with their amounts, amber (no red class)',
+      [await texto('#avisoReconfirmar p'), await textos('#avisoReconfirmar .mini'), await ev(`[document.getElementById('avisoReconfirmar').className, !!document.querySelector('#avisoReconfirmar .mal')]`)],
+      ['Cerraste con ' + await F(275000) + ' (confirmado) · tus registros ahora dan ' + await F(300000) + '.', ['Usar ' + await F(300000), 'Dejar ' + await F(275000)], ['sdo-reconf', false]]);
+    await ev(`document.querySelector('#avisoReconfirmar [data-act=cierreMantener]').click(); true`); await sleep(1400);
+    const g1 = await guardado();
+    check('P3a "Dejar $275.000" is Mantener: the confirmed value stays, the new calculation is recorded', [g1.meses[8].cierreReal.valor, g1.meses[8].cierreReal.calculadoAlConfirmar, await ev(`!!document.getElementById('avisoReconfirmar')`)], [275000, 300000, false]);
+    await seed(y, tj); await irMes(8);
+    await ev(`document.querySelector('#avisoReconfirmar [data-act=avCierreOk]').click(); true`); await sleep(1400);
+    const g2 = await guardado();
+    check('P3a "Usar $300.000" confirms what the records give (the start-of-month Confirmar action); the hero follows', [g2.meses[8].cierreReal.valor, g2.meses[8].cierreReal.calculadoAlConfirmar, await texto('#bigFinal')], [300000, 300000, await F(300000)]);
+
+    // tap targets and overflow at phone widths
+    const pequenos = `(function(){ var out = []; document.querySelectorAll('#v-mes button, #v-mes a, #v-mes [data-act], #v-mes .chk, #v-mes summary, header button, #nav button, #fab').forEach(function(t){
+      var r = t.getBoundingClientRect(); if(!r.width || !r.height || getComputedStyle(t).visibility === 'hidden') return;
+      if(r.width < 44 || r.height < 44) out.push((t.getAttribute('data-act') || t.className || t.tagName) + ' ' + Math.round(r.width) + 'x' + Math.round(r.height)); }); return out; })()`;
+    const anchos = `(function(){ var W = innerWidth, out = []; if(document.documentElement.scrollWidth > W) out.push('page ' + document.documentElement.scrollWidth);
+      document.querySelectorAll('#v-mes *').forEach(function(e){ if(e.closest('.meses') || e.closest('.carr-pista')) return; var r = e.getBoundingClientRect(); if(r.width && r.right > W + 1) out.push(e.tagName + '.' + e.className + ' ' + Math.round(r.right)); });
+      return out.slice(0, 5); })()`;
+    await seed(y, tj);
+    for(const w of [360, 390, 430]){
+      await send('Emulation.setDeviceMetricsOverride', { width: w, height: 844, deviceScaleFactor: 2, mobile: true }); await sleep(400);
+      if(w === 390) check('P3a tap targets on the month view at 390: all at least 44 x 44', await ev(pequenos), []);
+      for(const m of [8, 9, 10]){ await irMes(m); check(`P3a no horizontal overflow at ${w} px, month ${m + 1}`, await ev(anchos), []); }
+    }
+    await send('Emulation.clearDeviceMetricsOverride');
+
+    // first use: the question takes the hero's place; with data, the simple calculation stays below it, gray and marked
+    const leg = JSON.parse(JSON.stringify(y)); delete leg.arrastre; delete leg.meses[8].cierreReal;
+    await seed(leg, null);
+    check('P3a first use: the question comes before any number; the simple calculation below is gray and marked',
+      [await ev(`!!(document.getElementById('primerUso').compareDocumentPosition(document.getElementById('bigFinal')) & Node.DOCUMENT_POSITION_FOLLOWING)`),
+       await ev(`document.getElementById('hero').classList.contains('hero-apagado')`), await ev(`document.getElementById('bigFinal').className`), await textos('#heroChips .chip')],
+      [true, true, 'big proy', ['Cálculo simple']]);
+    // fresh install: welcome sheet, then "Esta app está vacía" alone, then the first-use question alone; no zero rows
+    await ev(`localStorage.clear(); true`); await nav(URL_APP); await sleep(800);
+    const visible = (sel) => ev(`(function(){ var e = document.querySelector(${JSON.stringify(sel)}); return !!e && !!(e.offsetWidth || e.offsetHeight); })()`);
+    check('P3a fresh install: first the welcome sheet', await visible('#hoja [data-act=bienvOk]'), true);
+    await ev(`document.querySelector('[data-act=bienvOk]').click(); true`); await sleep(800);
+    check('P3a fresh install: then only "Esta app está vacía" (no first-use question, no card, no zero rows)',
+      [await visible('#avisos [data-av=vacia]'), await visible('#primerUso'), await visible('#carrMes'), await ev(`document.querySelectorAll('#v-mes .item input.monto').length`), await ev(`document.querySelectorAll('#v-mes [data-act=verFilas]').length`)],
+      [true, false, false, 0, 4]);
+    await ev(`document.querySelector('#avisos [data-act=cerrarAviso]').click(); true`); await sleep(500);
+    check('P3a fresh install: "Empezar de cero" leads to the first-use question, alone', [await visible('#avisos [data-av=vacia]'), await visible('#primerUso'), await visible('#bigFinal')], [false, true, false]);
+    // legacy year (no arrastre, not the current year): same numbers, marked as the simple calculation
+    const y25 = JSON.parse(JSON.stringify(leg)); y25.anio = 2025;
+    await seed(y25, null);
+    check('P3a legacy year: "Disponible final" with the "Cálculo simple" chip; the number is calc() unchanged',
+      [await texto('#hero .hero-lbl'), await textos('#heroChips .chip'), await texto('#bigFinal')], ['Disponible final', ['Cálculo simple'], await ev('fARS(calc(D.meses[9]).disponibleFinal)')]);
+  }
+
   check('no uncaught page errors', pageErrs, []);
 }catch(e){ fails++; results.push('ERROR ' + e.message); }
 finally{
