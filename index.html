@@ -3850,7 +3850,7 @@ var ajVista = '';   // '' = raíz de Ajustes · 'datos' · 'ayuda' · 'privacida
 function manual(){
   var h = '<div class="manual">';
   h += bloque('idea', 'La idea',
-      '<p>Cada mes se lee de arriba para abajo: entra plata, salen los gastos, apartás el ahorro, pagás las deudas, y lo que queda es el <b>disponible final</b>. Ese número grande del resumen es el que importa: si está en verde llegás, si está en rojo no.</p>'
+      '<p>Cada mes se lee de arriba para abajo: entra plata, salen los gastos, apartás el ahorro, pagás las deudas, y lo que queda es tu disponible. El número grande de arriba es el que importa: <b>Tenés hoy</b> es la plata que tenés ahora y <b>Al cierre (estimado)</b> es con cuánto terminás el mes si cobrás y pagás lo que falta. En un mes que ya pasó dice <b>Cerraste con</b>, y en uno que todavía no llegó, <b>Proyectado para</b>.</p>'
     + '<p>Las dos barras de abajo te muestran qué parte del ingreso se va en gastos y qué parte estás ahorrando.</p>');
   h += bloque('mes', 'Cargar el mes',
       '<p>Elegí el mes arriba (se desliza). Cada sección se abre y se cierra tocando el título; el subtotal se ve igual aunque esté cerrada.</p>'
@@ -3861,12 +3861,12 @@ function manual(){
     + '<li>En Ingresos, debajo de cada renglón, podés decir <b>cada cuánto lo cobrás</b>: mensual, semanal, quincenal o los días que elijas. Ponés el total del mes o cuánto es cada pago y la app hace la otra cuenta. El renglón sigue valiendo el total del mes.</li>'
     + '<li>Cuando un mes nuevo tiene los fijos, los ingresos o las deudas en cero, aparece <b>Copiar los montos</b> del mes anterior. Un toque y listo. Las variables no se copian porque cambian cada mes.</li></ul>');
   h += bloque('rapido', 'Gasto rápido',
-      '<p>El botón verde de abajo es para cargar un gasto en el momento, desde el celular: tocás, escribís el monto, tocás la categoría, y ya se sumó. Tres toques.</p>'
+      '<p>El botón <b>Gasto</b>, en el medio de la barra de abajo, es para cargar un gasto en el momento, desde el celular: tocás, escribís el monto, tocás la categoría, y ya se sumó. Tres toques.</p>'
     + '<p>Cada gasto queda en la sección <b>Gastos rápidos</b> del mes, con fecha, y se puede deshacer con la ×. Apenas lo cargás también aparece un aviso con <b>Deshacer</b> durante unos segundos, por si tocaste mal.</p>');
   h += bloque('topes', 'Topes por categoría',
     '<p>En <b>Gastos fijos</b> y <b>Gastos variables</b>, abajo de todo, está <b>Poner topes</b>: cuánto querés gastar como máximo en cada categoría. La que tenga tope muestra una barrita con lo que llevás gastado, y se pone roja cuando te pasás. Arriba, abajo del disponible final, te avisa en cuántas te pasaste.</p>'
     + '<p>Al guardar elegís <b>Solo este mes</b> o <b>de este mes en adelante</b>. Lo segundo es lo normal: ponés los topes una vez y valen para todo lo que queda del año. Cuando los precios se van para arriba, entrás de nuevo, subís el número y lo aplicás de ese mes en adelante. Los meses que ya pasaron quedan como estaban.</p>'
-    + '<p>Un tope en cero es lo mismo que no tener tope: la fila se ve igual que siempre. Los topes se arrastran al crear el año siguiente.</p>');
+    + '<p>Un tope en cero es lo mismo que no tener tope: la fila se ve igual que siempre. Los topes pasan solos al año siguiente cuando lo creás.</p>');
 
   h += bloque('historial', 'Las copias que guarda la app',
     '<p>Cada vez que hacés una copia, la app se guarda una <b>adentro suyo</b>, además de la que compartís o descargás. En <b>Ajustes → Dónde viven tus datos</b> aparecen las últimas cinco, con su fecha, y cada una se puede <b>restaurar</b> de un toque o <b>compartir</b>.</p>'
@@ -3905,14 +3905,14 @@ function manual(){
     + '<p>No sale en cada tecla: espera a que dejes de escribir, y no se repite si ya avisó hace poco. Para el detalle fino está el punto verde del encabezado, que dice la hora exacta del último guardado.</p>'
     + '<p>Si algún día ves el cartelito en rojo diciendo que no se pudo guardar, es que el navegador está bloqueando el almacenamiento. Ahí lo que cargues se pierde al cerrar.</p>');
   h += bloque('gestos', 'Gestos y movimiento',
-    '<p><b>Deslizá el dedo para los costados</b> para cambiar de pestaña, sin tocar los botones de abajo: hacia la izquierda avanzás (Mes → Año → USD → Ajustes) y hacia la derecha volvés. Adentro de una subpantalla de Ajustes, deslizar a la derecha te devuelve al principio.</p>'
-    + '<p>El gesto no molesta a lo que ya se mueve al costado: la tira de meses y las tablas anchas se siguen scrolleando normal, y con una hoja abierta no pasa nada.</p>'
+    '<p><b>Deslizá el dedo para los costados</b> para cambiar de pestaña, sin tocar los botones de abajo: hacia la izquierda avanzás (Mes → Año → Patrimonio → Trabajo → Ajustes; Trabajo solo si lo prendiste) y hacia la derecha volvés. Adentro de una subpantalla de Ajustes, deslizar a la derecha te devuelve al principio.</p>'
+    + '<p>El gesto no molesta a lo que ya se mueve al costado: la tira de meses y las tablas anchas se siguen deslizando normal, y con una hoja abierta no pasa nada.</p>'
     + '<p>Las hojas que suben desde abajo se cierran <b>arrastrándolas para abajo</b>, además del botón. Si la arrastrás poco, vuelve sola a su lugar.</p>'
     + '<p>Al cambiar de pestaña la pantalla entra desde el costado, según para dónde vayas. Y los números grandes suben hasta el valor nuevo en vez de saltar.</p>'
     + '<p>Si tenés activado <b>reducir movimiento</b> en el teléfono, la app no anima nada y todo aparece de una.</p>');
   h += bloque('plegar', 'Plegar y desplegar',
     '<p>En <b>Mes</b>, <b>Año</b> y <b>Patrimonio</b> cada bloque se pliega tocando su encabezado. Ahí al costado, en gris, está el número que resume lo que hay adentro: el total de la sección, el cierre del año, el patrimonio. Así ves lo importante sin abrir nada.</p>'
-    + '<p>Lo que abrís o cerrás queda guardado, así que la próxima vez la app se abre como la dejaste. Las tablas anchas —los doce meses, dólares mes a mes, año por año— arrancan cerradas a propósito, porque en un celular obligan a scrollear al costado.</p>');
+    + '<p>Lo que abrís o cerrás queda guardado, así que la próxima vez la app se abre como la dejaste. Las tablas anchas —los doce meses, dólares mes a mes, año por año— arrancan cerradas a propósito, porque en un celular hay que deslizarlas al costado.</p>');
   h += bloque('criollo', 'El resumen del año',
     '<p>La pestaña <b>Año</b> abre con el resumen: el anillo muestra qué porcentaje de lo que entra estás ahorrando, y abajo, en pocas líneas, cuánto entra y cuánto se va por mes, en qué mes gastaste más y en cuál menos, y con cuánto cerrás diciembre si seguís al mismo ritmo.</p>'
     + '<p>Los promedios salen solo de los meses que tienen algo cargado: los que están en cero no arrastran la cuenta para abajo. Con menos de dos meses cargados no muestra promedios, porque no significarían nada. Si algún mes gastaste más de lo que entró, te lo dice en rojo.</p>');
@@ -3926,10 +3926,10 @@ function manual(){
     + '<p>La tabla muestra los dólares que entraron cada mes, a cuánto los pagaste, el acumulado y su valor en pesos hoy. Debajo te dice cuánto compraste en el año, el precio promedio, y si a la cotización de hoy valen más o menos de lo que te costaron.</p>'
     + '<p>En <b>Cripto</b> cargás activo, cantidad y precio en dólares.</p>');
   h += bloque('ajustes', 'Cómo está ordenado Ajustes',
-    '<p>La pantalla de <b>Ajustes</b> arranca con una lista corta agrupada en cinco temas: <b>Copia de seguridad</b>, <b>Año</b>, <b>Exportar</b>, <b>Aspecto</b> y <b>Ayuda</b>. Cada renglón dice abajo, en chico, en qué estado está: cuándo fue la última copia, si el sistema se comprometió a conservar tus datos, qué hace cada exportación.</p>'
+    '<p>La pantalla de <b>Ajustes</b> arranca con una lista corta agrupada en seis temas: <b>Copia de seguridad</b>, <b>Año</b>, <b>Exportar</b>, <b>Tu forma de trabajo</b>, <b>Aspecto</b> y <b>Ayuda</b>. Cada renglón dice abajo, en chico, en qué estado está: cuándo fue la última copia, si tus datos están protegidos, qué hace cada exportación.</p>'
     + '<p>Las cosas largas viven en su propia pantalla: <b>Dónde viven tus datos</b>, este mismo <b>Método de uso</b> y <b>Privacidad</b>. Se entra tocando el renglón y se vuelve con la flecha de arriba. Al salir de Ajustes siempre vuelve al principio.</p>');
   h += bloque('pc', 'La versión para PC',
-    '<p>En <b>Ajustes → Guardar la versión para PC</b> la app se arma a sí misma en un solo archivo <b>.html</b> con los datos del año abierto adentro. Lo pasás a la computadora, doble clic, y es la misma app: sin instalar nada, sin internet y sin cuenta.</p>'
+    '<p>En <b>Ajustes → Versión para PC</b> la app se arma a sí misma en un solo archivo <b>.html</b> con los datos del año abierto adentro. Lo pasás a la computadora, doble clic, y es la misma app: sin instalar nada, sin internet y sin cuenta.</p>'
     + '<p>Sirve para mirar los números en pantalla grande o para imprimir cómodo. Ojo: es una foto del momento en que lo generaste, no se sincroniza. Si cargás cosas en el teléfono, volvé a generarlo. Los demás años no van adentro del archivo, pero desde ahí podés <b>Restaurar una copia</b> y aparecen todos.</p>');
   h += bloque('privacidad', 'Privacidad',
     '<p>La app no recolecta ningún dato. No hay servidor, ni cuenta, ni publicidad, ni estadísticas de uso. Tus números viven en este teléfono y la única forma de que salgan es que vos exportes una copia y elijas a dónde mandarla.</p>'
@@ -3937,17 +3937,17 @@ function manual(){
   h += bloque('guardar', 'Dónde viven los datos',
       '<p>Todo se guarda <b>en este teléfono</b>, al instante, cada vez que cambiás algo. No hay servidor ni cuenta: la app funciona sin conexión.</p>'
     + '<p>La contracara es que si perdés el teléfono, lo cambiás o borrás los datos del navegador, se pierde todo. Por eso existe la <b>copia de seguridad</b>: un archivo con todos los años que se manda a donde quieras (Drive, WhatsApp, mail) o se descarga, y guardás en la PC.</p>'
-    + '<p>Cada 15 días sin hacer copia te lo recuerda al abrir. En <b>Ajustes → Dónde viven tus datos</b> te dice si el sistema se comprometió a conservarlos o si los puede borrar para hacer lugar. Con <b>Restaurar una copia</b> volvés a cargar ese archivo en cualquier teléfono, con todos los años que traiga. El mismo archivo se abre también en la versión de PC.</p>'
+    + '<p>Cada 15 días sin hacer copia te lo recuerda al abrir. En <b>Ajustes → Dónde viven tus datos</b> te dice si tus datos están protegidos o si el teléfono los puede borrar para hacer lugar. Con <b>Restaurar una copia</b> volvés a cargar ese archivo en cualquier teléfono, con todos los años que traiga. El mismo archivo se abre también en la versión de PC.</p>'
     + '<p>Los años se guardan por separado y no hay límite: cinco o diez años ocupan menos que una foto. En la pestaña Año, cuando hay más de uno, aparece la tabla <b>Año por año</b>.</p>');
   h += bloque('cierre', 'Cerrar el año',
       '<p>En diciembre, <b>Crear el año siguiente</b> arma el año siguiente con las mismas categorías, los meses en cero, y el ahorro y los dólares de cierre ya cargados como saldo inicial. Las cuotas pagadas de cada deuda también pasan solas.</p>'
-    + '<p><b>Exportar CSV</b> es la tabla anual para abrir en Excel; <b>Imprimir resumen del año</b> manda la pestaña Año a la impresora o a PDF.</p>');
+    + '<p><b>CSV del año</b> es la tabla anual para abrir en Excel o Sheets; <b>Imprimir resumen del año</b> manda la pestaña Año a la impresora o a PDF.</p>');
   h += bloque('calculos', 'Cómo se calcula',
       '<ul><li>Gastos = fijos + variables</li>'
     + '<li>Disponible final = ingresos − gastos − ahorro del mes − deudas + lo que saqué del ahorro − lo que repuse</li>'
     + '<li>Ahorro acumulado = el del mes anterior + ahorro del mes − pesos pasados a dólares − pesos sacados + pesos repuestos</li>'
     + '<li>Dólares acumulados = los del mes anterior + dólares comprados + otros dólares − dólares vendidos</li>'
-    + '<li>A reponer = lo que saqué (pesos y venta de dólares) − lo que repuse, arrastrado mes a mes y año a año</li>'
+    + '<li>A reponer = lo que saqué (pesos y venta de dólares) − lo que repuse, sumado mes a mes y de un año al otro</li>'
     + '<li>Cotización pagada = pesos usados ÷ dólares obtenidos</li>'
     + '<li>Patrimonio = ahorro en pesos ÷ cotización + dólares + cripto</li></ul>'
     + '<p>Los ceros se muestran como "—". Los negativos van entre paréntesis y en rojo.</p>');
@@ -3960,8 +3960,8 @@ function manual(){
     + '<p><b>Cobranza de la semana</b> junta por cliente lo vencido y lo que vence en los próximos 7 días. Con <b>Recordar</b> armás el mensaje con sus facturas y lo mandás por WhatsApp o mail desde el menú de compartir del teléfono; no pasa por ningún servidor.</p>'
     + '<p>Los <b>gastos del trabajo</b> (mercadería, comisiones, impuestos, herramientas) se restan del disponible. Si pagaste en dólares, ponés cuántos y a qué cotización, y la app lo pasa a pesos. Un gasto con fecha más adelante queda <b>programado</b> y se descuenta cuando llega el día.</p>'
     + '<p>En Profesional también ves el <b>tope del monotributo</b> (lo cargás vos, porque cambia con cada recategorización) y cuánto tarda de verdad cada <b>cliente</b> en pagarte. Si algo está vencido, la pestaña Trabajo muestra un puntito rojo.</p>'
-    + '<p><b>Pasar a lo personal</b> manda plata de lo que te queda disponible a Ingresos del mes, al renglón <b>Del trabajo</b>, y desde ahí cuenta como cualquier ingreso: suma al disponible final y al ahorro. Si borrás un pase, se descuenta de ese renglón. En Mes, ese renglón queda bloqueado mientras tenga pases: se cambia desde Trabajo, así los dos lados siempre cierran.</p>'
-    + '<p>Con <b>Exportar para el contador</b> te llevás un CSV con ventas, facturas, cobros, retenciones, gastos y pases, listo para tu contador.</p>');
+    + '<p><b>Pasar a lo personal</b> manda plata de lo que te queda disponible a Ingresos del mes, al renglón <b>Del trabajo</b>, y desde ahí cuenta como cualquier ingreso: suma al disponible final y al ahorro. Si borrás algo que pasaste, se descuenta de ese renglón. En Mes, ese renglón no se edita mientras tenga plata pasada desde Trabajo: se cambia desde Trabajo, así las dos pestañas siempre cierran.</p>'
+    + '<p>Con <b>Exportar para el contador</b> te llevás un CSV con ventas, facturas, cobros, retenciones, gastos y lo que pasaste a lo personal, listo para tu contador.</p>');
   h += '</div>';
   return h;
 }
@@ -5938,7 +5938,7 @@ function mensajeCobro(k){
   var l = [], i, tot = 0, nom = '';
   for(i=0;i<T.facturas.length;i++){ var f = T.facturas[i]; if(f.contado || !saldoFac(f) || clave(f.cliente || 'Sin cliente') !== k) continue; l.push(f); nom = nom || f.cliente; }
   l.sort(porVencimiento);
-  var hoy = hoyISO(), r = ['Hola! Te escribo por ' + (l.length === 1 ? 'la factura pendiente' : 'las facturas pendientes') + ':'];
+  var hoy = hoyISO(), r = ['¡Hola! Te escribo por ' + (l.length === 1 ? 'la factura pendiente' : 'las facturas pendientes') + ':'];
   for(i=0;i<l.length;i++){
     var s = saldoFac(l[i]), v = venceFac(l[i]); tot += s;
     r.push('• ' + (l[i].numero ? 'Factura ' + l[i].numero : 'Factura del ' + fDia(l[i].fecha)) + (l[i].concepto ? ' (' + l[i].concepto + ')' : '')
@@ -7001,7 +7001,7 @@ function quitarPase(id, avisar){
   tjAntes = null; paseQuitado = p;
   guardarTrab(true); renderTrabajo();
   var msg = ok ? 'Saqué ' + fARS(p.monto) + ' de Ingresos de ' + MESES[p.mes]
-               : 'Pase borrado. No encontré el renglón “' + RENGLON_TRABAJO + '” en ' + MESES[p.mes] + ': revisalo en Mes.';
+               : 'Lo borré de Trabajo, pero no encontré el renglón “' + RENGLON_TRABAJO + '” en ' + MESES[p.mes] + ': revisalo en Mes.';
   if(avisar) toast(msg, ok ? 'Deshacer' : '', 'tjReponerPase');
   else toast(ok ? 'Deshecho' : msg);
 }
@@ -7075,7 +7075,7 @@ function accionTj(a, b){
   if(a === 'tjDelTrabajo'){
     var tot = pasesDelMes(D.anio, mes);
     preguntar('Este renglón lo maneja Trabajo',
-      'En ' + MESES[mes] + ' pasaste ' + fARS(tot) + ' desde la pestaña Trabajo. Para cambiarlo o sacarlo, borrá esos pases desde ahí: así la plata vuelve al disponible del trabajo y los dos lados siguen cerrando.',
+      'En ' + MESES[mes] + ' pasaste ' + fARS(tot) + ' desde la pestaña Trabajo. Para cambiarlo, borralo desde ahí: así la plata vuelve al disponible del trabajo y las dos pestañas siguen cerrando.',
       'Ir a Trabajo', function(){ if(!T.activo){ T.activo = true; guardarTrab(true); aplicarModo(); } irATab('trabajo'); });
     return;
   }
@@ -7085,7 +7085,7 @@ function accionTj(a, b){
   if(a === 'tjBorrarPase'){
     var pp = null; for(var q=0;q<T.pases.length;q++) if(T.pases[q].id === id) pp = T.pases[q];
     if(!pp) return;
-    confirmar('Borrar el pase', 'Se descuentan ' + fARS(pp.monto) + ' del renglón “' + RENGLON_TRABAJO + '” de ' + MESES[pp.mes] + ' ' + pp.anio + '.', 'Borrar', function(){ quitarPase(id, true); });
+    confirmar('¿Borrar lo que pasaste?', 'Se descuentan ' + fARS(pp.monto) + ' del renglón “' + RENGLON_TRABAJO + '” de ' + MESES[pp.mes] + ' ' + pp.anio + ' y vuelven al disponible del trabajo.', 'Borrar', function(){ quitarPase(id, true); });
     return;
   }
   if(a === 'tjReponerPase'){ reponerPase(); return; }
