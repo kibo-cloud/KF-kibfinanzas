@@ -192,3 +192,19 @@ Left for P3b: El año (finding 4), Patrimonio/USD tab (5, 15), Trabajo (6), the 
 1280 month-bar clipping and other P2 polish (expense sheet "$", "Sumar"), the FAB still covers the right edge of the
 first screen at rest on phones (consider a Gasto action in the tab bar), and terminology alignment of the balance block
 lines ("Disponible actual" / "Proyectado al cierre") with the hero ("Tenés hoy" / "Al cierre").
+
+## Improvement loop (owner: "ejecutá todo lo que creas necesario para mejorarla en formato loop", 2026-10-07)
+
+Ordered backlog (each item: test-first, suites green, docs, small commits; native review consent batched per slice):
+- [ ] L1 P3b: El año, Patrimonio (tab renamed from "USD"), Trabajo, update-notice version, 1280 month bar, expense sheet polish,
+      Gasto action without covering amounts, one vocabulary across hero and balance block.
+- [ ] L2 P4: microcopy sweep of every screen, sheet, notice, error, confirmation and backup/restore text.
+- [ ] L3 R7 / D16-15: quick expense on a pending item asks (D8: mark the existing one as paid vs record a separate realized
+      expense keeping the plan pending). Owner explicitly asked for it now; D8 is the approved rule.
+- [ ] L4 Backup reminder ("hace N días que no hacés una copia" + one-tap download).
+- [ ] L5 "Qué vence esta semana" (pending with dates, installments, Trabajo invoices) on opening.
+- [ ] L6 R6 analysis: month vs previous and vs average, category trends, "más que lo normal" (from the validated model).
+- [ ] L7 Desktop two-column layout + accessibility (contrast, labels, focus, screen reader).
+- [ ] L8 Atomic writes (year + Trabajo) and strict CSP if feasible without breaking the PC file; else documented debt.
+- [ ] L9 Version 1.33.0 + SW, PWA update path, offline, PC/file:// verification.
+- [ ] L10 Native review slices, final verification, GitHub (destination must be given by the owner), ALPHA verdict.
