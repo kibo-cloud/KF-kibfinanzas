@@ -1472,6 +1472,49 @@ try{
     await ev(`localStorage.setItem('kibo.anio','2026'); true`);
   }
 
+  // L7 desktop + accessibility (hoy = 2026-10-04). The phone layout (390 px) must not move: the key boxes of the four main views are
+  // compared with tests/fixtures/l7-movil-390.json, recorded from the build before L7 (L7_GRABAR=1 rewrites it, only on purpose).
+  {
+    const ms = []; for(let i=0;i<12;i++) ms.push(mes([], [], [], []));
+    ms[6] = mes([it('Sueldo', 1000000, true)], [it('Alquiler', 400000, true)], [it('Super', 200000, true)], []);
+    ms[7] = mes([it('Sueldo', 1000000, true)], [it('Alquiler', 400000, true)], [it('Super', 220000, true)], []);
+    ms[8] = mes([it('Sueldo', 1000000, true)], [it('Alquiler', 400000, true), it('Luz', 20000, false)], [it('Super', 180000, true)], [it('Préstamo', 100000, true)]);
+    ms[9] = mes([it('Sueldo', 1050000, true), it('Changas', 60000, false)], [it('Alquiler', 400000, true), it('Luz', 25000, false), it('Internet', 22000, false)],
+      [it('Super', 120000, true), it('Nafta', 45000, false)], [it('Préstamo', 100000, false)]);
+    ms[10] = mes([it('Sueldo', 1050000, false)], [it('Alquiler', 400000, false)], [], [it('Préstamo', 100000, false)]);
+    const y7 = {anio: 2026, pagoExplicito: true, cotizacionUSD: 1450, meses: ms, planDeudas: {'Préstamo': {total: 1200000, recargo: 0, cuotas: 12, pagadasAntes: 0}},
+      arrastre: {desde: 6, inicial: {apertura: 100000, declarado: 100000, declaradoEl: '2026-07-01', origen: 'declarado'}}};
+    const tj7 = {version: 1, activo: true, modo: 'pro', tope: 0,
+      facturas: [{id: 'f1', tipo: 'factura', cliente: 'Estudio Pérez', numero: 'A-0001-00000123', concepto: 'Diseño', monto: 320000, cantidad: 1, precio: 320000, base: 320000, ajuste: 0, fecha: '2026-09-25', contado: false, plazo: 30, forma: 'transferencia', creada: '2026-09-25T10:00:00.000Z'}],
+      cobros: [], pases: [], gastos: [], productos: []};
+    const seed7 = async () => { await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); localStorage.setItem('kibo.ultimaCopia', new Date().toISOString()); localStorage.setItem('kibo.esquema', '1.30'); localStorage.setItem('kibo.anio','2026');
+      localStorage.setItem('kibo.datos.2026', ${JSON.stringify(JSON.stringify(y7))}); localStorage.setItem('kibo.trabajo', ${JSON.stringify(JSON.stringify(tj7))}); true`); await nav(URL_APP); await sleep(1300); };
+    const tam7 = async (w, h) => { await send('Emulation.setDeviceMetricsOverride', { width: w, height: h || (w < 800 ? 844 : 900), deviceScaleFactor: w < 800 ? 2 : 1, mobile: w < 800 }); await sleep(400); };
+    const tab7 = async (t) => { await ev(`document.querySelector('[data-act=tab][data-t=${t}]').click(); window.scrollTo(0, 0); true`); await sleep(1400); };
+    // the boxes that make the phone layout: header, month bar, hero, "Qué vence", balance block, every section, the tab bar and each tab
+    const cajas = (t) => ev(`(function(){ var o = {}, n = 0;
+      function r(k, e){ if(!e) return; var b = e.getBoundingClientRect(); o[k] = [Math.round(b.left), Math.round(b.top + scrollY), Math.round(b.width), Math.round(b.height)]; }
+      r('header', document.querySelector('header')); r('nav', document.getElementById('nav'));
+      document.querySelectorAll('#nav button').forEach(function(b){ r('nav:' + (b.getAttribute('data-t') || b.id), b); });
+      if('${t}' === 'mes'){ ['selMes', 'carrMes', 'vence', 'saldoMes'].forEach(function(id){ r(id, document.getElementById(id)); });
+        document.querySelectorAll('#v-mes .sec').forEach(function(s){ r('sec:' + (s.getAttribute('data-sec') || 'x' + (n++)), s); }); }
+      else Array.prototype.forEach.call(document.getElementById('v-${t}').children, function(c, i){ r(i + ':' + c.className + ':' + (c.getAttribute('data-sec') || ''), c); });
+      return o; })()`);
+    await tam7(390); await seed7();
+    const movil = {};
+    for(const t of ['mes', 'anio', 'usd', 'trabajo']){ await tab7(t); movil[t] = await cajas(t); }
+    const FIX = path.join(ROOT, 'tests', 'fixtures', 'l7-movil-390.json');
+    if(process.env.L7_GRABAR === '1') fs.writeFileSync(FIX, '{\n' + Object.keys(movil).map(t => ' ' + JSON.stringify(t) + ': {\n'
+      + Object.keys(movil[t]).map(k => '  ' + JSON.stringify(k) + ': ' + JSON.stringify(movil[t][k])).join(',\n') + '\n }').join(',\n') + '\n}\n');
+    const antes = JSON.parse(fs.readFileSync(FIX, 'utf8'));
+    for(const t of Object.keys(antes)){
+      const dif = Object.keys(antes[t]).filter(k => !movil[t][k] || antes[t][k].some((v, i) => Math.abs(v - movil[t][k][i]) > 1));
+      check(`L7 390 px ${t}: every key box where it was before L7 (${Object.keys(antes[t]).length} boxes)`, dif.map(k => [k, antes[t][k], movil[t][k] || null]), []);
+    }
+    await tab7('mes');
+    await send('Emulation.clearDeviceMetricsOverride');
+  }
+
   check('no uncaught page errors', pageErrs, []);
 }catch(e){ fails++; results.push('ERROR ' + e.message); }
 finally{
