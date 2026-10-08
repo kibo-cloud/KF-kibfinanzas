@@ -368,6 +368,30 @@ line touched is `normalizar` keeping two optional movement fields, like R2's `pp
   gastoAparte classified `otro`. E2E +17: the question text and buttons, nothing changes while asking, Cancelar, "Sí" amount
   question, Dejar (one row, toast, Deshacer), Cambiar a + restart + undo from the list, same amount ticks directly, "No" separate row
   and toast, its undo, future month unchanged. Results: `npm test` 727 (726 pass, 1 todo L-03d); `npm run test:e2e` 413/413.
+- Review fixes (see "L3/L4 review fixes" below): undo of a "Sí" now reverses only that payment (a5dd6c1); "Copiar los montos de <mes>"
+  skips "<row> (otro gasto)" rows (e493538).
+
+### L3/L4 review fixes
+
+Route: inline in the single writer (index.html + tests). Independent review of ae166a3..a113e68. RED first: tests/l34.revision.test.js
+5/7 failing before the code (the two "undo the second one first" cases already passed), 7/7 after.
+
+1. HIGH, a5dd6c1 `fix: undoing a "Sí" reverses only that payment`. `quitarMov` restored the row to the stored amount (`ma`) and lost
+   whatever happened to the row after the "Sí" (repro: Super 50.000 pending → quick 50.000 "Sí" → quick 10.000 → undo the first →
+   50.000 pending, the 10.000 lost while its movement stayed listed; undo the second → 40.000). Now the undo reverses the delta of that
+   payment: `monto = max(0, monto − mv.monto + mv.ma)` and the previous tick. "Dejar" (mv.monto = ma) leaves the amount alone; "Cambiar a"
+   puts the planned amount back on top of later changes. Tests: both payment paths × both undo orders end at "Super 50.000 pending" with
+   no movement left; a manual edit after "Sí" survives its undo (45.000 stays 45.000; 20.000 → edited 22.000 → undo → 52.000).
+2. MEDIUM, e493538 `fix: copying the previous month skips one-off expenses`. `copiarAnterior` copied "<row> (otro gasto)" rows (money
+   already spent, D8 separate realized expense) into the next month as pending plan. `esGastoAparte(nombre)` matches exactly the names
+   L3 creates (`<something> (otro gasto)` and `(otro gasto N)`, N ≥ 2); they are skipped (and do not count as something to copy).
+3. LOW, b1f52cb `fix: the backup reminder counts data in any year`. `revisarCopia` only looked at the open year, so an empty open year
+   cleared `kibo.datosDesde` and hid the reminder although another stored year had data. `hayDatosEnElTelefono()` = open year or Trabajo
+   or any other stored year (`aniosGuardados` + `leerAnio` + `hayDatos`).
+4. Accepted LOW (documented, no code): restoring a backup made by this version into an OLDER app drops the movement fields `tipo`/`ma`
+   (its `normalizar` does not know them), so undo there falls back to subtracting the amount. Old-version only.
+
+Results: `npm test` 734 (733 pass, 1 todo L-03d); `npm run test:e2e` 413/413; motor goldens byte-identical.
 
 ## Improvement loop (owner: "ejecutá todo lo que creas necesario para mejorarla en formato loop", 2026-10-07)
 
