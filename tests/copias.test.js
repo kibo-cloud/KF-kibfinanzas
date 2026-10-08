@@ -8,7 +8,7 @@ function storage(rechaza){
   var d = {};
   return {d: d, setItem: function(k, v){ if(rechaza(k)) throw new Error('QuotaExceededError'); d[k] = String(v); }, getItem: function(k){ return d.hasOwnProperty(k) ? d[k] : null; }};
 }
-var VARS_CLAVES = ['PREF', 'LSANIO', 'LSCOPIA', 'LSOCULTO', 'LSBIENV', 'LSHIST', 'LSTRAB', 'LSVISTA', 'LSR4', 'LSAVCIERRE', 'CLAVES_PROPIAS'];
+var VARS_CLAVES = ['PREF', 'LSANIO', 'LSCOPIA', 'LSOCULTO', 'LSBIENV', 'LSHIST', 'LSTRAB', 'LSVISTA', 'LSR4', 'LSAVCIERRE', 'LSDATOSDESDE', 'LSCOPIAPOS', 'CLAVES_PROPIAS'];
 function copia(anios){ var o = {}; anios.forEach(function(a){ o[a] = {anio: a, meses: []}; }); return o; }
 
 test('escribirAnios stores every year when storage works', function(){

@@ -22,7 +22,9 @@ var DEL_TELEFONO = {   // device state: by design NOT in the backup (restoring o
   'kibo.anio': 'which year is open', 'kibo.ultimaCopia': 'date of the last backup made on this phone', 'kibo.oculto': 'amounts hidden with dots',
   'kibo.bienvenida': 'welcome already seen', 'kibo.historial': 'list of backup files in this phone\'s folder', 'kibo.vistaProd': 'compact / full product list',
   'kibo.modeloSaldos': 'migration marker: re-derived on restore when a restored year has arrastre (D16-09)',
-  'kibo.avisoCierre': 'R5 (D10): month whose start-of-month closing notice was dismissed with "Ahora no" (a per-device convenience)'
+  'kibo.avisoCierre': 'R5 (D10): month whose start-of-month closing notice was dismissed with "Ahora no" (a per-device convenience)',
+  'kibo.datosDesde': 'L4: first day this phone had data (backup reminder when there was never a backup)',
+  'kibo.copiaPospuesta': 'L4: backup reminder snoozed with "Más tarde" until this date'
 };
 
 function trabajo(){

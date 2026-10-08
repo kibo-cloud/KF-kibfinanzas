@@ -361,7 +361,34 @@ try{
   check('unticked amount: empty notice is gone', await ev(`!!document.querySelector('#avisos [data-av=vacia]')`), false);
   await nav(URL_APP);
   check('reload: no empty notice', await ev(`!!document.querySelector('#avisos [data-av=vacia]')`), false);
-  check('reload: backup reminder shown (no backup yet)', await ev(`document.getElementById('avisos').textContent.indexOf('Todavía no hiciste ninguna copia') >= 0`), true);
+  // L4: never backed up -> no reminder on the first day with data; the first day is recorded on this phone
+  check('L4 reload: no backup reminder on the first day with data (never backed up)', await ev(`!!document.querySelector('#avisos [data-av=copia]')`), false);
+  check('L4 the first day with data is recorded (device key)', await ev(`localStorage.getItem('kibo.datosDesde') === new Date().toISOString()`), true);
+  const avisoCopia = () => ev(`(function(){ var a = document.querySelectorAll('#avisos .aviso'), c = document.querySelector('#avisos [data-av=copia]');
+    return c ? [a.length, c.querySelector('p').textContent, Array.prototype.map.call(c.querySelectorAll('button'), function(b){ return b.textContent; })] : null; })()`);
+  await ev(`localStorage.setItem('kibo.datosDesde', new Date(Date.now() - 8 * 864e5).toISOString()); true`); await nav(URL_APP);
+  check('L4 never backed up and 8 days with data: one compact reminder', await avisoCopia(),
+    [1, 'Hace 8 días que cargás datos y todavía no hiciste ninguna copia de seguridad. Tus datos viven solo en este dispositivo.', ['Hacer copia ahora', 'Más tarde']]);
+  await ev(`localStorage.setItem('kibo.ultimaCopia', new Date(Date.now() - 40 * 864e5).toISOString()); true`); await nav(URL_APP);
+  check('L4 last backup 40 days ago: one compact reminder', await avisoCopia(),
+    [1, 'Hace 40 días que no hacés una copia de seguridad. Tus datos viven solo en este dispositivo.', ['Hacer copia ahora', 'Más tarde']]);
+  await ev(`document.querySelector('#avisos [data-act=posponerCopia]').click(); true`); await sleep(300);
+  check('L4 "Más tarde" hides it and snoozes it 7 days (device key)', [await avisoCopia(), await ev(`localStorage.getItem('kibo.copiaPospuesta') === new Date(Date.now() + 7 * 864e5).toISOString()`)], [null, true]);
+  await nav(URL_APP);
+  check('L4 snoozed: not shown on the next start', await avisoCopia(), null);
+  await ev(`localStorage.removeItem('kibo.copiaPospuesta'); true`); await nav(URL_APP);
+  check('L4 snooze gone: shown again', (await avisoCopia() || [])[0], 1);
+  const copiaL4 = await ev(`new Promise(function(resolve){ var o = URL.createObjectURL, capt = null, t0 = performance.now();
+    URL.createObjectURL = function(b){ capt = b; return o.call(URL, b); };
+    document.querySelector('#avisos [data-av=copia] [data-act=copia]').click();
+    (function esperar(){ if(!capt && performance.now() - t0 < 5000) return setTimeout(esperar, 100); URL.createObjectURL = o;
+      if(!capt) return resolve(null); capt.text().then(function(t){ var j = null; try{ j = JSON.parse(t); }catch(e){} resolve(j && [j.app, Object.keys(j.anios)]); }); })(); })`);
+  check('L4 "Hacer copia ahora" runs the existing backup (the backup file)', copiaL4, ['TuGasto', ['2026']]);
+  check('L4 after the backup: reminder hidden, last backup date is today', [await avisoCopia(), await ev(`localStorage.getItem('kibo.ultimaCopia') === new Date().toISOString()`)], [null, true]);
+  await ev(`(function(){ var b = document.querySelector('#hoja [data-act=cerrarHoja]') || document.getElementById('velo'); b.click(); return true; })()`); await sleep(400);
+  await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); localStorage.setItem('kibo.ultimaCopia', new Date(Date.now() - 90 * 864e5).toISOString()); localStorage.setItem('kibo.datosDesde', new Date(Date.now() - 90 * 864e5).toISOString()); true`);
+  await nav(URL_APP);
+  check('L4 empty phone: no backup reminder, whatever the dates', [await avisoCopia(), await ev(`!!document.querySelector('#avisos [data-av=vacia]')`)], [null, true]);
   // (4) toast XSS through the repeat-invoice action, driven by the UI
   const NUM = '<img src=x onerror="window.__xss=1">12';
   const trab = { version: 1, activo: true, modo: 'pro', facturas: [{ id: 'f1', tipo: 'factura', cliente: 'Cliente X', numero: NUM, concepto: '', monto: 1000, cantidad: 1, precio: 1000, base: 1000, ajuste: 0,

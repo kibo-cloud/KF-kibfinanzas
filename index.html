@@ -2603,6 +2603,12 @@ var oculto = false;
 try{ oculto = localStorage.getItem(LSOCULTO) === '1'; }catch(e){}
 var PUNTOS = '\u2022\u2022\u2022\u2022';
 var DIAS_AVISO = 15;
+// L4: recordatorio de copia. Las dos claves son del teléfono (no viajan en la copia)
+var LSDATOSDESDE = 'kibo.datosDesde';     // primer día en que este teléfono tuvo datos (para "nunca hiciste una copia")
+var LSCOPIAPOS   = 'kibo.copiaPospuesta'; // hasta cuándo se pospuso el recordatorio con "Más tarde"
+var DIAS_COPIA = 30;       // última copia más vieja que esto: se recuerda
+var DIAS_SIN_COPIA = 7;    // nunca hubo copia y hay datos desde hace al menos esto: se recuerda
+var DIAS_POSPONER = 7;     // "Más tarde"
 
 var MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 var CORTOS = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
@@ -4541,16 +4547,37 @@ function quitarAvisoVacia(){
   var e = document.getElementById('avisos');
   if(e && e.querySelector('[data-av="vacia"]') && hayDatos(D, tieneTrab())) e.innerHTML = '';
 }
+// L4: {dias, nunca} si corresponde recordar la copia, si no null. Fechas ISO ('' = no hay); ahora en ms
+function recordatorioCopia(ahora, ultima, desde, pospuesta, conDatos){
+  if(!conDatos) return null;   // un teléfono vacío no tiene nada que copiar
+  var dia = 86400000, t = pospuesta ? new Date(pospuesta).getTime() : NaN;
+  if(!isNaN(t) && ahora < t) return null;   // "Más tarde"
+  t = ultima ? new Date(ultima).getTime() : NaN;
+  if(!isNaN(t)) return ahora - t > DIAS_COPIA * dia ? {dias: Math.floor((ahora - t) / dia), nunca: false} : null;
+  t = desde ? new Date(desde).getTime() : NaN;   // nunca hubo copia (o la fecha no se lee): cuenta desde el primer día con datos
+  return !isNaN(t) && ahora - t >= DIAS_SIN_COPIA * dia ? {dias: Math.floor((ahora - t) / dia), nunca: true} : null;
+}
 function revisarCopia(){
-  if(!hayDatos(D, tieneTrab())) return;
-  var d = diasSinCopia();
-  if(d === -1 || d >= DIAS_AVISO){
-    document.getElementById('avisos').innerHTML =
-      '<div class="aviso"><p>' + (d === -1 ? 'Todavía no hiciste ninguna copia de seguridad.' : 'Hace <b>' + d + ' días</b> que no hacés una copia de seguridad.')
-      + ' Los datos viven solo en este teléfono.</p>'
-      + '<div class="fila"><button class="mini on" data-act="copia">Hacer copia ahora</button>'
-      + '<button class="mini" data-act="cerrarAviso">Después</button></div></div>';
-  }
+  var conDatos = hayDatos(D, tieneTrab()), ahora = Date.now(), desde = '', pos = '';
+  try{
+    if(!conDatos) localStorage.removeItem(LSDATOSDESDE);
+    else if(!localStorage.getItem(LSDATOSDESDE)) localStorage.setItem(LSDATOSDESDE, new Date(ahora).toISOString());
+    desde = localStorage.getItem(LSDATOSDESDE) || ''; pos = localStorage.getItem(LSCOPIAPOS) || '';
+  }catch(e){}
+  var r = recordatorioCopia(ahora, ultimaCopia(), desde, pos, conDatos);
+  if(!r) return;
+  var e = document.getElementById('avisos');
+  e.innerHTML = sinTaparCuarentena(e) +
+    '<div class="aviso aviso-corto" data-av="copia"><p>Hace <b>' + r.dias + ' días</b> que '
+    + (r.nunca ? 'cargás datos y todavía no hiciste ninguna copia de seguridad.' : 'no hacés una copia de seguridad.')
+    + ' Tus datos viven solo en este dispositivo.</p>'
+    + '<div class="fila"><button class="mini on" data-act="copia">Hacer copia ahora</button>'
+    + '<button class="mini" data-act="posponerCopia">Más tarde</button></div></div>';
+}
+function posponerCopia(){   // "Más tarde": vuelve en 7 días; el aviso de datos ilegibles, si está, se queda
+  try{ localStorage.setItem(LSCOPIAPOS, new Date(Date.now() + DIAS_POSPONER * 86400000).toISOString()); }catch(e){}
+  var e = document.getElementById('avisos');
+  e.innerHTML = sinTaparCuarentena(e);
 }
 function imprimir(){
   var ant = tab, estabaOculto = oculto;
@@ -5150,6 +5177,7 @@ document.addEventListener('click', function(ev){
   if(a === 'imprimir'){ imprimir(); return; }
   if(a === 'anio'){ cambiarAnio(+b.getAttribute('data-v')); return; }
   if(a === 'cerrarAviso'){ document.getElementById('avisos').innerHTML = ''; return; }
+  if(a === 'posponerCopia'){ posponerCopia(); return; }
   if(a === 'primerUsoOk' || a === 'primerUsoNo'){ primerUso(a === 'primerUsoNo'); return; }
   if(a === 'editarApertura'){ editarApertura(+b.getAttribute('data-m')); return; }
   if(a === 'aperturaOk'){ guardarAperturaHoja(b.getAttribute('data-v')); return; }
@@ -7117,7 +7145,7 @@ var LSESQ = 'kibo.esquema', LSPRE130 = 'kibo.respaldo.pre130', ESQUEMA = '1.30';
 var LSR4 = 'kibo.modeloSaldos', LSPRER4 = 'kibo.respaldo.pre-r4';   // marca "este teléfono ya empezó el modelo de saldos" y la copia de lo que había justo antes (como pre130)
 var LSCUAR = 'kibo.cuarentena.';   // N4 I-3: texto tal cual de un blob que no se pudo leer (kibo.cuarentena.AAAA, kibo.cuarentena.trabajo); es del teléfono, nunca se borra
 var LSAVCIERRE = 'kibo.avisoCierre';   // R5 (D10): mes cuyo aviso "¿Cerraste … con …?" se descartó con "Ahora no"; es del teléfono, no viaja en la copia
-var CLAVES_PROPIAS = [LSANIO, LSCOPIA, LSOCULTO, LSBIENV, LSHIST, LSTRAB, LSVISTA, LSR4, LSAVCIERRE];
+var CLAVES_PROPIAS = [LSANIO, LSCOPIA, LSOCULTO, LSBIENV, LSHIST, LSTRAB, LSVISTA, LSR4, LSAVCIERRE, LSDATOSDESDE, LSCOPIAPOS];
 function claveMia(k){
   return typeof k === 'string' && (CLAVES_PROPIAS.indexOf(k) >= 0 || (k.indexOf(PREF) === 0 && /^\d{4}$/.test(k.slice(PREF.length))));
 }
