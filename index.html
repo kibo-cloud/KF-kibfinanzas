@@ -3818,7 +3818,7 @@ function barritas(arr, ref){
     g += '<rect x="' + (i * an + an * 0.15).toFixed(1) + '" y="' + (H - alto).toFixed(1) + '" width="' + (an * 0.7).toFixed(1) + '" height="' + alto.toFixed(1)
        + '" rx="1" fill="' + (i === ref ? 'var(--acc)' : 'var(--txt2)') + '" opacity="' + (i === ref ? 1 : (arr[i] > 0 ? 0.45 : 0.2)) + '"/>';
   }
-  return '<svg class="barritas" viewBox="0 0 ' + W + ' ' + H + '" aria-hidden="true">' + g + '</svg>';
+  return '<svg class="barritas" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true">' + g + '</svg>';
 }
 function htmlComparacion(a){
   var nom = MESES[a.ref], filas = [['cobrado', 'Cobrado'], ['pagado', 'Pagado'], ['ahorro', 'Ahorro']], h = '<div class="an-comp">', i, c, fr = [];
@@ -3848,7 +3848,7 @@ function htmlTendencias(a){
   for(i=0;i<a.categorias.length;i++){
     c = a.categorias[i];
     h += '<div class="an-cat" data-cat="' + i + '"><small><span>' + esc(c.nombre) + (c.masQueLoNormal ? ' <span class="chip pend">Más que lo normal</span>' : '') + '</span><span>'
-       + fARS(c.actual) + ' en ' + nom + '</span></small>' + barritas(c.porMes, a.ref)
+       + (Math.round(c.actual) ? fARS(c.actual) + ' en ' + nom : 'Nada en ' + nom) + '</span></small>' + barritas(c.porMes, a.ref)
        + '<small class="an-prom"><span>' + (c.promedio === null ? 'Sin meses anteriores' : 'Promedio ' + fARS(c.promedio)) + '</span><span>' + flecha(c.vsPromedio) + '</span></small></div>';
   }
   h += '<div class="nota" style="padding:8px 0 0">Las 5 categorías en las que más gastaste en el año, mes por mes hasta ' + nom
