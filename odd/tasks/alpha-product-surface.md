@@ -465,6 +465,60 @@ Results (after the L3/L4 fixes, L5, L6): `npm test` 747 (746 pass, 1 todo L-03d)
 Screenshots (session scratchpad `ux/shots/`, script `ux/shoot-l56.mjs` based on shoot-l1, hoy 2026-10-15, seeded year plus two dated
 income rows and one more invoice): `l56-<light|dark>-390-` and `l56-light-1280-` l5-mes-oct, l6-anio-analisis, l6-anio,
 l6-anio-legacy.
+
+### L7 — Desktop + accessibility (done)
+
+Route: inline in the single writer (index.html + tests; resumed after an interrupted writer, its diff reviewed and kept). No money
+change; motor goldens byte-identical. Commits: c5daa38 (390 px boxes recorded BEFORE the layout, tests/fixtures/l7-movil-390.json),
+aecfb19, 2120ca1.
+
+- Desktop (`@media screen and (min-width:1024px)`, screen only so printing keeps the single column): content max 1200 px centered
+  (24 px gutters), the tab bar aligned with it. Mes: two columns (`.mes-cols` 5fr / 7fr): left = hero, "Qué vence", balance block;
+  right = the sections and rows. The wrappers are `display:contents` below 1024 px, so the phone DOM boxes do not move. The left
+  column is `position:sticky` only when it fits the window (`fijarResumen` on render/resize); otherwise it scrolls with the page.
+  El año, Patrimonio, Trabajo: summary/hero full width, sections in two CSS columns (`break-inside:avoid`). Ajustes max 720 px.
+  Sheets were already centered with max-width 520 px; on desktop max-height 80vh.
+- Contrast (WCAG AA 4.5:1, computed from the CSS custom properties in light, dark and both forced themes): light `--txt2` #8a8a8e →
+  #6c6c70, `--acc` #1f9d55 → #177a45, `--neg` #d0453a → #c23a30, `--c-prog` #6e6e73 → #636366; new `--on-acc` (white in light,
+  #06210f in dark) for every text on a green fill (white on the dark theme's light green was 2.3:1). Forced themes repeat the
+  system themes value by value (tested).
+- Keyboard and screen reader: `html lang="es-AR"`; the tab bar is a `role=tablist` of five `role=tab` buttons (`aria-selected`,
+  `aria-controls` → `role=tabpanel` views) with arrows/Home/End; Gasto is a plain action outside the tablist (DOM order changed,
+  visual order kept with CSS `order`, the L1 1280 check now sorts by position). The sheet is `role=dialog aria-modal=true`, named
+  by its first h3 (`aria-labelledby`, else "Ventana"), focus moves inside on open, Tab/Shift+Tab are trapped, Esc closes it (as
+  tapping outside) and the focus returns to the opener. Toast and pill: `role=status aria-live=polite`. `:focus-visible` ring 2 px.
+  Hidden amounts: each "••••" is wrapped as `role=img aria-label="oculto"`. `prefers-reduced-motion`: no animations/transitions.
+- Tests: tests/l7.accesibilidad.test.js (7: contrast light/dark incl. state chips and text on green, forced themes = system themes,
+  the check really measures, markup roles, focus ring / reduced motion / desktop media). E2E +30: 390 px boxes of mes/año/
+  patrimonio/trabajo unchanged vs the recorded fixture; at 1280 and 1440 two columns side by side, centered ≤ 1200, no overlap, no
+  horizontal overflow (mes, anio, usd, trabajo); left column static when it does not fit, sticky at 1600 px high; tablist and
+  aria-selected; ArrowRight + Enter; Enter on Gasto opens the dialog with focus inside; 25 Tab/Shift+Tab stay inside; Esc closes and
+  returns focus to Gasto; live regions; focus ring; hidden amounts read "oculto"; reduced motion stops the animations.
+- Screenshots (`ux/shots/`, script `ux/shoot-l7.mjs` = shoot-l56 with the four views, hoy 2026-10-15): `l7-<light|dark>-<1280|1440>-`
+  mes, mes-todo, anio, patrimonio, trabajo and `l7-light-390-` (same set). Looked at: month in two columns, El año / Trabajo sections
+  in two columns, no overflow at any width.
+
+### L5/L6 review fixes
+
+Route: inline in the single writer. RED first: tests/l56.revision.test.js 0/8 before the code, 8/8 after (probe `l56rev/p1.js`).
+
+1. MEDIUM, 3a6754e `fix: "Qué vence" lists the uncovered part of "Del trabajo"`. `vencimientos` dropped every "Del trabajo" row, but
+   `flujosMes` counts its part above the pases as pending (repro: September "Del trabajo" 500.000 unticked, no pases, hoy 2026-10-15
+   → hero "Sin cobrar" 500.000, card nothing). Now each row's pending amount is the row amount, or for "Del trabajo" the
+   `repartoTrabajo(...).exceso`; the overdue listing adds up to `cadena.resumen.vencidos + vencidosIngresos` (tested, also with a
+   300.000 pase → 200.000, and covered/ticked → nothing). The L5 test that excluded it was updated.
+2. MEDIUM, 8e9a648 `fix: "Qué vence" shows the amount of each collection`. Weekly / fortnightly / "días" incomes showed the monthly
+   total next to one date. Now each date shows `monto / cuantosPagos` (rounded, the same per-payment figure as `cobroTxt`), every
+   passed day of an unticked row is its own "Atrasado · era el día N" entry, plus the next date if inside 7 days. Tests: weekly
+   Fridays at hoy 2026-10-24 (4 overdue × 8.000 + the 30th), fortnightly 15/30 (15th overdue, 300.000 each).
+3. LOW, daa29e4 `fix: mark separate quick expenses with a flag`. "No, es otro gasto" creates its row with `aparte: true`
+   (`normalizar` keeps it); `esGastoAparte(row)` prefers the flag and falls back to the name for data saved before it. The
+   empty-copy toast mentions "Del trabajo" only when the previous month had one; otherwise "No hay nada para copiar del mes anterior".
+4. LOW, 94fa612 `fix: undo says when nothing could be reverted`. `quitarMov` said "Deshecho" and dropped the movement even when the
+   row had been renamed or deleted; now it keeps the movement and says "No encontré el renglón para deshacer".
+
+Results (after L7 and the L5/L6 fixes): `npm test` 762 (761 pass, 1 todo L-03d); `npm run test:e2e` 467/467; motor goldens
+byte-identical to 956c4aa.
 ## Improvement loop (owner: "ejecutá todo lo que creas necesario para mejorarla en formato loop", 2026-10-07)
 
 Ordered backlog (each item: test-first, suites green, docs, small commits; native review consent batched per slice):
@@ -476,7 +530,7 @@ Ordered backlog (each item: test-first, suites green, docs, small commits; nativ
 - [x] L4 Backup reminder ("hace N días que no hacés una copia" + one-tap download).
 - [x] L5 "Qué vence esta semana" (pending with dates, installments, Trabajo invoices) on opening.
 - [x] L6 R6 analysis: month vs previous and vs average, category trends, "más que lo normal" (from the validated model).
-- [ ] L7 Desktop two-column layout + accessibility (contrast, labels, focus, screen reader).
+- [x] L7 Desktop two-column layout + accessibility (contrast, labels, focus, screen reader).
 - [ ] L8 Atomic writes (year + Trabajo) and strict CSP if feasible without breaking the PC file; else documented debt.
 - [ ] L9 Version 1.33.0 + SW, PWA update path, offline, PC/file:// verification.
 - [ ] L10 Native review slices, final verification, GitHub (destination must be given by the owner), ALPHA verdict.
