@@ -70,13 +70,13 @@ test('origin texts (D17): previous month, declared, skipped, previous December',
 test('month view HTML: labels per month state, overdue apart (Q8), confirm / reconfirm (D2, D6); legacy month shows nothing', function(){
   var ls = con(C.seccion2(false, false)), a = app(ls); H.cargarEn(a, ls, 2026);
   var v = vm(a), oct = a.htmlSaldo(a.D, 9, v), sep = a.htmlSaldo(a.D, 8, v), nov = a.htmlSaldo(a.D, 10, v);
-  ['Disponible inicial', 'Corregido en Septiembre', 'Editar', 'Ingresos', 'Gastos', 'Ahorro', 'Disponible actual', 'Proyectado al cierre (estimado)',
+  ['Disponible inicial', 'Corregido en Septiembre', 'Editar', 'Ingresos', 'Gastos', 'Ahorro', 'Tenés hoy', 'Al cierre (estimado)',
     'Atrasado de meses anteriores', '$825.000', '$580.000', '$20.000'].forEach(function(t){ assert.ok(oct.indexOf(t) >= 0, 'Oct shows ' + t); });
-  ['Disponible al cierre', 'Lo cargaste vos', 'Según tus registros', 'Saldo real', 'Diferencia', '($25.000)'].forEach(function(t){ assert.ok(sep.indexOf(t) >= 0, 'Sep shows ' + t); });
+  ['Cerraste con', 'Lo cargaste vos', 'Según tus registros', 'Saldo real', 'Diferencia', '($25.000)'].forEach(function(t){ assert.ok(sep.indexOf(t) >= 0, 'Sep shows ' + t); });
   assert.equal(sep.indexOf('Cambió desde que lo confirmaste'), -1);
-  ['Proyectado al cierre (estimado)', 'programado', '$1.280.000'].forEach(function(t){ assert.ok(nov.indexOf(t) >= 0, 'Nov shows ' + t); });
+  ['Proyectado para Noviembre', 'programado', '$1.280.000'].forEach(function(t){ assert.ok(nov.indexOf(t) >= 0, 'Nov shows ' + t); });
   assert.equal(nov.indexOf('Editar'), -1, 'a future month opening is the projection: nothing to edit there');
-  assert.equal(oct.indexOf('Disponible al cierre'), -1);
+  assert.equal(oct.indexOf('Cerraste con'), -1);
   assert.equal(a.htmlSaldo(a.D, 7, v), '', 'legacy month: unchanged view');
   var sinConf = con(sinSep()), b = app(sinConf); H.cargarEn(b, sinConf, 2026);
   assert.ok(b.htmlSaldo(b.D, 8, vm(b)).indexOf('¿Es correcto?') >= 0, 'an unconfirmed past month asks');

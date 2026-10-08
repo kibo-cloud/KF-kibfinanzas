@@ -10,7 +10,8 @@ var base = require('./motor-corpus');
 var SRC = la.SRC_FOR_TESTS;
 var FUNCS = ['renderAnio', 'resumenAnio', 'mesesCargados', 'anillo', 'plegable', 'abiertaDef', 'hARS', 'fARS', 'hUSD', 'fUSD', 'grupos', 'esc',
   'lineas', 'barras', 'corto', 'aniosGuardados', 'leerAnio', 'exportarCSV', 'csvTexto',
-  'dos', 'ctxModelo', 'cierreAnioAnterior', 'vistaModelo', 'tilesMes', 'mesDelModelo', 'serieVista', 'mesesTranscurridos', 'mesEnRojo', 'datosRealizados']
+  'dos', 'ctxModelo', 'cierreAnioAnterior', 'vistaModelo', 'tilesMes', 'mesDelModelo', 'serieVista', 'mesesTranscurridos', 'mesEnRojo', 'datosRealizados',
+  'numerosAnio', 'htmlHeroAnio', 'filaAn', 'estadoHero', 'claseHero']
   .filter(function(n){ return new RegExp('^function ' + n + '\\s*\\(', 'm').test(SRC); });   // serieVista exists only after the change
 var VARS = ['PREF', 'MESES', 'CORTOS', 'oculto', 'PUNTOS', 'ICOSEC'];
 

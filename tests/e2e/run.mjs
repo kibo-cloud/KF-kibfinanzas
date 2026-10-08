@@ -539,7 +539,8 @@ try{
     const tri = () => ev(`Array.prototype.map.call(document.querySelectorAll('#v-mes .tri b'), function(b){ return b.textContent; })`);
     const irTab = async (t) => { await ev(`document.querySelector('[data-act=tab][data-t=${t}]').click(); true`); await sleep(1400); };
     const tjDisp = () => ev(`document.getElementById('tjDisp').textContent.replace(/[^\\d-]/g,'')`);
-    const patri = () => ev(`[document.getElementById('bigPatri').textContent, document.getElementById('bigPatri').nextElementSibling.textContent]`);
+    // L1: the headline is in pesos (#bigPatri) with the dollar equivalent below it (#patriUSD); kept as [dollars, pesos] for the checks
+    const patri = () => ev(`[(document.querySelector('#patriUSD b') || document.getElementById('patriUSD')).textContent, document.getElementById('bigPatri').textContent]`);
     // R4.5 year views (owner decision 2026-10-06): "Los doce meses" cells [Ingresos, Gastos, Disponible] of a month and of the Total row; the year CSV via the real download path
     const anioFila = (i) => ev(`(function(){ var r = document.querySelectorAll('#v-anio [data-sec=anTabla] tbody tr')[${i}]; return [1, 2, 8].map(function(k){ return r.children[k].textContent; }); })()`);
     const csvAnio = () => ev(`(async function(){ var o = URL.createObjectURL, b = null; URL.createObjectURL = function(x){ b = x; return o.call(URL, x); };
@@ -652,7 +653,7 @@ try{
     const tri = () => ev(`Array.prototype.map.call(document.querySelectorAll('#v-mes .tri b'), function(b){ return b.textContent; })`);
     const irMes = async (m) => { await ev(`document.querySelector('[data-act=mes][data-m="${m}"]').click(); true`); await sleep(1400); };
     const patri = async () => { await ev(`document.querySelector('[data-act=tab][data-t=usd]').click(); true`); await sleep(1400);
-      const v = await ev(`[document.getElementById('bigPatri').textContent, document.getElementById('bigPatri').nextElementSibling.textContent]`);
+      const v = await ev(`[(document.querySelector('#patriUSD b') || document.getElementById('patriUSD')).textContent, document.getElementById('bigPatri').textContent]`);
       await ev(`document.querySelector('[data-act=tab][data-t=mes]').click(); true`); await sleep(300); return v; };
     const typeIn = (sel, v) => ev(`(function(){ var x=document.querySelector(${JSON.stringify(sel)}); x.dispatchEvent(new FocusEvent('focusin',{bubbles:true})); x.value=${JSON.stringify(v)}; x.dispatchEvent(new Event('input',{bubbles:true})); x.dispatchEvent(new FocusEvent('focusout',{bubbles:true})); return true; })()`);
     const octRows = (sueldoPagado, gastos) => { const ms = vacio(); ms[9] = mes([it('Sueldo', 1000000, sueldoPagado)], gastos ? [it('Alquiler', 400000, true)] : [], gastos ? [it('Super', 100000, true)] : [], []); return ms; };
@@ -737,7 +738,7 @@ try{
       [9, 225000, 825000, 'declarado', true, false, '825000']);
     const s1 = await texto('#saldoMes');
     check('R5 month lines: opening with its origin, flows, available now and the estimated projection',
-      ['Disponible inicial', 'Lo cargaste vos', 'Editar', 'Disponible actual', 'Proyectado al cierre (estimado)'].map(t => s1.indexOf(t) >= 0).concat([s1.indexOf(await ev('fARS(225000)')) >= 0]),
+      ['Disponible inicial', 'Lo cargaste vos', 'Editar', 'Tenés hoy', 'Al cierre (estimado)'].map(t => s1.indexOf(t) >= 0).concat([s1.indexOf(await ev('fARS(225000)')) >= 0]),
       [true, true, true, true, true, true]);
 
     // D16-05 through the screen: Editar of the opening in the migration month re-declares the money available now; no movement is created
@@ -779,8 +780,8 @@ try{
     check('R5 ... and it stays hidden after a reload', await hay('#avisoCierre'), false);
 
     await ev(`document.querySelector('[data-act=mes][data-m="8"]').click(); true`); await sleep(1400);
-    check('R5 September (past): "Disponible al cierre" and "¿Es correcto?"',
-      [(await texto('#saldoMes')).indexOf('Disponible al cierre') >= 0, await hay('#saldoMes [data-act=cierreAbrir]'), await pantalla()], [true, true, '300000']);
+    check('R5 September (past): "Cerraste con" (L1: the hero words) and "¿Es correcto?"',
+      [(await texto('#saldoMes')).indexOf('Cerraste con') >= 0, await hay('#saldoMes [data-act=cierreAbrir]'), await pantalla()], [true, true, '300000']);
     await clic('#saldoMes [data-act=cierreAbrir]', 300);
     check('R5 the correction sheet shows what the records say', (await texto('#hoja')).indexOf('Según tus registros' + await ev('fARS(300000)')) >= 0, true);
     await poner('#inCierre', '275.000'); await sleep(100);
@@ -842,7 +843,7 @@ try{
       const st = await ev(`(function(){ function s(k){ var o = JSON.parse(localStorage.getItem(k)); if(!o) return null; delete o.rev; return o; } var t = s('kibo.trabajo'); if(t) delete t.actualizado; return {y25: s('kibo.datos.2025'), y26: s('kibo.datos.2026'), trab: t}; })()`);
       const card = await ev(`(${bigFinal}).replace(/[^\\d-]/g,'')`);
       const csv = await ev(`(async function(){ var o = URL.createObjectURL, b = null; URL.createObjectURL = function(x){ b = x; return o.call(URL, x); }; try{ exportarCSV(); } finally{ URL.createObjectURL = o; } return await b.text(); })()`);
-      await tab6('usd'); const patri6 = await ev(`document.getElementById('bigPatri').textContent + ' | ' + document.getElementById('bigPatri').nextElementSibling.textContent + ' | ' + document.getElementById('v-usd').textContent`);
+      await tab6('usd'); const patri6 = await ev(`document.getElementById('bigPatri').textContent + ' | ' + document.getElementById('patriUSD').textContent + ' | ' + document.getElementById('v-usd').textContent`);
       await tab6('anio'); const anio6 = await ev(`document.getElementById('v-anio').textContent`);
       await tab6('trabajo'); const tj6 = await ev(`document.getElementById('tjDisp').textContent`);
       await tab6('mes', 800);
@@ -961,10 +962,10 @@ try{
     const colorAcc = `(function(){ var d = document.createElement('div'); d.style.color = 'var(--acc)'; document.body.appendChild(d); var c = getComputedStyle(d).color; document.body.removeChild(d); return c; })()`;
 
     await seed(y, tj);
-    check('P3a current month: the hero says "Tenés hoy" with the available money, the same as the balance block "Disponible actual"',
-      [await texto('#hero .hero-lbl'), await texto('#bigFinal'), await fila('Disponible actual')], ['Tenés hoy', await F(1175000), await F(1175000)]);
+    check('P3a current month: the hero says "Tenés hoy" with the available money, the same as the balance block "Tenés hoy" (L1: one vocabulary)',
+      [await texto('#hero .hero-lbl'), await texto('#bigFinal'), await fila('Tenés hoy')], ['Tenés hoy', await F(1175000), await F(1175000)]);
     check('P3a current month: the estimated closing below the hero, not green, equal to the balance block projection',
-      [await texto('#heroSub'), await fila('Proyectado al cierre (estimado)'), await ev(`getComputedStyle(document.querySelector('#heroSub')).color !== ${colorAcc}`)],
+      [await texto('#heroSub'), await fila('Al cierre (estimado)'), await ev(`getComputedStyle(document.querySelector('#heroSub')).color !== ${colorAcc}`)],
       ['Al cierre: ' + await F(1273000) + ' · estimado', await F(1273000), true]);
     check('P3a current month: pending chips with the engine amounts (to collect, to pay, overdue)', await textos('#heroChips .chip'),
       ['Te falta cobrar ' + await F(220000), 'Te falta pagar ' + await F(122000), 'Atrasado ' + await F(20000)]);

@@ -8,7 +8,8 @@ var C = require('./r4-casos');
 var base = require('./motor-corpus');
 
 var SRC = la.SRC_FOR_TESTS;
-var FUNCS = ['renderUSD', 'plegable', 'abiertaDef', 'hARS', 'hUSD', 'fARS', 'fUSD', 'grupos', 'esc', 'crudo', 'filasPatrimonio', 'htmlPatrimonio']
+var FUNCS = ['renderUSD', 'plegable', 'abiertaDef', 'hARS', 'hUSD', 'fARS', 'fUSD', 'grupos', 'esc', 'crudo', 'filasPatrimonio', 'htmlPatrimonio',
+  'htmlHeroPatri', 'htmlDolaresMes', 'htmlDatosPatri', 'esProgramado']
   .filter(function(n){ return new RegExp('^function ' + n + '\\s*\\(', 'm').test(SRC); });   // filasPatrimonio / htmlPatrimonio exist only after R5 N3b
 var VARS = ['MESES', 'ICOSEC', 'oculto', 'PUNTOS'];
 
