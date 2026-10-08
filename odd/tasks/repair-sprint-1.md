@@ -82,7 +82,7 @@ R1, R2, R3 only. **Stop before R4** for review of the extracted engine and the e
 ## Deferred (not in this run)
 
 - R4 semantics/pockets/carry/migration (needs review after R3).
-- R5 UX of the model, R6 analytics (E3, E6, E7, E8, E10, E11, U3), R7 quick expense (E5/D8),
+- R5 UX of the model, R6 analytics (E3, E6, E7, E8, E10, E11, U3), R7 quick expense (E5/D8; done 2026-10-08 in L3),
   R8 Trabajo (E13), R9 privacy text (S5) and visible rebrand.
 - E14 reposición rule (D11) belongs to R4 (it changes the model).
 
@@ -472,6 +472,9 @@ implementation until the owner approves the design and answers Q1-Q15.
   amount is added to the pending row without asking, the money spent is not deducted from Disponible; R2 E9 undo holds), 0 FAIL.
   Cases 5 and 17 validated on the model/migration (Editar and the first-use prompt are R5); case 14 passes on the model and the
   headline, the gross row is R5 (owner: Patrimonio rows stay until R5).
+- UPDATE 2026-10-08 (L3, R7 done): D16-15 is PASS with real assertions (the D8 question, "Sí" keeping or updating the amount, "No" as a
+  separate realized row, undo restoring exactly the previous month, no duplicate row): D16 = 17 PASS, 0 PENDING, 0 FAIL. Details in
+  odd/tasks/alpha-product-surface.md "L3 — R7 quick expense on a pending item (done)".
 - Complementary (21, `C-xx`, not D16): 21 PASS (C-18 after the fix); 7 new tests, the rest cite existing tests.
 - FAILs found and classification:
   1. REAL R4.3 bug, fixed (0ff866d): a stale tab (`obsoleta`) passing Trabajo money to ANOTHER year still wrote that year's blob while
@@ -1114,6 +1117,11 @@ Documentation of the CURRENT state (baseline `f3dbff3`; line numbers refer to in
 | sumarAItem | 3667 | otro | editor/writer of a single item amount; no aggregation; forces pagado when the previous monto was 0 |
 | sumarGasto | 3671 | otro | editor/writer of a single item amount; no aggregation; logs a movement |
 | quitarMov | 3690 | otro | editor/writer of a single item amount; no aggregation (E9 fixed in R2: undo restores the previous pagado of an item left empty) |
+| preguntaPago | (new in L3) | otro | D8 guard on one row: pending with monto > 0, outside a future month of the model |
+| preguntarPago | (new in L3) | otro | question sheet: one row amount and the typed amount |
+| gastoEsPago | (new in L3) | otro | "Sí": compares the typed amount with one row amount, asks when they differ |
+| marcarPago | (new in L3) | otro | ticks one row, keeps or replaces its amount, logs a "pago" movement with the previous amount |
+| gastoAparte | (new in L3) | otro | separate ticked row "<row> (otro gasto)"; the planned row untouched |
 | copiarAnterior | 3719 | otro | copies previous-month amounts, resets pagado |
 | abrirComoCobras | 3734 | otro | opens the weekly/frequency charge editor for one item |
 | pintarNotaCobras | 3773 | otro | editor/writer of a single item amount; no aggregation |

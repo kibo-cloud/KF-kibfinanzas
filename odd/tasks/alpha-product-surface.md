@@ -10,7 +10,7 @@ Owner brief: "TU GASTO — PRODUCT SURFACE, UX/UI, BRANDING, GITHUB & FINAL ALPH
 
 ## Constraints
 
-- Do not redo R4/R4.5/R4.6/R5. Respect Q1-Q15, the R4 contract, R4.4/R4.5 decisions, R5, D16 (D16-15 stays PENDIENTE-R7), the
+- Do not redo R4/R4.5/R4.6/R5. Respect Q1-Q15, the R4 contract, R4.4/R4.5 decisions, R5, D16 (D16-15 stayed PENDIENTE-R7 until L3 built R7, 2026-10-08), the
   complementary matrix, migrations, backups and existing data.
 - No new money rule. New product decisions → `OWNER_DECISION_REQUIRED`, documented, work continues.
 - Branding: visible identity → TuGasto; technical compatibility stays (localStorage keys `kibo.*`, backup format fields such as
@@ -329,13 +329,53 @@ Commit: 6dabc01.
   the backup file through the existing flow and hides it with today's date, empty phone. Results: `npm test` 719 (718 pass, 1 todo
   L-03d); `npm run test:e2e` 396/396; motor goldens byte-identical to ae166a3.
 
+### L3 — R7 quick expense on a pending item (done)
+
+Route: inline in the single writer (index.html + tests). Rule: D8 only (approved). No new money rule: "Sí" is a tick (realized, Q1-Q3),
+"No" is an ordinary ticked row; both are read by the existing chain. Motor goldens byte-identical to ae166a3 (the only motor-block
+line touched is `normalizar` keeping two optional movement fields, like R2's `pp`; no golden input has them). Commit: 18107b6.
+
+- When: the quick expense targets a row that is NOT ticked and has an amount > 0, in a current or past month of the model, or in any
+  month of a year without the model (legacy). D8 is about the row, not the model, and nothing in the contract contradicts it: D4 keeps
+  historical numbers as they were computed (nothing already recorded is rewritten; the user's answer only writes the month being
+  edited). A future month of the model keeps N4 I-1 (amount added, no tick, no question). A ticked or empty row behaves as before.
+- Question sheet: "Gasto de $20.000" / "Super está pendiente por $50.000. ¿Este gasto es ese pago?" → "No, es otro gasto" ·
+  "Sí, marcarlo como pagado" · "Cancelar" (nothing changes while asking; Cancelar closes it).
+- "Sí": ticks the existing row. Same amount → done. Different amount → second sheet "¿Con qué monto lo marco?" ("Super decía $50.000
+  y anotaste $20.000.") → "Dejar $50.000" / "Cambiar a $20.000" / "Cancelar". Never a second row (no duplication). Toast "Marqué
+  Super como pagado" + Deshacer. The movement logged is `{tipo:'pago', ma:<previous amount>, pp:<previous tick>, monto:<row amount
+  after>}`.
+- "No, es otro gasto": there was no existing mechanism for a separate quick expense, so a separate ticked row is created in the same
+  section: "Super (otro gasto)" with the typed amount; the planned row stays pending. Named "<row> (otro gasto)" and not exactly
+  like the row because rows are identified by name inside a section (undo, "Copiar del mes anterior", topes propagation, the order
+  list, "Agregar a todos"): two rows with the same name would make undo and next month's copy act on the wrong one. If "Super (otro
+  gasto)" already exists and is ticked or empty it is reused (amount added); a pending one is never mixed in ("Super (otro gasto 2)").
+  Toast "Anoté $20.000 en Super (otro gasto). Super sigue pendiente" + Deshacer. A created row is logged with `tipo:'aparte'`.
+- Undo (E9, toast or the × in "Gastos rápidos", also after a restart: `normalizar` keeps `tipo` and `ma`): "pago" restores the
+  previous amount and tick; "aparte" subtracts and removes the row it created; a reused row gets its amount back. Each answer then
+  Deshacer leaves the month byte-for-byte as before (tested with deepEqual of the whole month).
+- Example (D16-15: opening 100.000, Sueldo 500.000 ✓, Super 50.000 ✗, quick 20.000): Sí + Dejar → Tenés hoy 550.000, al cierre
+  550.000; Sí + Cambiar → 580.000 / 580.000; No → 580.000 / 530.000; every undo → 600.000 / 550.000.
+- OWNER_DECISION_REQUIRED (not built, no rule invented): partial payment — the typed amount is smaller than the pending row and the
+  user wants the rest to stay pending (today: "Dejar" marks the whole row paid, "Cambiar a" makes the row the typed amount; neither
+  keeps a pending remainder). Options: (a) split the row into a paid part and a pending remainder; (b) keep today's two answers.
+  Also not decided: whether "<row> (otro gasto)" should count toward the row's tope (today it has no tope of its own).
+- Tests (RED first): tests/l3.gasto.test.js 0/8 and D16-15 failing before the code (functions missing); after: 8/8 and D16-15 PASS.
+  D16-15 (tests/r4.matriz.test.js) is no longer a PENDING-R7 pin: it asserts the question, both "Sí" amounts, "No", the chain after
+  each and undo to the exact month. Mutation check on the guard `preguntaPago`: always false → 7 failures; without the future-month
+  clause → 2; without `monto > 0` → 1. Updated pins: tests/movimientos.test.js (E9 "pending amount" case now answers the question
+  both ways), harness lists in movimientos and n4.integridad; inventory: preguntaPago, preguntarPago, gastoEsPago, marcarPago,
+  gastoAparte classified `otro`. E2E +17: the question text and buttons, nothing changes while asking, Cancelar, "Sí" amount
+  question, Dejar (one row, toast, Deshacer), Cambiar a + restart + undo from the list, same amount ticks directly, "No" separate row
+  and toast, its undo, future month unchanged. Results: `npm test` 727 (726 pass, 1 todo L-03d); `npm run test:e2e` 413/413.
+
 ## Improvement loop (owner: "ejecutá todo lo que creas necesario para mejorarla en formato loop", 2026-10-07)
 
 Ordered backlog (each item: test-first, suites green, docs, small commits; native review consent batched per slice):
 - [x] L1 P3b: El año, Patrimonio (tab renamed from "USD"), Trabajo, update-notice version, 1280 month bar, expense sheet polish,
       Gasto action without covering amounts, one vocabulary across hero and balance block.
 - [x] L2 P4: microcopy sweep of every screen, sheet, notice, error, confirmation and backup/restore text.
-- [ ] L3 R7 / D16-15: quick expense on a pending item asks (D8: mark the existing one as paid vs record a separate realized
+- [x] L3 R7 / D16-15: quick expense on a pending item asks (D8: mark the existing one as paid vs record a separate realized
       expense keeping the plan pending). Owner explicitly asked for it now; D8 is the approved rule.
 - [x] L4 Backup reminder ("hace N días que no hacés una copia" + one-tap download).
 - [ ] L5 "Qué vence esta semana" (pending with dates, installments, Trabajo invoices) on opening.
