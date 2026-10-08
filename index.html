@@ -4570,7 +4570,7 @@ function revGuardada(clave){   // {hay, rev} del blob que está guardado ahora; 
    (o kibo.cuarentena.trabajo). Esa clave es del teléfono a propósito (claveMia no la incluye): así ninguna vuelta atrás ni restauración
    que borra claves propias la borra nunca; la copia de seguridad la lleva aparte (armarCopia: campo `cuarentena`). La app no la borra.
    N7: cada texto distinto se guarda: si la clave ya tiene otro texto, va a kibo.cuarentena.AAAA.2, .3… (el mismo texto no se repite). */
-function claveCuarentena(clave){ return LSCUAR + (clave === LSTRAB ? 'trabajo' : String(clave).slice(PREF.length)); }
+function claveCuarentena(clave){ return LSCUAR + (clave === LSTRAB ? 'trabajo' : clave === LSDIARIO ? 'diario' : String(clave).slice(PREF.length)); }
 function ponerEnCuarentena(clave, texto){   // true si este texto quedó guardado (o ya estaba en alguna copia); nunca reemplaza ni borra una copia anterior
   var base = claveCuarentena(clave), k, v, n;
   try{
@@ -7402,13 +7402,93 @@ function blobAlDia(clave, obj){   // lo guardado sigue en la revisión que esta 
   var st = revGuardada(clave);
   return !st.hay || st.rev === (revValida(obj && obj.rev) || 0);
 }
-/* Un pase escribe dos blobs sin transacción: PRIMERO el año del renglón, DESPUÉS Trabajo (lo hace quien llama, solo si esto dio true).
-   Garantías (R4.6): (1) antes de escribir nada se revisan las dos revisiones (un evento `storage` perdido no deja un blob escrito y el otro
-   rechazado); (2) si la escritura del año falla (otra pestaña o el navegador no deja guardar), el renglón vuelve a como estaba en memoria y
-   se devuelve false, así Trabajo no se escribe. Lo que NO se garantiza: si el año se escribió y después falla la escritura de Trabajo, quedan
-   distintos (no hay transacción en localStorage).
-   Devuelve true (escrito), false (no se escribió nada) o 'sinRenglon' (no hay renglón para descontar o ese año no existe: no se escribió). */
-function aplicarPase(p, signo){
+/* ═══ L8 · escrituras de varios blobs juntos (diario) ═══
+   localStorage no tiene transacciones y un pase escribe dos blobs (el año del renglón y Trabajo). Antes de la primera escritura se guarda
+   en kibo.diario el texto COMPLETO que va a quedar en cada blob y la revisión que cada uno tiene ahora; después se escriben los blobs y se
+   borra el diario. Si la app se corta en el medio, al arrancar recuperarDiario termina lo que faltaba, solo si esos blobs siguen en la
+   revisión de antes; si otra pestaña los cambió, no toca nada y aparta el diario en cuarentena. Nunca se aplica dos veces: se escribe el
+   texto completo, no una suma. Si el diario no entra, no se escribe nada. kibo.diario es del teléfono, como la cuarentena: claveMia no la
+   incluye, así que ninguna copia, respaldo ni vuelta atrás la lleva o la borra. */
+function escribirJuntos(lista, op){   // lista [{clave, obj}] en orden; 'ok' | 'conflicto' | 'roto' | 'error' (nada escrito) | 'amedias' (lo termina el próximo arranque)
+  var plan = [], previos = [], ahora = new Date().toISOString(), i, j, b, st, mia, rv, ac, falla;
+  for(i=0;i<lista.length;i++){
+    b = lista[i]; st = revGuardada(b.clave); mia = revValida(b.obj.rev) || 0;
+    if(st.roto){ if(b.clave !== LSTRAB || !ponerEnCuarentena(b.clave, st.texto)) return 'roto'; }   // como escribirConRev: un año ilegible no se pisa; Trabajo sí, ya copiado
+    else if(st.hay && st.rev !== mia) return 'conflicto';
+    rv = b.obj.rev; ac = b.obj.actualizado;
+    b.obj.rev = mia + 1; b.obj.actualizado = ahora;
+    plan.push({clave: b.clave, hay: st.hay, rev: st.rev, roto: !!st.roto, texto: JSON.stringify(b.obj)});
+    if(rv === undefined) delete b.obj.rev; else b.obj.rev = rv;
+    b.obj.actualizado = ac;
+  }
+  try{ localStorage.setItem(LSDIARIO, JSON.stringify({version: 1, op: op, creado: ahora, blobs: plan})); }
+  catch(e){ try{ localStorage.removeItem(LSDIARIO); }catch(e2){} return 'error'; }   // el diario no entró: no se escribe nada
+  for(i=0;i<plan.length;i++){
+    try{ previos[i] = localStorage.getItem(plan[i].clave); localStorage.setItem(plan[i].clave, plan[i].texto); }
+    catch(e){
+      falla = false;   // lo ya escrito vuelve a como estaba; si tampoco se puede, el diario queda y el próximo arranque lo termina
+      for(j=i-1;j>=0;j--){ try{ if(previos[j] === null) localStorage.removeItem(plan[j].clave); else localStorage.setItem(plan[j].clave, previos[j]); }catch(e2){ falla = true; } }
+      if(falla) return 'amedias';
+      try{ localStorage.removeItem(LSDIARIO); }catch(e2){}
+      return 'error';
+    }
+  }
+  try{ localStorage.removeItem(LSDIARIO); }catch(e){}   // si no se pudo borrar, el próximo arranque ve todo escrito y solo lo borra
+  for(i=0;i<lista.length;i++){ lista[i].obj.rev = (revValida(lista[i].obj.rev) || 0) + 1; lista[i].obj.actualizado = ahora; }
+  return 'ok';
+}
+function diarioValido(j){
+  if(!j || typeof j !== 'object' || !Array.isArray(j.blobs) || !j.blobs.length) return false;
+  return j.blobs.every(function(b){
+    var o = null;
+    if(!b || typeof b.clave !== 'string' || typeof b.texto !== 'string' || typeof b.hay !== 'boolean' || typeof b.rev !== 'number') return false;
+    if(b.clave !== LSTRAB && !(b.clave.indexOf(PREF) === 0 && /^\d{4}$/.test(b.clave.slice(PREF.length)))) return false;   // solo blobs de datos: nunca otra clave
+    try{ o = JSON.parse(b.texto); }catch(e){ return false; }
+    return !!o && typeof o === 'object' && !Array.isArray(o);
+  });
+}
+function apartarDiario(s){   // otra pestaña cambió algo en el medio (o el diario no se entiende): no se toca ningún blob; el diario va a cuarentena
+  if(ponerEnCuarentena(LSDIARIO, s)){ try{ localStorage.removeItem(LSDIARIO); }catch(e){} }
+  return 'apartado';
+}
+// al arrancar, antes de leer o guardar nada: '' (no había) | 'hecho' (ya estaba todo escrito) | 'completado' | 'apartado' | 'pendiente' (no entró: queda el diario)
+function recuperarDiario(){
+  var s, j, i, b, st, cur, faltan = [];
+  try{ s = localStorage.getItem(LSDIARIO); }catch(e){ return ''; }
+  if(s === null || s === undefined) return '';
+  try{ j = JSON.parse(s); }catch(e){ j = null; }
+  if(!diarioValido(j)) return apartarDiario(s);
+  for(i=0;i<j.blobs.length;i++){
+    b = j.blobs[i];
+    try{ cur = localStorage.getItem(b.clave); }catch(e){ return 'pendiente'; }
+    if(cur === b.texto) continue;   // este ya quedó escrito
+    st = revGuardada(b.clave);
+    if(st.hay !== b.hay || st.rev !== b.rev || !!st.roto !== !!b.roto) return apartarDiario(s);   // ya no es el de antes: no se pisa
+    faltan.push({b: b, st: st});
+  }
+  for(i=0;i<faltan.length;i++){
+    if(faltan[i].st.roto && !ponerEnCuarentena(faltan[i].b.clave, faltan[i].st.texto)) return 'pendiente';
+    try{ localStorage.setItem(faltan[i].b.clave, faltan[i].b.texto); }catch(e){ return 'pendiente'; }
+  }
+  try{ localStorage.removeItem(LSDIARIO); }catch(e){}
+  return faltan.length ? 'completado' : 'hecho';
+}
+function avisoDiario(tipo){
+  var e = document.getElementById('avisos'); if(!e) return;
+  e.innerHTML = sinTaparCuarentena(e) + (tipo === 'pendiente'
+    ? '<div class="aviso" data-av="diario"><p>Lo último que pasaste de Trabajo a lo personal quedó a medio guardar porque el navegador no tiene lugar. Liberá espacio y tocá Recargar para terminarlo: hasta entonces la app no guarda nada.</p>'
+      + '<div class="fila"><button class="mini on" data-act="recargarPag">Recargar</button></div></div>'
+    : '<div class="aviso" data-av="diario"><p>Lo último que pasaste de Trabajo a lo personal no terminó de guardarse y después hubo otros cambios. No toqué nada y guardé una copia aparte. Revisalo en Trabajo y en Mes.</p>'
+      + '<div class="fila"><button class="mini" data-act="cerrarAviso">Entendido</button></div></div>');
+}
+/* Un pase escribe dos blobs: PRIMERO el año del renglón, DESPUÉS Trabajo, los dos juntos con el diario (L8, escribirJuntos).
+   cambiarT() hace en memoria el cambio de Trabajo (agrega o saca el pase) y devuelve la función que lo deshace.
+   Garantías: (1) antes de escribir nada se revisan las dos revisiones (R4.6: un evento `storage` perdido no deja un blob escrito y el otro
+   rechazado); (2) si algo no se puede escribir, el renglón y Trabajo vuelven a como estaban en memoria y se devuelve false; (3) L8: si la
+   app se corta entre las dos escrituras, el próximo arranque termina la otra (o, si otra pestaña cambió algo, no toca nada y avisa).
+   Devuelve true (escritos los dos), false (no se escribió nada) o 'sinRenglon' (no hay renglón para descontar o ese año no existe: no se
+   escribió nada y Trabajo no se cambió). */
+function aplicarPase(p, signo, cambiarT){
   if(obsoleta){ avisoOtraPestana(); return false; }   // pestaña vieja (R4.3): no escribe ningún año, tampoco otro que el abierto, hasta recargar
   var abierto = p.anio === D.anio;
   if(!blobAlDia(LSTRAB, T) || (abierto && !blobAlDia(PREF + D.anio, D))){ obsoleta = true; avisoOtraPestana(); return false; }
@@ -7416,19 +7496,21 @@ function aplicarPase(p, signo){
   if(!d) return 'sinRenglon';
   var ls = d.meses[p.mes].ingresos, largo = ls.length, it = renglonTrabajo(d, p.mes, signo > 0);
   if(!it) return 'sinRenglon';
-  var antes = it.monto, eraSucio = sucio;
+  var antes = it.monto;
   it.monto = Math.max(0, Math.round(num(it.monto) + signo * p.monto));
-  if(abierto){
-    sucio = true;
-    if(guardar() !== false) return true;
-    if(ls.length > largo) ls.splice(largo, 1); else it.monto = antes;   // no quedó escrito: el renglón vuelve a como estaba
-    sucio = eraSucio;
-    return false;
+  var deshacerT = cambiarT(), r = escribirJuntos([{clave: PREF + d.anio, obj: d}, {clave: LSTRAB, obj: T}], 'pase');
+  if(r === 'ok'){
+    if(abierto){ if(tGuardar){ clearTimeout(tGuardar); tGuardar = null; } sucio = false; hayLS = true; }   // el año abierto quedó escrito entero, con lo pendiente
+    marcarVencidos(); estado(true); quitarAvisoVacia();
+    return true;
   }
-  d.actualizado = new Date().toISOString();                 // otro año: se escribe ese año guardado, el abierto no se toca
-  var r = escribirConRev(PREF + d.anio, d);
-  if(r === 'error') pildora('No se pudo guardar', true);
-  return r === 'ok';
+  deshacerT();
+  if(ls.length > largo) ls.splice(largo, 1); else it.monto = antes;   // no quedó escrito: el renglón vuelve a como estaba
+  if(r === 'conflicto'){ obsoleta = true; avisoOtraPestana(); }
+  else if(r === 'roto' && revGuardada(PREF + d.anio).roto) avisoCuarentena(d.anio);
+  else if(r === 'amedias'){ obsoleta = true; avisoDiario('pendiente'); }   // lo guardado ya no es lo de esta pestaña: no guarda nada hasta recargar
+  else pildora('No se pudo guardar', true);
+  return false;
 }
 function fechaPaseDefecto(){
   // si tenés abierto el año de hoy, va a hoy; si tenés abierto otro año, va al mes que estás mirando de ese año
@@ -7472,9 +7554,9 @@ function guardarPase(){
   if(m > r.paraPasar + 0.5){ errorEn('psNota', 'Es más de lo que tenés disponible (' + fARS(r.paraPasar) + ').'); return; }
   if(!anioExiste(d.anio)){ errorEn('psNota', 'El ' + d.anio + ' no está creado en la app. Elegí una fecha de un año que tengas.'); return; }
   var p = {id:tjId(), fecha:d.fecha, monto:m, anio:d.anio, mes:d.mes, creada:new Date().toISOString()};
-  if(aplicarPase(p, 1) !== true){ errorEn('psNota', obsoleta ? 'Hay cambios hechos en otra pestaña. Recargá antes de pasar.' : 'No pude sumarlo al mes. Probá de nuevo.'); return; }
-  T.pases.push(p); tjAntes = null;
-  guardarTrab(true); cerrarHoja(); renderTrabajo();
+  if(aplicarPase(p, 1, sumarPaseT(p)) !== true){ errorEn('psNota', obsoleta ? 'Hay cambios hechos en otra pestaña. Recargá antes de pasar.' : 'No pude sumarlo al mes. Probá de nuevo.'); return; }
+  tjAntes = null;
+  cerrarHoja(); renderTrabajo();
   toast('Pasé ' + fARS(m) + ' a Ingresos de ' + MESES[d.mes] + (d.anio !== D.anio ? ' ' + d.anio : ''), 'Deshacer', 'tjDeshacerPase', p.id);
 }
 function quitarPase(id, avisar){
@@ -7482,11 +7564,11 @@ function quitarPase(id, avisar){
   var p = null, i;
   for(i=0;i<T.pases.length;i++) if(T.pases[i].id === id) p = T.pases[i];
   if(!p) return;
-  var r = aplicarPase(p, -1), ok = r === true;
+  var sacar = sacarPaseT(id), r = aplicarPase(p, -1, sacar), ok = r === true;
   if(r === false) return;   // otra pestaña guardó en el medio o no se pudo guardar: no se escribió nada, no se borra nada
-  T.pases = T.pases.filter(function(x){ return x.id !== id; });
+  if(!ok){ sacar(); guardarTrab(true); }   // sin renglón: solo se escribe Trabajo (un blob, no hace falta el diario)
   tjAntes = null; paseQuitado = p;
-  guardarTrab(true); renderTrabajo();
+  renderTrabajo();
   var msg = ok ? 'Saqué ' + fARS(p.monto) + ' de Ingresos de ' + MESES[p.mes]
                : 'Lo borré de Trabajo, pero no encontré el renglón “' + RENGLON_TRABAJO + '” en ' + MESES[p.mes] + ': revisalo en Mes.';
   if(avisar) toast(msg, ok ? 'Deshacer' : '', 'tjReponerPase');
@@ -7494,11 +7576,14 @@ function quitarPase(id, avisar){
 }
 function reponerPase(){
   var p = paseQuitado; if(!p) return;
-  if(aplicarPase(p, 1) !== true){ if(!obsoleta) toast('No pude volver a sumarlo'); return; }   // el deshacer sigue disponible
+  if(aplicarPase(p, 1, sumarPaseT(p)) !== true){ if(!obsoleta) toast('No pude volver a sumarlo'); return; }   // el deshacer sigue disponible
   paseQuitado = null;
-  T.pases.push(p); guardarTrab(true); renderTrabajo();
+  renderTrabajo();
   toast('Listo, quedó como antes');
 }
+// el cambio de Trabajo de un pase, para aplicarPase: lo hace en memoria y devuelve cómo deshacerlo
+function sumarPaseT(p){ return function(){ T.pases.push(p); return function(){ var i = T.pases.indexOf(p); if(i >= 0) T.pases.splice(i, 1); }; }; }
+function sacarPaseT(id){ return function(){ var antes = T.pases; T.pases = T.pases.filter(function(x){ return x.id !== id; }); return function(){ T.pases = antes; }; }; }
 function verPase(id){
   var p = null, i; for(i=0;i<T.pases.length;i++) if(T.pases[i].id === id) p = T.pases[i];
   if(!p) return;
@@ -7603,6 +7688,7 @@ var LSESQ = 'kibo.esquema', LSPRE130 = 'kibo.respaldo.pre130', ESQUEMA = '1.30';
 // claves de esta app (la copia y la restauración solo tocan estas; otra app del mismo sitio puede usar "kibo.algo"): kibo.datos.AAAA + estas
 var LSR4 = 'kibo.modeloSaldos', LSPRER4 = 'kibo.respaldo.pre-r4';   // marca "este teléfono ya empezó el modelo de saldos" y la copia de lo que había justo antes (como pre130)
 var LSCUAR = 'kibo.cuarentena.';   // N4 I-3: texto tal cual de un blob que no se pudo leer (kibo.cuarentena.AAAA, kibo.cuarentena.trabajo); es del teléfono, nunca se borra
+var LSDIARIO = 'kibo.diario';   // L8: diario de una escritura de dos blobs (pase); es del teléfono como la cuarentena: no viaja en la copia, ningún respaldo ni vuelta atrás la toca
 var LSAVCIERRE = 'kibo.avisoCierre';   // R5 (D10): mes cuyo aviso "¿Cerraste … con …?" se descartó con "Ahora no"; es del teléfono, no viaja en la copia
 var CLAVES_PROPIAS = [LSANIO, LSCOPIA, LSOCULTO, LSBIENV, LSHIST, LSTRAB, LSVISTA, LSR4, LSAVCIERRE, LSDATOSDESDE, LSCOPIAPOS];
 function claveMia(k){
@@ -7908,6 +7994,8 @@ function avisoActualizado(){
 try{ localStorage.setItem(PREF + 'test', '1'); localStorage.removeItem(PREF + 'test'); }
 catch(e){ hayLS = false; }
 
+var diario = hayLS ? recuperarDiario() : '';   // L8: antes de leer o guardar nada, se termina (o se aparta) un pase que quedó a medias
+if(diario === 'pendiente') obsoleta = true;   // no entró: nada se guarda hasta recargar, así el diario lo puede terminar
 var actualizado130 = seguroActualizacion();
 D = leerEmbebido();
 T = leerTrab();
@@ -7921,6 +8009,7 @@ aplicarTema();
 aplicarOculto();
 render();
 cargar();
+if(diario === 'apartado' || diario === 'pendiente') avisoDiario(diario);
 
 var desl = {vivo:false, x0:0, y0:0, t0:0};
 document.addEventListener('touchstart', function(e){

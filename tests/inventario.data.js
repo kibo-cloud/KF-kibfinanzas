@@ -111,7 +111,7 @@ module.exports = {
     verGasto:           [O, TRAB],
     borrarGasto:        [O, TRAB],
     csvTrabajo:         [O, TRAB],
-    aplicarPase:        [O, 'writes a pase amount into the "Del trabajo" income row (realized through flujosMes trabajoRealizado in a model month, sumaPagado in a legacy one); R4.6: checks the Trabajo and year revisions before the first write and reverts the row when the year write fails (Trabajo is then not written)'],
+    aplicarPase:        [O, 'writes a pase amount into the "Del trabajo" income row (realized through flujosMes trabajoRealizado in a model month, sumaPagado in a legacy one); R4.6: checks the Trabajo and year revisions before the first write and reverts the row and Trabajo when a write fails; L8: both blobs go through the kibo.diario journal (escribirJuntos), finished at start-up by recuperarDiario'],
     quitarPase:         [O, TRAB],
     verPase:            [O, TRAB],
     accionTj:           [O, TRAB]

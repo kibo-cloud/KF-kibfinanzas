@@ -17,7 +17,7 @@ function fakeStorage(init){
   };
   return s;
 }
-var VARS = ['PREF', 'LSANIO', 'LSCOPIA', 'LSOCULTO', 'LSBIENV', 'LSHIST', 'LSTRAB', 'LSVISTA', 'LSESQ', 'LSR4', 'LSAVCIERRE', 'LSDATOSDESDE', 'LSCOPIAPOS', 'CLAVES_PROPIAS', 'LSCUAR'];
+var VARS = ['PREF', 'LSANIO', 'LSCOPIA', 'LSOCULTO', 'LSBIENV', 'LSHIST', 'LSTRAB', 'LSVISTA', 'LSESQ', 'LSR4', 'LSAVCIERRE', 'LSDATOSDESDE', 'LSCOPIAPOS', 'CLAVES_PROPIAS', 'LSCUAR', 'LSDIARIO'];
 function s3App(ls, extra){
   var g = {localStorage: ls, pildora: function(){}, location: {reload: function(){ g.recargado = true; }}, confirmar: function(t, c, e, fn){ fn(); }};
   Object.keys(extra || {}).forEach(function(k){ g[k] = extra[k]; });

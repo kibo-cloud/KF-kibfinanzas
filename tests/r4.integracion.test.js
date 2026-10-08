@@ -178,7 +178,7 @@ test('Q4: the pase sheet rejects passing money already committed to a scheduled 
   };
   var ls = fakeStorage();
   g.localStorage = ls;
-  var app = la.loadApp({today: '2026-10-15', funcs: FUNCS.concat(['guardarPase']), vars: ['PREF'], globals: g});
+  var app = la.loadApp({today: '2026-10-15', funcs: FUNCS.concat(['guardarPase', 'sumarPaseT']), vars: ['PREF'], globals: g});
   app.T = trab(PASES);
   app.D = app.normalizar(C.copy(conTrabajo()), app.hoy);
   var r = app.resumenTrab();
