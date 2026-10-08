@@ -5056,7 +5056,34 @@ function cerrarHoja(){
   velo.className = 'velo'; hoja.innerHTML = '';
   if(!estaba) return;
   hojaAntes = null;
-  if(b && b.focus && document.documentElement.contains(b)) try{ b.focus({preventScroll: true}); }catch(e){}
+  var sel = selectorDe(b);
+  volverFoco(b, sel);
+  // quien cerró la hoja suele volver a dibujar la pantalla enseguida (Guardar, Confirmar) y el botón que la abrió se reemplaza: después de
+  // eso se lo busca de nuevo por sus atributos; si ya no está, el foco va al título de la pantalla (o a su pestaña), nunca se pierde
+  setTimeout(function(){
+    if(velo.classList.contains('on')) return;   // se abrió otra hoja (un aviso, otra pregunta): ella maneja el foco
+    var ae = document.activeElement;
+    if(!ae || ae === document.body || ae === hoja || !document.documentElement.contains(ae)) volverFoco(b, sel);
+  }, 0);
+}
+function selectorDe(b){   // cómo volver a encontrar un botón después de que la pantalla se dibuja de nuevo: su id o sus atributos data-*
+  if(!b || !b.getAttribute || !b.tagName) return '';
+  if(b.id) return '#' + b.id.replace(/[^\w-]/g, '\\$&');
+  var tag = b.tagName.toLowerCase(), s = tag, at = b.attributes, i;
+  for(i=0;i<at.length;i++) if(at[i].name.indexOf('data-') === 0) s += '[' + at[i].name + '="' + String(at[i].value).replace(/["\\]/g, '\\$&') + '"]';
+  return s === tag ? '' : s;
+}
+function volverFoco(b, sel){
+  var n = b && b.focus && document.documentElement.contains(b) ? b : null, v;
+  if(!n && sel) try{ n = document.querySelector(sel); }catch(e){ n = null; }
+  if(n && !n.offsetParent && n !== b) n = null;   // uno oculto no sirve
+  if(!n){
+    v = document.querySelector('.vista.on');
+    n = v && v.querySelector('h1, h2, h3');
+    if(n && !n.hasAttribute('tabindex')) n.setAttribute('tabindex', '-1');
+    if(!n) n = document.querySelector('#nav [role=tab][aria-selected=true]');
+  }
+  if(n) try{ n.focus({preventScroll: true}); }catch(e){}
 }
 // L7: lo que se puede tocar con el teclado dentro de la hoja abierta
 function enfocablesHoja(){

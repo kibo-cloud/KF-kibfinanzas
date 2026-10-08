@@ -1567,6 +1567,13 @@ try{
     check('L7 sheet: Esc closes it and the focus goes back to the button that opened it', await ev(`[document.getElementById('velo').classList.contains('on'), document.activeElement && document.activeElement.id]`), [false, 'fab']);
     check('L7 live regions: the toast and the status pill are announced politely', await ev(`['toast', 'pild'].map(function(i){ var e = document.getElementById(i); return e.getAttribute('role') + ' ' + e.getAttribute('aria-live'); })`), ['status polite', 'status polite']);
     check('L7 keyboard: a focused button shows a visible focus ring', await ev(`(function(){ var b = document.getElementById('fab'); b.focus(); var s = getComputedStyle(b); return s.outlineStyle !== 'none' && parseFloat(s.outlineWidth) >= 2; })()`), true);
+    // L7 review: Guardar re-draws the month and replaces the button that opened the sheet; the focus goes to the new one, never to the page
+    await ev(`document.querySelector('#v-mes [data-act=cobro][data-i="1"]').focus(); true`);
+    await tecla('Enter', 'Enter'); await sleep(500);
+    await ev(`document.querySelector('#hoja [data-act=guardarCobroIng]').focus(); true`);
+    await tecla('Enter', 'Enter'); await sleep(600);
+    check('L7 sheet: after Guardar re-draws the month, the focus is on the (new) button that opened the sheet', await ev(`(function(){ var a = document.activeElement;
+      return [document.getElementById('velo').classList.contains('on'), a.tagName, a.getAttribute('data-act'), a.getAttribute('data-i'), a.isConnected]; })()`), [false, 'BUTTON', 'cobro', '1', true]);
 
     // hidden amounts: the dots are read as "oculto"
     await ev(`document.querySelector('[data-act=ojo]').click(); true`); await sleep(500);
