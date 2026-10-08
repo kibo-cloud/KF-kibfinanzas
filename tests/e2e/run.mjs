@@ -1304,6 +1304,67 @@ try{
     await send('Emulation.clearDeviceMetricsOverride');
   }
 
+  // L3 (R7, rule D8): a quick expense on a pending row with an amount asks; "Sí" ticks it (keep or update the amount), "No" records a
+  // separate realized expense; Cancelar changes nothing; undo restores exactly; a future month of the model keeps N4 I-1. hoy = 2026-10-04.
+  {
+    const ms = []; for(let i=0;i<12;i++) ms.push(mes([], [], [], []));
+    ms[9] = mes([it('Sueldo', 500000, true)], [], [it('Super', 50000, false)], []);
+    ms[10] = mes([it('Sueldo', 500000, false)], [], [it('Super', 50000, false)], []);
+    const y = {anio: 2026, pagoExplicito: true, meses: ms, arrastre: {desde: 9, inicial: {apertura: 100000, declarado: 100000, declaradoEl: '2026-10-01', origen: 'declarado'}}};
+    await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); localStorage.setItem('kibo.ultimaCopia', new Date().toISOString()); localStorage.setItem('kibo.esquema', '1.30'); localStorage.setItem('kibo.anio','2026');
+      localStorage.setItem('kibo.datos.2026', ${JSON.stringify(JSON.stringify(y))}); true`);
+    await nav(URL_APP); await sleep(800);
+    const mesL3 = (j) => ev(`JSON.stringify([D.meses[${j}].gastosVariables.map(function(r){ return [r.nombre, r.monto, r.pagado]; }), D.meses[${j}].movimientos.length])`);
+    const gastoL3 = async (monto) => {
+      await ev(`document.querySelector('[data-act=gastoRapido]').click(); true`); await sleep(400);
+      await ev(`(function(){ var x = document.getElementById('grMonto'); x.value = ${JSON.stringify(monto)}; x.dispatchEvent(new Event('input', {bubbles: true})); return true; })()`);
+      await ev(`(function(){ var c = Array.prototype.filter.call(document.querySelectorAll('#grChips button'), function(b){ return b.textContent === 'Super'; })[0]; c.click(); return true; })()`); await sleep(400);
+    };
+    const hojaL3 = () => ev(`document.getElementById('velo').classList.contains('on') ? [document.querySelector('#hoja h3').textContent, document.querySelector('#hoja .texto').textContent,
+      Array.prototype.map.call(document.querySelectorAll('#hoja button'), function(b){ return b.textContent; })] : null`);
+    const tocarL3 = async (sel) => { await ev(`document.querySelector(${JSON.stringify(sel)}).click(); true`); await sleep(400); };
+    const antesL3 = await mesL3(9);
+    check('L3 seed: Super 50.000 pending in October', antesL3, JSON.stringify([[['Super', 50000, false]], 0]));
+    await gastoL3('20.000');
+    check('L3 the quick expense on a pending row asks', await hojaL3(), ['Gasto de ' + await ev('fARS(20000)'), 'Super está pendiente por ' + await ev('fARS(50000)') + '. ¿Este gasto es ese pago?',
+      ['No, es otro gasto', 'Sí, marcarlo como pagado', 'Cancelar']]);
+    check('L3 nothing changes while asking', await mesL3(9), antesL3);
+    await tocarL3('#hoja [data-act=cerrarHoja]');
+    check('L3 Cancelar: sheet closed, month unchanged', [await hojaL3(), await mesL3(9)], [null, antesL3]);
+    // "Sí" with a different amount: second question; keep the row amount; undo from the toast
+    await gastoL3('20.000'); await tocarL3('#hoja [data-act=gastoEsPago]');
+    check('L3 "Sí" with a different amount asks which amount (no silent change)', await hojaL3(), ['¿Con qué monto lo marco?',
+      'Super decía ' + await ev('fARS(50000)') + ' y anotaste ' + await ev('fARS(20000)') + '.', ['Dejar ' + await ev('fARS(50000)'), 'Cambiar a ' + await ev('fARS(20000)'), 'Cancelar']]);
+    await tocarL3('#hoja [data-act=pagoMonto][data-v=fila]');
+    check('L3 "Dejar": the row is ticked with its amount, no duplicate row', await mesL3(9), JSON.stringify([[['Super', 50000, true]], 1]));
+    check('L3 toast with Deshacer', await ev(`[document.querySelector('#toast span').textContent, !!document.querySelector('#toast [data-act=quitarMov]')]`), ['Marqué Super como pagado', true]);
+    await tocarL3('#toast [data-act=quitarMov]');
+    check('L3 Deshacer restores exactly the previous month', await mesL3(9), antesL3);
+    // "Sí", update the amount; undo from the Gastos rápidos list after a restart (the movement keeps what undo needs)
+    await gastoL3('20.000'); await tocarL3('#hoja [data-act=gastoEsPago]'); await tocarL3('#hoja [data-act=pagoMonto][data-v=gasto]');
+    check('L3 "Cambiar a": the row is ticked with the typed amount', await mesL3(9), JSON.stringify([[['Super', 20000, true]], 1]));
+    await ev(`guardar(); true`); await nav(URL_APP); await sleep(800);
+    check('L3 after a restart the movement still knows the previous amount', await ev(`[D.meses[9].movimientos[0].tipo, D.meses[9].movimientos[0].ma]`), ['pago', 50000]);
+    await ev(`document.querySelector('.item.mov [data-act=quitarMov]').click(); true`); await sleep(400);
+    check('L3 undo from the list after a restart restores exactly', await mesL3(9), antesL3);
+    // "Sí" with the same amount: ticked directly
+    await gastoL3('50.000'); await tocarL3('#hoja [data-act=gastoEsPago]');
+    check('L3 "Sí" with the same amount ticks directly (no second question, no new row)', [await hojaL3(), await mesL3(9)], [null, JSON.stringify([[['Super', 50000, true]], 1])]);
+    await tocarL3('#toast [data-act=quitarMov]');
+    check('L3 undo of the same-amount "Sí"', await mesL3(9), antesL3);
+    // "No, es otro gasto": a separate ticked row, the plan stays pending
+    await gastoL3('20.000'); await tocarL3('#hoja [data-act=gastoAparte]');
+    check('L3 "No": separate ticked row, the plan stays pending', await mesL3(9), JSON.stringify([[['Super', 50000, false], ['Super (otro gasto)', 20000, true]], 1]));
+    check('L3 "No" toast says the plan is still pending', await ev(`document.querySelector('#toast span').textContent`), 'Anoté ' + await ev('fARS(20000)') + ' en Super (otro gasto). Super sigue pendiente');
+    await tocarL3('#toast [data-act=quitarMov]');
+    check('L3 undo of "No" removes the separate row', await mesL3(9), antesL3);
+    // future month of the model: N4 I-1 unchanged
+    await ev(`document.querySelector('[data-act=mes][data-m="10"]').click(); true`); await sleep(1000);
+    await gastoL3('20.000');
+    check('L3 future month: no question, amount added, row stays programado', [await hojaL3(), await mesL3(10)], [null, JSON.stringify([[['Super', 70000, false]], 1])]);
+    await ev(`document.querySelector('[data-act=mes][data-m="9"]').click(); true`); await sleep(400);
+  }
+
   check('no uncaught page errors', pageErrs, []);
 }catch(e){ fails++; results.push('ERROR ' + e.message); }
 finally{

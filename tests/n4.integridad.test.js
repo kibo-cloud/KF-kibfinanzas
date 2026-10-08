@@ -13,7 +13,7 @@ function gastoApp(d, mes, sec, cat, monto){
   var g = {gr: {monto: monto, cat: cat, sec: sec}, toasts: [], document: {getElementById: function(){ return null; }}};
   g.cerrarHoja = function(){}; g.tocar = function(){}; g.conScroll = function(){}; g.renderMes = function(){}; g.fARS = function(v){ return '$' + v; };
   g.toast = function(t){ g.toasts.push(t); };
-  var app = la.loadApp({today: '2026-10-15', funcs: ['sumarGasto', 'mesDelModelo'], globals: g});
+  var app = la.loadApp({today: '2026-10-15', funcs: ['sumarGasto', 'mesDelModelo', 'preguntaPago', 'anotarMov'], globals: g});
   d = C.copy(d); if(!d.meses[mes].gastosVariables) d.meses[mes].gastosVariables = [C.it('Supermercado', 0, false)];
   app.D = M.normalizar(d, HOY); app.mes = mes;
   return app;

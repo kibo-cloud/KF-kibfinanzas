@@ -2007,6 +2007,8 @@ function normalizar(d, hoy){
     m.movimientos = m.movimientos.filter(function(x){ return x && typeof x==='object'; }).map(function(x){
       var mo = {id:String(x.id||''), fecha:String(x.fecha||''), sec:String(x.sec||'gastosVariables'), nombre:String(x.nombre||''), monto:num(x.monto)};
       if(typeof x.pp === 'boolean') mo.pp = x.pp;   // pagado que tenía el renglón antes de este gasto: lo usa Deshacer
+      if(x.tipo === 'pago' || x.tipo === 'aparte') mo.tipo = x.tipo;   // L3: qué respondió el usuario (Deshacer)
+      if(x.tipo === 'pago') mo.ma = num(x.ma);   // L3: monto que tenía el renglón antes de marcarlo pagado (Deshacer)
       return mo;
     });
     m.metaAhorroPct = m.metaAhorroPct==null ? 0.10 : num(m.metaAhorroPct);
@@ -4862,14 +4864,69 @@ function sumarGasto(){
   if(!gr.monto){ var i = document.getElementById('grMonto'); if(i) i.focus(); return; }
   if(gr.cat === null){ toast('Tocá una categoría para saber dónde sumarlo'); return; }
   var it = D.meses[mes][gr.sec][gr.cat], pp = it.pagado === true;
+  if(preguntaPago(D, mes, it, hoyApp())){ preguntarPago(it); return; }   // L3 (D8): ¿es el pago de ese renglón pendiente?
   sumarAItem(it, gr.monto);
   // N4 I-1 (§1 Programado + N3b-A (a), "no se tilda por adelantado"): en un mes FUTURO del modelo el gasto rápido suma el monto pero no
   // tilda el renglón (queda programado); los meses pasado/actual y los años legacy siguen como siempre
   if(mesDelModelo(D, mes) && estadoMes(D.anio, mes, hoyApp()) === 'futuro') it.pagado = pp;
-  var id = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
-  D.meses[mes].movimientos.push({id:id, fecha:new Date().toISOString(), sec:gr.sec, nombre:it.nombre, monto:gr.monto, pp:pp});
+  var id = anotarMov(it, gr.monto, pp);
   cerrarHoja(); tocar(); conScroll(renderMes);
   toast('Sumé ' + fARS(gr.monto) + ' a ' + it.nombre, 'Deshacer', 'quitarMov', id);
+}
+function anotarMov(it, monto, pp, extra){   // el gasto rápido queda en la lista del mes, con lo que Deshacer necesita para volver atrás
+  var id = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+  var mv = {id:id, fecha:new Date().toISOString(), sec:gr.sec, nombre:it.nombre, monto:monto, pp:pp};
+  if(extra) for(var k in extra) if(extra.hasOwnProperty(k)) mv[k] = extra[k];
+  D.meses[mes].movimientos.push(mv);
+  return id;
+}
+/* L3 (R7, regla D8): un gasto rápido sobre un renglón pendiente con monto pregunta si es ese pago, para no duplicar el gasto.
+   Sí → se tilda ese renglón (si el monto difiere, se elige cuál queda); No → otro gasto ya hecho, en un renglón aparte tildado, y el
+   plan sigue pendiente. En un mes futuro del modelo no se pregunta (N4 I-1: queda programado). Deshacer vuelve exactamente a lo de antes */
+function preguntaPago(d, j, it, hoy){
+  return it.pagado !== true && num(it.monto) > 0 && !(mesDelModelo(d, j) && estadoMes(d.anio, j, hoy) === 'futuro');
+}
+function preguntarPago(it){
+  abrirHoja('<h3>Gasto de ' + fARS(gr.monto) + '</h3>'
+    + '<div class="texto" style="margin-bottom:16px"><b>' + esc(it.nombre) + '</b> está pendiente por ' + fARS(num(it.monto)) + '. ¿Este gasto es ese pago?</div>'
+    + '<div class="fila"><button data-act="gastoAparte">No, es otro gasto</button>'
+    + '<button class="pri" data-act="gastoEsPago">Sí, marcarlo como pagado</button></div>'
+    + '<div class="fila" style="margin-top:8px"><button data-act="cerrarHoja">Cancelar</button></div>');
+}
+function filaDelGasto(){ var l = gr && gr.cat !== null && D.meses[mes][gr.sec]; return l ? l[gr.cat] || null : null; }
+function gastoEsPago(){
+  var it = filaDelGasto(); if(!it){ cerrarHoja(); return; }
+  if(num(it.monto) === gr.monto){ marcarPago(false); return; }
+  abrirHoja('<h3>¿Con qué monto lo marco?</h3>'   // sin cambios silenciosos: el usuario elige
+    + '<div class="texto" style="margin-bottom:16px"><b>' + esc(it.nombre) + '</b> decía ' + fARS(num(it.monto)) + ' y anotaste ' + fARS(gr.monto) + '.</div>'
+    + '<div class="fila"><button data-act="pagoMonto" data-v="fila">Dejar ' + fARS(num(it.monto)) + '</button>'
+    + '<button class="pri" data-act="pagoMonto" data-v="gasto">Cambiar a ' + fARS(gr.monto) + '</button></div>'
+    + '<div class="fila" style="margin-top:8px"><button data-act="cerrarHoja">Cancelar</button></div>');
+}
+function marcarPago(usarGasto){
+  var it = filaDelGasto(); if(!it){ cerrarHoja(); return; }
+  var pp = it.pagado === true, ma = num(it.monto);
+  if(usarGasto) it.monto = gr.monto;
+  it.pagado = true;
+  var id = anotarMov(it, num(it.monto), pp, {tipo:'pago', ma:ma});
+  cerrarHoja(); tocar(); conScroll(renderMes);
+  toast('Marqué ' + it.nombre + ' como pagado', 'Deshacer', 'quitarMov', id);
+}
+function gastoAparte(){
+  var it = filaDelGasto(); if(!it){ cerrarHoja(); return; }
+  var ls = D.meses[mes][gr.sec], fila = null, nueva = false, nombre = '', n, q;
+  for(n=1; !fila; n++){   // "Super (otro gasto)": se reusa si está tildado o vacío; uno pendiente nunca se mezcla (va "Super (otro gasto 2)")
+    nombre = it.nombre + (n === 1 ? ' (otro gasto)' : ' (otro gasto ' + n + ')');
+    var hallada = null;
+    for(q=0;q<ls.length;q++) if(ls[q].nombre === nombre){ hallada = ls[q]; break; }
+    if(!hallada){ fila = {nombre:nombre, monto:0, tope:0, frec:'', dias:[], pagado:false}; ls.push(fila); nueva = true; break; }   // la forma de un renglón normalizado
+    if(hallada.pagado === true || !num(hallada.monto)) fila = hallada;
+  }
+  var pp = fila.pagado === true;
+  sumarAItem(fila, gr.monto);   // vacío → queda tildado: plata ya gastada
+  var id = anotarMov(fila, gr.monto, pp, nueva ? {tipo:'aparte'} : null);
+  cerrarHoja(); tocar(); conScroll(renderMes);
+  toast('Anoté ' + fARS(gr.monto) + ' en ' + fila.nombre + '. ' + it.nombre + ' sigue pendiente', 'Deshacer', 'quitarMov', id);
 }
 var borrado = null;
 function volverBorrado(){
@@ -4887,9 +4944,11 @@ function quitarMov(id){
   var mv = m.movimientos[k], ls = m[mv.sec] || [];
   for(i=0;i<ls.length;i++){
     if(ls[i].nombre === mv.nombre){
+      if(mv.tipo === 'pago' && typeof mv.pp === 'boolean'){ ls[i].monto = num(mv.ma); ls[i].pagado = mv.pp; break; }   // L3 "Sí": monto y tilde de antes
       ls[i].monto = Math.max(0, num(ls[i].monto) - mv.monto);
       // si el gasto rápido tildó un renglón vacío y Deshacer lo deja vacío otra vez, vuelve a como estaba (los viejos sin pp no tocan nada)
       if(typeof mv.pp === 'boolean' && !(ls[i].monto > 0)) ls[i].pagado = mv.pp;
+      if(mv.tipo === 'aparte' && !(ls[i].monto > 0)) ls.splice(i, 1);   // L3 "No, es otro gasto": el renglón aparte que creó se va
       break;
     }
   }
@@ -5176,6 +5235,9 @@ document.addEventListener('click', function(ev){
   if(a === 'restaurar'){ document.getElementById('fileJson').click(); return; }
   if(a === 'imprimir'){ imprimir(); return; }
   if(a === 'anio'){ cambiarAnio(+b.getAttribute('data-v')); return; }
+  if(a === 'gastoEsPago'){ gastoEsPago(); return; }
+  if(a === 'gastoAparte'){ gastoAparte(); return; }
+  if(a === 'pagoMonto'){ marcarPago(b.getAttribute('data-v') === 'gasto'); return; }
   if(a === 'cerrarAviso'){ document.getElementById('avisos').innerHTML = ''; return; }
   if(a === 'posponerCopia'){ posponerCopia(); return; }
   if(a === 'primerUsoOk' || a === 'primerUsoNo'){ primerUso(a === 'primerUsoNo'); return; }
