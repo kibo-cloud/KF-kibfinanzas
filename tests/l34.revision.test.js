@@ -12,7 +12,7 @@ var H = require('./fixtures/r45-harness');
 function plain(x){ return JSON.parse(JSON.stringify(x)); }
 function filas(l){ return plain(l).map(function(it){ return [it.nombre, it.monto, it.pagado]; }); }
 var FUNCS = ['sumarGasto', 'quitarMov', 'esc', 'fARS', 'grupos', 'preguntaPago', 'preguntarPago', 'gastoEsPago', 'marcarPago', 'gastoAparte',
-  'filaDelGasto', 'anotarMov'];
+  'filaDelGasto', 'anotarMov', 'copiarAnterior', 'esGastoAparte'];
 function app(raw, mes){
   var toasts = [];
   var a = H.appVista(raw, null, null, null, {funcs: FUNCS, vars: ['gr', 'MESES'],
@@ -64,4 +64,18 @@ test('L3 review 1: a manual amount edit after "Sí" survives its undo (only the 
   b.D.meses[9].gastosVariables[0].monto = 22000;
   b.quitarMov(ultimoId(b));
   assert.deepEqual(fila(b), [['Super', 52000, false]], 'the +2.000 edit stays on top of the restored plan');
+});
+
+test('L3 review 2: copying the previous month skips the one-off "(otro gasto)" rows', function(){
+  var d = C.vacio(2026); C.arrastre(d, 9, 100000, 'declarado');
+  C.mes(d, 9, {gastosVariables: [C.it('Super', 50000, false), C.it('Super (otro gasto)', 20000, true), C.it('Super (otro gasto 2)', 7000, true),
+    C.it('Ropa (otro gasto) extra', 3000, true)]});
+  var a = app(d, 10);
+  a.copiarAnterior('gastosVariables');
+  assert.deepEqual(filas(a.D.meses[10].gastosVariables), [['Super', 50000, false], ['Ropa (otro gasto) extra', 3000, false]],
+    'only the exact suffixes L3 creates are one-off; a name that merely contains the words is copied');
+  assert.equal(a.esGastoAparte('Super (otro gasto 12)'), true);
+  assert.equal(a.esGastoAparte('Super (otro gasto)'), true);
+  assert.equal(a.esGastoAparte('(otro gasto)'), false, 'no row name before it: not something L3 creates');
+  assert.equal(a.esGastoAparte('Super (otro gasto 1)'), false, 'L3 numbers from 2');
 });

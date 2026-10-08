@@ -4974,13 +4974,16 @@ function toast(txt, accion, act, id){   // texto plano: se escapa siempre (puede
   if(tToast) clearTimeout(tToast);
   tToast = setTimeout(function(){ t.classList.remove('on'); }, 5000);
 }
+// L3 review: los renglones que crea "No, es otro gasto" ("<fila> (otro gasto)", "(otro gasto 2)", …) son plata ya gastada, no un plan
+function esGastoAparte(nombre){ return /\S \(otro gasto(?: (?:[2-9]|[1-9]\d+))?\)$/.test(String(nombre || '')); }
 function copiarAnterior(k){
   var act = D.meses[mes][k], ant = D.meses[mes-1][k], i, j, copiables = 0;
   // "Del trabajo" no se copia: lo cargan los pases. Si no queda nada con monto, se avisa sin tocar el mes
-  for(i=0;i<ant.length;i++) if(!(k === 'ingresos' && esRenglonTrabajo(ant[i].nombre)) && num(ant[i].monto)) copiables++;
+  for(i=0;i<ant.length;i++) if(!(k === 'ingresos' && esRenglonTrabajo(ant[i].nombre)) && !esGastoAparte(ant[i].nombre) && num(ant[i].monto)) copiables++;
   if(!copiables){ toast('No hay nada para copiar: “' + RENGLON_TRABAJO + '” lo cargás desde Trabajo'); return; }
   for(i=0;i<ant.length;i++){
     if(k === 'ingresos' && esRenglonTrabajo(ant[i].nombre)) continue;
+    if(esGastoAparte(ant[i].nombre)) continue;   // L3 review: un gasto aparte ya está gastado, no es un plan para el mes que viene
     var hallado = false;
     for(j=0;j<act.length;j++) if(act[j].nombre === ant[i].nombre){ act[j].monto = num(ant[i].monto); act[j].pagado = false; hallado = true; break; }
     if(!hallado) act.push({nombre:ant[i].nombre, monto:num(ant[i].monto), pagado:false});
