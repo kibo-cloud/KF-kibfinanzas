@@ -8,7 +8,7 @@ var la = require('./load-app');
 var C = require('./fixtures/r4-casos');
 
 var FUNCS = ['vencimientos', 'diasCobro', 'isoDe', 'dos', 'diasDelMes', 'mesDelModelo', 'diasEntre', 'utcDe', 'esISO', 'cuandoVence', 'detalleVence',
-  'htmlVence', 'fARS', 'grupos', 'esc', 'fDia'];
+  'htmlVence', 'fARS', 'grupos', 'esc', 'fDia', 'cuantosPagos', 'repartoTrabajo', 'ctxModelo', 'cierreAnioAnterior', 'leerAnio', 'hoyISO', 'sumarDias'];
 function app(today){
   return la.loadApp({today: today, funcs: FUNCS, vars: ['MESES', 'DIAS_VENCE', 'VENCE_MAX', 'venceL', 'oculto', 'PUNTOS'], globals: {T: null}});
 }
@@ -64,13 +64,13 @@ test('L5 overdue from past months of the model = the rows the hero chip "Atrasad
   C.mes(raw, 8, {gastosVariables: [C.it('Super', 30000, false)], deudas: [C.it('Préstamo', 100000, false)]});
   var d = anio(a, raw), l = a.vencimientos(d, 9, a.hoy, []);
   assert.deepEqual(resumen(l), [
-    ['atrasado', 'cobrar', 'Sueldo', 900000, '2026-08-31'], ['atrasado', 'pagar', 'Luz', 20000, '2026-08-31'],
+    ['atrasado', 'cobrar', 'Sueldo', 900000, '2026-08-31'], ['atrasado', 'cobrar', 'Del trabajo', 50000, '2026-08-31'], ['atrasado', 'pagar', 'Luz', 20000, '2026-08-31'],
     ['atrasado', 'pagar', 'Préstamo', 100000, '2026-09-30'], ['atrasado', 'pagar', 'Super', 30000, '2026-09-30']]);
   var res = a.cadena(d, a.hoy, {pasesTrabajo: {}}).resumen, pagar = 0, cobrar = 0;
   l.forEach(function(x){ if(x.tipo === 'pagar') pagar += x.monto; else cobrar += x.monto; });
   assert.equal(pagar, res.vencidos, 'the overdue rows to pay add up to cadena.resumen.vencidos');
-  assert.equal(cobrar, res.vencidosIngresos - 50000, 'income: the same rows except "Del trabajo" (its pending side is Trabajo\'s invoices)');
-  assert.equal(a.detalleVence(l[1]), 'A pagar · de agosto');
+  assert.equal(cobrar, res.vencidosIngresos, 'income: the same rows, "Del trabajo" included (no pases cover it; L5 review)');
+  assert.equal(a.detalleVence(l[2]), 'A pagar · de agosto');
   var leg = C.vacio(2026);
   C.mes(leg, 8, {gastosFijos: [C.it('Luz', 20000, false)]});
   assert.deepEqual(resumen(a.vencimientos(anio(a, leg), 9, a.hoy, [])), [], 'a year without the month-to-month balance has no "Atrasado"');

@@ -3209,22 +3209,27 @@ function diasCobro(it, anio, m){
 function vencimientos(d, j, hoy, facturas){
   if(!d || estadoMes(d.anio, j, hoy) !== 'actual') return [];
   var out = [], secs = ['ingresos', 'gastosFijos', 'gastosVariables', 'deudas'], dim = diasDelMes(d.anio, j);
-  var desde = mesDelModelo(d, j) ? Math.max(0, Math.round(num(d.arrastre.desde))) : j, jj, s, i, k, it, dias, prox, q, f, dv;
-  var pend = function(jm, k, it){ return !estaPagado(jm, it) && num(it.monto) > 0 && !(k === 'ingresos' && esRenglonTrabajo(it.nombre)); };
+  var desde = mesDelModelo(d, j) ? Math.max(0, Math.round(num(d.arrastre.desde))) : j, jj, s, i, k, it, dias, prox, q, f, dv, mo;
+  // lo que falta de un renglón: el monto, o en "Del trabajo" solo la parte que no cubren los pases (lo mismo que flujosMes cuenta pendiente)
+  var falta = function(jm, k, it){
+    if(estaPagado(jm, it)) return 0;
+    if(k === 'ingresos' && esRenglonTrabajo(it.nombre)){ var r = repartoTrabajo(d, jm, it); return Math.max(0, r ? r.exceso : num(it.monto)); }
+    return Math.max(0, num(it.monto));
+  };
   var tipo = function(k){ return k === 'ingresos' ? 'cobrar' : 'pagar'; };
   for(jj=desde;jj<j;jj++) for(s=0;s<secs.length;s++){
     k = secs[s];
     for(i=0;i<d.meses[jj][k].length;i++){
-      it = d.meses[jj][k][i]; if(!pend(jj, k, it)) continue;
-      out.push({atrasado: true, tipo: tipo(k), nombre: String(it.nombre || ''), monto: num(it.monto), fecha: isoDe(d.anio, jj, diasDelMes(d.anio, jj)), mes: jj, k: k, i: i, deMes: jj});
+      it = d.meses[jj][k][i]; mo = falta(jj, k, it); if(!(mo > 0)) continue;
+      out.push({atrasado: true, tipo: tipo(k), nombre: String(it.nombre || ''), monto: mo, fecha: isoDe(d.anio, jj, diasDelMes(d.anio, jj)), mes: jj, k: k, i: i, deMes: jj});
     }
   }
   for(s=0;s<secs.length;s++){
     k = secs[s];
     for(i=0;i<d.meses[j][k].length;i++){
-      it = d.meses[j][k][i]; if(!pend(j, k, it)) continue;
+      it = d.meses[j][k][i]; mo = falta(j, k, it); if(!(mo > 0)) continue;
       dias = k === 'ingresos' ? diasCobro(it, d.anio, j) : [];
-      var x = {atrasado: false, tipo: tipo(k), nombre: String(it.nombre || ''), monto: num(it.monto), mes: j, k: k, i: i};
+      var x = {atrasado: false, tipo: tipo(k), nombre: String(it.nombre || ''), monto: mo, mes: j, k: k, i: i};
       if(dias.length){
         if(dias[dias.length - 1] < hoy.dia){ x.atrasado = true; x.era = dias[dias.length - 1]; x.fecha = isoDe(d.anio, j, x.era); out.push(x); continue; }
         prox = dias[0]; for(q=0;q<dias.length;q++) if(dias[q] >= hoy.dia){ prox = dias[q]; break; }
