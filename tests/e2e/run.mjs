@@ -1217,6 +1217,7 @@ try{
         return [b.length, m.scrollWidth <= m.clientWidth + 1, Array.prototype.every.call(b, function(x){ var q = x.getBoundingClientRect(); return q.left >= r.left - 1 && q.right <= r.right + 1 && q.width >= 44; })]; })()`), [12, true, true]);
     check('L1 1280: the tab bar is as wide as the content (first and last tab aligned with the month bar)',
       await ev(`(function(){ var m = document.getElementById('selMes').getBoundingClientRect(), b = document.querySelectorAll('#nav button'), v = Array.prototype.filter.call(b, function(x){ return x.offsetWidth; });
+        v.sort(function(p, q){ return p.getBoundingClientRect().left - q.getBoundingClientRect().left; });   // L7: Gasto sits after the tablist in the DOM, third on screen
         var a = v[0].getBoundingClientRect(), z = v[v.length - 1].getBoundingClientRect(); return [Math.abs(a.left - m.left) <= 1, Math.abs(z.right - m.right) <= 1]; })()`), [true, true]);
     await irTab('anio');
     check('L1 1280: chart axis labels stay legible (11 px or more)', await ev(ejes), []);

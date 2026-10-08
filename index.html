@@ -16,30 +16,30 @@
 <link rel="icon" type="image/png" sizes="64x64" href="./favicon-64.png">
 <style>
 :root{
-  --bg:#f2f2f7; --card:#ffffff; --card2:#ffffff; --txt:#111114; --txt2:#8a8a8e;
-  --sep:rgba(60,60,67,.13); --acc:#1f9d55; --acc-soft:rgba(31,157,85,.12);
-  --neg:#d0453a; --fill:#e9e9ee; --shadow:0 1px 2px rgba(0,0,0,.04),0 6px 18px rgba(0,0,0,.05);
-  --nav:rgba(248,248,250,.88); --r:14px; --halo:rgba(31,157,85,.10);
+  --bg:#f2f2f7; --card:#ffffff; --card2:#ffffff; --txt:#111114; --txt2:#6c6c70;
+  --sep:rgba(60,60,67,.13); --acc:#177a45; --acc-soft:rgba(23,122,69,.12); --on-acc:#ffffff;
+  --neg:#c23a30; --fill:#e9e9ee; --shadow:0 1px 2px rgba(0,0,0,.04),0 6px 18px rgba(0,0,0,.05);
+  --nav:rgba(248,248,250,.88); --r:14px; --halo:rgba(23,122,69,.10);
   --dig:#1a6bc4; --dig-soft:rgba(26,107,196,.10);
 }
 @media (prefers-color-scheme: dark){
   :root{
     --bg:#000000; --card:#161618; --card2:#1e1e21; --txt:#f4f4f6; --txt2:#8e8e93;
-    --sep:rgba(255,255,255,.10); --acc:#34c17b; --acc-soft:rgba(52,193,123,.16);
+    --sep:rgba(255,255,255,.10); --acc:#34c17b; --acc-soft:rgba(52,193,123,.16); --on-acc:#06210f;
     --neg:#f0655b; --fill:#2a2a2e; --shadow:none; --nav:rgba(20,20,22,.86); --halo:rgba(52,193,123,.16);
     --dig:#6cb2ff; --dig-soft:rgba(108,178,255,.15);
   }
 }
 html[data-tema="claro"]{
-  --bg:#f2f2f7; --card:#ffffff; --card2:#ffffff; --txt:#111114; --txt2:#8a8a8e;
-  --sep:rgba(60,60,67,.13); --acc:#1f9d55; --acc-soft:rgba(31,157,85,.12);
-  --neg:#d0453a; --fill:#e9e9ee; --shadow:0 1px 2px rgba(0,0,0,.04),0 6px 18px rgba(0,0,0,.05);
-  --nav:rgba(248,248,250,.88); --halo:rgba(31,157,85,.10);
+  --bg:#f2f2f7; --card:#ffffff; --card2:#ffffff; --txt:#111114; --txt2:#6c6c70;
+  --sep:rgba(60,60,67,.13); --acc:#177a45; --acc-soft:rgba(23,122,69,.12); --on-acc:#ffffff;
+  --neg:#c23a30; --fill:#e9e9ee; --shadow:0 1px 2px rgba(0,0,0,.04),0 6px 18px rgba(0,0,0,.05);
+  --nav:rgba(248,248,250,.88); --halo:rgba(23,122,69,.10);
   --dig:#1a6bc4; --dig-soft:rgba(26,107,196,.10);
 }
 html[data-tema="oscuro"]{
   --bg:#000000; --card:#161618; --card2:#1e1e21; --txt:#f4f4f6; --txt2:#8e8e93;
-  --sep:rgba(255,255,255,.10); --acc:#34c17b; --acc-soft:rgba(52,193,123,.16);
+  --sep:rgba(255,255,255,.10); --acc:#34c17b; --acc-soft:rgba(52,193,123,.16); --on-acc:#06210f;
   --neg:#f0655b; --fill:#2a2a2e; --shadow:none; --nav:rgba(20,20,22,.86); --halo:rgba(52,193,123,.16);
   --dig:#6cb2ff; --dig-soft:rgba(108,178,255,.15);
 }
@@ -55,7 +55,7 @@ html[data-tema="oscuro"]{
   --c-real:var(--acc); --c-real-bg:var(--acc-soft);
   --c-pend:#a35a00; --c-pend-bg:rgba(232,140,20,.14);
   --c-atras:#a8470a; --c-atras-bg:rgba(220,110,20,.15);
-  --c-prog:#6e6e73; --c-prog-bg:rgba(120,120,128,.12);
+  --c-prog:#636366; --c-prog-bg:rgba(120,120,128,.12);
   --c-proy:#48484a;
   --c-deuda:var(--txt);
   --c-trab:#5856d6; --c-trab-bg:rgba(88,86,214,.12);
@@ -72,7 +72,7 @@ html[data-tema="oscuro"]{
 html[data-tema="claro"]{
   --c-pend:#a35a00; --c-pend-bg:rgba(232,140,20,.14);
   --c-atras:#a8470a; --c-atras-bg:rgba(220,110,20,.15);
-  --c-prog:#6e6e73; --c-prog-bg:rgba(120,120,128,.12);
+  --c-prog:#636366; --c-prog-bg:rgba(120,120,128,.12);
   --c-proy:#48484a; --c-trab:#5856d6; --c-trab-bg:rgba(88,86,214,.12);
 }
 html[data-tema="oscuro"]{
@@ -114,7 +114,7 @@ html[data-oculto] .ojo .ojo-no{display:block}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--acc);flex:0 0 auto}
 .dot.sucio{background:#e0a300}
 .btn-guardar{grid-column:3;grid-row:1;justify-self:end;
-  flex:0 0 auto;background:var(--acc);color:#fff;font-size:15px;font-weight:600;
+  flex:0 0 auto;background:var(--acc);color:var(--on-acc);font-size:15px;font-weight:600;
   padding:9px 16px;border-radius:22px;min-height:40px;
 }
 .btn-guardar[disabled]{opacity:.45}
@@ -130,7 +130,7 @@ html[data-oculto] .ojo .ojo-no{display:block}
   background:var(--fill);border-radius:12px;padding:9px 14px;font-size:15px;
   font-weight:600;min-height:40px;
 }
-.mini.on{background:var(--acc);color:#fff}
+.mini.on{background:var(--acc);color:var(--on-acc)}
 
 /* ── vistas ── */
 .vista{display:none;padding-top:2px}
@@ -146,7 +146,7 @@ h2.tit{font-size:13px;font-weight:600;color:var(--txt2);margin:22px 4px 8px;lett
   background:var(--card);border:1px solid var(--sep);font-size:14px;font-weight:600;
   color:var(--txt2);scroll-snap-align:center;
 }
-.meses button.on{background:var(--acc);color:#fff;border-color:transparent}
+.meses button.on{background:var(--acc);color:var(--on-acc);border-color:transparent}
 
 /* ── resumen ── */
 .saldo{
@@ -233,7 +233,7 @@ input.err{box-shadow:inset 0 0 0 1.5px var(--neg);border-radius:8px;color:var(--
 .chk{width:23px;height:23px;flex:0 0 auto;border-radius:50%;border:2px solid var(--sep);
   display:flex;align-items:center;justify-content:center;color:transparent;transition:background .18s,border-color .18s,color .18s,transform .12s}
 .chk svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
-.chk.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.chk.on{background:var(--acc);border-color:var(--acc);color:var(--on-acc)}
 .chk:active{transform:scale(.88)}
 .chk.prog{border-style:dashed;opacity:.75}   /* R5: mes futuro del modelo, programado */
 .item.pago input.nombre{color:var(--txt2)}
@@ -330,7 +330,7 @@ tr.tot td:first-child{background:var(--card2)}
 /* ── fab + nav ── */
 .fab{
   position:fixed;right:16px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:45;
-  height:56px;padding:0 22px;border-radius:28px;background:var(--acc);color:#fff;
+  height:56px;padding:0 22px;border-radius:28px;background:var(--acc);color:var(--on-acc);
   font-size:16px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.22);display:flex;align-items:center;gap:8px;
 }
 nav{
@@ -365,7 +365,7 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
 .chips button.on{background:var(--acc-soft);border-color:var(--acc);color:var(--acc)}
 .hoja .fila{display:flex;gap:8px}
 .hoja .fila button{flex:1;min-height:50px;border-radius:14px;font-size:16px;font-weight:600;background:var(--fill)}
-.hoja .fila button.pri{background:var(--acc);color:#fff}
+.hoja .fila button.pri{background:var(--acc);color:var(--on-acc)}
 .hoja .fila button.mal{color:var(--neg)}
 .hoja .fila button.pri.mal{background:var(--neg);color:#fff}
 
@@ -387,7 +387,7 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
 .hoja .chips{margin-bottom:12px}
 .tj-acc{display:flex;gap:8px;margin-top:12px}
 .tj-acc button{flex:1;min-height:48px;border-radius:14px;font-size:15px;font-weight:600;background:var(--card);border:1px solid var(--sep);box-shadow:var(--shadow)}
-.tj-acc button.pri{background:var(--acc);color:#fff;border-color:transparent}
+.tj-acc button.pri{background:var(--acc);color:var(--on-acc);border-color:transparent}
 .tj-f{display:flex;align-items:center;gap:10px;width:100%;padding:10px 14px;min-height:58px;text-align:left;border-bottom:1px solid var(--sep);background:var(--card);color:var(--txt)}
 .tj-f:last-child{border-bottom:0}
 button.tj-f:active{background:var(--fill)}
@@ -432,10 +432,10 @@ button.tj-f:active{background:var(--fill)}
 .seg.seg4 button{font-size:13px;padding:0 4px}
 .grilla-dias{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:14px}
 .grilla-dias button{min-height:38px;border-radius:10px;background:var(--fill);color:var(--txt);font-size:14px;font-weight:500;font-variant-numeric:tabular-nums}
-.grilla-dias button.on{background:var(--acc);color:#fff;font-weight:700}
+.grilla-dias button.on{background:var(--acc);color:var(--on-acc);font-weight:700}
 .grilla-sem{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:14px}
 .grilla-sem button{min-height:44px;border-radius:12px;background:var(--fill);color:var(--txt);font-size:15px;font-weight:600}
-.grilla-sem button.on{background:var(--acc);color:#fff}
+.grilla-sem button.on{background:var(--acc);color:var(--on-acc)}
 .grilla-dias button:active,.grilla-sem button:active{transform:scale(.9);transition-duration:var(--toque)}
 .tj-modo{margin-bottom:6px}
 .tj-prods{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
@@ -450,7 +450,7 @@ button.tj-f:active{background:var(--fill)}
 .tj-carps{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin-top:10px;padding:1px 0 3px}
 .tj-carps::-webkit-scrollbar{display:none}
 .tj-carps button{flex:0 0 auto;display:flex;align-items:center;gap:6px;height:34px;min-height:0;padding:0 12px;border-radius:17px;background:var(--fill);color:var(--txt);font-size:14px;font-weight:600;white-space:nowrap}
-.tj-carps button.on{background:var(--acc);color:#fff}
+.tj-carps button.on{background:var(--acc);color:var(--on-acc)}
 .tj-carps i,.tj-carp-hd i{font-style:normal;font-weight:500;font-size:12px;opacity:.65;font-variant-numeric:tabular-nums}
 .pt{display:inline-block;width:10px;height:10px;border-radius:50%;flex:0 0 auto}
 .pt.gen{background:transparent;border:2px solid var(--txt2)}
@@ -507,7 +507,7 @@ button.tj-f:active{background:var(--fill)}
 .tj-mt b{font-size:28px;font-weight:700;letter-spacing:-.03em;line-height:1.15;margin-top:1px}
 .tj-mt b.largo{font-size:23px}
 @media (max-width:370px){.tj-md b{font-size:16px}.tj-md b.largo{font-size:14px}}
-.tj-cobra button{min-height:56px;border-radius:14px;font-size:17px;font-weight:600;background:var(--acc);color:#fff}
+.tj-cobra button{min-height:56px;border-radius:14px;font-size:17px;font-weight:600;background:var(--acc);color:var(--on-acc)}
 .tj-cobra button.sec{background:var(--fill);color:var(--txt)}
 .tj-cobra button:active{transform:scale(.975);transition-duration:var(--toque)}
 .tj-f .mt small.vg{display:block;font-size:12px;font-weight:600;color:var(--acc);margin-top:1px}
@@ -667,7 +667,8 @@ body:has(#primerUso) #avisos>.aviso:not([data-av]){display:none}
 .toast.on{animation:kfSube .24s ease-out}
 @keyframes kfBarra{from{width:0}}
 @keyframes kfTrazo{from{stroke-dashoffset:1300}to{stroke-dashoffset:0}}
-.vista.on>.sec,.vista.on>.lista,.vista.on>.tabla,.vista.on>.manual>.sec{animation:kfEntra .26s ease-out both}
+.vista.on>.sec,.vista.on>.lista,.vista.on>.tabla,.vista.on>.manual>.sec,.vista.on .mes-der>.sec{animation:kfEntra .26s ease-out both}
+.vista.on .mes-der>.sec{animation-delay:.175s}
 .vista.on>.sec:nth-of-type(2){animation-delay:.035s}
 .vista.on>.sec:nth-of-type(3){animation-delay:.07s}
 .vista.on>.sec:nth-of-type(4){animation-delay:.105s}
@@ -758,7 +759,7 @@ button.tj-f:active{background:var(--fill);transition-duration:var(--toque)}
 .vista.on{animation:kfEntra .22s var(--curva)}
 .vista.der{animation:kfDer .3s var(--curva)}
 .vista.izq{animation:kfIzq .3s var(--curva)}
-.vista.on>.sec,.vista.on>.lista,.vista.on>.tabla,.vista.on>.manual>.sec{
+.vista.on>.sec,.vista.on>.lista,.vista.on>.tabla,.vista.on>.manual>.sec,.vista.on .mes-der>.sec{
   animation-duration:.28s;animation-timing-function:var(--curva);   /* en largo, para no pisar el retardo escalonado */
 }
 .pista i{transition:width .34s var(--curva-viva),background .25s var(--curva)}
@@ -789,11 +790,11 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--acc);outline-offset
 .puerta input{width:100%;padding:15px;border-radius:14px;border:1px solid var(--sep);background:var(--card);
   font-size:17px;outline:none;margin-bottom:12px;text-align:center}
 .puerta input:focus{border-color:var(--acc)}
-.puerta button{width:100%;min-height:52px;border-radius:14px;background:var(--acc);color:#fff;font-size:17px;font-weight:600}
+.puerta button{width:100%;min-height:52px;border-radius:14px;background:var(--acc);color:var(--on-acc);font-size:17px;font-weight:600}
 .anios{display:flex;flex-wrap:wrap;gap:8px}
 .anios button{min-height:44px;padding:0 18px;border-radius:14px;background:var(--card);border:1px solid var(--sep);
   font-size:15px;font-weight:600;color:var(--txt2)}
-.anios button.on{background:var(--acc);color:#fff;border-color:transparent}
+.anios button.on{background:var(--acc);color:var(--on-acc);border-color:transparent}
 /* ═══ P3a · toques de 44 × 44 como mínimo en el mes (tildes, Editar, ×, Guardar, ojo, puntos del carrusel) y etiquetas de 11 px ═══ */
 .item{gap:4px;padding:2px 2px 2px 4px}
 .item>input.nombre:first-child{padding-left:12px}
@@ -801,7 +802,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--acc);outline-offset
 .chk::before{content:'';position:absolute;left:10px;top:10px;width:24px;height:24px;box-sizing:border-box;border-radius:50%;border:2px solid var(--sep);
   transition:background .18s,border-color .18s}
 .chk svg{position:relative;z-index:1}
-.chk.on{background:none;color:#fff}
+.chk.on{background:none;color:var(--on-acc)}
 .chk.on::before{background:var(--c-real);border-color:var(--c-real)}
 .chk.prog{opacity:.8}
 .chk.prog::before{border-style:dashed;border-color:var(--c-prog)}
@@ -854,7 +855,7 @@ td .chip{min-height:0;padding:1px 7px;font-size:var(--fs-min);margin-left:4px}
 .tj-pp{margin:0;padding:8px 16px;border-bottom:1px solid var(--sep)}
 /* Gasto es una acción de la barra de abajo: nunca flota encima de un monto (hallazgo 11) */
 .nav-gasto{color:var(--acc)!important}
-.nav-gasto .np{background:var(--acc);color:#fff}
+.nav-gasto .np{background:var(--acc);color:var(--on-acc)}
 .nav-gasto svg{stroke-width:2.6}
 nav button{min-width:var(--tap)}
 body{padding-bottom:calc(84px + var(--s4) + env(safe-area-inset-bottom))}
@@ -878,6 +879,27 @@ body:has(#avisoCierre) #avisoVersion{display:none}
   .meses{overflow:visible}
   .meses button{flex:1 1 0;min-width:var(--tap);padding:0}
   nav{padding-left:calc((100% - 688px) / 2);padding-right:calc((100% - 688px) / 2)}
+}
+/* ═══ L7 · teclado, lector de pantalla y computadora ═══ */
+/* la barra de abajo: las pestañas son una lista de pestañas y Gasto es una acción aparte; se ven en el mismo orden de siempre */
+.tabs{display:contents}
+#nav [data-t=mes]{order:1} #nav [data-t=anio]{order:2} #nav .nav-gasto{order:3} #nav [data-t=usd]{order:4} #nav [data-t=trabajo]{order:5} #nav [data-t=ajustes]{order:6}
+.hoja:focus{outline:none}
+/* el mes en dos columnas solo desde 1024 px; en el celular los envoltorios no existen para el diseño */
+.mes-cols,.mes-izq,.mes-der{display:contents}
+@media screen and (min-width:1024px){   /* screen: la impresión sigue como siempre */
+  .wrap{max-width:1200px;padding:0 24px}
+  nav{padding-left:max(24px, calc((100% - 1152px) / 2));padding-right:max(24px, calc((100% - 1152px) / 2))}
+  #v-mes .mes-cols{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:0 24px;align-items:start}
+  #v-mes .mes-izq,#v-mes .mes-der{display:block;min-width:0}
+  #v-mes .mes-izq.fija{position:sticky;top:68px}
+  #v-mes .mes-der>.sec:first-child{margin-top:0}
+  /* El año, Patrimonio y Trabajo: el resumen arriba a lo ancho y las secciones en dos columnas */
+  #v-anio.on,#v-usd.on,#v-trabajo.on{columns:2;column-gap:24px}
+  #v-anio.on>*,#v-usd.on>*,#v-trabajo.on>*{break-inside:avoid}
+  #v-anio.on>.hero-anio,#v-anio.on>.resumen,#v-anio.on>[data-sec=anTabla],#v-usd.on>#heroPatri,#v-trabajo.on>:not(.sec){column-span:all}
+  #v-ajustes.on{max-width:720px;margin:0 auto}
+  .hoja{max-height:80vh}
 }
 .soloPrint{display:none}
 @media print{
@@ -905,32 +927,34 @@ body:has(#avisoCierre) #avisoVersion{display:none}
 <div class="wrap" id="avisos"></div>
 
 <main class="wrap">
-  <section class="vista on" id="v-mes"></section>
+  <section class="vista on" id="v-mes" role="tabpanel" aria-labelledby="tab-mes"></section>
   <div id="printTit" class="soloPrint"></div>
-  <section class="vista" id="v-anio"></section>
-  <section class="vista" id="v-usd"></section>
-  <section class="vista" id="v-trabajo"></section>
-  <section class="vista" id="v-ajustes"></section>
+  <section class="vista" id="v-anio" role="tabpanel" aria-labelledby="tab-anio"></section>
+  <section class="vista" id="v-usd" role="tabpanel" aria-labelledby="tab-usd"></section>
+  <section class="vista" id="v-trabajo" role="tabpanel" aria-labelledby="tab-trabajo"></section>
+  <section class="vista" id="v-ajustes" role="tabpanel" aria-labelledby="tab-ajustes"></section>
 </main>
 
-<nav id="nav">
-  <button data-act="tab" data-t="mes" class="on">
-    <span class="np"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span>Mes</button>
-  <button data-act="tab" data-t="anio">
-    <span class="np"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>Año</button>
+<nav id="nav" aria-label="Secciones">
+  <div class="tabs" role="tablist" aria-label="Secciones">
+    <button id="tab-mes" role="tab" aria-selected="true" aria-controls="v-mes" data-act="tab" data-t="mes" class="on">
+      <span class="np"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span>Mes</button>
+    <button id="tab-anio" role="tab" aria-selected="false" aria-controls="v-anio" data-act="tab" data-t="anio">
+      <span class="np"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>Año</button>
+    <button id="tab-usd" role="tab" aria-selected="false" aria-controls="v-usd" data-act="tab" data-t="usd">
+      <span class="np"><svg viewBox="0 0 24 24"><path d="M12 2v20M17 6.5C17 4.6 14.8 3.5 12 3.5S7 4.6 7 6.9s2.4 3.1 5 3.6 5 1.3 5 3.6-2.2 3.4-5 3.4-5-1.1-5-3"/></svg></span>Patrimonio</button>
+    <button id="tab-trabajo" role="tab" aria-selected="false" aria-controls="v-trabajo" data-act="tab" data-t="trabajo" style="display:none">
+      <span class="np"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"/></svg></span>Trabajo</button>
+    <button id="tab-ajustes" role="tab" aria-selected="false" aria-controls="v-ajustes" data-act="tab" data-t="ajustes">
+      <span class="np"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7.5 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 15.9H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9.5l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 10 6V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1.3z"/></svg></span>Ajustes</button>
+  </div>
   <button class="nav-gasto" id="fab" data-act="gastoRapido" aria-label="Sumar un gasto">
     <span class="np"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span>Gasto</button>
-  <button data-act="tab" data-t="usd">
-    <span class="np"><svg viewBox="0 0 24 24"><path d="M12 2v20M17 6.5C17 4.6 14.8 3.5 12 3.5S7 4.6 7 6.9s2.4 3.1 5 3.6 5 1.3 5 3.6-2.2 3.4-5 3.4-5-1.1-5-3"/></svg></span>Patrimonio</button>
-  <button data-act="tab" data-t="trabajo" style="display:none">
-    <span class="np"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"/></svg></span>Trabajo</button>
-  <button data-act="tab" data-t="ajustes">
-    <span class="np"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7.5 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 15.9H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9.5l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 10 6V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1.3z"/></svg></span>Ajustes</button>
 </nav>
 
 <div class="pild" id="pild" role="status" aria-live="polite"></div>
-<div class="toast" id="toast"></div>
-<div class="velo" id="velo"><div class="hoja" id="hoja"></div></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="velo" id="velo"><div class="hoja" id="hoja" role="dialog" aria-modal="true" aria-label="Ventana" tabindex="-1"></div></div>
 <input type="file" id="fileJson" accept="application/json,text/plain,.json,.txt" style="position:absolute;left:-9999px">
 
 <script id="datos" type="application/json">
@@ -2807,7 +2831,10 @@ function irATab(destino){
   tab = destino; ajVista = '';
   var haciaDer = TABS.indexOf(tab) > antes;
   var bs = document.querySelectorAll('#nav button');
-  for(i=0;i<bs.length;i++) bs[i].classList.toggle('on', bs[i].getAttribute('data-t') === tab);
+  for(i=0;i<bs.length;i++){
+    bs[i].classList.toggle('on', bs[i].getAttribute('data-t') === tab);
+    if(bs[i].getAttribute('role') === 'tab') bs[i].setAttribute('aria-selected', bs[i].getAttribute('data-t') === tab ? 'true' : 'false');   // L7: el lector de pantalla dice cuál está elegida
+  }
   var vs = document.querySelectorAll('.vista');
   for(i=0;i<vs.length;i++) vs[i].classList.toggle('on', vs[i].id === 'v-' + tab);
   render(); window.scrollTo(0,0);
@@ -2817,6 +2844,43 @@ function irATab(destino){
     vv.classList.add(haciaDer ? 'der' : 'izq');
   }
 }
+// L7: en la computadora, el resumen del mes (columna izquierda) queda quieto mientras se recorren los renglones, solo si entra entero
+function fijarResumen(){
+  var c = document.querySelector('#v-mes .mes-izq'); if(!c) return;
+  var hd = document.querySelector('header'), nv = document.getElementById('nav');
+  var libre = window.innerHeight - (hd ? hd.offsetHeight : 0) - (nv ? nv.offsetHeight : 0) - 24;
+  c.classList.toggle('fija', window.innerWidth >= 1024 && c.offsetHeight > 0 && c.offsetHeight <= libre);
+}
+window.addEventListener('resize', fijarResumen);
+// L7: las flechas recorren las pestañas de la barra de abajo (Enter o espacio la abren, como cualquier botón)
+document.addEventListener('keydown', function(ev){
+  var t = ev.target, k = ev.key;
+  if((k !== 'ArrowRight' && k !== 'ArrowLeft' && k !== 'Home' && k !== 'End') || !t || !t.getAttribute || t.getAttribute('role') !== 'tab') return;
+  var l = Array.prototype.filter.call(document.querySelectorAll('#nav [role=tab]'), function(b){ return b.offsetParent !== null; }), i = l.indexOf(t);
+  if(i < 0) return;
+  i = k === 'Home' ? 0 : k === 'End' ? l.length - 1 : (i + (k === 'ArrowRight' ? 1 : -1) + l.length) % l.length;
+  ev.preventDefault(); l[i].focus();
+});
+// L7: con los montos ocultos, el lector de pantalla dice "oculto" en vez de leer cuatro puntos
+function rotularOcultos(){
+  if(!oculto || !document.createTreeWalker) return;
+  var raiz = document.body, w = document.createTreeWalker(raiz, 4, null), n, l = [];
+  while((n = w.nextNode())){
+    var p = n.parentNode;
+    if(n.nodeValue.indexOf(PUNTOS) < 0 || !p || p.namespaceURI !== 'http://www.w3.org/1999/xhtml') continue;
+    if(/^(SCRIPT|STYLE|TEXTAREA|OPTION|TITLE)$/.test(p.nodeName) || (p.classList && p.classList.contains('oc'))) continue;
+    l.push(n);
+  }
+  l.forEach(function(n){
+    var f = document.createDocumentFragment();
+    n.nodeValue.split(PUNTOS).forEach(function(x, i){
+      if(i){ var s = document.createElement('span'); s.className = 'oc'; s.setAttribute('role', 'img'); s.setAttribute('aria-label', 'oculto'); s.textContent = PUNTOS; f.appendChild(s); }
+      if(x) f.appendChild(document.createTextNode(x));
+    });
+    n.parentNode.replaceChild(f, n);
+  });
+}
+if(window.MutationObserver && document.body) new MutationObserver(function(){ if(oculto) rotularOcultos(); }).observe(document.body, {childList: true, subtree: true, characterData: true});
 function scrollLateral(el){
   try{ var ov = window.getComputedStyle(el).overflowX; return ov === 'auto' || ov === 'scroll'; }
   catch(e){ return true; }   // si no se puede saber, se comporta como antes
@@ -3242,6 +3306,7 @@ function renderMes(){
   h += '<div class="meses" id="selMes">';
   for(var i=0;i<12;i++) h += '<button data-act="mes" data-m="'+i+'" class="'+(i===mes?'on':'')+'">'+CORTOS[i]+'</button>';
   h += '</div>';
+  h += '<div class="mes-cols"><div class="mes-izq">';   // L7: en la computadora, a la izquierda lo que resume el mes y a la derecha los renglones
   h += '<div id="avisoSaldo">' + htmlAvisosSaldo(D, mes, vm, hoy) + '</div>';   // R5: primer uso (D5) o "¿Cerraste … con …?" (D10)
 
   // P3a: con la pregunta del primer uso pendiente, la pregunta ocupa el lugar de la tarjeta principal (ningún número arriba de ella);
@@ -3264,6 +3329,7 @@ function renderMes(){
      + '</div></div>';
   if(!primer) h += htmlVence(vencimientos(D, mes, hoy, facturasAVencer()), hoy);   // L5: lo que vence esta semana (solo el mes en curso; nada si no vence nada)
   h += '<div id="saldoMes">' + htmlSaldo(D, mes, vm) + '</div>';   // R5: cómo se llega al disponible del mes (D2, D17); vacío en un mes legacy
+  h += '</div><div class="mes-der">';
 
   h += seccion(SECS[0], m);
   h += seccion(SECS[1], m);
@@ -3271,10 +3337,12 @@ function renderMes(){
   h += secAhorro(m, c);
   h += seccion(SECS[3], m);
   h += secMovimientos(m);
+  h += '</div></div>';
   h += '<div style="height:20px"></div>';
 
   document.getElementById('v-mes').innerHTML = h;
   armarCarrusel();
+  fijarResumen();
   contar('bigFinal', c.disponibleFinal, function(v){ return fARS(Math.round(v)); });
   var act = document.querySelector('#selMes .on');
   if(act && act.scrollIntoView) act.scrollIntoView({block:'nearest', inline:'center'});
@@ -4939,16 +5007,46 @@ function duplicar(){
 
 /* ═══ 10 · modales ══════════════════════════════════════════════ */
 var velo = document.getElementById('velo'), hoja = document.getElementById('hoja');
+var hojaAntes = null;   // L7: el botón que abrió la hoja; al cerrarla el foco vuelve ahí
 function abrirHoja(html){
+  var a = document.activeElement;
+  if(!velo.classList.contains('on')) hojaAntes = a && a !== document.body && !hoja.contains(a) ? a : null;
   hoja.innerHTML = '<div class="tirador"></div>' + html;
   hoja.className = 'hoja';
   hoja.style.transform = '';
   velo.className = 'velo on';
+  rotularHoja();
+  if(!hoja.contains(document.activeElement)) try{ hoja.focus({preventScroll: true}); }catch(e){}
+}
+// L7: la hoja se anuncia con su título (el primer h3) o, si no tiene, como "Ventana"
+function rotularHoja(){
+  var t = hoja.querySelector('h3, h2');
+  if(t){ if(!t.id) t.id = 'hojaTit'; hoja.setAttribute('aria-labelledby', t.id); hoja.removeAttribute('aria-label'); }
+  else { hoja.removeAttribute('aria-labelledby'); hoja.setAttribute('aria-label', 'Ventana'); }
 }
 function cerrarHoja(){
+  var estaba = velo.classList.contains('on'), b = hojaAntes;
   hoja.className = 'hoja'; hoja.style.transform = '';
   velo.className = 'velo'; hoja.innerHTML = '';
+  if(!estaba) return;
+  hojaAntes = null;
+  if(b && b.focus && document.documentElement.contains(b)) try{ b.focus({preventScroll: true}); }catch(e){}
 }
+// L7: lo que se puede tocar con el teclado dentro de la hoja abierta
+function enfocablesHoja(){
+  return Array.prototype.filter.call(hoja.querySelectorAll('button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])'), function(e){
+    return !e.disabled && e.type !== 'hidden' && e.offsetParent !== null;
+  });
+}
+document.addEventListener('keydown', function(ev){
+  if(!velo.classList.contains('on')) return;
+  if(ev.key === 'Escape'){ ev.preventDefault(); pendiente = null; cerrarHoja(); return; }   // como tocar afuera o bajarla con el dedo
+  if(ev.key !== 'Tab') return;
+  var f = enfocablesHoja(), ae = document.activeElement, dentro = hoja.contains(ae) && ae !== hoja;
+  if(!f.length){ ev.preventDefault(); hoja.focus(); return; }
+  if(ev.shiftKey && (!dentro || ae === f[0])){ ev.preventDefault(); f[f.length - 1].focus(); }
+  else if(!ev.shiftKey && (!dentro || ae === f[f.length - 1])){ ev.preventDefault(); f[0].focus(); }
+});
 function cerrarHojaDeslizando(){
   if(menosMovimiento()){ cerrarHoja(); return; }
   hoja.className = 'hoja yendo';
