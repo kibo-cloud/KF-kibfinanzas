@@ -263,7 +263,12 @@ input.err{box-shadow:inset 0 0 0 1.5px var(--neg);border-radius:8px;color:var(--
 .toast.on{display:flex}
 .toast span{flex:1}
 .toast button{color:var(--acc);font-weight:700;font-size:15px;min-height:32px;padding:0 6px}
-.subtit{padding:14px 16px 4px;font-size:13px;font-weight:600;color:var(--txt2);border-top:1px solid var(--sep)}
+.sec .subtit{padding:14px 16px 4px;margin:0;font-size:var(--fs-cap);font-weight:600;letter-spacing:0;color:var(--txt2);border-top:1px solid var(--sep)}   /* P3a: más chico que el título de la sección (la regla .subtit de Ajustes, más abajo, ya no lo pisa) */
+.ah-mas{border-top:1px solid var(--sep)}
+.ah-mas summary{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:var(--row);padding:10px 16px;color:var(--acc);font-weight:600;font-size:15px;cursor:pointer;list-style:none}
+.ah-mas summary::-webkit-details-marker{display:none}
+.ah-mas summary small{color:var(--txt2);font-weight:400;font-size:var(--fs-cap)}
+.ah-mas[open] summary{color:var(--txt2)}
 
 /* ── tablas ── */
 .tabla{overflow-x:auto;-webkit-overflow-scrolling:touch;background:var(--card);border-radius:var(--r);border:1px solid var(--sep);box-shadow:var(--shadow)}
@@ -3271,8 +3276,34 @@ function secMovimientos(m){
   return h;
 }
 function secAhorro(m, c){
-  var acum = serie(D)[mes].ahorroAcumulado;
-  var h = '<div class="sec '+(abierta('ahorro')?'':'cerrada')+'">';
+  var sr = serie(D)[mes], acum = sr.ahorroAcumulado, aRep = sr.aReponer;
+  // P3a: los grupos que casi no se usan quedan detrás de "Más movimientos del ahorro" mientras estén vacíos (y sin aviso que mostrar)
+  var grupos = [
+    {lleno: num(m.compraARS) || num(m.compraUSD) || acum < 0, html: '<div class="subtit">Pasé a dólares</div>'
+      + '<div class="fila-in"><label>Pesos que usaste</label>'
+      +   '<input class="monto" inputmode="decimal" data-campo="compraARS" value="'+fARS(m.compraARS)+'"></div>'
+      + '<div class="fila-in"><label>Dólares que te dieron</label>'
+      +   '<input class="monto usd" inputmode="decimal" data-campo="compraUSD" value="'+fUSD(m.compraUSD)+'"></div>'
+      + '<div class="nota'+(acum<0?' mal':'')+'" id="notaCompra">'+notaCompra(m, acum)+'</div>'},
+    {lleno: num(m.ahorroMesUSD), html: '<div class="subtit">Otros dólares</div>'
+      + '<div class="fila-in"><label>Dólares que entraron aparte</label>'
+      +   '<input class="monto usd" inputmode="decimal" data-campo="ahorroMesUSD" value="'+fUSD(m.ahorroMesUSD)+'"></div>'
+      + '<div class="nota">Plata que ya llegó en dólares, sin pasar por pesos.</div>'},
+    {lleno: num(m.retiroARS) || num(m.ventaUSD) || num(m.ventaARS), html: '<div class="subtit">Saqué del ahorro</div>'
+      + '<div class="fila-in"><label>Pesos que saqué</label>'
+      +   '<input class="monto" inputmode="decimal" data-campo="retiroARS" value="'+fARS(m.retiroARS)+'"></div>'
+      + '<div class="fila-in"><label>Dólares que vendí</label>'
+      +   '<input class="monto usd" inputmode="decimal" data-campo="ventaUSD" value="'+fUSD(m.ventaUSD)+'"></div>'
+      + '<div class="fila-in"><label>Pesos que te dieron</label>'
+      +   '<input class="monto" inputmode="decimal" data-campo="ventaARS" value="'+fARS(m.ventaARS)+'"></div>'
+      + '<div class="nota">Lo que sacás se suma al disponible de este mes, para dirigirlo a lo que necesites.</div>'},
+    {lleno: num(m.reposicionARS) || aRep > 0, html: '<div class="subtit">Repuse al ahorro</div>'
+      + '<div class="fila-in"><label>Pesos que devolví</label>'
+      +   '<input class="monto" inputmode="decimal" data-campo="reposicionARS" value="'+fARS(m.reposicionARS)+'"></div>'
+      + '<div class="nota'+(aRep>0?' ambar':'')+'" id="notaRetiro">'+notaRetiro(m)+'</div>'}
+  ], vistos = '', guardados = '', i;
+  for(i=0;i<grupos.length;i++){ if(grupos[i].lleno) vistos += grupos[i].html; else guardados += grupos[i].html; }
+  var h = '<div class="sec '+(abierta('ahorro')?'':'cerrada')+'" data-sec="ahorro">';
   h += '<button class="sechd" data-act="col" data-k="ahorro"><span class="nom">Ahorro</span>'
      + '<span class="sub" id="sub-ahorro">'+fARS(c.ahorroMesARS)+'</span><i class="chev"></i></button>';
   h += '<div class="cuerpo">'
@@ -3281,28 +3312,8 @@ function secAhorro(m, c){
      +   '<div class="fila-in"><label>Meta de ahorro</label>'
      +     '<input class="monto pct" inputmode="decimal" data-campo="metaAhorroPct" value="'+fPct(m.metaAhorroPct)+'"></div>'
      +   '<div class="nota" id="notaSug">Con esa meta te tocaría ahorrar '+fARS(c.ahorroSugerido)+' este mes.</div>'
-     +   '<div class="subtit">Pasé a dólares</div>'
-     +   '<div class="fila-in"><label>Pesos que usaste</label>'
-     +     '<input class="monto" inputmode="decimal" data-campo="compraARS" value="'+fARS(m.compraARS)+'"></div>'
-     +   '<div class="fila-in"><label>Dólares que te dieron</label>'
-     +     '<input class="monto usd" inputmode="decimal" data-campo="compraUSD" value="'+fUSD(m.compraUSD)+'"></div>'
-     +   '<div class="nota'+(acum<0?' mal':'')+'" id="notaCompra">'+notaCompra(m, acum)+'</div>'
-     +   '<div class="subtit">Otros dólares</div>'
-     +   '<div class="fila-in"><label>Dólares que entraron aparte</label>'
-     +     '<input class="monto usd" inputmode="decimal" data-campo="ahorroMesUSD" value="'+fUSD(m.ahorroMesUSD)+'"></div>'
-     +   '<div class="nota">Plata que ya llegó en dólares, sin pasar por pesos.</div>'
-     +   '<div class="subtit">Saqué del ahorro</div>'
-     +   '<div class="fila-in"><label>Pesos que saqué</label>'
-     +     '<input class="monto" inputmode="decimal" data-campo="retiroARS" value="'+fARS(m.retiroARS)+'"></div>'
-     +   '<div class="fila-in"><label>Dólares que vendí</label>'
-     +     '<input class="monto usd" inputmode="decimal" data-campo="ventaUSD" value="'+fUSD(m.ventaUSD)+'"></div>'
-     +   '<div class="fila-in"><label>Pesos que te dieron</label>'
-     +     '<input class="monto" inputmode="decimal" data-campo="ventaARS" value="'+fARS(m.ventaARS)+'"></div>'
-     +   '<div class="nota">Lo que sacás se suma al disponible de este mes, para dirigirlo a lo que necesites.</div>'
-     +   '<div class="subtit">Repuse al ahorro</div>'
-     +   '<div class="fila-in"><label>Pesos que devolví</label>'
-     +     '<input class="monto" inputmode="decimal" data-campo="reposicionARS" value="'+fARS(m.reposicionARS)+'"></div>'
-     +   '<div class="nota'+(serie(D)[mes].aReponer>0?' mal':'')+'" id="notaRetiro">'+notaRetiro(m)+'</div>'
+     +   vistos
+     +   (guardados ? '<details class="ah-mas"><summary>Más movimientos del ahorro <small>dólares, retiros y reposiciones</small></summary>' + guardados + '</details>' : '')
      + '</div></div>';
   return h;
 }
@@ -3983,7 +3994,7 @@ function refrescar(){
   if(nc){ var ac = serie(D)[mes].ahorroAcumulado; nc.textContent = notaCompra(m, ac); nc.className = 'nota' + (ac<0?' mal':''); }
   var ar = serie(D)[mes].aReponer;
   var nr = document.getElementById('notaRetiro');
-  if(nr){ nr.textContent = notaRetiro(m); nr.className = 'nota' + (ar>0?' mal':''); }
+  if(nr){ nr.textContent = notaRetiro(m); nr.className = 'nota' + (ar>0?' ambar':''); }   // P3a: reponer no es un problema: ámbar
   for(i=0;i<SECS.length;i++){
     var kk = SECS[i].k; if(!TOPEABLE[kk]) continue;
     var ll = m[kk];

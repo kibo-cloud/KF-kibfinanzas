@@ -12,7 +12,7 @@ var SRC = la.SRC_FOR_TESTS;
 function existe(n){ return new RegExp('^function ' + n + '\\s*\\(', 'm').test(SRC); }
 var FUNCS = ['estadoHero', 'claseHero', 'subHero', 'chipT', 'chipsHero', 'etiquetaHero', 'htmlHero', 'barra', 'fPct', 'botonOjo', 'fARS', 'grupos', 'esc',
   'lineasSaldo', 'seccion', 'abierta', 'filaTope', 'textoDeuda', 'cuotaAdelantada', 'esProgramado', 'gastadoVista', 'datosRealizados', 'cobroTxt',
-  'faltaSeccion', 'textoFalta', 'textoDelTrabajo'].filter(existe);
+  'faltaSeccion', 'textoFalta', 'textoDelTrabajo', 'secAhorro', 'notaCompra', 'notaRetiro', 'fUSD'].filter(existe);
 var VARS = ['MESES', 'oculto', 'PUNTOS', 'ICOSEC', 'MARCABLE', 'TOPEABLE', 'SECS', 'verFilas', 'SUB_APAGADO'];
 
 function appMes(d, T, j, today){
@@ -172,4 +172,16 @@ test('the simple calculation under the first-use question is gray and says why; 
   assert.equal(bigClass(h), 'proy');
   assert.match(h, /Hasta que respondas: lo que tildaste este mes/);
   assert.match(h, /Cálculo simple/);
+});
+
+// ── savings section (finding 12; G) ──
+test('savings: the rarely used groups wait behind a disclosure while empty; a group with data or with something to repay stays in sight', function(){
+  var app = appMes(C.seccion2(false, false), null, 9), oct = app.secAhorro(app.D.meses[9], H.tiles(app, 9));
+  var fuera = oct.slice(0, oct.indexOf('<details')), dentro = oct.slice(oct.indexOf('<details'));
+  assert.ok(fuera.indexOf('Saqué del ahorro') >= 0 && fuera.indexOf('Repuse al ahorro') >= 0, 'October took 50.000 out: withdrawal and repayment in sight');
+  assert.ok(dentro.indexOf('Pasé a dólares') >= 0 && dentro.indexOf('Otros dólares') >= 0, 'empty groups behind "Más movimientos del ahorro"');
+  assert.match(oct, /<div class="nota ambar" id="notaRetiro">/, 'something to repay is amber, not red');
+  app.mes = 10;
+  var nov = app.secAhorro(app.D.meses[10], H.tiles(app, 10));
+  assert.match(nov, /<details class="ah-mas"><summary>Más movimientos del ahorro/);
 });
