@@ -3209,7 +3209,7 @@ function diasCobro(it, anio, m){
 function vencimientos(d, j, hoy, facturas){
   if(!d || estadoMes(d.anio, j, hoy) !== 'actual') return [];
   var out = [], secs = ['ingresos', 'gastosFijos', 'gastosVariables', 'deudas'], dim = diasDelMes(d.anio, j);
-  var desde = mesDelModelo(d, j) ? Math.max(0, Math.round(num(d.arrastre.desde))) : j, jj, s, i, k, it, dias, prox, q, f, dv, mo;
+  var desde = mesDelModelo(d, j) ? Math.max(0, Math.round(num(d.arrastre.desde))) : j, jj, s, i, k, it, dias, prox, q, f, dv, mo, cada;
   // lo que falta de un renglón: el monto, o en "Del trabajo" solo la parte que no cubren los pases (lo mismo que flujosMes cuenta pendiente)
   var falta = function(jm, k, it){
     if(estaPagado(jm, it)) return 0;
@@ -3217,6 +3217,7 @@ function vencimientos(d, j, hoy, facturas){
     return Math.max(0, num(it.monto));
   };
   var tipo = function(k){ return k === 'ingresos' ? 'cobrar' : 'pagar'; };
+  var con = function(a, b){ var o = {}, c; for(c in a) o[c] = a[c]; for(c in b) o[c] = b[c]; return o; };
   for(jj=desde;jj<j;jj++) for(s=0;s<secs.length;s++){
     k = secs[s];
     for(i=0;i<d.meses[jj][k].length;i++){
@@ -3229,12 +3230,17 @@ function vencimientos(d, j, hoy, facturas){
     for(i=0;i<d.meses[j][k].length;i++){
       it = d.meses[j][k][i]; mo = falta(j, k, it); if(!(mo > 0)) continue;
       dias = k === 'ingresos' ? diasCobro(it, d.anio, j) : [];
-      var x = {atrasado: false, tipo: tipo(k), nombre: String(it.nombre || ''), monto: mo, mes: j, k: k, i: i};
+      var base = {atrasado: false, tipo: tipo(k), nombre: String(it.nombre || ''), monto: mo, mes: j, k: k, i: i}, n;
       if(dias.length){
-        if(dias[dias.length - 1] < hoy.dia){ x.atrasado = true; x.era = dias[dias.length - 1]; x.fecha = isoDe(d.anio, j, x.era); out.push(x); continue; }
-        prox = dias[0]; for(q=0;q<dias.length;q++) if(dias[q] >= hoy.dia){ prox = dias[q]; break; }
-        if(prox - hoy.dia <= DIAS_VENCE){ x.fecha = isoDe(d.anio, j, prox); x.dia = prox; out.push(x); }
-      } else if(dim - hoy.dia <= DIAS_VENCE){ x.fecha = isoDe(d.anio, j, dim); x.dia = dim; x.finDeMes = true; out.push(x); }
+        // L5 review: cada fecha con lo de un cobro (como cobroTxt); cada día ya pasado sin tildar es un atrasado, y el próximo si cae en la semana
+        n = cuantosPagos(it, d.anio, j) || dias.length; cada = n > 1 ? Math.round(mo / n) : mo;
+        prox = -1;
+        for(q=0;q<dias.length;q++){
+          if(dias[q] < hoy.dia){ out.push(con(base, {atrasado: true, monto: cada, era: dias[q], fecha: isoDe(d.anio, j, dias[q])})); }
+          else if(prox < 0) prox = dias[q];
+        }
+        if(prox >= 0 && prox - hoy.dia <= DIAS_VENCE) out.push(con(base, {monto: cada, fecha: isoDe(d.anio, j, prox), dia: prox}));
+      } else if(dim - hoy.dia <= DIAS_VENCE) out.push(con(base, {fecha: isoDe(d.anio, j, dim), dia: dim, finDeMes: true}));
     }
   }
   for(i=0;i<(facturas || []).length;i++){

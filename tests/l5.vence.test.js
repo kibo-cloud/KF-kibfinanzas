@@ -36,8 +36,10 @@ test('L5 window: income collection days in the next 7 days, a passed day is over
     gastosFijos: [C.it('Expensas', 60000, false)]});
   var d = anio(a, raw);
   assert.deepEqual(resumen(a.vencimientos(d, 9, a.hoy, [])), [
+    ['atrasado', 'cobrar', 'Feria', 8000, '2026-10-02'],     // weekly on Fridays: 2, 9, 16, 23, 30 -> 5 collections of 8.000 (L5 review)
     ['atrasado', 'cobrar', 'Changas', 80000, '2026-10-05'],
-    ['semana', 'cobrar', 'Feria', 40000, '2026-10-16'],      // weekly on Fridays: 2, 9, 16, 23, 30 -> next is the 16th
+    ['atrasado', 'cobrar', 'Feria', 8000, '2026-10-09'],     // every passed Friday is overdue; the next one is the 16th
+    ['semana', 'cobrar', 'Feria', 8000, '2026-10-16'],
     ['semana', 'cobrar', 'Sueldo', 900000, '2026-10-20'],
     ['semana', 'cobrar', 'Bono', 50000, '2026-10-22']        // exactly 7 days ahead: inside
   ], 'the 25th (10 days), ticked rows and rows without a day (month end is 16 days away) are not listed');

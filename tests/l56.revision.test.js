@@ -42,3 +42,26 @@ test('L5 review a: "Del trabajo" lists only the part the pases do not cover; ful
   assert.deepEqual(resumen(c.vencimientos(c.D, 9, c.hoy, [])), [], 'ticked');
 });
 
+test('L5 review b: a weekly income shows the amount of one collection on each date, one overdue entry per past unpaid Friday', function(){
+  var raw = C.vacio(2026);
+  C.arrastre(raw, 9, 0);
+  C.mes(raw, 9, {ingresos: [ing('Feria', 40000, false, 'semanal', [5])]});   // Fridays of October 2026: 2, 9, 16, 23, 30 -> 5 x 8.000
+  var a = vence(raw, '2026-10-24');
+  assert.deepEqual(resumen(a.vencimientos(a.D, 9, a.hoy, [])), [
+    ['atrasado', 'Feria', 8000, '2026-10-02'], ['atrasado', 'Feria', 8000, '2026-10-09'],
+    ['atrasado', 'Feria', 8000, '2026-10-16'], ['atrasado', 'Feria', 8000, '2026-10-23'],
+    ['semana', 'Feria', 8000, '2026-10-30']]);
+});
+
+test('L5 review b: a fortnightly income on the 15th and the 30th, the 15th overdue: half on each date', function(){
+  var raw = C.vacio(2026);
+  C.arrastre(raw, 9, 0);
+  C.mes(raw, 9, {ingresos: [ing('Sueldo', 600000, false, 'quincenal', [15, 30])]});
+  var a = vence(raw, '2026-10-24'), l = a.vencimientos(a.D, 9, a.hoy, []);
+  assert.deepEqual(resumen(l), [['atrasado', 'Sueldo', 300000, '2026-10-15'], ['semana', 'Sueldo', 300000, '2026-10-30']]);
+  assert.equal(a.cuandoVence(l[0], a.hoy), 'Atrasado');
+  assert.match(a.detalleVence(l[0]), /era el día 15/);
+  var m = vence(raw, '2026-10-10');
+  assert.deepEqual(resumen(m.vencimientos(m.D, 9, m.hoy, [])), [['semana', 'Sueldo', 300000, '2026-10-15']], 'nothing passed yet: only the next date');
+});
+
