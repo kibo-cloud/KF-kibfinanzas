@@ -302,6 +302,33 @@ icon-only button labeled; each sheet opens and closes; the delete-confirmation t
 wording): e2e (other-tab notice, restore row, unreadable year, El año rows), n4.integridad, n7.final, r4.migracion, l1.vistas,
 r5.patrimonio. Results: `npm test` 713 (712 pass, 1 todo L-03d); `npm run test:e2e` 387/387.
 
+### L4 — Backup reminder (done)
+
+Route: inline in the single writer (index.html + tests). No money rule; nothing about the backup format or the backup flow changed.
+Commit: 6dabc01.
+
+- Rule: ONE compact notice (`#avisos`, same slot and order as the old reminder: after the no-storage notice, the welcome and the
+  empty-phone notice; the unreadable-data notice is never covered, `sinTaparCuarentena`; the update notice still replaces it) when
+  the last backup (`kibo.ultimaCopia`, already written by `hacerCopia`) is older than 30 days, or there was never one and this phone
+  has had data for 7 days or more. Text: "Hace N días que no hacés una copia de seguridad. Tus datos viven solo en este dispositivo."
+  (never backed up: "Hace N días que cargás datos y todavía no hiciste ninguna copia de seguridad. Tus datos viven solo en este
+  dispositivo."). Buttons: "Hacer copia ahora" (`data-act="copia"` → the existing `hacerCopia`, which clears the notice and records
+  the date) and "Más tarde" (snooze 7 days). Never for an empty phone, never downloads by itself, never blocks.
+- Replaced: the old reminder (15 days, or immediately when never backed up, "Después" only closed it for this start). Ajustes' "Última
+  copia" row keeps its 15-day red mark (DIAS_AVISO, unchanged).
+- New device keys (in CLAVES_PROPIAS, NOT in the backup, classified in tests/r4.endurecimiento.test.js and claves.test.js):
+  `kibo.datosDesde` (first day this phone had data; recorded at start-up, forgotten when the phone is empty again) and
+  `kibo.copiaPospuesta` (snoozed until). A phone that already had data before this version starts counting the 7 days from its
+  first start with this version (there is no earlier date to read).
+- Code: `recordatorioCopia(ahora, ultima, desde, pospuesta, conDatos)` (pure), `revisarCopia`, `posponerCopia`; constants
+  DIAS_COPIA 30, DIAS_SIN_COPIA 7, DIAS_POSPONER 7.
+- Tests (RED first: tests/l4.copia.test.js 0/6 before the code): thresholds (30 days exactly / just over, 7 days with data, no
+  recorded day, unreadable date), empty phone, snooze window, one notice with both buttons, the first-day key. E2E +10 (replaces the
+  old "reminder shown with no backup yet" check): no reminder on day 0, the first day recorded, 8 days with data, 40 days since the
+  last backup, "Más tarde" hides and snoozes (and stays hidden after a restart), back after the snooze, "Hacer copia ahora" produces
+  the backup file through the existing flow and hides it with today's date, empty phone. Results: `npm test` 719 (718 pass, 1 todo
+  L-03d); `npm run test:e2e` 396/396; motor goldens byte-identical to ae166a3.
+
 ## Improvement loop (owner: "ejecutá todo lo que creas necesario para mejorarla en formato loop", 2026-10-07)
 
 Ordered backlog (each item: test-first, suites green, docs, small commits; native review consent batched per slice):
@@ -310,7 +337,7 @@ Ordered backlog (each item: test-first, suites green, docs, small commits; nativ
 - [x] L2 P4: microcopy sweep of every screen, sheet, notice, error, confirmation and backup/restore text.
 - [ ] L3 R7 / D16-15: quick expense on a pending item asks (D8: mark the existing one as paid vs record a separate realized
       expense keeping the plan pending). Owner explicitly asked for it now; D8 is the approved rule.
-- [ ] L4 Backup reminder ("hace N días que no hacés una copia" + one-tap download).
+- [x] L4 Backup reminder ("hace N días que no hacés una copia" + one-tap download).
 - [ ] L5 "Qué vence esta semana" (pending with dates, installments, Trabajo invoices) on opening.
 - [ ] L6 R6 analysis: month vs previous and vs average, category trends, "más que lo normal" (from the validated model).
 - [ ] L7 Desktop two-column layout + accessibility (contrast, labels, focus, screen reader).
