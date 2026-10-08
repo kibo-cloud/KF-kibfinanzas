@@ -78,7 +78,7 @@ test('I-3 saving over an unreadable stored year: the raw text is copied to quara
   assert.equal(app.guardar(), false);
   assert.equal(ls.d['kibo.datos.2026'], ROTO, 'the stored text is untouched');
   assert.equal(ls.d['kibo.cuarentena.2026'], ROTO, 'a copy is kept in quarantine');
-  assert.ok(app.g.avisos.innerHTML.indexOf('No pude leer los datos de 2026. Guardé una copia; no se van a pisar.') >= 0, app.g.avisos.innerHTML);
+  assert.ok(app.g.avisos.innerHTML.indexOf('No pude leer los datos de 2026. Los aparté tal cual para que no se pierdan, y ese año no se modifica.') >= 0, app.g.avisos.innerHTML);
   assert.equal(app.hayLS, true, 'storage itself works');
   // a second attempt still does not write, and the quarantine copy is never replaced
   ls.d['kibo.datos.2026'] = ROTO + 'x';

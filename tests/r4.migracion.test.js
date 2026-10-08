@@ -280,7 +280,7 @@ function loadAppR4(g, today){
 }
 function guardado(ls, anio){ return JSON.parse(ls.d['kibo.datos.' + anio]); }
 function cargarEn(app, ls, anio){ app.D = app.normalizar(JSON.parse(ls.d['kibo.datos.' + anio]), app.hoy); return app.D; }
-var AVISO = 'Hay cambios hechos en otra pestaña. Recargá para no perderlos.';
+var AVISO = 'Hay cambios hechos en otra pestaña. Recargá para verlos: hasta entonces esta pestaña no guarda nada.';
 
 // ── 4. pre-R4 snapshot (Q15) ──
 var PROPIAS = {'kibo.datos.2026': '{"a":1}', 'kibo.datos.2025': '{"a":2}', 'kibo.anio': '2026', 'kibo.ultimaCopia': '2026-01-01', 'kibo.oculto': '0',

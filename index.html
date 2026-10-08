@@ -3874,7 +3874,7 @@ function manual(){
     + '<p>La app no puede elegir en qué carpeta del teléfono guardar ni decirte la ruta: los navegadores no se lo permiten. Lo que descarga va siempre a <b>Descargas</b>.</p>');
   h += bloque('portapapeles', 'Si no se puede compartir',
     '<p>Cuando el navegador no deja mandar el archivo, tenés dos salidas. Una: la copia igual quedó en <b>Descargas</b>, así que abrís la app Archivos, mantenés apretado el archivo y lo compartís desde ahí.</p>'
-    + '<p>La otra: <b>Copiar la copia al portapapeles</b>, en Ajustes. Copia todo el contenido como texto y lo pegás donde quieras: un mail para vos mismo, una nota, un documento de Drive. Para volver a usarlo, guardá ese texto en un archivo terminado en <b>.json</b> o <b>.txt</b> y restauralo desde Ajustes.</p>');
+    + '<p>La otra: <b>Copiar la copia como texto</b>, en Ajustes. Copia todo el contenido como texto y lo pegás donde quieras: un mail para vos mismo, una nota, un documento de Drive. Para volver a usarlo, guardá ese texto en un archivo terminado en <b>.json</b> o <b>.txt</b> y restauralo desde Ajustes.</p>');
   h += bloque('copias', 'Dónde guardar las copias',
     '<p>Al tocar <b>Hacer copia de seguridad</b>, la app intenta abrir el menú de compartir del teléfono para que la mandes a Drive, al mail o a WhatsApp. Algunos navegadores no permiten compartir este tipo de archivo: en ese caso la copia se descarga a la carpeta <b>Descargas</b> y te avisa.</p>'
     + '<p>Si te pasa eso, abrí la app <b>Archivos</b>, mantené apretado el archivo y compartilo desde ahí. <b>Una copia que queda solo en el teléfono no es una copia</b>: si perdés el teléfono, se va con él.</p>'
@@ -4012,7 +4012,7 @@ function renderAjustes(){
        + '<div class="lista" style="margin-top:14px">'
        + filaAj('copia', 'Hacer copia de seguridad', uc, 'copia', '', 'acento')
        + filaAj('rest', 'Restaurar una copia', {t:'De este u otro teléfono'}, 'restaurar')
-       + filaAj('csv', 'Copiar la copia al portapapeles', {t:'Para pegarla en un mail o una nota'}, 'copiarAhora')
+       + filaAj('csv', 'Copiar la copia como texto', {t:'Para pegarla en un mail o una nota'}, 'copiarAhora')
        + '</div>'
        + listaHistorial()
        + '<div class="texto" style="margin-top:14px"><p>Año ' + D.anio + '. Último cambio: ' + (D.actualizado ? fechaCorta(D.actualizado) : 'todavía ninguno') + '.</p></div>'
@@ -4026,8 +4026,8 @@ function renderAjustes(){
        + '</div>';
     h += '<h2 class="tit">Año</h2><div class="lista">'
        + '<div class="anios" id="anios"></div>'
-       + (respaldoPrevio() && diasDelRespaldo() <= 30 ? filaAj('volver', 'Volver a como estaba antes de la 1.30', {t:'Guardado al actualizar. Se borra solo a los 30 días'}, 'volver130') : '')
-       + (respaldoR4() && diasDelRespaldoR4() <= 30 ? filaAj('volverR4', 'Volver a como estaba antes de los saldos', {t:'Guardado antes de empezar con los saldos. Se borra solo a los 30 días'}, 'volverR4') : '')
+       + (respaldoPrevio() && diasDelRespaldo() <= 30 ? filaAj('volver', 'Volver a como estaba antes de actualizar', {t:'Se guardó al actualizar la app. Se borra solo a los 30 días'}, 'volver130') : '')
+       + (respaldoR4() && diasDelRespaldoR4() <= 30 ? filaAj('volverR4', 'Volver a como estaba antes del saldo mes a mes', {t:'Se guardó antes de que la app empezara a llevar tu saldo de un mes al otro. Se borra solo a los 30 días'}, 'volverR4') : '')
        + filaAj('anio', 'Crear el año ' + (D.anio+1), {t:'Con las mismas categorías y el cierre de ' + D.anio + ' como saldo inicial'}, 'duplicar')
        + '</div>';
     h += '<h2 class="tit">Exportar</h2><div class="lista">'
@@ -4064,18 +4064,18 @@ function renderAlmacen(){
   var c = document.getElementById('almac'), mini = document.getElementById('almacMini');
   if(!c && !mini) return;
   function pinta(largo, corto, clase){
-    if(c) c.innerHTML = largo + '<p style="opacity:.7">Compartir archivos en este navegador \u2192 ' + diagCompartir() + '</p>';
+    if(c) c.innerHTML = largo + '<p style="opacity:.7">' + diagCompartir() + '</p>';
     if(mini){ mini.textContent = corto; mini.className = clase || ''; }
   }
   if(!hayLS){ pinta('<p><b>Este navegador no está guardando nada.</b> Puede ser una ventana privada o el almacenamiento bloqueado. Lo que cargues se pierde al cerrar.</p>', 'Este navegador no está guardando nada', 'mal'); return; }
   var base = '<p>Tus datos viven adentro de este navegador, en este teléfono. No hay servidor ni nube: nadie más los puede ver, y nadie más los puede recuperar.</p>';
-  var sinDato = base + '<p>Este navegador no informa si el sistema se compromete a conservarlos. Hacé copias seguido.</p>';
-  if(!(navigator.storage && navigator.storage.persisted)){ pinta(sinDato, 'En este teléfono, sin garantía del sistema', ''); return; }
+  var sinDato = base + '<p>Este navegador no avisa si los va a conservar cuando le falte espacio. Hacé copias seguido.</p>';
+  if(!(navigator.storage && navigator.storage.persisted)){ pinta(sinDato, 'En este teléfono, sin protección asegurada', ''); return; }
   navigator.storage.persisted().then(function(ok){
     var h = base + (ok
-      ? '<p><b>El sistema se comprometió a conservarlos.</b> No los va a borrar para hacer lugar. Igual hacé copias: si limpiás los datos del navegador o sacás la app, se van.</p>'
-      : '<p><b>El sistema no garantiza conservarlos.</b> Si al teléfono le falta espacio los puede borrar sin avisar. Suele pasar cuando la app se agregó como acceso directo en vez de instalarse de verdad. Hacé copias seguido.</p>');
-    var corto = ok ? 'El sistema se comprometió a conservarlos' : 'El sistema no garantiza conservarlos';
+      ? '<p><b>Están protegidos.</b> El teléfono no los va a borrar para hacer lugar. Igual hacé copias: si limpiás los datos del navegador o sacás la app, se van.</p>'
+      : '<p><b>No están protegidos.</b> Si al teléfono le falta espacio los puede borrar sin avisar. Suele pasar cuando la app se agregó como acceso directo en vez de instalarse de verdad. Hacé copias seguido.</p>');
+    var corto = ok ? 'Protegidos: el teléfono no los borra' : 'Sin protección: hacé copias seguido';
     var clase = ok ? 'ok' : 'mal';
     if(navigator.storage.estimate){
       navigator.storage.estimate().then(function(e){
@@ -4083,7 +4083,7 @@ function renderAlmacen(){
         pinta(h + (kb ? '<p>Entre la app y tus datos ocupan unos ' + kb + ' KB.</p>' : ''), corto, clase);
       })['catch'](function(){ pinta(h, corto, clase); });
     } else pinta(h, corto, clase);
-  })['catch'](function(){ pinta(sinDato, 'En este teléfono, sin garantía del sistema', ''); });
+  })['catch'](function(){ pinta(sinDato, 'En este teléfono, sin protección asegurada', ''); });
 }
 function avisoSinGuardado(){
   aviso('<b>Este navegador no está guardando los cambios.</b> Puede ser una ventana privada o el almacenamiento bloqueado. Lo que cargues ahora se va a perder al cerrar.', false);
@@ -4231,7 +4231,7 @@ function ponerEnCuarentena(clave, texto){   // true si este texto quedó guardad
 }
 function avisoCuarentena(anio){
   var e = document.getElementById('avisos'); if(!e) return;
-  e.innerHTML = '<div class="aviso" data-av="cuarentena"><p>No pude leer los datos de ' + esc(anio) + '. Guardé una copia; no se van a pisar.'
+  e.innerHTML = '<div class="aviso" data-av="cuarentena"><p>No pude leer los datos de ' + esc(anio) + '. Los aparté tal cual para que no se pierdan, y ese año no se modifica.'
     + ' Si tenés una copia de seguridad, restaurala.</p><div class="fila"><button class="mini on" data-act="restaurar">Restaurar una copia</button></div></div>';
 }
 function escribirConRev(clave, obj){   // 'ok' | 'conflicto' (otra pestaña guardó antes: no se escribe) | 'error' (el navegador no deja guardar) | 'roto' (N4 I-3)
@@ -4247,7 +4247,7 @@ function escribirConRev(clave, obj){   // 'ok' | 'conflicto' (otra pestaña guar
 }
 function avisoOtraPestana(){
   var e = document.getElementById('avisos'); if(!e) return;
-  e.innerHTML = '<div class="aviso" data-av="otra"><p>Hay cambios hechos en otra pestaña. Recargá para no perderlos.</p>'
+  e.innerHTML = '<div class="aviso" data-av="otra"><p>Hay cambios hechos en otra pestaña. Recargá para verlos: hasta entonces esta pestaña no guarda nada.</p>'
     + '<div class="fila"><button class="mini on" data-act="recargarPag">Recargar</button></div></div>';
 }
 function hayEdicion(){   // algo sin guardar o a mitad de escribirse en ESTA pestaña
@@ -4361,15 +4361,16 @@ function armarCopia(){
 function fechaArchivo(){ var d = new Date(); function p(x){ return (x<10?'0':'')+x; } return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
 function diagCompartir(){
   var out = [];
-  if(!navigator.share) return 'este navegador no tiene menú de compartir';
-  if(!navigator.canShare) return 'comparte, pero no deja consultar si acepta archivos';
+  var no = 'Desde este navegador la copia no se puede mandar directo: queda en Descargas y la compartís desde la app Archivos.';
+  if(!navigator.share) return no;
+  if(!navigator.canShare) return 'Este navegador tiene menú de compartir, pero no avisa si acepta la copia: si no se manda, queda en Descargas.';
   var intentos = [['.json','application/json','json'],['.json','text/plain','json como texto'],['.txt','text/plain','txt']], i, f;
   for(i=0;i<intentos.length;i++){
     var ok = false;
     try{ f = new File(['{}'], 'x'+intentos[i][0], {type:intentos[i][1]}); ok = navigator.canShare({files:[f]}); }catch(e){ ok = false; }
-    out.push(intentos[i][2] + ': ' + (ok ? 'sí' : 'no'));
+    if(ok) out.push(intentos[i][2]);
   }
-  return out.join(' · ');
+  return out.length ? 'Desde este navegador la copia se puede mandar directo a Drive, al mail o a WhatsApp.' : no;
 }
 function archivoCompartible(texto, base){
   // Chrome en Android no deja compartir cualquier tipo de archivo: se prueban varias combinaciones
@@ -4405,8 +4406,7 @@ function hacerCopia(){
       if(e && e.name === 'AbortError') return;
       descargar(texto, nombre, 'application/json'); listo();
       alertaCompartir('La copia quedó en Descargas',
-        'Tu navegador aceptó el archivo pero rechazó el env\u00edo (<b>' + ((e && e.name) || 'sin nombre') + '</b>). '
-      + 'La copia est\u00e1 a salvo en <b>Descargas</b>.<br><br>Prob\u00e1 de nuevo, o copiala al portapapeles y pegala donde la guardes.');
+        'Tu navegador no dej\u00f3 mandar el archivo. La copia est\u00e1 a salvo en <b>Descargas</b>.<br><br>Prob\u00e1 de nuevo, o copiala como texto y pegala donde la guardes.');
     });
   } else {
     descargar(texto, nombre, 'application/json'); listo();
@@ -4420,12 +4420,12 @@ function versionPC(){
   var datos = JSON.stringify(D).replace(/</g, '\\u003c').replace(/\*\//g, '*\\/');   // que ningún nombre cierre el <script> ni traiga la marca de fin (N5 S-5: "*/" viaja como "*\/", que JSON lee igual)
   var listo = function(txt){
     var i = txt.indexOf(M1), j = txt.indexOf(M2);
-    if(i < 0 || j < 0 || j < i){ alerta('No pude armarlo', 'El archivo de la app no tiene las marcas donde van los datos. Probá de nuevo después de actualizar.'); return; }
+    if(i < 0 || j < 0 || j < i){ alerta('No pude armar la versión para PC', 'No encontré dónde poner tus datos en el archivo de la app. Recargá la app con internet y probá de nuevo.'); return; }
     var salida = txt.slice(0, i + M1.length) + datos + txt.slice(j);
     descargar(salida, nombre, 'text/html;charset=utf-8');
     alerta('Listo', 'Se descargó <b>' + nombre + '</b>. Pasalo a la computadora y abrilo con doble clic: es la misma app con los datos de ' + D.anio + ' adentro, sin instalar nada. Los otros años están en la copia de seguridad, que también se puede restaurar ahí.');
   };
-  if(!window.fetch){ alerta('No se puede acá', 'Este navegador no permite armar el archivo. Hacelo desde otro, o usá la copia de seguridad.'); return; }
+  if(!window.fetch){ alerta('No se puede desde este navegador', 'Este navegador no deja armar el archivo para PC. Probá desde otro navegador, o llevate la copia de seguridad.'); return; }
   fetch('./index.html', {cache:'force-cache'}).then(function(r){ return r.text(); }).then(listo)['catch'](function(){
     alerta('No pude leer la app', 'Abrí la app una vez con internet para que quede guardada completa y probá de nuevo.');
   });
@@ -4740,17 +4740,17 @@ function listaHistorial(){
 }
 function alertaCompartir(t, cuerpo){
   abrirHoja('<h3>'+t+'</h3><div class="texto" style="margin-bottom:16px">'+cuerpo+'</div>'
-          + '<div class="fila"><button data-act="copiarPortapapeles">Copiar</button>'
-          + '<button class="pri" data-act="probarCompartir">Probar compartir</button></div>');
+          + '<div class="fila"><button data-act="copiarPortapapeles">Copiar como texto</button>'
+          + '<button class="pri" data-act="probarCompartir">Compartir de nuevo</button></div>');
 }
 function copiarPortapapeles(){
   var txt = ultimaCopiaTexto;
   if(!txt){ alerta('No hay nada para copiar', 'Hacé primero una copia de seguridad.'); return; }
   var listo = function(){
     cerrarHoja();
-    pildora('Copia en el portapapeles');
+    pildora('Copia lista para pegar');
     setTimeout(function(){
-      alerta('Copiada al portapapeles', 'Ahora abrí donde la quieras guardar (un mail para vos mismo, una nota, un documento de Drive) y pegala.<br><br>Para volver a usarla, guardá ese texto en un archivo <b>.json</b> o <b>.txt</b> y restauralo desde Ajustes.');
+      alerta('Copiada como texto', 'Ahora abrí donde la quieras guardar (un mail para vos mismo, una nota, un documento de Drive) y pegala.<br><br>Para volver a usarla, guardá ese texto en un archivo <b>.json</b> o <b>.txt</b> y restauralo desde Ajustes.');
     }, 250);
   };
   if(navigator.clipboard && navigator.clipboard.writeText){
@@ -4767,16 +4767,16 @@ function copiarAlaVieja(txt, ok){
   try{ bien = document.execCommand('copy'); }catch(e){}
   document.body.removeChild(ta);
   if(bien) ok();
-  else alerta('No se pudo copiar', 'Este navegador no dejó copiar al portapapeles. La copia igual está en Descargas.');
+  else alerta('No se pudo copiar', 'Este navegador no dejó copiar el texto. La copia igual está en Descargas: mandala desde la app Archivos.');
 }
 function probarCompartir(){
-  if(!navigator.share){ alerta('No se puede', 'Este navegador no tiene menú de compartir. La copia quedó en Descargas.'); return; }
+  if(!navigator.share){ alerta('No se puede compartir', 'Este navegador no tiene menú de compartir. La copia quedó en Descargas: mandala desde la app Archivos.'); return; }
   var f = null;
   try{ f = new File([ultimaCopiaTexto], ultimaCopiaNombre.replace(/\.json$/, '.txt'), {type:'text/plain'}); }catch(e){}
   var envio = f ? {files:[f], title:'Copia de TuGasto'} : {title:'Copia de TuGasto', text:ultimaCopiaTexto};
   navigator.share(envio)['catch'](function(e){
     if(e && e.name === 'AbortError') return;
-    alerta('No dejó compartir', 'Tu navegador rechazó el envío (<b>' + ((e && e.name) || 'sin nombre') + '</b>). La copia igual está en Descargas: compartila desde la app Archivos.');
+    alerta('No dejó compartir', 'Tu navegador no dejó mandar el archivo. La copia igual está en Descargas: compartila desde la app Archivos.');
   });
 }
 function alerta(t, cuerpo){
@@ -7158,16 +7158,16 @@ function diasDelRespaldo(){
 function volverAntesDe130(){
   var r = respaldoPrevio(); if(!r) return;
   confirmar('Volver a como estaba antes de actualizar',
-    'Se restaura todo tal cual estaba el ' + r.fecha.slice(8,10) + '/' + r.fecha.slice(5,7) + ', antes de la 1.30. <b>Lo que cargaste desde entonces se pierde</b>, incluido lo de la pestaña Trabajo. Hacé una copia de seguridad antes, si no la tenés.',
+    'Se restaura todo tal cual estaba el ' + r.fecha.slice(8,10) + '/' + r.fecha.slice(5,7) + ', antes de actualizar la app. <b>Lo que cargaste desde entonces se pierde</b>, incluido lo de la pestaña Trabajo. Hacé una copia de seguridad antes, si no la tenés.',
     'Restaurar', function(){
       try{
         var i, k, borrar = [];
         for(i=0;i<localStorage.length;i++){ k = localStorage.key(i); if(claveMia(k) || k === LSESQ) borrar.push(k); }   // LSESQ también: así el arranque vuelve a anotar el esquema
-        if(!cuarentenaAntesDeBorrar(borrar)){ pildora('No pude guardar una copia de lo que no se puede leer. No cambié nada.', true); return; }
+        if(!cuarentenaAntesDeBorrar(borrar)){ pildora('No pude apartar los datos que no se pueden leer, así que no cambié nada. Hacé una copia de seguridad y probá de nuevo.', true); return; }
         for(i=0;i<borrar.length;i++) localStorage.removeItem(borrar[i]);
         for(k in r.datos) if(r.datos.hasOwnProperty(k) && claveMia(k)) localStorage.setItem(k, r.datos[k]);   // un respaldo viejo puede traer claves ajenas: no se escriben
         localStorage.removeItem(LSPRE130);
-      }catch(e){ pildora('No se pudo restaurar', true); return; }
+      }catch(e){ pildora('No se pudo restaurar. No cambié nada: probá de nuevo.', true); return; }
       location.reload();
     });
 }
@@ -7202,17 +7202,17 @@ function vencerRespaldoR4(){   // a los 30 días se borra solo el respaldo; la m
 }
 function volverAntesDeR4(){
   var r = respaldoR4(); if(!r) return;
-  confirmar('Volver a como estaba antes de los saldos',
-    'Se restaura todo tal cual estaba el ' + r.fecha.slice(8,10) + '/' + r.fecha.slice(5,7) + ', antes de empezar con los saldos. <b>Lo que cargaste desde entonces se pierde</b>, incluido lo de la pestaña Trabajo. Hacé una copia de seguridad antes, si no la tenés.',
+  confirmar('Volver a como estaba antes del saldo mes a mes',
+    'Se restaura todo tal cual estaba el ' + r.fecha.slice(8,10) + '/' + r.fecha.slice(5,7) + ', antes de que la app llevara tu saldo de un mes al otro. <b>Lo que cargaste desde entonces se pierde</b>, incluido lo de la pestaña Trabajo. Hacé una copia de seguridad antes, si no la tenés.',
     'Restaurar', function(){
       try{
         var i, k, borrar = [];
         for(i=0;i<localStorage.length;i++){ k = localStorage.key(i); if(claveMia(k)) borrar.push(k); }   // incluye la marca: así la app vuelve a quedar como antes del modelo
-        if(!cuarentenaAntesDeBorrar(borrar)){ pildora('No pude guardar una copia de lo que no se puede leer. No cambié nada.', true); return; }
+        if(!cuarentenaAntesDeBorrar(borrar)){ pildora('No pude apartar los datos que no se pueden leer, así que no cambié nada. Hacé una copia de seguridad y probá de nuevo.', true); return; }
         for(i=0;i<borrar.length;i++) localStorage.removeItem(borrar[i]);
         for(k in r.datos) if(r.datos.hasOwnProperty(k) && claveMia(k)) localStorage.setItem(k, r.datos[k]);   // solo claves propias, venga lo que venga en el respaldo
         localStorage.removeItem(LSPRER4);
-      }catch(e){ pildora('No se pudo restaurar', true); return; }
+      }catch(e){ pildora('No se pudo restaurar. No cambié nada: probá de nuevo.', true); return; }
       location.reload();
     });
 }

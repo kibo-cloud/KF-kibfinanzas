@@ -449,7 +449,7 @@ try{
     ms[9] = mes([it('Sueldo', sueldo, true)], [it('Alquiler', 50000, true)], [it('Super', 30000, false)], []); return ms; };
   const blobR4 = JSON.stringify({anio: 2026, pagoExplicito: true, meses: oct(200000)});
   const sembrar = async () => { await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); localStorage.setItem('kibo.anio','2026'); localStorage.setItem('kibo.datos.2026', ${JSON.stringify(blobR4)}); true`); };
-  const AVISO_OTRA = 'Hay cambios hechos en otra pestaña. Recargá para no perderlos.';
+  const AVISO_OTRA = 'Hay cambios hechos en otra pestaña. Recargá para verlos: hasta entonces esta pestaña no guarda nada.';
   const avisoTxt = (e) => e(`(document.getElementById('avisos') || {}).textContent || ''`);
   await sembrar(); await nav(URL_APP);
   check('R4.3 a: a fresh blob has no model field and no rev', await ev(`[D.arrastre === undefined, D.rev === undefined, D.meses[8].cierreReal === undefined]`), [true, true, true]);
@@ -498,7 +498,7 @@ try{
   await sleep(1300);
   check('R4.4: after activarSaldos(400000) the Oct card shows the chain: the declared available money', await ev(`(${bigFinal}).replace(/[^\\d-]/g,'')`), '400000');
   await ev(`document.querySelector('[data-act=tab][data-t=ajustes]').click(); true`); await sleep(300);
-  check('R4.3 b: Ajustes shows the "volver" row while the snapshot exists', await ev(`(function(){ var b = document.querySelector('[data-act=volverR4]'); return b ? b.textContent.indexOf('Volver a como estaba antes de los saldos') >= 0 : false; })()`), true);
+  check('R4.3 b: Ajustes shows the "volver" row while the snapshot exists', await ev(`(function(){ var b = document.querySelector('[data-act=volverR4]'); return b ? b.textContent.indexOf('Volver a como estaba antes del saldo mes a mes') >= 0 : false; })()`), true);
 
   // (d) go back to before the model through the real Ajustes action
   await ev(`document.querySelector('[data-act=volverR4]').click(); true`); await sleep(300);
@@ -890,7 +890,7 @@ try{
     await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); localStorage.setItem('kibo.anio','2026'); localStorage.setItem('kibo.datos.2026', ${JSON.stringify(roto)}); true`);
     await nav(URL_APP); await sleep(1300);
     check('N4 I-3 e2e: the warning shows and the raw text is copied to quarantine',
-      await ev(`[document.getElementById('avisos').textContent.indexOf('No pude leer los datos de 2026. Guardé una copia; no se van a pisar.') >= 0, localStorage.getItem('kibo.cuarentena.2026') === ${JSON.stringify(roto)}]`), [true, true]);
+      await ev(`[document.getElementById('avisos').textContent.indexOf('No pude leer los datos de 2026. Los aparté tal cual para que no se pierdan, y ese año no se modifica.') >= 0, localStorage.getItem('kibo.cuarentena.2026') === ${JSON.stringify(roto)}]`), [true, true]);
     await ev(`D.meses[9].ingresos[0] = {nombre: 'Sueldo', monto: 5, pagado: true}; sucio = true; guardar(); true`); await sleep(300);
     check('N4 I-3 e2e: a save does not overwrite the unreadable year', await ev(`localStorage.getItem('kibo.datos.2026') === ${JSON.stringify(roto)}`), true);
     check('N4 I-3 e2e: the backup carries the raw text', await ev(`armarCopia().cuarentena[2026] === ${JSON.stringify(roto)}`), true);
