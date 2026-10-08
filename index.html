@@ -4944,7 +4944,8 @@ function quitarMov(id){
   var mv = m.movimientos[k], ls = m[mv.sec] || [];
   for(i=0;i<ls.length;i++){
     if(ls[i].nombre === mv.nombre){
-      if(mv.tipo === 'pago' && typeof mv.pp === 'boolean'){ ls[i].monto = num(mv.ma); ls[i].pagado = mv.pp; break; }   // L3 "Sí": monto y tilde de antes
+      // L3 "Sí": se revierte SOLO ese pago (el cambio de monto que hizo y el tilde); otros gastos o ediciones posteriores del renglón quedan
+      if(mv.tipo === 'pago' && typeof mv.pp === 'boolean'){ ls[i].monto = Math.max(0, num(ls[i].monto) - num(mv.monto) + num(mv.ma)); ls[i].pagado = mv.pp; break; }
       ls[i].monto = Math.max(0, num(ls[i].monto) - mv.monto);
       // si el gasto rápido tildó un renglón vacío y Deshacer lo deja vacío otra vez, vuelve a como estaba (los viejos sin pp no tocan nada)
       if(typeof mv.pp === 'boolean' && !(ls[i].monto > 0)) ls[i].pagado = mv.pp;
