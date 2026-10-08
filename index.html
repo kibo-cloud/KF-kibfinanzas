@@ -5323,9 +5323,10 @@ function quitarMov(id){
   var m = D.meses[mes], k = -1, i;
   for(i=0;i<m.movimientos.length;i++) if(m.movimientos[i].id === id) k = i;
   if(k < 0) return;
-  var mv = m.movimientos[k], ls = m[mv.sec] || [];
+  var mv = m.movimientos[k], ls = m[mv.sec] || [], hallado = false;
   for(i=0;i<ls.length;i++){
     if(ls[i].nombre === mv.nombre){
+      hallado = true;
       // L3 "Sí": se revierte SOLO ese pago (el cambio de monto que hizo y el tilde); otros gastos o ediciones posteriores del renglón quedan
       if(mv.tipo === 'pago' && typeof mv.pp === 'boolean'){ ls[i].monto = Math.max(0, num(ls[i].monto) - num(mv.monto) + num(mv.ma)); ls[i].pagado = mv.pp; break; }
       ls[i].monto = Math.max(0, num(ls[i].monto) - mv.monto);
@@ -5335,6 +5336,8 @@ function quitarMov(id){
       break;
     }
   }
+  // L3 review: si el renglón ya no está (se borró o cambió de nombre) no se revirtió nada: el gasto queda anotado y se dice
+  if(!hallado){ toast('No encontré el renglón para deshacer'); return; }
   m.movimientos.splice(k, 1);
   tocar(); conScroll(renderMes); toast('Deshecho');
 }

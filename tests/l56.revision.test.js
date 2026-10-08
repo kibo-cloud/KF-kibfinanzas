@@ -108,3 +108,18 @@ test('L3 review c: copying the previous month skips a flagged row; the empty-cop
   assert.equal(b.toasts[0][0], 'No hay nada para copiar: “Del trabajo” lo cargás desde Trabajo');
 });
 
+test('L3 review d: undo after the row was renamed or deleted keeps the movement and says it found nothing to revert', function(){
+  var a = gastoApp(modelo({gastosVariables: [C.it('Super', 0, false)]}));
+  a.gr = {monto: 12000, cat: 0, sec: 'gastosVariables'}; a.sumarGasto();
+  var id = a.D.meses[9].movimientos[0].id;
+  a.D.meses[9].gastosVariables[0].nombre = 'Supermercado';
+  a.toasts.length = 0;
+  a.quitarMov(id);
+  assert.equal(a.toasts[0][0], 'No encontré el renglón para deshacer');
+  assert.equal(a.D.meses[9].movimientos.length, 1, 'the movement stays: nothing was reverted');
+  assert.equal(a.D.meses[9].gastosVariables[0].monto, 12000);
+  a.D.meses[9].gastosVariables[0].nombre = 'Super'; a.toasts.length = 0;
+  a.quitarMov(id);
+  assert.equal(a.toasts[0][0], 'Deshecho');
+  assert.equal(a.D.meses[9].movimientos.length, 0);
+});
