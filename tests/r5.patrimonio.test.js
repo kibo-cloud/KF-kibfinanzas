@@ -77,7 +77,7 @@ test('Patrimonio composition on screen, §6 case: 825.000 + 600.000 + 1.500.000 
   assert.deepEqual(r.deudas, ['Deudas (lo que te falta pagar)', '($300.000)']);
   assert.deepEqual(r.deuda, [['Préstamo', '$300.000']]);
   assert.deepEqual(r.neto, ['Patrimonio neto', '$2.625.000']);
-  assert.match(html, /Lo que tenés hoy, bolsillo por bolsillo/);
+  assert.match(html, /Lo que tenés hoy, parte por parte/);
   assert.match(html, /Dólares y cripto son una estimación: a \$1\.500 por dólar/);
   // L1: the answer first, in pesos, with the dollar equivalent next to it; the composition card carries the same net
   assert.match(html, /id="bigPatri"[^>]*>\$2\.625\.000<\/div><\/div><div class="hero-sub" id="patriUSD">En dólares: <b>US\$ 1\.750,00<\/b><\/div>/, 'headline = neto (D7)');

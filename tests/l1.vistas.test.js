@@ -67,8 +67,8 @@ test('L1 "El año", current model year: "Tenés hoy" = the chain, ahorro a hoy =
   assert.match(h, /<small class="hero-lbl">Tenés hoy<\/small>[\s\S]*id="anBig">([^<]+)</);
   assert.equal(/id="anBig">([^<]+)</.exec(h)[1], f(n.disponibleHoy));
   assert.deepEqual(r.ahorroHoy, ['Ahorro acumulado a hoy', f(pn.ahorroARS)]);
-  assert.deepEqual(r.dispCierre, ['Disponible al cierre de diciembre (estimado)', f(s[11].disponibleFinal)]);
-  assert.deepEqual(r.ahorroCierre, ['Ahorro al cierre de diciembre (estimado, con lo programado)', f(s[11].ahorroAcumulado)]);
+  assert.deepEqual(r.dispCierre, ['Disponible en diciembre', f(s[11].disponibleFinal)]);
+  assert.deepEqual(r.ahorroCierre, ['Ahorro en diciembre (con lo programado)', f(s[11].ahorroAcumulado)]);
   assert.match(h, /Al cierre del año \(estimado\)/);
   assert.ok(html.indexOf('id="heroAnio"') < html.indexOf('<div class="resumen'), 'one hero, first');
   assert.equal((html.match(/class="saldo hero/g) || []).length, 1, 'one hero per screen');

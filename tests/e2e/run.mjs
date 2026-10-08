@@ -1078,7 +1078,7 @@ try{
     check('L1 El año: "Ahorro acumulado a hoy" = the Patrimonio source (patrimonioNeto)', await filaAn('ahorroHoy'), ['Ahorro acumulado a hoy', await ev(`fARS(${p0.ahorroARS})`)]);
     check('L1 El año: the two December figures have distinct labels; the closing ones equal the table Total (December row of the chain)',
       [await filaAn('dispCierre'), await filaAn('ahorroCierre'), await texto('#heroAnio .an-tit')],
-      [['Disponible al cierre de diciembre (estimado)', tot[8]], ['Ahorro al cierre de diciembre (estimado, con lo programado)', tot[9]], 'Al cierre del año (estimado)']);
+      [['Disponible en diciembre', tot[8]], ['Ahorro en diciembre (con lo programado)', tot[9]], 'Al cierre del año (estimado)']);
     check('L1 El año: the pace is not the closing ("Ahorro a este ritmo en diciembre"); "Ahorro con el que arrancaste el año" replaces "Arranque del año"; the table says the closing is estimated',
       await ev(`(function(){ var t = document.getElementById('v-anio').textContent; return [t.indexOf('Ahorro a este ritmo en diciembre:') >= 0, t.indexOf('A este ritmo cerrás') < 0, t.indexOf('Ahorro con el que arrancaste el año') >= 0, t.indexOf('Arranque del año') < 0,
         document.querySelector('#v-anio [data-sec=anTabla] .sub').textContent === 'Cierre ' + ${JSON.stringify(tot[8])} + 'estimado']; })()`), [true, true, true, true, true]);

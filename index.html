@@ -3581,8 +3581,8 @@ function htmlHeroAnio(n){
   if(n.modo === 'hoy'){
     h += filaAn('ahorroHoy', 'Ahorro acumulado a hoy', n.ahorroHoy)
        + '<div class="an-tit">Al cierre del año (estimado)</div>'
-       + filaAn('dispCierre', 'Disponible al cierre de diciembre (estimado)', n.disponibleCierre)
-       + filaAn('ahorroCierre', 'Ahorro al cierre de diciembre (estimado, con lo programado)', n.ahorroCierre);
+       + filaAn('dispCierre', 'Disponible en diciembre', n.disponibleCierre)
+       + filaAn('ahorroCierre', 'Ahorro en diciembre (con lo programado)', n.ahorroCierre);
   } else if(n.modo === 'proyectado') h += filaAn('ahorroCierre', 'Ahorro al cierre de diciembre (estimado, con lo programado)', n.ahorroCierre);
   else h += filaAn('ahorroCierre', 'Ahorro acumulado al cierre del año', n.ahorroCierre);
   return h + '</div></div>';
@@ -3735,7 +3735,7 @@ function filasPatrimonio(pn){
 function htmlPatrimonio(p){
   var f = filasPatrimonio(p.modelo), h = '', i, x, det;
   var etq = {disponible:'Disponible a hoy', ahorro:'Ahorro en pesos', usd:'Dólares', cripto:'Cripto', trabajo:'Plata del trabajo'};
-  h += '<div class="nota">Lo que tenés hoy, bolsillo por bolsillo. Lo de los meses que vienen no cuenta.</div>';
+  h += '<div class="nota">Lo que tenés hoy, parte por parte. Lo de los meses que vienen no cuenta.</div>';
   for(i=0;i<f.filas.length;i++){
     x = f.filas[i]; det = '';
     if(x.estimado && x.falta) det = ' <small class="mudo">(' + fUSD(x.usd) + ', falta la cotización)</small>';
@@ -7337,7 +7337,7 @@ function editarApertura(j){
     if(estadoMes(D.anio - 1, 11, hoy) !== 'pasado') return;   // diciembre todavía no cerró: su cierre no se puede corregir (htmlSaldo no ofrece Editar)
     if(obsoleta){ avisoOtraPestana(); return; }   // pestaña vieja: cambiar de año tiraría lo que no se guardó
     var prev = leerAnio(D.anio - 1);
-    if(!prev || !prev.arrastre){ alerta('Viene del año anterior', 'Este saldo sale del cierre de diciembre ' + (D.anio - 1) + ', que no está en este teléfono con saldos.'); return; }
+    if(!prev || !prev.arrastre){ alerta('Viene del año anterior', 'Este saldo sale del cierre de diciembre ' + (D.anio - 1) + '. Ese año no está en este teléfono, o no lleva el saldo de un mes al otro, así que no se puede corregir desde acá.'); return; }
     if(sucio && guardar() === false) return;   // lo que no quedó guardado no se pierde al cambiar de año
     cambiarAnio(D.anio - 1); mes = 11; renderMes(); abrirCierre(11); return;
   }
@@ -7357,7 +7357,7 @@ function editarApertura(j){
 function guardarAperturaHoja(modo){
   var r = leerMontoDe('inApertura', modo !== 'actual');
   if(!r.ok){ notaEn('notaApertura', r.msg); return; }
-  if(!fijarApertura(r.v, modo)){ if(!obsoleta) notaEn('notaApertura', 'No se pudo guardar.'); else cerrarHoja(); return; }
+  if(!fijarApertura(r.v, modo)){ if(!obsoleta) notaEn('notaApertura', 'No se pudo guardar. Probá de nuevo.'); else cerrarHoja(); return; }
   cerrarHoja(); conScroll(renderMes); pildora('Disponible inicial guardado');
 }
 function abrirCierre(j){
