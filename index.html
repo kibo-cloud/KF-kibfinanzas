@@ -3206,10 +3206,15 @@ function diasCobro(it, anio, m){
   return out.sort(function(a, b){ return a - b; });
 }
 // L7 review: lo de cada fecha de cobro. El monto del renglón se reparte entre sus n fechas y lo que sobra del redondeo va a la última,
-// así las fechas suman exactamente el renglón
-function montosPorFecha(total, n){
-  var out = [], cada = Math.round(total / n), q;
-  for(q=0;q<n;q++) out.push(q < n - 1 ? cada : Math.round((total - cada * (n - 1)) * 100) / 100);
+// así las fechas suman exactamente el renglón. Lo que ya está cubierto (en "Del trabajo", lo que cubren los pases) se descuenta de las
+// fechas más tempranas primero, como el motor reparte los pases en orden: una fecha cubierta queda en 0 y no se lista
+function montosPorFecha(total, n, cubierto){
+  var out = [], cada = Math.round(total / n), c = Math.max(0, cubierto || 0), q, v, usa;
+  for(q=0;q<n;q++){
+    v = q < n - 1 ? cada : Math.round((total - cada * (n - 1)) * 100) / 100;
+    usa = Math.min(v, c); c -= usa;
+    out.push(Math.round((v - usa) * 100) / 100);
+  }
   return out;
 }
 // facturas = [{id, nombre, saldo, vence:'YYYY-MM-DD'}] (las arma facturasAVencer desde Trabajo); devuelve los renglones ordenados:
@@ -3241,9 +3246,11 @@ function vencimientos(d, j, hoy, facturas){
       var base = {atrasado: false, tipo: tipo(k), nombre: String(it.nombre || ''), monto: mo, mes: j, k: k, i: i}, n;
       if(dias.length){
         // L5 review: cada fecha con lo de un cobro (como cobroTxt); cada día ya pasado sin tildar es un atrasado, y el próximo si cae en la semana
-        cada = montosPorFecha(mo, dias.length);   // L7 review: suman exactamente el renglón (antes cada fecha era el redondeo de mo / n)
+        // L7 review: suman exactamente el renglón; en "Del trabajo" las primeras fechas son las que cubren los pases (num(monto) - mo)
+        cada = montosPorFecha(num(it.monto), dias.length, num(it.monto) - mo);
         prox = -1;
         for(q=0;q<dias.length;q++){
+          if(!(cada[q] > 0)) continue;   // ya cubierta
           if(dias[q] < hoy.dia){ out.push(con(base, {atrasado: true, monto: cada[q], era: dias[q], fecha: isoDe(d.anio, j, dias[q])})); }
           else if(prox < 0) prox = q;
         }

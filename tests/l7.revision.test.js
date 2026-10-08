@@ -24,9 +24,21 @@ test('L7 review: the amounts of each collection date add up exactly to the row (
   assert.equal(tot, 100000, 'before the fix: 99.999');
 });
 
-test('L7 review: montosPorFecha splits and puts the remainder last', function(){
+test('L7 review: "Del trabajo" weekly, pases cover the earliest Fridays first; only the uncovered dates are listed', function(){
+  var raw = C.vacio(2026); C.arrastre(raw, 8, 0);
+  C.mes(raw, 9, {ingresos: [ing('Del trabajo', 400000, false, 'semanal', [5])]});   // Fridays of October 2026: 2, 9, 16, 23, 30 (80.000 each)
+  var T = H.trab([{fecha: '2026-10-03', monto: 100000}, {fecha: '2026-10-10', monto: 100000}]);
+  var a = vence(raw, '2026-10-20', T), l = a.vencimientos(a.D, 9, a.hoy, []);
+  assert.deepEqual(resumen(l), [['atrasado', 'Del trabajo', 40000, '2026-10-16'], ['semana', 'Del trabajo', 80000, '2026-10-23']],
+    'the 2nd and the 9th are covered (before the fix both were overdue with 40.000 each)');
+  var raw2 = C.copy(raw), T2 = H.trab([{fecha: '2026-10-03', monto: 400000}]), b = vence(raw2, '2026-10-20', T2);
+  assert.deepEqual(resumen(b.vencimientos(b.D, 9, b.hoy, [])), [], 'fully covered: nothing to collect');
+});
+
+test('L7 review: montosPorFecha splits, puts the remainder last and takes the covered part from the earliest dates', function(){
   var a = vence(C.vacio(2026), '2026-10-20');
   assert.deepEqual(plain(a.montosPorFecha(100000, 3, 0)), [33333, 33333, 33334]);
+  assert.deepEqual(plain(a.montosPorFecha(400000, 5, 200000)), [0, 0, 40000, 80000, 80000]);
   assert.deepEqual(plain(a.montosPorFecha(1000.5, 2, 0)), [500, 500.5], 'cents stay on the last payment');
   assert.deepEqual(plain(a.montosPorFecha(50000, 1, 0)), [50000]);
 });
