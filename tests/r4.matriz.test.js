@@ -337,7 +337,7 @@ test('D16-17 primer mes sin saldo inicial (model + Omitir, then Editar): skipped
   assert.equal(H.tiles(H.appVista(H.guardado(ls, 2026)), 9).disponibleFinal, 650000);
   // R5: the month view says it explicitly, and Editar declares it later
   var a5 = appR5(ls); H.cargarEn(a5, ls, 2026);
-  assert.ok(a5.htmlSaldo(a5.D, 9, a5.vistaModelo(a5.D, a5.hoy)).indexOf('Saldo inicial sin configurar') >= 0);
+  assert.ok(a5.htmlSaldo(a5.D, 9, a5.vistaModelo(a5.D, a5.hoy)).indexOf('>Sin configurar<') >= 0);   // P3a: the origin is a chip
   assert.equal(a5.fijarApertura(500000, a5.modoApertura(a5.D, a5.hoy)), true);
   var g = H.guardado(ls, 2026);
   assert.deepEqual([g.arrastre.inicial.origen, g.arrastre.inicial.declarado, g.arrastre.inicial.apertura], ['declarado', 500000, -150000]);

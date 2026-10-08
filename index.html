@@ -168,8 +168,11 @@ h2.tit{font-size:13px;font-weight:600;color:var(--txt2);margin:22px 4px 8px;lett
 .sdo-f b{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
 .sdo-ap b,.sdo-tot b{font-size:17px}
 .sdo-tot{border-top:1px solid var(--sep);margin-top:6px;padding-top:10px}
-.sdo-orig{font-size:12px;color:var(--txt2);margin:-2px 0 8px}
-.sdo-lnk{color:var(--acc);font-weight:600;font-size:12px;padding:4px 2px;min-height:32px}
+.sdo-orig{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:var(--fs-cap);color:var(--txt2);margin:-4px 0 4px}
+.sdo-lnk{color:var(--acc);font-weight:600;font-size:15px;padding:0 10px;min-height:var(--tap);min-width:var(--tap)}
+.sdo-reconf{margin-top:12px;padding:12px;border-radius:12px;background:var(--c-pend-bg)}
+.sdo-reconf p{margin:0 0 4px;font-size:15px;color:var(--txt)}
+.sdo-reconf .sdo-acc{align-items:center}
 .sdo-acc{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
 .sdo-nota{padding:6px 0 0}
 .sdo-in{width:100%;font-size:20px;font-weight:600;padding:10px 12px;margin:0 0 4px;border-radius:12px;background:var(--fill);border:0}
@@ -2832,9 +2835,10 @@ function repartoTrabajo(d, j, it){
    Solo presenta lo que ya calcula la cadena (cadena/flujosMes); no hay ninguna regla de plata nueva acá. */
 // la pregunta del primer uso (D5, Q1): el año abierto contiene hoy y todavía no tiene arrastre (omitirla también lo crea)
 function muestraPrimerUso(d, hoy){ return !!d && d.anio === hoy.anio && !d.arrastre; }
-function textoOrigen(origen, anio, sinSaldo){
-  if(sinSaldo) return 'Saldo inicial sin configurar';
-  if(origen === 'cadena') return 'Viene del mes anterior';
+// P3a: el origen del disponible inicial como chip: de qué mes viene (o si ese cierre se corrigió), si lo cargaste vos o si falta configurarlo
+function textoOrigen(origen, anio, sinSaldo, previo, corregido){
+  if(sinSaldo) return 'Sin configurar';
+  if(origen === 'cadena') return previo === null || previo === undefined ? 'Viene del mes anterior' : (corregido ? 'Corregido en ' : 'Viene de ') + MESES[previo];
   if(origen === 'anioAnterior' || origen === 'arrastre') return 'Viene de diciembre ' + (anio - 1);
   return 'Lo cargaste vos';
 }
@@ -2845,6 +2849,7 @@ function lineasSaldo(d, j, vm){
   var desde = j === res.desde;
   return {
     mes: j, estado: e.estado, desde: desde, origen: e.origenApertura, sinSaldoInicial: e.sinSaldoInicial,
+    previo: !desde && j > 0 ? j - 1 : null, previoCorregido: !desde && j > 0 && vm.cad.meses[j - 1].cierreReal !== null && vm.cad.meses[j - 1].diferencia !== 0,
     apertura: e.estado === 'futuro' && !desde ? vm.cad.meses[j - 1].proyectado : e.apertura,   // un mes futuro arranca de lo proyectado del anterior (estimado)
     ingresos: r ? f.ingresosReal + f.trabajoRealizado : f.ingresosProg + f.trabajoProgramado,
     gastos: r ? f.gastosReal : f.gastosProg,
@@ -2866,8 +2871,8 @@ function htmlSaldo(d, j, vm){
   h += '<div class="saldo sdo"><div class="sdo-tit">Saldo de ' + MESES[j]
      + (est === 'actual' ? ' · a hoy' : (est === 'futuro' ? ' · programado' : '')) + '</div>';
   h += filaSaldo(est === 'futuro' && !l.desde ? 'Disponible inicial (estimado)' : 'Disponible inicial', fARS(l.apertura), 'sdo-ap');
-  h += '<div class="sdo-orig"><span>' + textoOrigen(l.origen, d.anio, l.sinSaldoInicial) + '</span>'
-     + (editable ? ' · <button class="sdo-lnk" data-act="editarApertura" data-m="' + j + '">Editar</button>' : '') + '</div>';
+  h += '<div class="sdo-orig"><span class="chip' + (l.sinSaldoInicial ? ' pend' : (l.previoCorregido ? ' real' : '')) + '">' + textoOrigen(l.origen, d.anio, l.sinSaldoInicial, l.previo, l.previoCorregido) + '</span>'
+     + (editable ? '<button class="sdo-lnk" data-act="editarApertura" data-m="' + j + '">Editar</button>' : '') + '</div>';
   h += filaSaldo('+ Ingresos', fARS(l.ingresos)) + filaSaldo('− Gastos', fARS(l.gastos));
   if(l.cuotas) h += filaSaldo('− Deudas', fARS(l.cuotas));
   h += filaSaldo('− Ahorro', fARS(l.ahorro));
@@ -2877,16 +2882,19 @@ function htmlSaldo(d, j, vm){
     if(l.cierreReal === null) h += '<div class="sdo-acc"><button class="mini" data-act="cierreAbrir" data-m="' + j + '">¿Es correcto?</button></div>';
     else {
       h += filaSaldo('Según tus registros', fARS(l.cierreCalc)) + filaSaldo('Saldo real (confirmado)', fARS(l.cierreReal)) + filaSaldo('Diferencia', fARS(l.diferencia));
-      if(l.reconfirmar) h += '<div class="nota mal sdo-nota" id="avisoReconfirmar">Cambió desde que lo confirmaste. El cierre confirmado se mantiene en ' + fARS(l.cierreReal)
-        + '; con tus registros ahora da ' + fARS(l.cierreCalc) + '.</div>'
-        + '<div class="sdo-acc"><button class="mini on" data-act="cierreAbrir" data-m="' + j + '">Confirmar de nuevo</button>'
-        + '<button class="mini" data-act="cierreMantener" data-m="' + j + '">Mantener</button></div>';
+      // P3a (hallazgo 14): en ámbar y en dos opciones claras. "Usar" confirma lo que dan tus registros (fijarCierreReal, como el Confirmar del
+      // aviso de comienzo de mes), "Dejar" es el Mantener de siempre (mantenerCierreReal) y "Otro monto" abre la hoja del cierre
+      if(l.reconfirmar) h += '<div class="sdo-reconf" id="avisoReconfirmar"><p>Cerraste con <b>' + fARS(l.cierreReal) + '</b> (confirmado) · tus registros ahora dan <b>'
+        + fARS(l.cierreCalc) + '</b>.</p>'
+        + '<div class="sdo-acc"><button class="mini on" data-act="avCierreOk" data-m="' + j + '">Usar ' + fARS(l.cierreCalc) + '</button>'
+        + '<button class="mini" data-act="cierreMantener" data-m="' + j + '">Dejar ' + fARS(l.cierreReal) + '</button>'
+        + '<button class="sdo-lnk" data-act="cierreAbrir" data-m="' + j + '">Otro monto</button></div></div>';
       else h += '<div class="sdo-acc"><button class="mini" data-act="cierreAbrir" data-m="' + j + '">Cambiar</button></div>';
     }
   } else if(est === 'actual'){
     h += filaSaldo('Disponible actual', fARS(l.disponibleActual), 'sdo-tot');
     h += filaSaldo('Proyectado al cierre (estimado)', fARS(l.proyectado));
-    if(l.vencidos > 0) h += '<div class="nota sdo-nota">Pendientes de meses anteriores: <b>' + fARS(l.vencidos) + '</b> (no están en lo proyectado)</div>';
+    if(l.vencidos > 0) h += '<div class="nota ambar sdo-nota" id="sdoAtrasado">Atrasado de meses anteriores: <b>' + fARS(l.vencidos) + '</b> (no está en lo proyectado)</div>';
     if(l.vencidosIngresos > 0) h += '<div class="nota sdo-nota">Cobros pendientes de meses anteriores: <b>' + fARS(l.vencidosIngresos) + '</b></div>';
   } else h += filaSaldo('Proyectado al cierre (estimado)', fARS(l.proyectado), 'sdo-tot');
   return h + '</div>';

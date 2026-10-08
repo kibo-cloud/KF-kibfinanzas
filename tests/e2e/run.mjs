@@ -753,8 +753,8 @@ try{
     await seed(octLegacy());
     await clic('[data-act=primerUsoNo]');
     const g3 = await guardado(2026);
-    check('D16-17 Omitir: origen omitido, shown as "Saldo inicial sin configurar", available = what October registered',
-      [g3.arrastre.inicial.origen, g3.arrastre.inicial.apertura, (await texto('#saldoMes')).indexOf('Saldo inicial sin configurar') >= 0, await hay('#primerUso'), await pantalla()],
+    check('D16-17 Omitir: origen omitido, shown as "Sin configurar" (P3a chip), available = what October registered',
+      [g3.arrastre.inicial.origen, g3.arrastre.inicial.apertura, (await texto('#saldoMes .sdo-orig .chip')) === 'Sin configurar', await hay('#primerUso'), await pantalla()],
       ['omitido', null, true, false, '600000']);
     await nav(URL_APP); await sleep(1300);
     check('D16-17 after a reload the first-use prompt does not come back', await hay('#primerUso'), false);
@@ -795,8 +795,8 @@ try{
     // edit the confirmed past month: Luz ticked -> calculated 280.000, the confirmed 275.000 is kept and reconfirmation is asked (D6)
     await ev(`document.querySelector('[data-act=mes][data-m="8"]').click(); true`); await sleep(1400);
     await clic('[data-act=pagar][data-k=gastosFijos][data-i="1"]');
-    check('R5 reconfirm: the confirmed value is kept, the difference shows, Confirmar de nuevo / Mantener are offered',
-      [await pantalla(), (await texto('#avisoReconfirmar')).indexOf('Cambió desde que lo confirmaste') >= 0, await hay('#saldoMes [data-act=cierreMantener]')], ['275000', true, true]);
+    check('R5 reconfirm: the confirmed value is kept, the difference shows, Usar / Dejar (P3a wording) are offered',
+      [await pantalla(), (await texto('#avisoReconfirmar p')) === 'Cerraste con ' + await ev('fARS(275000)') + ' (confirmado) · tus registros ahora dan ' + await ev('fARS(280000)') + '.', await hay('#saldoMes [data-act=cierreMantener]')], ['275000', true, true]);
     await clic('#saldoMes [data-act=cierreMantener]');
     const g6 = await guardado(2026);
     check('R5 Mantener keeps 275.000 and records the new calculated value; the question goes away',
