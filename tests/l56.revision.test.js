@@ -65,3 +65,46 @@ test('L5 review b: a fortnightly income on the 15th and the 30th, the 15th overd
   assert.deepEqual(resumen(m.vencimientos(m.D, 9, m.hoy, [])), [['semana', 'Sueldo', 300000, '2026-10-15']], 'nothing passed yet: only the next date');
 });
 
+// ── c: the separate quick-expense rows ──
+var F_GASTO = ['sumarGasto', 'quitarMov', 'esc', 'fARS', 'grupos', 'preguntaPago', 'preguntarPago', 'gastoEsPago', 'marcarPago', 'gastoAparte', 'filaDelGasto',
+  'anotarMov', 'esGastoAparte', 'copiarAnterior', 'esRenglonTrabajo'];
+function gastoApp(raw, mes){
+  var toasts = [];
+  var a = H.appVista(raw, null, null, null, {funcs: F_GASTO, vars: ['gr', 'RENGLON_TRABAJO', 'MESES'],
+    globals: {oculto: false, PUNTOS: '..', document: {getElementById: function(){ return null; }},
+      abrirHoja: function(){}, cerrarHoja: function(){}, tocar: function(){}, conScroll: function(){}, renderMes: function(){}, toast: function(t, ac, act, id){ toasts.push([t, ac, act, id]); }}});
+  a.toasts = toasts;
+  if(mes !== undefined) a.mes = mes;
+  return a;
+}
+function modelo(filas, j){ var d = C.vacio(2026); C.arrastre(d, 8, 100000, 'declarado'); C.mes(d, j === undefined ? 9 : j, filas); return d; }
+
+test('L3 review c: "No, es otro gasto" marks the row it creates with aparte: true, and the flag survives a reload', function(){
+  var a = gastoApp(modelo({gastosVariables: [C.it('Super', 50000, false)]}));
+  a.gr = {monto: 12000, cat: 0, sec: 'gastosVariables'}; a.sumarGasto(); a.gastoAparte();
+  var f = a.D.meses[9].gastosVariables[1];
+  assert.equal(f.nombre, 'Super (otro gasto)'); assert.equal(f.aparte, true);
+  var d2 = a.normalizar(plain(a.D), a.hoy);
+  assert.equal(d2.meses[9].gastosVariables[1].aparte, true);
+  assert.equal(d2.meses[9].gastosVariables[0].aparte, undefined, 'ordinary rows carry no flag');
+});
+
+test('L3 review c: esGastoAparte prefers the flag; the name is only a fallback for rows saved before it', function(){
+  var a = gastoApp(modelo({}));
+  assert.equal(a.esGastoAparte({nombre: 'Viaje', aparte: true}), true, 'flagged, whatever its name (the user renamed it)');
+  assert.equal(a.esGastoAparte({nombre: 'Super (otro gasto)', pagado: true}), true, 'old data: the name');
+  assert.equal(a.esGastoAparte({nombre: 'Super'}), false);
+  assert.equal(a.esGastoAparte('Super (otro gasto 2)'), true, 'a plain name still works');
+});
+
+test('L3 review c: copying the previous month skips a flagged row; the empty-copy message depends on the section', function(){
+  var raw = modelo({gastosVariables: [{nombre: 'Viaje', monto: 30000, pagado: true, aparte: true}]}, 8);
+  var a = gastoApp(raw, 9);
+  a.copiarAnterior('gastosVariables');
+  assert.deepEqual(plain(a.D.meses[9].gastosVariables), []);
+  assert.equal(a.toasts[0][0], 'No hay nada para copiar del mes anterior');
+  var b = gastoApp(modelo({ingresos: [C.it('Del trabajo', 30000, true)]}, 8), 9);
+  b.copiarAnterior('ingresos');
+  assert.equal(b.toasts[0][0], 'No hay nada para copiar: “Del trabajo” lo cargás desde Trabajo');
+});
+

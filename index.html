@@ -2053,6 +2053,7 @@ function normalizar(d, hoy){
         o.dias = []; if(it && Object.prototype.toString.call(it.dias)==='[object Array]'){ for(var qd=0;qd<it.dias.length;qd++){ var vd=Math.round(num(it.dias[qd])); if(vd>=0&&vd<=31&&o.dias.length<31) o.dias.push(vd); } }
         if(it && it.pagado === true) o.pagado = true;
         if(it && it.pagado === false) o.pagado = false;
+        if(it && it.aparte === true) o.aparte = true;   // L3 review: el renglón lo creó "No, es otro gasto"
         // migración única por año: solo completa los pagado sin definir con la inferencia de antes (monto cargado y mes ya corrido)
         if(!d.pagoExplicito && o.pagado === undefined) o.pagado = o.monto > 0 && i <= mesTope(d.anio, refPago);
         return o;
@@ -5300,7 +5301,7 @@ function gastoAparte(){
     nombre = it.nombre + (n === 1 ? ' (otro gasto)' : ' (otro gasto ' + n + ')');
     var hallada = null;
     for(q=0;q<ls.length;q++) if(ls[q].nombre === nombre){ hallada = ls[q]; break; }
-    if(!hallada){ fila = {nombre:nombre, monto:0, tope:0, frec:'', dias:[], pagado:false}; ls.push(fila); nueva = true; break; }   // la forma de un renglón normalizado
+    if(!hallada){ fila = {nombre:nombre, monto:0, tope:0, frec:'', dias:[], pagado:false, aparte:true}; ls.push(fila); nueva = true; break; }   // la forma de un renglón normalizado
     if(hallada.pagado === true || !num(hallada.monto)) fila = hallada;
   }
   var pp = fila.pagado === true;
@@ -5356,15 +5357,22 @@ function toast(txt, accion, act, id){   // texto plano: se escapa siempre (puede
   tToast = setTimeout(function(){ t.classList.remove('on'); }, 5000);
 }
 // L3 review: los renglones que crea "No, es otro gasto" ("<fila> (otro gasto)", "(otro gasto 2)", …) son plata ya gastada, no un plan
-function esGastoAparte(nombre){ return /\S \(otro gasto(?: (?:[2-9]|[1-9]\d+))?\)$/.test(String(nombre || '')); }
+// L3 review: manda la marca aparte (sobrevive a un cambio de nombre); el nombre solo vale para los renglones guardados antes de la marca
+function esGastoAparte(it){
+  if(it && typeof it === 'object'){ if(it.aparte === true) return true; it = it.nombre; }
+  return /\S \(otro gasto(?: (?:[2-9]|[1-9]\d+))?\)$/.test(String(it || ''));
+}
 function copiarAnterior(k){
   var act = D.meses[mes][k], ant = D.meses[mes-1][k], i, j, copiables = 0;
   // "Del trabajo" no se copia: lo cargan los pases. Si no queda nada con monto, se avisa sin tocar el mes
-  for(i=0;i<ant.length;i++) if(!(k === 'ingresos' && esRenglonTrabajo(ant[i].nombre)) && !esGastoAparte(ant[i].nombre) && num(ant[i].monto)) copiables++;
-  if(!copiables){ toast('No hay nada para copiar: “' + RENGLON_TRABAJO + '” lo cargás desde Trabajo'); return; }
+  for(i=0;i<ant.length;i++) if(!(k === 'ingresos' && esRenglonTrabajo(ant[i].nombre)) && !esGastoAparte(ant[i]) && num(ant[i].monto)) copiables++;
+  if(!copiables){   // L3 review: lo de "Del trabajo" solo cuando había un "Del trabajo" para copiar
+    var hayTrab = k === 'ingresos' && ant.some(function(x){ return esRenglonTrabajo(x.nombre) && num(x.monto); });
+    toast(hayTrab ? 'No hay nada para copiar: “' + RENGLON_TRABAJO + '” lo cargás desde Trabajo' : 'No hay nada para copiar del mes anterior'); return;
+  }
   for(i=0;i<ant.length;i++){
     if(k === 'ingresos' && esRenglonTrabajo(ant[i].nombre)) continue;
-    if(esGastoAparte(ant[i].nombre)) continue;   // L3 review: un gasto aparte ya está gastado, no es un plan para el mes que viene
+    if(esGastoAparte(ant[i])) continue;   // L3 review: un gasto aparte ya está gastado, no es un plan para el mes que viene
     var hallado = false;
     for(j=0;j<act.length;j++) if(act[j].nombre === ant[i].nombre){ act[j].monto = num(ant[i].monto); act[j].pagado = false; hallado = true; break; }
     if(!hallado) act.push({nombre:ant[i].nombre, monto:num(ant[i].monto), pagado:false});
