@@ -227,7 +227,7 @@ test('S-5 "Versión para PC" never writes the end marker inside the embedded dat
   assert.equal(d.meses[0].gastosVariables[0].nombre, 'raro ' + M2 + ' </script> fin');
 });
 
-// ── S-4: Content-Security-Policy (no hashes: 'unsafe-inline' for the inline blocks, everything else locked to this origin) ──
+// ── S-4: Content-Security-Policy (L8: the inline scripts by sha256 hash, see tests/l8.csp.test.js; everything else locked to this origin) ──
 test('S-4 index.html and privacidad.html carry the same CSP meta, before any script, with no eval and no other origin', function(){
   var fs = require('fs'), path = require('path');
   var metas = ['index.html', 'privacidad.html'].map(function(f){
@@ -250,7 +250,8 @@ test('S-4 index.html and privacidad.html carry the same CSP meta, before any scr
   assert.deepEqual(dir['connect-src'], ["'self'"]);
   Object.keys(dir).forEach(function(k){
     dir[k].forEach(function(v){
-      assert.ok(["'self'", "'none'", "'unsafe-inline'", 'data:', 'blob:'].indexOf(v) >= 0, k + ' allows only this origin: ' + v);
+      var hash = k === 'script-src' && /^'sha256-[A-Za-z0-9+/]{43}='$/.test(v), inline = k === 'style-src' && v === "'unsafe-inline'";
+      assert.ok(hash || inline || ["'self'", "'none'", 'data:', 'blob:'].indexOf(v) >= 0, k + ' allows only this origin: ' + v);
     });
   });
   assert.equal(metas[0].indexOf('unsafe-eval'), -1);

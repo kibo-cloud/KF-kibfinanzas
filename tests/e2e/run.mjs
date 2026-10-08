@@ -13,6 +13,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
+import crypto from 'node:crypto';
 import vm from 'node:vm';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
@@ -38,6 +39,17 @@ function findBrowser(){
   return c.find(p => p && fs.existsSync(p));
 }
 
+// L8: the sha256 of every executable inline script (as the browser hashes it: CRLF/CR read as LF), written into script-src
+function hashesDe(html){
+  const re = /<script(\s[^>]*)?>([\s\S]*?)<\/script>/g, out = []; let m;
+  while((m = re.exec(html))) if(!/type="application\/json"/.test(m[1] || '')) out.push(`'sha256-${crypto.createHash('sha256').update(m[2].replace(/\r\n?/g, '\n'), 'utf8').digest('base64')}'`);
+  return out;
+}
+function conHashes(html){
+  const n = html.replace(/(<meta http-equiv="Content-Security-Policy" content="[^"]*script-src )[^;"]*/, (t, a) => a + "'self' " + hashesDe(html).join(' '));
+  if(n === html) throw new Error('script-src not found in the CSP meta');
+  return n;
+}
 // Copies the site into dir, injects hook + date pin into the COPY, returns the APPVER declared in the repo's index.html.
 function prepareSite(dir){
   for(const f of fs.readdirSync(ROOT)){
@@ -49,7 +61,9 @@ function prepareSite(dir){
   let html = original.slice(0, k) + HOOK + original.slice(k + MARKER.length);
   if(html.indexOf('<head>') < 0) throw new Error('<head> not found in index.html');
   html = html.replace('<head>', '<head>' + DATE_PIN);
+  html = conHashes(html);   // L8: the hook changes the app script, so the COPY's CSP lists the hashes of its own scripts (the real ones: tests/l8.csp.test.js)
   fs.writeFileSync(path.join(dir, 'index.html'), html);
+  fs.writeFileSync(path.join(dir, 'real.html'), original);   // L8/L9: the unmodified build, to prove it runs under its own CSP
   const m = /var APPVER\s*=\s*'([^']+)'/.exec(original);
   if(!m) throw new Error('APPVER not found in index.html');
   return m[1];
@@ -471,6 +485,28 @@ try{
   await ev(`D.meses[9].ingresos[0].monto = 271000; sucio = true; guardar(); true`);
   check('N7 PC file opened via file://: an edit saves under kibo.datos.2027 (nothing under 2026)', await ev(`[(function(t){ return t ? JSON.parse(t).meses[9].ingresos[0].monto : null; })(localStorage.getItem('kibo.datos.2027')), localStorage.getItem('kibo.datos.2026')]`), [271000, null]);
   await ev(`localStorage.clear(); true`);
+  await nav(URL_APP);
+
+  // ── L8: the UNMODIFIED build (no test hook, no date pin) runs under its own strict CSP: script hashes, no 'unsafe-inline' ──
+  const cspId = (await send('Page.addScriptToEvaluateOnNewDocument', { source: 'window.__cspV = []; document.addEventListener("securitypolicyviolation", function(e){ window.__cspV.push(e.violatedDirective); });' })).result.identifier;
+  const errsL8 = pageErrs.length, URL_REAL = URL_APP.replace(/index\.html$/, 'real.html');
+  await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida', '1'); true`);
+  await nav(URL_REAL); await sleep(600);
+  check('L8 real build: no CSP violation, both scripts ran (engine and app), script-src lists hashes and no unsafe-inline', await ev(`(function(){ var c = document.querySelector('meta[http-equiv="Content-Security-Policy"]').content;
+    return [window.__cspV.slice(), typeof TGMotor, document.getElementById('v-mes').children.length > 0, /script-src 'self' 'sha256-[^']+' 'sha256-[^']+';/.test(c), c.indexOf('unsafe-inline') > c.indexOf('style-src')]; })()`),
+    [[], 'object', true, true, true]);
+  check('L8 real build: an injected inline script does not run and is reported', await ev(`new Promise(function(res){ var s = document.createElement('script'); s.textContent = 'window.__inyectado = 1'; document.body.appendChild(s);
+    setTimeout(function(){ res([window.__inyectado === undefined, window.__cspV.filter(function(d){ return d.indexOf('script-src') === 0; }).length > 0]); }, 300); })`), [true, true]);
+  const realHtml = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8'), PM1 = '/*DATOS_' + 'INICIO*/', PM2 = '/*DATOS_' + 'FIN*/';
+  const realPc = realHtml.slice(0, realHtml.indexOf(PM1) + PM1.length) + JSON.stringify({anio: 2027, meses: ms27}).replace(/</g, '\\u003c') + realHtml.slice(realHtml.indexOf(PM2));   // the splice versionPC does
+  fs.writeFileSync(path.join(pcDir, 'real-2027.html'), realPc);
+  const realPcUrl = pathToFileURL(path.join(pcDir, 'real-2027.html')).href;
+  await nav(realPcUrl); await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida', '1'); true`); await nav(realPcUrl); await sleep(600);
+  check('L8 real "Versión para PC" opened via file://: same CSP, no violation, shows the year it carries', await ev(`[location.protocol, window.__cspV.slice(), typeof TGMotor, document.title, !!document.querySelector('#v-mes .sec')]`),
+    ['file:', [], 'object', 'TuGasto · 2027', true]);
+  check('L8 real build and its PC file: no uncaught page error', pageErrs.slice(errsL8), []);
+  await ev(`localStorage.clear(); true`);
+  await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: cspId });
   await nav(URL_APP);
 
   // ── R4.3: several tabs, model fields on reload, backup -> restore, back to pre-R4 ──
