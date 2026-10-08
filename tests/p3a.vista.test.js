@@ -13,7 +13,7 @@ function existe(n){ return new RegExp('^function ' + n + '\\s*\\(', 'm').test(SR
 var FUNCS = ['estadoHero', 'claseHero', 'subHero', 'chipT', 'chipsHero', 'etiquetaHero', 'htmlHero', 'barra', 'fPct', 'botonOjo', 'fARS', 'grupos', 'esc',
   'lineasSaldo', 'seccion', 'abierta', 'filaTope', 'textoDeuda', 'cuotaAdelantada', 'esProgramado', 'gastadoVista', 'datosRealizados', 'cobroTxt',
   'faltaSeccion', 'textoFalta', 'textoDelTrabajo'].filter(existe);
-var VARS = ['MESES', 'oculto', 'PUNTOS', 'ICOSEC', 'MARCABLE', 'TOPEABLE', 'SECS'];
+var VARS = ['MESES', 'oculto', 'PUNTOS', 'ICOSEC', 'MARCABLE', 'TOPEABLE', 'SECS', 'verFilas', 'SUB_APAGADO'];
 
 function appMes(d, T, j, today){
   var app = H.appVista(d, T, null, today, {funcs: FUNCS, vars: VARS});
@@ -151,4 +151,25 @@ test('debt rows: "Cuota N de M" with pagada / pendiente / programada / sin pagar
   assert.match(app.textoDeuda('Préstamo', 10), /^Cuota 4 de 6 · programada/);
   assert.match(app.textoDeuda('Préstamo', 7), /^Cuota 3 de 6 · sin pagar/);
   assert.doesNotMatch(sec(app, 'deudas'), /Sin pago este mes/);
+});
+
+// ── first use and empty year (finding 8, 9; F) ──
+test('a year with nothing loaded shows each section as one sentence and one button; with data, or after "Cargar", the rows', function(){
+  var app = appMes(C.vacio(2026), null, 9);
+  app.D.meses[9].gastosFijos = [C.it('Alquiler', 0, false), C.it('Luz', 0, false)];
+  var h = sec(app, 'gastosFijos');
+  assert.match(h, /<div class="nota vacia">Todavía no cargaste nada en gastos fijos\.<\/div><button class="mas" data-act="verFilas" data-k="gastosFijos">Cargar gastos fijos<\/button><\/div><\/div>$/);
+  assert.doesNotMatch(h, /input class="monto"/, 'no zero rows');
+  app.verFilas.gastosFijos = true;
+  assert.match(sec(app, 'gastosFijos'), /input class="monto"/);
+  var con = appMes(C.seccion2(false, false), null, 9);
+  assert.doesNotMatch(sec(con, 'gastosFijos'), /nota vacia/, 'a year with data: rows as always');
+});
+
+test('the simple calculation under the first-use question is gray and says why; the question card is the hero', function(){
+  var leg = appMes(H.sinModelo(C.seccion2(false, false)), null, 9), h = hero(leg, 9, '', true);
+  assert.match(h, /class="saldo hero hero-simple hero-apagado"/);
+  assert.equal(bigClass(h), 'proy');
+  assert.match(h, /Hasta que respondas: lo que tildaste este mes/);
+  assert.match(h, /Cálculo simple/);
 });

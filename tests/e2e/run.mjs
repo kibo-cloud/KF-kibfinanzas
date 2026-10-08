@@ -353,6 +353,7 @@ try{
   await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); true`);
   await nav(URL_APP);
   check('empty app shows the empty notice', await ev(`!!document.querySelector('#avisos [data-av=vacia]')`), true);
+  await ev(`document.querySelector('[data-act=verFilas][data-k=gastosVariables]').click(); true`); await sleep(300);   // P3a: an empty section is one sentence + "Cargar …"
   await typeIn('input.monto[data-k=gastosVariables][data-i="0"]', '5000'); await sleep(800);
   check('unticked amount is registered', await ev('D.meses[9].gastosVariables[0].pagado'), false);
   check('unticked amount: empty notice is gone', await ev(`!!document.querySelector('#avisos [data-av=vacia]')`), false);
