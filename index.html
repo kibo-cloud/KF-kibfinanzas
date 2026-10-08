@@ -3205,6 +3205,13 @@ function diasCobro(it, anio, m){
   }
   return out.sort(function(a, b){ return a - b; });
 }
+// L7 review: lo de cada fecha de cobro. El monto del renglón se reparte entre sus n fechas y lo que sobra del redondeo va a la última,
+// así las fechas suman exactamente el renglón
+function montosPorFecha(total, n){
+  var out = [], cada = Math.round(total / n), q;
+  for(q=0;q<n;q++) out.push(q < n - 1 ? cada : Math.round((total - cada * (n - 1)) * 100) / 100);
+  return out;
+}
 // facturas = [{id, nombre, saldo, vence:'YYYY-MM-DD'}] (las arma facturasAVencer desde Trabajo); devuelve los renglones ordenados:
 // atrasado primero, después por fecha, a igual fecha el monto mayor primero
 function vencimientos(d, j, hoy, facturas){
@@ -3234,13 +3241,13 @@ function vencimientos(d, j, hoy, facturas){
       var base = {atrasado: false, tipo: tipo(k), nombre: String(it.nombre || ''), monto: mo, mes: j, k: k, i: i}, n;
       if(dias.length){
         // L5 review: cada fecha con lo de un cobro (como cobroTxt); cada día ya pasado sin tildar es un atrasado, y el próximo si cae en la semana
-        n = cuantosPagos(it, d.anio, j) || dias.length; cada = n > 1 ? Math.round(mo / n) : mo;
+        cada = montosPorFecha(mo, dias.length);   // L7 review: suman exactamente el renglón (antes cada fecha era el redondeo de mo / n)
         prox = -1;
         for(q=0;q<dias.length;q++){
-          if(dias[q] < hoy.dia){ out.push(con(base, {atrasado: true, monto: cada, era: dias[q], fecha: isoDe(d.anio, j, dias[q])})); }
-          else if(prox < 0) prox = dias[q];
+          if(dias[q] < hoy.dia){ out.push(con(base, {atrasado: true, monto: cada[q], era: dias[q], fecha: isoDe(d.anio, j, dias[q])})); }
+          else if(prox < 0) prox = q;
         }
-        if(prox >= 0 && prox - hoy.dia <= DIAS_VENCE) out.push(con(base, {monto: cada, fecha: isoDe(d.anio, j, prox), dia: prox}));
+        if(prox >= 0 && dias[prox] - hoy.dia <= DIAS_VENCE) out.push(con(base, {monto: cada[prox], fecha: isoDe(d.anio, j, dias[prox]), dia: dias[prox]}));
       } else if(dim - hoy.dia <= DIAS_VENCE) out.push(con(base, {fecha: isoDe(d.anio, j, dim), dia: dim, finDeMes: true}));
     }
   }
