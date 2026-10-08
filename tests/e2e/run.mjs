@@ -1513,6 +1513,74 @@ try{
       check(`L7 390 px ${t}: every key box where it was before L7 (${Object.keys(antes[t]).length} boxes)`, dif.map(k => [k, antes[t][k], movil[t][k] || null]), []);
     }
     await tab7('mes');
+
+    // desktop: the month in two columns (summary left, rows right), centered at most 1200 px, nothing overlapping or wider than the window
+    const sinDesborde = `(function(){ var W = innerWidth, malos = [];
+      if(document.documentElement.scrollWidth > W) malos.push('page ' + document.documentElement.scrollWidth);
+      document.querySelectorAll('main *').forEach(function(e){ var r = e.getBoundingClientRect(); if(r.width && r.right > W + 1 && !e.closest('.meses, .carr-pista, .tabla')) malos.push(e.tagName + '.' + e.className); });
+      return malos.slice(0, 5); })()`;
+    for(const w of [1280, 1440]){
+      await tam7(w); await tab7('mes');
+      check(`L7 ${w} mes: two columns side by side, summary left and rows right, inside a centered 1200 px column`, await ev(`(function(){
+        var i = document.querySelector('#v-mes .mes-izq').getBoundingClientRect(), d = document.querySelector('#v-mes .mes-der').getBoundingClientRect(), m = document.querySelector('main').getBoundingClientRect();
+        var h = document.getElementById('carrMes').getBoundingClientRect(), s = document.querySelector('#v-mes .mes-der .sec').getBoundingClientRect();
+        return [i.width > 300 && d.width > i.width, i.right <= d.left, Math.abs(i.top - d.top) <= 2, h.right <= i.right + 1 && s.left >= d.left - 1,
+          m.width <= 1200, Math.abs(m.left - (document.documentElement.clientWidth - m.right)) <= 1]; })()`), [true, true, true, true, true, true]);
+      check(`L7 ${w} mes: nothing wider than the window`, await ev(sinDesborde), []);
+      const fija = `(function(){ var c = document.querySelector('#v-mes .mes-izq'), libre = innerHeight - document.querySelector('header').offsetHeight - document.getElementById('nav').offsetHeight - 24;
+        return [c.offsetHeight <= libre, getComputedStyle(c).position]; })()`;
+      check(`L7 ${w} mes: the summary column scrolls with the page when it does not fit the window`, await ev(fija), [false, 'static']);
+      await tam7(w, 1600);
+      check(`L7 ${w} mes: the summary column stays put while the rows scroll when it fits`, await ev(fija), [true, 'sticky']);
+      await tam7(w);
+      for(const t of ['anio', 'usd', 'trabajo']){
+        await tab7(t);
+        check(`L7 ${w} ${t}: sections in two columns, none overlapping, nothing wider than the window`, await ev(`(function(){
+          var c = Array.prototype.filter.call(document.getElementById('v-${t}').children, function(e){ return e.offsetHeight; }).map(function(e){ return e.getBoundingClientRect(); }), lados = {}, choque = 0;
+          c.forEach(function(r, a){ lados[r.left < innerWidth / 2 - 1 && r.right < innerWidth / 2 ? 'izq' : r.left > innerWidth / 2 - 30 ? 'der' : 'ancho'] = 1;
+            c.forEach(function(q, b){ if(b > a && r.left < q.right - 1 && q.left < r.right - 1 && r.top < q.bottom - 1 && q.top < r.bottom - 1) choque++; }); });
+          return [!!lados.izq && !!lados.der, choque]; })()`), [true, 0]);
+        check(`L7 ${w} ${t}: nothing wider than the window`, await ev(sinDesborde), []);
+      }
+      await tab7('mes');
+    }
+
+    // keyboard and screen reader: tabs (role, aria-selected, arrows), the sheet (dialog, Esc, focus kept inside and given back), live regions
+    await tam7(1280); await tab7('mes');
+    const tecla = async (key, code, shift) => { for(const type of ['keyDown', 'keyUp']) await send('Input.dispatchKeyEvent', Object.assign({ type, key, code, windowsVirtualKeyCode: {Tab: 9, Enter: 13, Escape: 27, ArrowRight: 39}[key], modifiers: shift ? 8 : 0 }, type === 'keyDown' && key === 'Enter' ? { text: '\r' } : {})); await sleep(120); };
+    check('L7 tabs: a tablist with five tabs, the open one marked aria-selected', await ev(`(function(){ var l = document.querySelectorAll('#nav [role=tablist] [role=tab]');
+      return [l.length, Array.prototype.map.call(l, function(b){ return b.getAttribute('aria-selected'); }).join(','), document.documentElement.lang]; })()`), [5, 'true,false,false,false,false', 'es-AR']);
+    await ev(`document.getElementById('tab-mes').focus(); true`);
+    await tecla('ArrowRight', 'ArrowRight');
+    check('L7 tabs: the right arrow moves to the next tab', await ev(`document.activeElement.id`), 'tab-anio');
+    await tecla('Enter', 'Enter'); await sleep(1200);
+    check('L7 tabs: Enter opens it and it becomes the selected tab', await ev(`[document.getElementById('v-anio').classList.contains('on'), document.getElementById('tab-anio').getAttribute('aria-selected'), document.getElementById('tab-mes').getAttribute('aria-selected')]`), [true, 'true', 'false']);
+    await tab7('mes');
+    await ev(`document.getElementById('fab').focus(); true`);
+    await tecla('Enter', 'Enter'); await sleep(500);
+    check('L7 sheet: Enter on Gasto opens a modal dialog named by its title, with the focus inside', await ev(`(function(){ var h = document.getElementById('hoja'), t = document.getElementById(h.getAttribute('aria-labelledby'));
+      return [document.getElementById('velo').classList.contains('on'), h.getAttribute('role'), h.getAttribute('aria-modal'), !!(t && t.textContent.trim()), h.contains(document.activeElement)]; })()`), [true, 'dialog', 'true', true, true]);
+    let dentro = true;
+    for(let k = 0; k < 25; k++){ await tecla('Tab', 'Tab', k % 3 === 2); if(!(await ev(`document.getElementById('hoja').contains(document.activeElement)`))) dentro = false; }
+    check('L7 sheet: Tab and Shift+Tab never leave the open sheet', dentro, true);
+    await tecla('Escape', 'Escape'); await sleep(300);
+    check('L7 sheet: Esc closes it and the focus goes back to the button that opened it', await ev(`[document.getElementById('velo').classList.contains('on'), document.activeElement && document.activeElement.id]`), [false, 'fab']);
+    check('L7 live regions: the toast and the status pill are announced politely', await ev(`['toast', 'pild'].map(function(i){ var e = document.getElementById(i); return e.getAttribute('role') + ' ' + e.getAttribute('aria-live'); })`), ['status polite', 'status polite']);
+    check('L7 keyboard: a focused button shows a visible focus ring', await ev(`(function(){ var b = document.getElementById('fab'); b.focus(); var s = getComputedStyle(b); return s.outlineStyle !== 'none' && parseFloat(s.outlineWidth) >= 2; })()`), true);
+
+    // hidden amounts: the dots are read as "oculto"
+    await ev(`document.querySelector('[data-act=ojo]').click(); true`); await sleep(500);
+    check('L7 hidden amounts: every hidden amount of the month is read as "oculto"', await ev(`(function(){ var o = document.querySelectorAll('#v-mes .oc[role=img][aria-label=oculto]').length, sueltos = 0, w = document.createTreeWalker(document.getElementById('v-mes'), 4, null), n;
+      while((n = w.nextNode())) if(n.nodeValue.indexOf('\\u2022\\u2022\\u2022\\u2022') >= 0 && !n.parentNode.classList.contains('oc')) sueltos++;
+      return [o > 3, sueltos]; })()`), [true, 0]);
+    await ev(`document.querySelector('[data-act=ojo]').click(); true`); await sleep(400);
+
+    // reduced motion: no animations or transitions when the system asks for it
+    await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+    await tab7('anio'); await tab7('mes');
+    check('L7 reduced motion: the views and the rows do not animate', await ev(`(function(){ var v = getComputedStyle(document.getElementById('v-mes')), c = document.querySelector('#v-mes .chk');
+      return [v.animationName, c ? getComputedStyle(c).transitionDuration.split(',').every(function(x){ return parseFloat(x) === 0; }) : null]; })()`), ['none', true]);
+    await send('Emulation.setEmulatedMedia', { features: [] });
     await send('Emulation.clearDeviceMetricsOverride');
   }
 
