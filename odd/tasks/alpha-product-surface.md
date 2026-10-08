@@ -393,6 +393,78 @@ Route: inline in the single writer (index.html + tests). Independent review of a
 
 Results: `npm test` 734 (733 pass, 1 todo L-03d); `npm run test:e2e` 413/413; motor goldens byte-identical.
 
+### L5 — Qué vence esta semana (done)
+
+Route: inline in the single writer (index.html + tests). No money rule: every amount is a row amount or an invoice open balance
+(`saldoFac`); no date is invented. Commit: 6621fa9. Motor goldens byte-identical to a113e68.
+
+- Where: the month view of the CURRENT month only, a card right under the hero (`#vence`), before the balance block. Nothing due → no
+  card at all (no empty message). Hidden while the first-use question is open and while the "Esta app está vacía" notice is shown (the
+  same `:has` rule as the hero), so the one-prompt-at-a-time order is kept. It is content, not a notice: `#avisos` is untouched.
+- What has a date in the data (checked): expense and installment rows have NO due day (rows are `{nombre, monto, tope, frec, dias,
+  pagado}`; `frec`/`dias` exist only for income, "¿Cada cuánto lo cobrás?"); debt plans have no day either; Trabajo invoices have
+  `venceFac` (fecha + plazo). So the card lists, from `vencimientos(d, j, hoy, facturas)`:
+  1. Overdue rows of past months of the model: the same unticked rows `cadena.resumen.vencidos` (to pay) and `vencidosIngresos` (to
+     collect) add up — "Del trabajo" excluded (its pending side is Trabajo's invoices). Legacy months have no "Atrasado" (as the hero).
+  2. Income with collection days: the next configured day within 7 days ("Día 20", "Hoy", "Mañana"); all days passed → "Atrasado ·
+     era el día N" (weekly without a day = Friday, as `cuantosPagos`).
+  3. Rows without a day are due with the month (past month end they already become "Atrasado" by the existing rule): listed only in
+     the month's last 7 days, chip "Fin de mes", "vence con el mes".
+  4. Trabajo invoices with an open balance (contado never): overdue or due within 7 days, the same window as "Cobranza de la semana".
+  Order: overdue first, then by date, same date bigger amount first. Six rows visible, then "Y N más: los ves en sus secciones".
+- Tap: an invoice opens its detail (`verFactura`); a plan row opens its month (past month for an overdue one), opens its section if
+  folded, scrolls it to the center and marks it amber for 1.8 s (`.resalta`; static under reduced motion). Rows are 48 px buttons.
+- Constants (presentation): `DIAS_VENCE = 7`, `VENCE_MAX = 6`. Names go through `esc()`.
+- OWNER_DECISION_REQUIRED (not built): a due day for expenses, installments or debt plans would be a NEW stored field (and new UI).
+  Without it those rows only appear in the last week of the month. Options: (a) add an optional "vence el día N" to rows / plans;
+  (b) keep today's behavior.
+- Tests (RED first: tests/l5.vence.test.js 0/6 before the code, 6/6 after): only the current month; window (inside at exactly 7
+  days, outside at 8 and 10, a passed day is overdue, weekly next Friday, ticked rows out); month-end rows (7 days in, 8 out; order);
+  overdue rows add up to `cadena.resumen.vencidos` and to `vencidosIngresos` minus "Del trabajo", legacy year has none; invoices
+  (overdue, today, inside, outside, paid); empty → no card, escaped names, "Y N más". Inventory: `vencimientos` r4 (lists single
+  rows, display only), `htmlVence`, `irVence` otro. E2E +11: card right under the hero, title and count, rows/chips/sub-lines/amounts
+  in order, tap targets ≥ 44, invoice tap opens it, current-month tap opens the folded section and marks the row, overdue tap opens
+  September and marks Luz, no card in a future month, a ticked row leaves the card, no card when nothing is due.
+
+### L6 — Analysis (done)
+
+Route: inline in the single writer (index.html + tests). No money rule: every number is a `serieVista` field (Cobrado =
+totalIngresos, Pagado = totalGastos, Ahorro = ahorroMesARS: the "Los doce meses" row and the month card tile) or the ticked gastos
+per category, which add up to that Pagado (tested). Commits: 3f4c567, b9702e6. Motor goldens byte-identical to a113e68.
+
+- Audit items: the deferred R6 list (E3, E6, E7, E8, E10, E11, U3) is only referenced by number in repair-sprint-1.md; the master audit
+  text with their definitions is not in the repository, so this stage implements what the owner brief and L6 describe and what is
+  derivable from the existing numbers (month vs previous / vs average, category trends, "más que lo normal"). Anything else on that
+  list stays deferred.
+- Months (I5): the transcurred months with data (`mesesTranscurridos` in a model year, `mesesCargados` in a legacy one), never a
+  future month. Reference = the last of them (the current month in this year; December in a past year). Average = the months BEFORE
+  the reference (presentation choice: the month in progress is not averaged with itself; said on screen: "El promedio es el de N meses
+  anteriores"). No base (no earlier month, or 0) → no percentage and no sentence (no division by zero). A year that has not started
+  or has nothing → no section.
+- "Este mes contra los anteriores" (`anComp`, after the summary card): Cobrado / Pagado / Ahorro of the reference month with ↑/↓ % vs
+  the previous month and vs the average, plain sentences ("Este mes gastaste 49% más que tu promedio.", "…62% más que en septiembre."),
+  "Octubre todavía no terminó: cuenta lo que ya cobraste y pagaste." for the month in progress, and "Cálculo simple" in a legacy year.
+- "Cómo vienen tus gastos" (`anTend`): the 5 categories with the most ticked gastos over the realized months (same definition as
+  "En qué se te fue la plata": `datosRealizados` + `estaPagado`, fijos + variables), each with its amount in the reference month
+  ("Nada en <mes>" when 0), a 12-slot mini bar chart up to that month (inline SVG, the reference bar green, no library), its average
+  and ↑/↓ %. "Más que lo normal" = 25 % or more above the category's own average of the earlier months (`MAS_QUE_LO_NORMAL = 0.25`, a
+  presentation constant, not a money rule); amber line + chip; a new category (average 0) never qualifies.
+- Legacy years: their own numbers (calc/serie), marked "Cálculo simple". The legacy byte pins (anio-legacy.json) and the L1 legacy money
+  set (l1-legacy-numeros.json) are NOT regenerated: the pin tests compare "El año" without the two new sections
+  (`anio-vistas.sinAnalisis`), proving everything else is byte-identical; l1.vistas also asserts the new section is marked.
+- Tests (RED first: tests/l6.analisis.test.js 0/7 before the code, 7/7 after): realized months only (November ticked, never counted),
+  reference/previous/base, values = serieVista; categories add up to Pagado every month; threshold (+50 % in, +24 % out, exactly +25 %
+  in, new category out); sentences and card HTML; division by zero and a one-month year; empty / future year → null; legacy year
+  (calc numbers, December reference, "Cálculo simple", escaped names). Harness: anio-vistas FUNCS/VARS (+8 functions, +2 constants).
+  Inventory: `analisisAnio` mixto. E2E +9: section order, header and rows (October, vs Septiembre, vs Promedio), sentences, the
+  in-progress note, categories (escaped, no November "Viaje", 10 bars each), "Más que lo normal" chip/line/header count, nothing of
+  the future month, no horizontal overflow at 360, legacy year December "Cálculo simple".
+
+Results (after the L3/L4 fixes, L5, L6): `npm test` 747 (746 pass, 1 todo L-03d); `npm run test:e2e` 433/433.
+
+Screenshots (session scratchpad `ux/shots/`, script `ux/shoot-l56.mjs` based on shoot-l1, hoy 2026-10-15, seeded year plus two dated
+income rows and one more invoice): `l56-<light|dark>-390-` and `l56-light-1280-` l5-mes-oct, l6-anio-analisis, l6-anio,
+l6-anio-legacy.
 ## Improvement loop (owner: "ejecutá todo lo que creas necesario para mejorarla en formato loop", 2026-10-07)
 
 Ordered backlog (each item: test-first, suites green, docs, small commits; native review consent batched per slice):
@@ -402,8 +474,8 @@ Ordered backlog (each item: test-first, suites green, docs, small commits; nativ
 - [x] L3 R7 / D16-15: quick expense on a pending item asks (D8: mark the existing one as paid vs record a separate realized
       expense keeping the plan pending). Owner explicitly asked for it now; D8 is the approved rule.
 - [x] L4 Backup reminder ("hace N días que no hacés una copia" + one-tap download).
-- [ ] L5 "Qué vence esta semana" (pending with dates, installments, Trabajo invoices) on opening.
-- [ ] L6 R6 analysis: month vs previous and vs average, category trends, "más que lo normal" (from the validated model).
+- [x] L5 "Qué vence esta semana" (pending with dates, installments, Trabajo invoices) on opening.
+- [x] L6 R6 analysis: month vs previous and vs average, category trends, "más que lo normal" (from the validated model).
 - [ ] L7 Desktop two-column layout + accessibility (contrast, labels, focus, screen reader).
 - [ ] L8 Atomic writes (year + Trabajo) and strict CSP if feasible without breaking the PC file; else documented debt.
 - [ ] L9 Version 1.33.0 + SW, PWA update path, offline, PC/file:// verification.
