@@ -2973,7 +2973,7 @@ function htmlSaldo(d, j, vm){
     h += filaSaldo('Tenés hoy', fARS(l.disponibleActual), 'sdo-tot');   // L1: las mismas palabras que la tarjeta de arriba
     h += filaSaldo('Al cierre (estimado)', fARS(l.proyectado));
     if(l.vencidos > 0) h += '<div class="nota ambar sdo-nota" id="sdoAtrasado">Atrasado de meses anteriores: <b>' + fARS(l.vencidos) + '</b> (no está en lo proyectado)</div>';
-    if(l.vencidosIngresos > 0) h += '<div class="nota sdo-nota">Cobros pendientes de meses anteriores: <b>' + fARS(l.vencidosIngresos) + '</b></div>';
+    if(l.vencidosIngresos > 0) h += '<div class="nota sdo-nota">Sin cobrar de meses anteriores: <b>' + fARS(l.vencidosIngresos) + '</b></div>';
   } else h += filaSaldo('Proyectado para ' + MESES[j], fARS(l.proyectado), 'sdo-tot');
   return h + '</div>';
 }
