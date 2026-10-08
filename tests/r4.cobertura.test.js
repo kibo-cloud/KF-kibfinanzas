@@ -134,10 +134,10 @@ test('L-02 "Del trabajo" amount above its pases: the excess is pending with its 
 
 function paseSobre(nombre){
   var d = C.vacio(2026); C.arrastre(d, 9, 0, 'declarado'); C.mes(d, 9, {ingresos: [C.it(nombre, 100000, false)]});
-  var app = H.appVista(d, H.trab([]), null, null, {funcs: ['renglonTrabajo', 'revGuardada', 'blobAlDia', 'aplicarPase'], vars: ['LSTRAB'], globals: {guardar: function(){}, sucio: false, obsoleta: false, avisoOtraPestana: function(){}}});
+  var app = H.appVista(d, H.trab([]), null, null, {funcs: ['renglonTrabajo', 'revGuardada', 'blobAlDia', 'aplicarPase'], vars: ['LSTRAB'], globals: {escribirJuntos: function(){ return 'ok'; }, sucio: false, hayLS: true, tGuardar: null, obsoleta: false, avisoOtraPestana: function(){},
+    marcarVencidos: function(){}, estado: function(){}, quitarAvisoVacia: function(){}}});
   var p = {id: 'x', fecha: '2026-10-10', monto: 300000, anio: 2026, mes: 9};
-  assert.equal(app.aplicarPase(p, 1), true);
-  app.T.pases.push(p);
+  assert.equal(app.aplicarPase(p, 1, function(){ app.T.pases.push(p); return function(){}; }), true);
   var vm = app.vistaModelo(app.D, app.hoy);
   return {filas: app.D.meses[9].ingresos.length, disponible: vm.cad.resumen.disponibleActual, pend: vm.cad.meses[9].pendienteIngresos};
 }
@@ -149,21 +149,23 @@ test('L-03b accent / spacing variant of "Del trabajo" must behave like the exact
   assert.deepEqual(paseSobre('Del Trabájo'), {filas: 1, disponible: 300000, pend: 100000});
 });
 
+var NADA = function(){ return function(){}; };   // L8: the Trabajo change of a pase (not under test here)
 function appRenglon(ingresos){
   var d = C.vacio(2026); C.arrastre(d, 9, 0, 'declarado'); C.mes(d, 9, {ingresos: ingresos});
-  return H.appVista(d, H.trab([]), null, null, {funcs: ['renglonTrabajo', 'revGuardada', 'blobAlDia', 'aplicarPase'], vars: ['LSTRAB'], globals: {guardar: function(){}, sucio: false, obsoleta: false, avisoOtraPestana: function(){}}});
+  return H.appVista(d, H.trab([]), null, null, {funcs: ['renglonTrabajo', 'revGuardada', 'blobAlDia', 'aplicarPase'], vars: ['LSTRAB'], globals: {escribirJuntos: function(){ return 'ok'; }, sucio: false, hayLS: true, tGuardar: null, obsoleta: false, avisoOtraPestana: function(){},
+    marcarVencidos: function(){}, estado: function(){}, quitarAvisoVacia: function(){}}});
 }
 test('L-03c the row lookup is the engine matcher: an exact "Del trabajo" row wins over an earlier variant; a variant alone receives and gives back the pase (undo path)', function(){
   var a = appRenglon([C.it('  del  TRABAJO ', 5000, false), C.it('Del trabajo', 100000, false)]), p = {id: 'x', fecha: '2026-10-10', monto: 300000, anio: 2026, mes: 9};
-  assert.equal(a.aplicarPase(p, 1), true);
+  assert.equal(a.aplicarPase(p, 1, NADA), true);
   assert.deepEqual(a.D.meses[9].ingresos.map(function(x){ return x.monto; }), [5000, 400000], 'exact row first, as before the change');
   var b = appRenglon([C.it('Del Trabájo', 100000, false)]);
-  assert.equal(b.aplicarPase(p, 1), true);
-  assert.equal(b.aplicarPase(p, -1), true, 'quitarPase / reponerPase go through aplicarPase: the variant row is found to give the pase back');
+  assert.equal(b.aplicarPase(p, 1, NADA), true);
+  assert.equal(b.aplicarPase(p, -1, NADA), true, 'quitarPase / reponerPase go through aplicarPase: the variant row is found to give the pase back');
   assert.deepEqual(b.plain(b.D.meses[9].ingresos).map(function(x){ return [x.nombre, x.monto, x.pagado]; }), [['Del Trabájo', 100000, false]], 'no second row, no rename, amount back');
   assert.match(la.extractFunction('renglonTrabajo'), /esRenglonTrabajo\(/, 'same clave() matcher as the engine');
-  assert.match(la.extractFunction('quitarPase'), /aplicarPase\(p, -1\)/);
-  assert.match(la.extractFunction('reponerPase'), /aplicarPase\(p, 1\)/);
+  assert.match(la.extractFunction('quitarPase'), /aplicarPase\(p, -1, /);
+  assert.match(la.extractFunction('reponerPase'), /aplicarPase\(p, 1, /);
   assert.doesNotMatch(la.extractFunction('deshacerTj'), /ingresos|renglonTrabajo/, 'deshacerTj restores the Trabajo store only, it never looks up the row');
 });
 
@@ -180,13 +182,13 @@ test('L-03d legacy two-row data: a variant unticked row before the exact ticked 
 });
 
 test('L-04 explicaDisp with a scheduled pase: only the pases already out are explained, and the text adds up to the big number', function(){
-  var app = H.appVista(null, null, null, null, {funcs: ['explicaDisp', 'fARS', 'grupos'], globals: {oculto: false, PUNTOS: '..'}});
+  var app = H.appVista(null, null, null, null, {funcs: ['explicaDisp', 'pasesPersonal', 'fARS', 'grupos'], globals: {oculto: false, PUNTOS: '..'}});
   var r = {cobrado: 1000000, gastado: 100000, pasado: 500000, pasadoProgramado: 200000};
   r.disponible = r.cobrado - r.gastado - r.pasado + r.pasadoProgramado;
-  assert.equal(app.explicaDisp(r), 'Lo cobrado ($1.000.000) menos los gastos ($100.000) y lo que pasaste a Ingresos ($300.000).');
+  assert.equal(app.explicaDisp(r), 'Lo cobrado ($1.000.000) menos los gastos ($100.000) y lo que ya pasaste a lo personal ($300.000).');
   assert.equal(1000000 - 100000 - 300000, r.disponible);
-  assert.equal(app.explicaDisp({cobrado: 500000, gastado: 0, pasado: 200000, pasadoProgramado: 200000}), 'Todo lo cobrado sigue en el trabajo: todavía no pasaste nada a Ingresos.');
-  assert.equal(app.explicaDisp({cobrado: 500000, gastado: 0, pasado: 200000}), 'Lo cobrado ($500.000) menos lo que pasaste a Ingresos ($200.000).', 'legacy (no scheduled field)');
+  assert.equal(app.explicaDisp({cobrado: 500000, gastado: 0, pasado: 200000, pasadoProgramado: 200000}), 'Todo lo cobrado sigue en el trabajo: todavía no pasaste nada a lo personal.');
+  assert.equal(app.explicaDisp({cobrado: 500000, gastado: 0, pasado: 200000}), 'Lo cobrado ($500.000) menos lo que ya pasaste a lo personal ($200.000).', 'legacy (no scheduled field)');
 });
 
 // R4.3 review advisories

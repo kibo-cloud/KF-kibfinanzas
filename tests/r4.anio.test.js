@@ -22,13 +22,15 @@ function sumar(a, k){ return a.reduce(function(t, x){ return t + x[k]; }, 0); }
 function vista(app){ var vm = app.vistaModelo(app.D, app.hoy), t = []; for(var j = 0; j < 12; j++) t.push(app.tilesMes(app.D, j, vm)); return {vm: vm, t: t}; }
 
 // (a) a year WITHOUT arrastre: the same bytes as on 0ad13c1
-test('year views, legacy year: "El año" HTML and the year CSV are byte-identical to 0ad13c1 for every motor-corpus dataset', function(){
+// L1 (P3b): the HTML pin was regenerated for the redesign (marked hero, labels); the CSV is still the 0ad13c1 one and the money on
+// screen is checked against the pre-redesign amounts in tests/l1.vistas.test.js
+test('year views, legacy year: "El año" HTML is byte-identical to its L1 pin and the year CSV to 0ad13c1, for every motor-corpus dataset', function(){
   var n = 0;
   V.corpus().forEach(function(c){
     var app = V.appAnio(c.d, c.otros, V.TRAB_PASES()), b = BASE.data[c.nombre];
     assert.ok(b, c.nombre + ': baseline present');
     assert.equal(app.vistaModelo(app.D, app.hoy), null, c.nombre + ': no model view');
-    var html = app.anio();
+    var html = V.sinAnalisis(app.anio());   // L6: the analysis sections are new and tested in l6.analisis; the rest stays byte-identical
     assert.equal(html.length, b.htmlLargo, c.nombre + ': "El año" length');
     assert.equal(sha(html), b.html, c.nombre + ': "El año" bytes');
     assert.equal(app.csv(), b.csv, c.nombre + ': CSV bytes');
@@ -36,7 +38,7 @@ test('year views, legacy year: "El año" HTML and the year CSV are byte-identica
     n++;
   });
   assert.equal(n, 9);
-  assert.match(BASE.meta.razon, /0ad13c1/);
+  assert.match(BASE.meta.razon, /L1 \(P3b\)[\s\S]*0ad13c1/);
 });
 
 // (b) a year WITH arrastre: the table shows the card month by month
@@ -63,7 +65,7 @@ test('year views, model year (L-01): every "Los doce meses" row shows the month 
   assert.notEqual(x.t[9][COL.ing], f(580000), 'guard: not the serie() Ingresos (Del trabajo always realized)');
   assert.notEqual(x.t[9][COL.disp], f(430000), 'guard: not the month flow');
   assert.deepEqual([tot[COL.ing], tot[COL.gas], tot[COL.acu]], [f(sumar(x.v.t, 'totalIngresos')), f(sumar(x.v.t, 'totalGastos')), f(250000)]);
-  assert.ok(x.html.indexOf('Cierre ' + f(230000)) > 0, 'header "Cierre" = December card value');
+  assert.ok(x.html.indexOf('Cierre ' + f(230000) + '<small class="sub-cap">estimado</small>') > 0, 'header "Cierre estimado" = December card value (L1: the year is open, so December is an estimate)');
   // with opening 0, December (230.000) equals the old serie() sum of the monthly flows (430.000 - 200.000), so a Total Disponible
   // check on this dataset could pass by coincidence: it is made on the same dataset with a declared opening of 100.000 instead
   var y = tablaModelo(l01(2026, 100000)), dic = y.v.t[11].disponibleFinal, viejo = sumar(y.s, 'disponibleFinal'), cards = sumar(y.v.t, 'disponibleFinal');
@@ -78,7 +80,7 @@ test('year views, model year (section 2): legacy August, confirmed September, cu
     [['—', '—', '—', '—'], [f(1000000), f(600000), f(100000), f(175000)], [f(1000000), f(400000), '—', f(825000)],
      [f(1000000), '—', f(100000), f(1280000)], ['—', '—', '—', f(1280000)]]);
   assert.deepEqual([tot[COL.ing], tot[COL.gas], tot[COL.disp]], [f(3000000), f(1000000), f(1280000)]);
-  assert.ok(x.html.indexOf('Cierre ' + f(1280000)) > 0);
+  assert.ok(x.html.indexOf('Cierre ' + f(1280000) + '<small class="sub-cap">estimado</small>') > 0);
   assert.ok(x.html.indexOf(x.app.lineas(x.v.t.map(function(c){ return c.totalIngresos; }), x.v.t.map(function(c){ return c.totalGastos; }))) > 0,
     '"Ingresos y gastos" chart draws the same rows');
   assert.ok(x.html.indexOf('<span class="sub">' + f(3000000) + ' · ' + f(1000000) + '</span>') > 0, 'chart header = table totals');
@@ -144,7 +146,7 @@ test('model rule: in a model year "Total Disponible" and "Cierre" = December clo
     assert.notEqual(suma, dic, 'dataset ' + i + ': the sum differs from December, so the assertion can tell them apart');
     assert.equal(t[12][COL.disp], f(dic), 'dataset ' + i + ': Total Disponible = December closing');
     assert.notEqual(t[12][COL.disp], f(suma), 'dataset ' + i + ': not the sum of monthly balances');
-    assert.ok(html.indexOf('Cierre ' + f(dic)) > 0, 'dataset ' + i + ': header "Cierre" = December closing');
+    assert.ok(html.indexOf('Cierre ' + f(dic) + '<small class="sub-cap">estimado</small>') > 0, 'dataset ' + i + ': header "Cierre estimado" = December closing');
   });
 });
 
@@ -251,7 +253,7 @@ test('N1-3 summary card, model year (L-01 + legacy September income 400.000): ca
   assert.ok(r.indexOf('Por mes entran ' + f(450000) + ' y se van ' + f(50000) + '. Te quedan ' + f(400000) + '.') >= 0, r);
   assert.ok(r.indexOf('6%de lo que entra') >= 0, 'ring = 50.000 / 900.000 (card Ingresos): ' + r);
   assert.ok(r.indexOf('Gastaste más en Octubre y menos en Septiembre.') >= 0, r);
-  assert.ok(r.indexOf('A este ritmo cerrás diciembre con ' + f(100000) + '.') >= 0, 'savings at this pace from October: ' + r);
+  assert.ok(r.indexOf('Ahorro a este ritmo en diciembre: ' + f(100000) + '.') >= 0, 'savings at this pace from October (L1 wording): ' + r);
   assert.ok(r.indexOf('Promedio de 2 meses ya transcurridos de 2026') >= 0, 'explicit label: ' + r);
   assert.equal(r.indexOf(f(490000)), -1, 'guard: not the serie() average (580.000 October)');
 });

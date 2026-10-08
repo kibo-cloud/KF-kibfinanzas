@@ -10,9 +10,11 @@ var base = require('./motor-corpus');
 var SRC = la.SRC_FOR_TESTS;
 var FUNCS = ['renderAnio', 'resumenAnio', 'mesesCargados', 'anillo', 'plegable', 'abiertaDef', 'hARS', 'fARS', 'hUSD', 'fUSD', 'grupos', 'esc',
   'lineas', 'barras', 'corto', 'aniosGuardados', 'leerAnio', 'exportarCSV', 'csvTexto',
-  'dos', 'ctxModelo', 'cierreAnioAnterior', 'vistaModelo', 'tilesMes', 'mesDelModelo', 'serieVista', 'mesesTranscurridos', 'mesEnRojo', 'datosRealizados']
+  'dos', 'ctxModelo', 'cierreAnioAnterior', 'vistaModelo', 'tilesMes', 'mesDelModelo', 'serieVista', 'mesesTranscurridos', 'mesEnRojo', 'datosRealizados',
+  'numerosAnio', 'htmlHeroAnio', 'filaAn', 'estadoHero', 'claseHero',
+  'analisisAnio', 'variacion', 'pctTxt', 'flecha', 'fraseComp', 'barritas', 'htmlComparacion', 'htmlTendencias']
   .filter(function(n){ return new RegExp('^function ' + n + '\\s*\\(', 'm').test(SRC); });   // serieVista exists only after the change
-var VARS = ['PREF', 'MESES', 'CORTOS', 'oculto', 'PUNTOS', 'ICOSEC'];
+var VARS = ['PREF', 'MESES', 'CORTOS', 'oculto', 'PUNTOS', 'ICOSEC', 'MAS_QUE_LO_NORMAL', 'TOP_CATEGORIAS'];
 
 // d: raw open year; otros: {anio: raw blob} stored years; T: Trabajo store
 function appAnio(d, otros, T, today){
@@ -35,6 +37,13 @@ function tabla(html, k){
   var t = html.slice(i, html.indexOf('</table>', i)), filas = t.split('<tr').slice(1);
   return filas.map(celdas).filter(function(r){ return r.length; });
 }
+// L6: "El año" without its two analysis sections ("<mes> contra los anteriores", "Cómo vienen tus gastos"), which sit between the
+// summary card and "Los doce meses": the legacy pins prove that everything else is byte-identical (the analysis has its own tests)
+function sinAnalisis(html){
+  var i = html.indexOf('data-sec="anComp"'); if(i < 0) return html;
+  var a = html.lastIndexOf('<div class="sec', i), b = html.indexOf('data-sec="anTabla"'), c = html.lastIndexOf('<div class="sec', b);
+  return html.slice(0, a) + html.slice(c);
+}
 function csvFilas(txt){ return txt.replace(/^﻿/, '').split('\r\n').map(function(l){ return l.split(';'); }); }
 
 // every motor-corpus dataset as an open year, with the other corpus years stored (so "Año por año" renders)
@@ -50,4 +59,4 @@ function corpus(){
 // a realized and a future Trabajo pase: a legacy year must ignore both (they matter only to a model year, Q4)
 function TRAB_PASES(){ return H.trab([{fecha: '2026-10-05', monto: 300000}, {fecha: '2026-11-05', monto: 200000}]); }
 
-module.exports = {appAnio: appAnio, tabla: tabla, csvFilas: csvFilas, corpus: corpus, TRAB_PASES: TRAB_PASES, FUNCS: FUNCS};
+module.exports = {appAnio: appAnio, sinAnalisis: sinAnalisis, tabla: tabla, csvFilas: csvFilas, corpus: corpus, TRAB_PASES: TRAB_PASES, FUNCS: FUNCS};

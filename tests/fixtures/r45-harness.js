@@ -42,8 +42,9 @@ function tiles(app, j){ return app.plain(app.tilesMes(app.D, j, app.vistaModelo(
 // ── storage layer (save, revisions, backup/restore, duplicar, activarSaldos): same stubs as tests/r4.migracion.test.js ──
 var FUNCS_ALMACEN = ['claveMia', 'dos', 'revGuardada', 'claveCuarentena', 'ponerEnCuarentena', 'cuarentenaAntesDeBorrar', 'avisoCuarentena', 'esc', 'escribirConRev', 'avisoOtraPestana', 'hayEdicion', 'alCambiarOtraPestana', 'recargarDesdeAlmacenamiento',
   'asegurarSnapshotR4', 'respaldoR4', 'diasDelRespaldoR4', 'vencerRespaldoR4', 'volverAntesDeR4', 'ctxModelo', 'cierreAnioAnterior', 'activarSaldos',
-  'guardar', 'guardarTrab', 'blobAlDia', 'leerAnio', 'aniosGuardados', 'normTrab', 'leerTrab', 'esISO', 'utcDe', 'hoyISO', 'formaValida', 'anioValido', 'escribirAnios', 'armarCopia', 'restaurarTexto', 'avisoCopiaGrande', 'duplicar', 'avisarRestauro'];
-var VARS_ALMACEN = ['PREF', 'LSANIO', 'LSCOPIA', 'LSOCULTO', 'LSBIENV', 'LSHIST', 'LSTRAB', 'LSVISTA', 'LSR4', 'LSAVCIERRE', 'CLAVES_PROPIAS', 'sucio', 'arrancado', 'obsoleta', 'pendiente', 'FORMAS', 'MAX_COPIA', 'LSCUAR'];
+  'guardar', 'guardarTrab', 'blobAlDia', 'leerAnio', 'aniosGuardados', 'normTrab', 'leerTrab', 'esISO', 'utcDe', 'hoyISO', 'formaValida', 'anioValido', 'escribirAnios', 'armarCopia', 'restaurarTexto', 'avisoCopiaGrande', 'duplicar', 'avisarRestauro',
+  'escribirJuntos', 'diarioValido', 'apartarDiario', 'recuperarDiario', 'avisoDiario', 'sinTaparCuarentena', 'sumarPaseT', 'sacarPaseT'];
+var VARS_ALMACEN = ['PREF', 'LSANIO', 'LSCOPIA', 'LSOCULTO', 'LSBIENV', 'LSHIST', 'LSTRAB', 'LSVISTA', 'LSR4', 'LSAVCIERRE', 'LSDATOSDESDE', 'LSCOPIAPOS', 'CLAVES_PROPIAS', 'sucio', 'arrancado', 'obsoleta', 'pendiente', 'FORMAS', 'MAX_COPIA', 'LSCUAR', 'LSDIARIO'];
 function appAlmacen(ls, today, extra, funcsExtra){
   var g = {localStorage: ls, pildoras: [], recargas: 0, renders: 0, alertas: [], hojas: [], ultPild: 0};
   g.avisos = {innerHTML: '', textContent: ''};

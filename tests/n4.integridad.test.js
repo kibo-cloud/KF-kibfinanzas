@@ -13,7 +13,7 @@ function gastoApp(d, mes, sec, cat, monto){
   var g = {gr: {monto: monto, cat: cat, sec: sec}, toasts: [], document: {getElementById: function(){ return null; }}};
   g.cerrarHoja = function(){}; g.tocar = function(){}; g.conScroll = function(){}; g.renderMes = function(){}; g.fARS = function(v){ return '$' + v; };
   g.toast = function(t){ g.toasts.push(t); };
-  var app = la.loadApp({today: '2026-10-15', funcs: ['sumarGasto', 'mesDelModelo'], globals: g});
+  var app = la.loadApp({today: '2026-10-15', funcs: ['sumarGasto', 'mesDelModelo', 'preguntaPago', 'anotarMov'], globals: g});
   d = C.copy(d); if(!d.meses[mes].gastosVariables) d.meses[mes].gastosVariables = [C.it('Supermercado', 0, false)];
   app.D = M.normalizar(d, HOY); app.mes = mes;
   return app;
@@ -78,7 +78,7 @@ test('I-3 saving over an unreadable stored year: the raw text is copied to quara
   assert.equal(app.guardar(), false);
   assert.equal(ls.d['kibo.datos.2026'], ROTO, 'the stored text is untouched');
   assert.equal(ls.d['kibo.cuarentena.2026'], ROTO, 'a copy is kept in quarantine');
-  assert.ok(app.g.avisos.innerHTML.indexOf('No pude leer los datos de 2026. Guardé una copia; no se van a pisar.') >= 0, app.g.avisos.innerHTML);
+  assert.ok(app.g.avisos.innerHTML.indexOf('No pude leer los datos de 2026. Los aparté tal cual para que no se pierdan, y ese año no se modifica.') >= 0, app.g.avisos.innerHTML);
   assert.equal(app.hayLS, true, 'storage itself works');
   // a second attempt still does not write, and the quarantine copy is never replaced
   ls.d['kibo.datos.2026'] = ROTO + 'x';

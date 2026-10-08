@@ -12,8 +12,8 @@ var M = la.loadMotor();
 var SRC = la.SRC_FOR_TESTS;
 function existe(n){ return new RegExp('^function ' + n + '\\s*\\(', 'm').test(SRC); }
 var FUNCS = ['seccion', 'abierta', 'fARS', 'grupos', 'esc', 'filaTope', 'textoDeuda', 'cuotaAdelantada', 'repartoTrabajo', 'esProgramado', 'gastadoVista', 'datosRealizados',
-  'htmlTorta', 'pasadas', 'textoTopes', 'puedeAlternar', 'fPct'].filter(existe);
-var VARS = ['ICOSEC', 'MARCABLE', 'TOPEABLE', 'MESES', 'oculto', 'PUNTOS', 'TORTA_MAX', 'SECS'].filter(function(v){ return new RegExp('^var ' + v + '\\s*=', 'm').test(SRC); });
+  'htmlTorta', 'pasadas', 'textoTopes', 'puedeAlternar', 'fPct', 'faltaSeccion', 'textoFalta', 'textoDelTrabajo'].filter(existe);
+var VARS = ['ICOSEC', 'MARCABLE', 'TOPEABLE', 'MESES', 'oculto', 'PUNTOS', 'TORTA_MAX', 'SECS', 'verFilas'].filter(function(v){ return new RegExp('^var ' + v + '\\s*=', 'm').test(SRC); });
 
 // the month screen of `d` with Trabajo store T; j = the month shown
 function appMes(d, T, j, today){
@@ -69,13 +69,15 @@ test('Del trabajo above its pases on screen: checkbox, the row stays read-only, 
   var app = excesoOct(400000), h = sec(app, 'ingresos');
   assert.match(h, /<button class="chk" data-act="pagar" data-k="ingresos" data-i="0" aria-label="Marcar como cobrado">/);
   assert.match(h, /class="nombre" data-k="ingresos" data-i="0" value="Del trabajo" aria-label="Nombre" readonly>/, 'still read-only (Trabajo changes it)');
-  assert.match(h, /De esto, \$300\.000 vino de pases del trabajo; el resto, \$100\.000, lo marcás vos\./);
+  // P3a (finding 7): the split in plain words, without "pases": what already came in from Trabajo and what is left to tick
+  assert.match(h, /Cobrado \$300\.000 de \$400\.000: lo que pasaste desde Trabajo\. Los \$100\.000 que faltan tildalos cuando los cobres\./);
+  assert.doesNotMatch(h, /pases/);
   app.D.meses[9].ingresos[0].pagado = true;
   assert.match(sec(app, 'ingresos'), /<div class="item pago deltrab">.*<button class="chk on" data-act="pagar"/);
   var cub = excesoOct(300000), hc = sec(cub, 'ingresos');
   assert.doesNotMatch(hc, /data-act="pagar"/, 'covered row: no checkbox');
-  assert.doesNotMatch(hc, /lo marcás vos/);
-  assert.match(hc, /Viene de Trabajo: lo que pasaste a lo personal este mes/);
+  assert.doesNotMatch(hc, /tildalos/);
+  assert.match(hc, /Cobrado \$300\.000: lo pasaste desde Trabajo\. Se cambia desde esa pestaña\./);
 });
 
 // ── (2) future model months (N1-A, derived from design §1 "nothing in a future month is Realizado" and D3 "scheduled, clearly distinguished") ──
@@ -111,7 +113,7 @@ test('future model month: a ticked capped row does not consume its cap and raise
 test('future model month: the debt row text ignores installments ticked ahead; legacy unchanged', function(){
   var app = appMes(futuro(true), null, 10), sin = appMes(C.seccion2(false, false), null, 10);
   assert.equal(app.textoDeuda('Préstamo', 10), sin.textoDeuda('Préstamo', 10), 'a ticked future installment reads as not paid yet');
-  assert.match(app.textoDeuda('Préstamo', 10), /^Sin pago este mes; va la 4 de 6/);
+  assert.match(app.textoDeuda('Préstamo', 10), /^Cuota 4 de 6 · programada · quedan /, 'P3a (finding 13): the installment of a future month is "programada"');
   var leg = appMes(futuro(false), null, 10);
   assert.match(leg.textoDeuda('Préstamo', 10), /^Cuota 4 de 6/, 'legacy year: a ticked row is paid (unchanged)');
 });
@@ -137,7 +139,7 @@ test('the debt row text copies the year only when an installment of a programado
       assert.equal(r.copias, c[3], c[0] + ', month ' + j + ': copies');
       assert.ok(ref, c[0] + ': the plan exists');
       assert.equal(r.t, app.textoDeuda('Préstamo', j), c[0] + ', month ' + j + ': deterministic');
-      assert.match(r.t, ref.esteMes ? new RegExp('Cuota ' + ref.cuotaN + ' de ') : new RegExp('va la ' + ref.cuotaN + ' de '), c[0] + ', month ' + j + ': same installment as the realized view');
+      assert.match(r.t, new RegExp('Cuota ' + ref.cuotaN + ' de ' + ref.plan.cuotas + ' · ' + (ref.esteMes ? 'pagada' : '(pendiente|programada|sin pagar)')), c[0] + ', month ' + j + ': same installment as the realized view');
       assert.equal(r.t.indexOf('quedan ' + ref.restantes) >= 0 || ref.restantes === 0, true, c[0] + ', month ' + j + ': same remaining as the realized view');
       if(ref.fin) assert.ok(r.t.indexOf('terminás en ' + app.MESES[ref.fin.mes].toLowerCase()) >= 0, c[0] + ', month ' + j + ': same end month as the realized view');
       n++;

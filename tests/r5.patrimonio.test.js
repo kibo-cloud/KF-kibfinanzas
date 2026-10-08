@@ -24,7 +24,9 @@ function filas(html){
 }
 
 // ── legacy year: byte-identical ──
-test('Patrimonio, legacy year: the Dólares tab is byte-identical to 8d1ee42 for every motor-corpus dataset (+ section 2 without model)', function(){
+// L1 (P3b): the pin was regenerated for the redesign (answer first, Datos card); the money on screen is checked against the
+// pre-redesign amounts in tests/l1.vistas.test.js
+test('Patrimonio, legacy year: the tab is byte-identical to its L1 pin for every motor-corpus dataset (+ section 2 without model)', function(){
   var n = 0;
   U.legacy().forEach(function(c){
     var app = U.appUSD(c.d, U.TRAB()), b = BASE.data[c.nombre];
@@ -38,7 +40,7 @@ test('Patrimonio, legacy year: the Dólares tab is byte-identical to 8d1ee42 for
     n++;
   });
   assert.equal(n, 11, 'non-vacuous');
-  assert.match(BASE.meta.razon, /8d1ee42/);
+  assert.match(BASE.meta.razon, /L1 \(P3b\)[\s\S]*8d1ee42/);
 });
 
 // ── the composition adds up (numbers) over the R4 corpus ──
@@ -75,10 +77,12 @@ test('Patrimonio composition on screen, §6 case: 825.000 + 600.000 + 1.500.000 
   assert.deepEqual(r.deudas, ['Deudas (lo que te falta pagar)', '($300.000)']);
   assert.deepEqual(r.deuda, [['Préstamo', '$300.000']]);
   assert.deepEqual(r.neto, ['Patrimonio neto', '$2.625.000']);
-  assert.match(html, /Lo que tenés hoy, bolsillo por bolsillo/);
+  assert.match(html, /Lo que tenés hoy, parte por parte/);
   assert.match(html, /Dólares y cripto son una estimación: a \$1\.500 por dólar/);
-  assert.match(html, /id="bigPatri"[^>]*>US\$ 1\.750,00<\/div><div class="mudo" style="font-size:15px">\$2\.625\.000<\/div>/, 'headline = neto (D7)');
-  assert.match(html, /<span class="nom">Patrimonio total<\/span><span class="sub">US\$ 1\.750,00<\/span>/);
+  // L1: the answer first, in pesos, with the dollar equivalent next to it; the composition card carries the same net
+  assert.match(html, /id="bigPatri"[^>]*>\$2\.625\.000<\/div><\/div><div class="hero-sub" id="patriUSD">En dólares: <b>US\$ 1\.750,00<\/b><\/div>/, 'headline = neto (D7)');
+  assert.ok(html.indexOf('id="heroPatri"') < html.indexOf('data-sec="usdPatri"'), 'the headline comes before the composition');
+  assert.match(html, /<span class="nom">De qué se compone<\/span><span class="sub">\$2\.625\.000<\/span>/);
   assert.match(html, /data-campo="usdAnioAnterior"/, 'the input stays');
 });
 
@@ -112,7 +116,7 @@ test('Patrimonio composition without any cotización: says so instead of a fake 
   assert.deepEqual(r.neto, ['Patrimonio neto', '$1.125.000']);
   assert.match(html, /Falta la cotización del dólar/);
   assert.doesNotMatch(html, /id="bigPatri"[^>]*>(—|US\$)/, 'no US$ headline without cotización');
-  assert.match(html, /id="bigPatri"[^>]*>\$1\.125\.000<\/div><div class="mudo" style="font-size:15px">Sin cotización del dólar/);
+  assert.match(html, /id="bigPatri"[^>]*>\$1\.125\.000<\/div><\/div><div class="hero-sub" id="patriUSD">Sin cotización del dólar/);
   assert.match(html, /<span class="sub">\$1\.125\.000<\/span>/);
 });
 

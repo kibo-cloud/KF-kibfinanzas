@@ -63,25 +63,29 @@ test('origin texts (D17): previous month, declared, skipped, previous December',
   var a = app(H.fakeStorage({}));
   assert.deepEqual([a.textoOrigen('cadena', 2026, false), a.textoOrigen('declarado', 2026, false), a.textoOrigen('omitido', 2026, true),
     a.textoOrigen('anioAnterior', 2027, false), a.textoOrigen('arrastre', 2027, false), a.textoOrigen('declarado', 2026, true)],
-  ['Viene del mes anterior', 'Lo cargaste vos', 'Saldo inicial sin configurar', 'Viene de diciembre 2026', 'Viene de diciembre 2026', 'Saldo inicial sin configurar']);
+  ['Viene del mes anterior', 'Lo cargaste vos', 'Sin configurar', 'Viene de diciembre 2026', 'Viene de diciembre 2026', 'Sin configurar']);   // P3a: shown as a chip
+  assert.deepEqual([a.textoOrigen('cadena', 2026, false, 8, false), a.textoOrigen('cadena', 2026, false, 8, true)], ['Viene de Septiembre', 'Corregido en Septiembre'], 'P3a: the month it comes from, or that its closing was corrected');
 });
 
 test('month view HTML: labels per month state, overdue apart (Q8), confirm / reconfirm (D2, D6); legacy month shows nothing', function(){
   var ls = con(C.seccion2(false, false)), a = app(ls); H.cargarEn(a, ls, 2026);
   var v = vm(a), oct = a.htmlSaldo(a.D, 9, v), sep = a.htmlSaldo(a.D, 8, v), nov = a.htmlSaldo(a.D, 10, v);
-  ['Disponible inicial', 'Viene del mes anterior', 'Editar', 'Ingresos', 'Gastos', 'Ahorro', 'Disponible actual', 'Proyectado al cierre (estimado)',
-    'Pendientes de meses anteriores', '$825.000', '$580.000', '$20.000'].forEach(function(t){ assert.ok(oct.indexOf(t) >= 0, 'Oct shows ' + t); });
-  ['Disponible al cierre', 'Lo cargaste vos', 'Según tus registros', 'Saldo real', 'Diferencia', '($25.000)'].forEach(function(t){ assert.ok(sep.indexOf(t) >= 0, 'Sep shows ' + t); });
+  ['Disponible inicial', 'Corregido en Septiembre', 'Editar', 'Ingresos', 'Gastos', 'Ahorro', 'Tenés hoy', 'Al cierre (estimado)',
+    'Atrasado de meses anteriores', '$825.000', '$580.000', '$20.000'].forEach(function(t){ assert.ok(oct.indexOf(t) >= 0, 'Oct shows ' + t); });
+  ['Cerraste con', 'Lo cargaste vos', 'Según tus registros', 'Saldo real', 'Diferencia', '($25.000)'].forEach(function(t){ assert.ok(sep.indexOf(t) >= 0, 'Sep shows ' + t); });
   assert.equal(sep.indexOf('Cambió desde que lo confirmaste'), -1);
-  ['Proyectado al cierre (estimado)', 'programado', '$1.280.000'].forEach(function(t){ assert.ok(nov.indexOf(t) >= 0, 'Nov shows ' + t); });
+  ['Proyectado para Noviembre', 'programado', '$1.280.000'].forEach(function(t){ assert.ok(nov.indexOf(t) >= 0, 'Nov shows ' + t); });
   assert.equal(nov.indexOf('Editar'), -1, 'a future month opening is the projection: nothing to edit there');
-  assert.equal(oct.indexOf('Disponible al cierre'), -1);
+  assert.equal(oct.indexOf('Cerraste con'), -1);
   assert.equal(a.htmlSaldo(a.D, 7, v), '', 'legacy month: unchanged view');
   var sinConf = con(sinSep()), b = app(sinConf); H.cargarEn(b, sinConf, 2026);
   assert.ok(b.htmlSaldo(b.D, 8, vm(b)).indexOf('¿Es correcto?') >= 0, 'an unconfirmed past month asks');
   a.D.meses[8].gastosFijos[1].pagado = true;   // Sep Luz ticked after the confirmation (D16-06): the confirmed value is kept, the difference shows
   var cambio = a.htmlSaldo(a.D, 8, vm(a));
-  ['Cambió desde que lo confirmaste', 'Confirmar de nuevo', 'Mantener', '$175.000', '$180.000', '($5.000)'].forEach(function(t){ assert.ok(cambio.indexOf(t) >= 0, 'reconfirm shows ' + t); });
+  // P3a (finding 14): plain re-confirm block, amber, two clear choices on the same actions (Usar = confirm the calculated value, Dejar = Mantener)
+  ['Cerraste con <b>$175.000</b> (confirmado) · tus registros ahora dan <b>$180.000</b>', '>Usar $180.000<', '>Dejar $175.000<', '($5.000)'].forEach(function(t){ assert.ok(cambio.indexOf(t) >= 0, 'reconfirm shows ' + t); });
+  assert.ok(cambio.indexOf('data-act="avCierreOk" data-m="8">Usar') >= 0 && cambio.indexOf('data-act="cierreMantener" data-m="8">Dejar') >= 0 && cambio.indexOf('data-act="cierreAbrir" data-m="8">Otro monto') >= 0);
+  assert.equal(cambio.indexOf('nota mal'), -1, 'not red: nothing is wrong');
   var leg = H.sinModelo(C.seccion2(false, false)), l3 = con(leg), c = app(l3); H.cargarEn(c, l3, 2026);
   assert.equal(c.vistaModelo(c.D, c.hoy), null);
   assert.equal(c.htmlSaldo(c.D, 9, null), '', 'a year without arrastre shows none of it');
@@ -111,7 +115,7 @@ test('D16-17 via Editar (D5): skip first, declare later from the month view', fu
   var ls = H.fakeStorage({'kibo.datos.2026': JSON.stringify(H.sinModelo(C.seccion2(false, false)))}), a = app(ls); H.cargarEn(a, ls, 2026);
   assert.equal(a.activarSaldos(null), true);
   assert.deepEqual(plain(H.guardado(ls, 2026).arrastre.inicial), {apertura: null, declarado: null, declaradoEl: '2026-10-15', origen: 'omitido'});
-  assert.ok(a.htmlSaldo(a.D, 9, vm(a)).indexOf('Saldo inicial sin configurar') >= 0, 'shown explicitly as not configured');
+  assert.ok(a.htmlSaldo(a.D, 9, vm(a)).indexOf('<span class="chip pend">Sin configurar</span>') >= 0, 'shown explicitly as not configured (P3a: amber chip)');
   assert.equal(a.activarSaldos(500000), false, 'the first-use path stays idempotent');
   assert.equal(a.fijarApertura(500000, 'actual'), true, 'Editar declares it');
   var g = H.guardado(ls, 2026);

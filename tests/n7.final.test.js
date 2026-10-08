@@ -111,7 +111,7 @@ test('N7-2 volverAntesDe130 refuses and keeps everything when the unreadable yea
   app.volverAntesDe130();
   assert.equal(app.g.recargas, 0, 'no reload');
   assert.equal(JSON.stringify(ls.d), antes, 'nothing deleted or restored: the unreadable year, the open year, the schema mark and the pre-1.30 copy stay');
-  assert.deepEqual(app.plain(app.g.pildoras), [['No pude guardar una copia de lo que no se puede leer. No cambié nada.', true]]);
+  assert.deepEqual(app.plain(app.g.pildoras), [['No pude apartar los datos que no se pueden leer, así que no cambié nada. Hacé una copia de seguridad y probá de nuevo.', true]]);
 });
 test('appCargar fails loudly when a requested helper is missing (native review follow-up, night range T7)', function(){
   assert.throws(function(){ helpersPresentes(['cargar', 'noExisteEstaFuncion'], la.SRC_FOR_TESTS); }, /helper\(s\) missing from index\.html: noExisteEstaFuncion/);

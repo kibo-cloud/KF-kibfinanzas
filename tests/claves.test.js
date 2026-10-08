@@ -17,7 +17,7 @@ function fakeStorage(init){
   };
   return s;
 }
-var VARS = ['PREF', 'LSANIO', 'LSCOPIA', 'LSOCULTO', 'LSBIENV', 'LSHIST', 'LSTRAB', 'LSVISTA', 'LSESQ', 'LSR4', 'LSAVCIERRE', 'CLAVES_PROPIAS', 'LSCUAR'];
+var VARS = ['PREF', 'LSANIO', 'LSCOPIA', 'LSOCULTO', 'LSBIENV', 'LSHIST', 'LSTRAB', 'LSVISTA', 'LSESQ', 'LSR4', 'LSAVCIERRE', 'LSDATOSDESDE', 'LSCOPIAPOS', 'CLAVES_PROPIAS', 'LSCUAR', 'LSDIARIO'];
 function s3App(ls, extra){
   var g = {localStorage: ls, pildora: function(){}, location: {reload: function(){ g.recargado = true; }}, confirmar: function(t, c, e, fn){ fn(); }};
   Object.keys(extra || {}).forEach(function(k){ g[k] = extra[k]; });
@@ -33,6 +33,8 @@ test('claveMia knows the app keys and nothing else', function(){
   Object.keys(PROPIAS).forEach(function(k){ assert.equal(app.claveMia(k), true, k); });
   assert.equal(app.claveMia('kibo.modeloSaldos'), true, 'R4.3 marker (this phone already started the balance model)');
   assert.equal(app.claveMia('kibo.avisoCierre'), true, 'R5 device flag: dismissed start-of-month notice');
+  assert.equal(app.claveMia('kibo.datosDesde'), true, 'L4 device key: first day with data');
+  assert.equal(app.claveMia('kibo.copiaPospuesta'), true, 'L4 device key: backup reminder snoozed');
   ['kibo.otraApp', 'kibo.datos.test', 'kibo.datos.20266', 'kibo.datos.', 'otro.anio', 'kibo.respaldo.pre130', 'kibo.respaldo.pre-r4', 'kibo.esquema', '', null, undefined]
     .forEach(function(k){ assert.equal(app.claveMia(k), false, String(k)); });
 });

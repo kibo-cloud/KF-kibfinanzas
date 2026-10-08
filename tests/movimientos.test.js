@@ -4,12 +4,13 @@ var test = require('node:test');
 var assert = require('node:assert/strict');
 var loadApp = require('./load-app').loadApp;
 
+var hojas = [];
 var app = loadApp({
-  funcs: ['sumarGasto', 'quitarMov', 'esc', 'fARS', 'grupos', 'mesDelModelo'],
+  funcs: ['sumarGasto', 'quitarMov', 'esc', 'fARS', 'grupos', 'mesDelModelo', 'preguntaPago', 'preguntarPago', 'gastoEsPago', 'marcarPago', 'gastoAparte', 'filaDelGasto', 'anotarMov'],
   vars: ['gr'],
   globals: {
     oculto: false, PUNTOS: '..', document: {getElementById: function(){ return null; }},
-    cerrarHoja: function(){}, tocar: function(){}, conScroll: function(f){}, renderMes: function(){}, toast: function(){}
+    abrirHoja: function(h){ hojas.push(h); }, cerrarHoja: function(){}, tocar: function(){}, conScroll: function(f){}, renderMes: function(){}, toast: function(){}
   }
 });
 
@@ -34,13 +35,19 @@ test('E9: undo of a quick expense on an empty item restores pagado=false', funct
   assert.equal(m.movimientos.length, 0);
 });
 
-test('E9: undo on an item that already had a pending amount keeps it pending with its amount', function(){
+test('E9: undo on an item that already had a pending amount keeps it pending with its amount (L3: it asks first; both answers)', function(){
   var m = nuevo({nombre: 'Super', monto: 500, pagado: false});
-  gastar(100);
+  hojas.length = 0; gastar(100);
+  assert.equal(hojas.length, 1, 'D8: a pending row with an amount asks');
+  assert.deepEqual([m.gastosVariables[0].monto, m.gastosVariables[0].pagado, m.movimientos.length], [500, false, 0], 'nothing changes while asking');
+  app.gastoAparte();
   assert.equal(m.gastosVariables[0].pagado, false);
   app.quitarMov(ultimoMov(m).id);
-  assert.equal(m.gastosVariables[0].monto, 500);
-  assert.equal(m.gastosVariables[0].pagado, false);
+  assert.deepEqual([m.gastosVariables.length, m.gastosVariables[0].monto, m.gastosVariables[0].pagado], [1, 500, false]);
+  gastar(100); app.gastoEsPago(); app.marcarPago(true);
+  assert.deepEqual([m.gastosVariables[0].monto, m.gastosVariables[0].pagado], [100, true]);
+  app.quitarMov(ultimoMov(m).id);
+  assert.deepEqual([m.gastosVariables[0].monto, m.gastosVariables[0].pagado, m.movimientos.length], [500, false, 0]);
 });
 
 test('E9: undo on a paid item keeps it paid', function(){

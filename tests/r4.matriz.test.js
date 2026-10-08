@@ -2,8 +2,8 @@
 // R4.5: the 17 OFFICIAL D16 acceptance cases (odd/tasks/repair-sprint-1.md "D16 — official acceptance list (verbatim)"), one test each,
 // against the current code. Expected values come from the approved contract (odd/tasks/repair-sprint-1-r4-design.md); each test cites
 // its source. The INPUT / EXPECTED / ACTUAL / EVIDENCE table lives in odd/tasks/repair-sprint-1-r4.5-matrix.md.
-// Cases 5 and 17 are validated on the model/migration and, since R5 (N3a), also through the month-view Editar path; case 15 pins the
-// current behavior (feature R7, rule D8).
+// Cases 5 and 17 are validated on the model/migration and, since R5 (N3a), also through the month-view Editar path; case 15 runs the
+// R7 quick-expense question (rule D8, built in L3).
 var test = require('node:test');
 var assert = require('node:assert/strict');
 var la = require('./load-app');
@@ -13,6 +13,7 @@ var H = require('./fixtures/r45-harness');
 var M = la.loadMotor();
 var HOY = C.hoy('2026-10-15');
 function plain(x){ return JSON.parse(JSON.stringify(x)); }
+function filas(l){ return plain(l).map(function(it){ return {nombre: it.nombre, monto: it.monto, pagado: it.pagado}; }); }
 function modelo(raw, iso, ctx){
   var h = iso ? C.hoy(iso) : HOY, d = M.normalizar(C.copy(raw), h);
   return {d: d, h: h, cad: plain(M.cadena(d, h, ctx || {})), pat: plain(M.patrimonioNeto(d, h, ctx || {})), f: function(j){ return plain(M.flujosMes(d, j, h, ctx || {})); }};
@@ -281,24 +282,50 @@ test('D16-14 patrimonio bruto vs neto: bruto 2.925.000 - pasivos 300.000 = neto 
   assert.ok(hu.indexOf('data-pat="bruto"') < hu.indexOf('data-pat="deudas"') && hu.indexOf('data-pat="deudas"') < hu.indexOf('data-pat="neto"'), 'gross, debts, net in that order');
 });
 
-// 15 ── D8 decided, feature R7. Pins TODAY's behavior; the only built guarantee involved is R2 E9 (undo restores the previous state)
-test('D16-15 gasto rápido sobre pendiente [PENDING-R7]: today the amount is added to the pending row without asking; undo restores it exactly', function(){
+// 15 ── D8 (R7, built in L3 2026-10-08): a quick expense on a pending row with an amount asks: mark the existing row as paid, or record a
+// separate realized expense keeping the plan pending. Undo (R2 E9) restores exactly the previous state for both answers; no duplication.
+function caso15(){
+  var hojas = [], toasts = [];
   var raw = octubre(100000, {ingresos: [C.it('Sueldo', 500000, true)], gastosVariables: [C.it('Super', 50000, false)]});
-  var app = H.appVista(raw, null, null, null, {funcs: ['sumarGasto', 'quitarMov', 'esc', 'fARS', 'grupos'], vars: ['gr'],
+  var app = H.appVista(raw, null, null, null, {funcs: ['sumarGasto', 'quitarMov', 'esc', 'fARS', 'grupos', 'preguntaPago', 'preguntarPago', 'gastoEsPago', 'marcarPago', 'gastoAparte', 'filaDelGasto', 'anotarMov'], vars: ['gr'],
     globals: {oculto: false, PUNTOS: '..', document: {getElementById: function(){ return null; }},
-      cerrarHoja: function(){}, tocar: function(){}, conScroll: function(){}, renderMes: function(){}, toast: function(){}}});
-  var antes = M.cadena(app.D, app.hoy, {}).meses[9];
-  assert.deepEqual([antes.cierreCalc, antes.proyectado], [600000, 550000]);
+      abrirHoja: function(h){ hojas.push(h); }, cerrarHoja: function(){}, tocar: function(){}, conScroll: function(){}, renderMes: function(){}, toast: function(t){ toasts.push(t); }}});
+  app.hojas = hojas; app.toasts = toasts;
+  return app;
+}
+function disp(app){ var o = M.cadena(app.D, app.hoy, {}).meses[9]; return [o.cierreCalc, o.proyectado]; }
+test('D16-15 gasto rápido sobre pendiente [R7]: asks; "Sí" ticks the row (keep or update its amount), "No" records a separate realized expense; undo restores exactly', function(){
+  // the question
+  var app = caso15(), antes = plain(app.D.meses[9]);
+  assert.deepEqual(disp(app), [600000, 550000]);
   app.gr = {monto: 20000, cat: 0, sec: 'gastosVariables'}; app.sumarGasto();
-  var it = app.D.meses[9].gastosVariables[0], mv = app.D.meses[9].movimientos[0];
-  assert.deepEqual([it.monto, it.pagado, mv.monto, mv.pp], [70000, false, 20000, false], 'added to the pending amount; nothing is asked (D8 not built)');
-  var desp = M.cadena(app.D, app.hoy, {}).meses[9];
-  assert.deepEqual([desp.cierreCalc, desp.proyectado], [600000, 530000], 'money already spent is not deducted from Disponible a hoy: the R7 gap');
-  assert.equal(H.tiles(app, 9).disponibleFinal, 600000);
-  app.quitarMov(mv.id);   // R2 E9: undo restores the previous amount and status
-  assert.deepEqual([it.monto, it.pagado, app.D.meses[9].movimientos.length], [50000, false, 0]);
-  var vuelta = M.cadena(app.D, app.hoy, {}).meses[9];
-  assert.deepEqual([vuelta.cierreCalc, vuelta.proyectado], [600000, 550000]);
+  assert.equal(app.hojas.length, 1, 'asks before touching anything');
+  assert.match(app.hojas[0], /Super<\/b> está pendiente por \$\s?50\.000\. ¿Este gasto es ese pago\?/);
+  assert.deepEqual(plain(app.D.meses[9]), antes, 'nothing changed while asking (Cancelar leaves it as it was)');
+  // "Sí", the typed amount differs: second question; keep the row amount
+  app.gastoEsPago();
+  assert.equal(app.hojas.length, 2, 'the amounts differ: asks which one, no silent change');
+  assert.match(app.hojas[1], /data-act="pagoMonto" data-v="fila"/); assert.match(app.hojas[1], /data-act="pagoMonto" data-v="gasto"/);
+  app.marcarPago(false);
+  var ls = app.D.meses[9].gastosVariables, mv = app.D.meses[9].movimientos[0];
+  assert.deepEqual(filas(ls), [{nombre: 'Super', monto: 50000, pagado: true}], 'ticked, same amount, no new row');
+  assert.deepEqual(disp(app), [550000, 550000], 'the planned 50.000 is now spent: deducted from Tenés hoy, projection unchanged');
+  app.quitarMov(mv.id);
+  assert.deepEqual(plain(app.D.meses[9]), antes, 'undo: exactly the previous month');
+  assert.deepEqual(disp(app), [600000, 550000]);
+  // "Sí", update the row to the typed amount
+  app.gr = {monto: 20000, cat: 0, sec: 'gastosVariables'}; app.sumarGasto(); app.gastoEsPago(); app.marcarPago(true);
+  assert.deepEqual(filas(app.D.meses[9].gastosVariables), [{nombre: 'Super', monto: 20000, pagado: true}]);
+  assert.deepEqual(disp(app), [580000, 580000]);
+  app.quitarMov(app.D.meses[9].movimientos[0].id);
+  assert.deepEqual(plain(app.D.meses[9]), antes, 'undo: exactly the previous month');
+  // "No, es otro gasto": a separate ticked row; the plan stays pending
+  app.gr = {monto: 20000, cat: 0, sec: 'gastosVariables'}; app.sumarGasto(); app.gastoAparte();
+  assert.deepEqual(filas(app.D.meses[9].gastosVariables), [{nombre: 'Super', monto: 50000, pagado: false}, {nombre: 'Super (otro gasto)', monto: 20000, pagado: true}]);
+  assert.deepEqual(disp(app), [580000, 530000], 'the 20.000 is spent today; the 50.000 is still planned');
+  app.quitarMov(app.D.meses[9].movimientos[0].id);
+  assert.deepEqual(plain(app.D.meses[9]), antes, 'undo: the separate row is gone, the plan is as it was');
+  assert.deepEqual(disp(app), [600000, 550000]);
 });
 
 // 16 ── D9 (Argentine parsing per field type, no silent guessing), §8 Q1 (declared value to cents)
@@ -337,7 +364,7 @@ test('D16-17 primer mes sin saldo inicial (model + Omitir, then Editar): skipped
   assert.equal(H.tiles(H.appVista(H.guardado(ls, 2026)), 9).disponibleFinal, 650000);
   // R5: the month view says it explicitly, and Editar declares it later
   var a5 = appR5(ls); H.cargarEn(a5, ls, 2026);
-  assert.ok(a5.htmlSaldo(a5.D, 9, a5.vistaModelo(a5.D, a5.hoy)).indexOf('Saldo inicial sin configurar') >= 0);
+  assert.ok(a5.htmlSaldo(a5.D, 9, a5.vistaModelo(a5.D, a5.hoy)).indexOf('>Sin configurar<') >= 0);   // P3a: the origin is a chip
   assert.equal(a5.fijarApertura(500000, a5.modoApertura(a5.D, a5.hoy)), true);
   var g = H.guardado(ls, 2026);
   assert.deepEqual([g.arrastre.inicial.origen, g.arrastre.inicial.declarado, g.arrastre.inicial.apertura], ['declarado', 500000, -150000]);
