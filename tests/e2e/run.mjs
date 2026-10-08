@@ -15,6 +15,8 @@ import path from 'node:path';
 import http from 'node:http';
 import vm from 'node:vm';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { createRequire } from 'node:module';
+const UI = createRequire(import.meta.url)('../ui-textos.js');   // the jargon / English word lists the L2 checks share with the unit test
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const MARKER = '})();\n</script>';
@@ -1191,6 +1193,87 @@ try{
         var a = v[0].getBoundingClientRect(), z = v[v.length - 1].getBoundingClientRect(); return [Math.abs(a.left - m.left) <= 1, Math.abs(z.right - m.right) <= 1]; })()`), [true, true]);
     await irTab('anio');
     check('L1 1280: chart axis labels stay legible (11 px or more)', await ev(ejes), []);
+    await send('Emulation.clearDeviceMetricsOverride');
+  }
+
+  // ── L2 microcopy: every word the rendered app shows, per tab and in the main sheets: no internal jargon (the list in
+  // tests/ui-textos.js), no English/programming words, and every icon-only button has an aria-label. Same seed as L1 (model
+  // year from September, Trabajo professional with a realized and a scheduled pase, a debt with a plan). hoy = 2026-10-04.
+  {
+    const ms = []; for(let i=0;i<12;i++) ms.push(mes([], [], [], []));
+    ms[8] = Object.assign(mes([it('Sueldo', 1000000, true)], [it('Alquiler', 400000, true), it('Luz', 20000, false)], [it('Super', 200000, true)], []),
+      {ahorroMesARS: 150000, compraARS: 145000, compraUSD: 100, cierreReal: {valor: 275000, calculadoAlConfirmar: 280000, confirmadoEl: '2026-10-01'}});
+    ms[9] = mes([it('Sueldo', 1000000, true), it('Del trabajo', 400000, false), it('Aguinaldo', 120000, false)], [it('Alquiler', 400000, true), it('Internet', 22000, false)], [], [it('Préstamo', 100000, false)]);
+    ms[10] = Object.assign(mes([it('Sueldo', 1000000, true), it('Del trabajo', 200000, false)], [it('Alquiler', 400000, false)], [], [it('Préstamo', 100000, false)]), {ahorroMesARS: 100000, ahorroMesUSD: 50});
+    const y = {anio: 2026, pagoExplicito: true, cotizacionUSD: 1500, cotizacionFecha: '2026-10-01T12:00:00.000Z', ahorroAnioAnterior: 600000, usdAnioAnterior: 1200,
+      cripto: [{activo: 'BTC', cantidad: 0.01, precioUSD: 60000}], meses: ms, planDeudas: {'Préstamo': {total: 1200000, recargo: 0, cuotas: 12, pagadasAntes: 9}},
+      arrastre: {desde: 8, inicial: {apertura: 50000, declarado: 50000, declaradoEl: '2026-09-01', origen: 'declarado'}}};
+    const tj = {version: 1, activo: true, modo: 'pro', gastos: [], productos: [], tope: 0,
+      facturas: [{id: 'f1', tipo: 'factura', cliente: 'Panadería', numero: 'A-1', concepto: 'Mantenimiento', monto: 320000, cantidad: 1, precio: 320000, base: 320000, ajuste: 0, fecha: '2026-09-24', contado: false, plazo: 30, forma: 'transferencia', creada: '2026-09-24T10:00:00.000Z'}],
+      cobros: [{id: 'c1', cliente: '', monto: 1000000, fecha: '2026-01-01', forma: 'transferencia', aplic: []}],
+      pases: [{id: 'p1', fecha: '2026-10-02', monto: 300000, anio: 2026, mes: 9}, {id: 'p2', fecha: '2026-11-05', monto: 200000, anio: 2026, mes: 10}]};
+    await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+    await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); localStorage.setItem('kibo.ultimaCopia', new Date().toISOString()); localStorage.setItem('kibo.esquema', '1.30'); localStorage.setItem('kibo.anio','2026');
+      localStorage.setItem('kibo.datos.2026', ${JSON.stringify(JSON.stringify(y))}); localStorage.setItem('kibo.trabajo', ${JSON.stringify(JSON.stringify(tj))}); true`);
+    await nav(URL_APP); await sleep(1300);
+    const fuentes = (l) => '[' + l.map((r) => r.toString()).join(',') + ']';
+    // words: every text node of the page (shown or folded) plus title / aria-label / placeholder / alt; icon-only: visible buttons
+    // with no letter or digit in their text and no aria-label
+    const palabras = `(function(){ var J = ${fuentes(UI.JERGA)}, I = ${fuentes(UI.INGLES)}, out = {jerga: [], ingles: [], iconos: []};
+      function mira(s, donde){ var k; for(k = 0; k < J.length; k++) if(J[k].test(s)){ out.jerga.push(donde + ': ' + s.trim().slice(0, 70)); break; }
+        for(k = 0; k < I.length; k++) if(I[k].test(s)){ out.ingles.push(donde + ': ' + s.trim().slice(0, 70)); break; } }
+      var w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {acceptNode: function(n){ var p = n.parentNode && n.parentNode.nodeName; return p === 'SCRIPT' || p === 'STYLE' ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT; }}), n;
+      while((n = w.nextNode())) if(n.nodeValue.trim()) mira(n.nodeValue, 'text');
+      document.querySelectorAll('[title],[aria-label],[placeholder],[alt]').forEach(function(e){ ['title', 'aria-label', 'placeholder', 'alt'].forEach(function(a){ var v = e.getAttribute(a); if(v) mira(v, a); }); });
+      mira(document.title, 'document.title');
+      document.querySelectorAll('button, [role=button]').forEach(function(b){ var r = b.getBoundingClientRect(); if(!r.width || !r.height) return;
+        if(!/[A-Za-z0-9ÁÉÍÓÚáéíóúñÑ]/.test(b.textContent) && !b.getAttribute('aria-label') && !b.getAttribute('aria-labelledby')) out.iconos.push((b.getAttribute('data-act') || b.className || 'button') + ' "' + b.textContent.trim() + '"'); });
+      return out; })()`;
+    const revisar = async (donde) => { const r = await ev(palabras);
+      check(`L2 "${donde}": no internal jargon on screen`, r.jerga, []);
+      check(`L2 "${donde}": no English or programming words on screen`, r.ingles, []);
+      check(`L2 "${donde}": every icon-only button has an aria-label`, r.iconos, []); };
+    const tocar = (sel) => ev(`(function(){ var b = document.querySelector(${JSON.stringify(sel)}); if(!b) return false; b.click(); return true; })()`);
+    const dar = (act, attrs) => ev(`(function(){ var b = document.createElement('button'); b.setAttribute('data-act', ${JSON.stringify(act)}); ${Object.entries(attrs || {}).map(([k, v]) => `b.setAttribute(${JSON.stringify(k)}, ${JSON.stringify(v)});`).join(' ')} document.body.appendChild(b); b.click(); document.body.removeChild(b); return true; })()`);
+    const cerrar = async () => {   // the sheet's own Cancel / Entendido / Empezar, else a tap on the backdrop (a debt with a plan offers only Quitar / Guardar)
+      await ev(`(function(){ var h = document.querySelector('#hoja [data-act=cerrarHoja]') || document.querySelector('#hoja [data-act=cerrar]') || document.querySelector('#hoja [data-act=bienvOk]') || document.getElementById('velo'); h.click(); return true; })()`); await waitFor(`document.getElementById('velo').classList.contains('on')`, false, 2500); };
+    const irTab = async (t) => { await tocar(`[data-act=tab][data-t=${t}]`); await sleep(1200); };
+
+    // control: the walker does catch a planted jargon word, an English word and an unlabeled icon button
+    check('L2 control: the rendered-word walk catches planted jargon, English and an unlabeled icon button', await ev(`(function(){ var d = document.createElement('div'); d.id = 'l2control';
+      d.innerHTML = '<p>Borrá esos pases</p><p>Save</p><button>×</button>'; document.body.appendChild(d); var r = ${palabras}; d.remove(); return [r.jerga.length, r.ingles.length, r.iconos.length]; })()`), [1, 1, 1]);
+    for(const t of ['mes', 'anio', 'usd', 'trabajo', 'ajustes']){ await irTab(t); await revisar(`tab ${t}`); }
+    for(const v of ['datos', 'ayuda', 'privacidad']){ await irTab('ajustes'); await tocar(`[data-act=ajVista][data-v=${v}]`); await sleep(800); await revisar(`Ajustes · ${v}`); }
+    await irTab('ajustes');
+    check('L2 Ajustes: restore points and data rows use plain words (no internal versions)', await ev(`(function(){ var t = document.getElementById('v-ajustes').textContent; return [/1\\.30|saldos\\b/.test(t), t.indexOf('el sistema') >= 0]; })()`), [false, false]);
+    await irTab('mes');
+    const hojas = [
+      ['the quick expense sheet', () => tocar('[data-act=gastoRapido]')],
+      ['the debt plan sheet', () => tocar('#v-mes [data-act=plan]')],
+      ['the closing sheet of September', () => dar('cierreAbrir', {'data-m': '8'})],
+      ['the welcome sheet', () => dar('verBienvenida')],
+      ['the restore confirmation of a backup', () => ev(`(function(){ restaurarTexto(JSON.stringify(armarCopia())); return true; })()`)],
+    ];
+    for(const [nombre, abrir] of hojas){ await abrir(); await sleep(700); check(`L2 ${nombre} opened`, await ev(`document.getElementById('velo').classList.contains('on')`), true); await revisar(nombre); await cerrar(); check(`L2 ${nombre} closed`, await ev(`document.getElementById('velo').classList.contains('on')`), false); }
+    await irTab('trabajo');
+    const hojasTj = [
+      ['the pass-to-personal sheet', () => tocar('[data-act=tjPasar]')],
+      ['what you passed to personal (detail)', () => dar('tjVerPase', {'data-id': 'p1'})],
+      ['the delete confirmation of what you passed', () => dar('tjBorrarPase', {'data-id': 'p1'})],
+      ['the new invoice sheet', () => tocar('[data-act=tjNuevaFac]')],
+      ['the payment-received sheet', () => tocar('[data-act=tjNuevoCobro]')],
+      ['the work expense sheet', () => tocar('[data-act=tjNuevoGasto]')],
+    ];
+    for(const [nombre, abrir] of hojasTj){ await abrir(); await sleep(700); check(`L2 ${nombre} opened`, await ev(`document.getElementById('velo').classList.contains('on')`), true); await revisar(nombre); await cerrar(); check(`L2 ${nombre} closed`, await ev(`document.getElementById('velo').classList.contains('on')`), false); await irTab('trabajo'); }
+    await dar('tjBorrarPase', {'data-id': 'p1'}); await sleep(600);
+    check('L2 deleting what you passed asks with its consequence, never "pase"', await ev(`[document.querySelector('#hoja h3').textContent, document.querySelector('#hoja .texto').textContent]`),
+      ['¿Borrar lo que pasaste?', 'Se descuentan ' + await ev('fARS(300000)') + ' del renglón “Del trabajo” de Octubre 2026 y vuelven al disponible del trabajo.']);
+    await cerrar();
+    await irTab('anio');
+    check('L2 El año: "estimado" once, in the heading, not on each row under it',
+      await ev(`(function(){ var t = document.querySelector('#heroAnio .an-tit'), f = document.querySelectorAll('#heroAnio [data-an=dispCierre] span, #heroAnio [data-an=ahorroCierre] span');
+        return [t && t.textContent, Array.prototype.map.call(f, function(e){ return e.textContent; })]; })()`),
+      ['Al cierre del año (estimado)', ['Disponible en diciembre', 'Ahorro en diciembre (con lo programado)']]);
     await send('Emulation.clearDeviceMetricsOverride');
   }
 
