@@ -79,3 +79,27 @@ test('L3 review 2: copying the previous month skips the one-off "(otro gasto)" r
   assert.equal(a.esGastoAparte('(otro gasto)'), false, 'no row name before it: not something L3 creates');
   assert.equal(a.esGastoAparte('Super (otro gasto 1)'), false, 'L3 numbers from 2');
 });
+
+test('L4 review 3: the backup reminder counts data stored in another year (the open one is empty)', function(){
+  var DIA = 86400000, AHORA = new Date('2026-10-15T12:00:00').getTime();
+  var store = {'kibo.datosDesde': new Date(AHORA - 10 * DIA).toISOString()};
+  var ls = {getItem: function(k){ return Object.prototype.hasOwnProperty.call(store, k) ? store[k] : null; },
+    setItem: function(k, v){ store[k] = String(v); }, removeItem: function(k){ delete store[k]; }};
+  var avisos = {innerHTML: ''}, abierto = {anio: 2026}, otro = {anio: 2025};
+  var g = {localStorage: ls, document: {getElementById: function(id){ return id === 'avisos' ? avisos : null; }},
+    hayDatos: function(d){ return d === otro; }, tieneTrab: function(){ return false; }, sinTaparCuarentena: function(){ return ''; },
+    aniosGuardados: function(){ return [2025, 2026]; }, leerAnio: function(y){ return y === 2025 ? otro : abierto; }};
+  var a = la.loadApp({today: '2026-10-15', funcs: ['recordatorioCopia', 'revisarCopia', 'ultimaCopia', 'hayDatosEnElTelefono'],
+    vars: ['LSCOPIA', 'LSDATOSDESDE', 'LSCOPIAPOS', 'DIAS_COPIA', 'DIAS_SIN_COPIA', 'DIAS_POSPONER'], globals: g});
+  a.D = abierto;
+  a.revisarCopia();
+  assert.ok(store['kibo.datosDesde'], 'the first day with data is kept');
+  assert.match(avisos.innerHTML, /Hace <b>10 días<\/b> que cargás datos/);
+  g.hayDatos = function(){ return false; };
+  var b = la.loadApp({today: '2026-10-15', funcs: ['recordatorioCopia', 'revisarCopia', 'ultimaCopia', 'hayDatosEnElTelefono'],
+    vars: ['LSCOPIA', 'LSDATOSDESDE', 'LSCOPIAPOS', 'DIAS_COPIA', 'DIAS_SIN_COPIA', 'DIAS_POSPONER'], globals: g});
+  b.D = abierto; avisos.innerHTML = '';
+  b.revisarCopia();
+  assert.equal(avisos.innerHTML, '', 'no year with data: nothing');
+  assert.equal(store['kibo.datosDesde'], undefined);
+});

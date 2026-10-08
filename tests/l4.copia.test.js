@@ -17,8 +17,9 @@ function fakeStorage(init){
 function app(ls, conDatos){
   var avisos = {innerHTML: ''};
   var g = {localStorage: ls, document: {getElementById: function(id){ return id === 'avisos' ? avisos : null; }},
-    hayDatos: function(){ return conDatos; }, tieneTrab: function(){ return false; }, sinTaparCuarentena: function(){ return ''; }};
-  var a = la.loadApp({today: '2026-10-15', funcs: ['recordatorioCopia', 'revisarCopia', 'posponerCopia', 'ultimaCopia'],
+    hayDatos: function(){ return conDatos; }, tieneTrab: function(){ return false; }, sinTaparCuarentena: function(){ return ''; },
+    aniosGuardados: function(){ return []; }, leerAnio: function(){ return null; }};
+  var a = la.loadApp({today: '2026-10-15', funcs: ['recordatorioCopia', 'revisarCopia', 'posponerCopia', 'ultimaCopia', 'hayDatosEnElTelefono'],
     vars: ['LSCOPIA', 'LSDATOSDESDE', 'LSCOPIAPOS', 'DIAS_COPIA', 'DIAS_SIN_COPIA', 'DIAS_POSPONER'], globals: g});
   a.avisos = avisos;
   return a;

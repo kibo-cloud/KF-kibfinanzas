@@ -4559,8 +4559,15 @@ function recordatorioCopia(ahora, ultima, desde, pospuesta, conDatos){
   t = desde ? new Date(desde).getTime() : NaN;   // nunca hubo copia (o la fecha no se lee): cuenta desde el primer día con datos
   return !isNaN(t) && ahora - t >= DIAS_SIN_COPIA * dia ? {dias: Math.floor((ahora - t) / dia), nunca: true} : null;
 }
+// L4 review: hay datos en este teléfono si el año abierto, Trabajo o CUALQUIER otro año guardado tiene algo cargado
+function hayDatosEnElTelefono(){
+  if(hayDatos(D, tieneTrab())) return true;
+  var l = aniosGuardados(), i, x;
+  for(i=0;i<l.length;i++){ if(l[i] === D.anio) continue; x = leerAnio(l[i]); if(x && hayDatos(x, false)) return true; }
+  return false;
+}
 function revisarCopia(){
-  var conDatos = hayDatos(D, tieneTrab()), ahora = Date.now(), desde = '', pos = '';
+  var conDatos = hayDatosEnElTelefono(), ahora = Date.now(), desde = '', pos = '';
   try{
     if(!conDatos) localStorage.removeItem(LSDATOSDESDE);
     else if(!localStorage.getItem(LSDATOSDESDE)) localStorage.setItem(LSDATOSDESDE, new Date(ahora).toISOString());
