@@ -777,6 +777,32 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--acc);outline-offset
 .anios button{min-height:44px;padding:0 18px;border-radius:14px;background:var(--card);border:1px solid var(--sep);
   font-size:15px;font-weight:600;color:var(--txt2)}
 .anios button.on{background:var(--acc);color:#fff;border-color:transparent}
+/* ═══ P3a · toques de 44 × 44 como mínimo en el mes (tildes, Editar, ×, Guardar, ojo, puntos del carrusel) y etiquetas de 11 px ═══ */
+.item{gap:4px;padding:2px 2px 2px 4px}
+.item>input.nombre:first-child{padding-left:12px}
+.chk{width:var(--tap);height:var(--tap);flex:0 0 var(--tap);border:0;border-radius:50%;background:none;position:relative;color:transparent}
+.chk::before{content:'';position:absolute;left:10px;top:10px;width:24px;height:24px;box-sizing:border-box;border-radius:50%;border:2px solid var(--sep);
+  transition:background .18s,border-color .18s}
+.chk svg{position:relative;z-index:1}
+.chk.on{background:none;color:#fff}
+.chk.on::before{background:var(--c-real);border-color:var(--c-real)}
+.chk.prog{opacity:.8}
+.chk.prog::before{border-style:dashed;border-color:var(--c-prog)}
+.item.pend .chk::before{border-color:var(--c-pend)}
+.item .x{width:var(--tap);height:var(--tap)}
+.ojo{width:var(--tap);height:var(--tap)}
+.btn-guardar{min-height:var(--tap)}
+.mini{min-height:var(--tap)}
+.dinfo{min-height:var(--tap);padding-top:4px;padding-bottom:8px}
+.carr-dots{gap:0;margin:2px 0 0}
+.carr-dots .dot{width:var(--tap);height:var(--tap);background:none;position:relative;transform:none}
+.carr-dots .dot::before{content:'';position:absolute;left:50%;top:50%;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:var(--sep);transition:background .2s,transform .2s}
+.carr-dots .dot.on{background:none;transform:none}
+.carr-dots .dot.on::before{background:var(--acc);transform:scale(1.3)}
+nav button{font-size:var(--fs-min)}
+/* P3a: pasarse de un tope es un aviso, no un problema: ámbar (la clase .mal queda para no cambiar el contrato del DOM) */
+.tinfo small.mal{color:var(--c-pend)}
+.tinfo .pista i.mal{background:var(--c-pend)}
 .soloPrint{display:none}
 @media print{
   .soloPrint{display:block;font-weight:700;font-size:16px;margin:0 0 8px}
