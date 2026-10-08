@@ -118,3 +118,77 @@ Tests:
 - Updated pinned checks: the PC-file title (`TuGasto · 2027`), the Ajustes footer (`TuGasto v`) and the PC file name.
 - Results: `npm test` 688 (687 pass, 1 todo L-03d); `npm run test:e2e` 231/231. Motor goldens untouched.
 - Screenshots: header at 390 px, light and dark (session scratchpad `ux/shots/p2-header-light.png`, `p2-header-dark.png`).
+
+### P3a — Redesign: tokens, home, month (done)
+
+Route: delegated writer (index.html + tests; 2+ non-trivial files). Scope: design tokens, the month view (hero, rows, balance
+block, first use/empty states, savings), tap targets. No money rule changed: every number on screen is read from cadena /
+flujosMes / tilesMes / lineasSaldo / calc (legacy). Motor goldens byte-identical to 2e68947. D16-15 stays PENDIENTE-R7.
+
+Design decisions:
+- Tokens (CSS custom properties, light and dark, also under the `data-tema` overrides): type scale hero 40/700, card number
+  28/700, section 17/600, row 16, caption 13, minimum 11, tabular money; 4-pt spacing, gutter/card padding 16, gap 12, rows
+  ≥ 48, taps ≥ 44, 72 px FAB clearance; radius 14 (was 20); color roles realizado (green), pendiente/atrasado (amber),
+  programado/proyectado (gray), deuda (neutral), trabajo (indigo), problem (red: negative balance, save failure, data at
+  risk only). State chips (`.chip.real/.pend/.atras/.prog/.trab`). Decorative circles removed (month card, year summary).
+- Hero (`estadoHero`/`htmlHero`): modes `hoy` ("Tenés hoy" = cadena cierreCalc, "Al cierre: $Y · estimado" = proyectado,
+  chips "Te falta cobrar" = ingresosPend, "Te falta pagar" = gastosPend + cuotasPend, "Atrasado" = resumen.vencidos,
+  "Sin cobrar de antes" = vencidosIngresos; each chip scrolls to its rows), `cerrado` ("Cerraste con" = cierre +
+  Confirmado/Sin confirmar), `proyectado` ("Proyectado para <Mes>", gray number, dashed card, Programado chip; a negative
+  projection is amber, never red/green), `simple` (legacy month/year: "Disponible final" = calc(), "Cálculo simple" chip).
+  Tiles read Cobrado/Pagado (A cobrar/A pagar in a future month). Removed: hero buttons El año, Dólares (tab bar), Gasto
+  (the FAB stays the single Gasto button) and Copia (Ajustes and the backup reminder keep it). Savings/over-cap hints are
+  amber and one at a time (repay first). The FAB slides away while scrolling down and returns on scroll up; the page
+  bottom clears it.
+- Rows: paid = solid check; pending in a past/current month = amber ring + "Falta" ("Atrasado" in a past month); a row of a
+  future model month = dashed ring + "Programado" (R5 esProgramado/puedeAlternar unchanged). Section header = total and,
+  below it, "falta $X" (`faltaSeccion`: flujosMes pending rules in a model month, calc() pendienteX in a legacy one; 0 in a
+  future month). Del trabajo (`textoDelTrabajo`): "Cobrado $300.000 de $400.000: lo que pasaste desde Trabajo. Los $100.000
+  que faltan tildalos cuando los cobres." (pases dated ≤ hoy allocated in order like flujosMes; no "pases" wording).
+  Debts: "Cuota 10 de 12 · pendiente / pagada / programada / sin pagar" instead of "Sin pago este mes; va la 10".
+- Balance block: origin chip "Viene de Septiembre" / "Corregido en Septiembre" (previous closing confirmed with a
+  difference; a confirmation equal to the records keeps "Viene de") / "Lo cargaste vos" / "Viene de diciembre <año>" /
+  "Sin configurar" (amber); Editar 44 px; overdue reads "Atrasado de meses anteriores" (amber, chip target). Re-confirm
+  (finding 14) is an amber box: "Cerraste con $175.000 (confirmado) · tus registros ahora dan $203.000" with "Usar
+  $203.000" (fijarCierreReal with the calculated value: the same action as the start-of-month Confirmar, one tap instead
+  of opening the sheet), "Dejar $175.000" (the existing Mantener) and "Otro monto" (the closing sheet, as before).
+- First use / empty: the first-use question takes the hero's place (no number above it); when the year has data, the
+  simple calculation stays below it, gray and marked ("Hasta que respondas: lo que tildaste este mes"). Fresh install
+  order, one prompt at a time: (1) welcome sheet, (2) "Esta app está vacía" (restore / start fresh; question and card
+  hidden via CSS `:has`), (3) the first-use question. Common reminders (backup, version notice) wait while the question
+  is open; data-at-risk notices (quarantine, other tab) never wait. A year with nothing loaded shows each section as one
+  sentence + "Cargar <sección>" instead of the template's zero rows.
+- Savings: in-section sub-headings are caption size (the Ajustes page-title `.subtit` rule was making them 24 px). Pasé a
+  dólares / Otros dólares / Saqué del ahorro / Repuse al ahorro wait behind "Más movimientos del ahorro" while empty
+  (a group with an amount, a negative savings stock or something to repay stays visible); "a reponer" is amber.
+- Tap targets: checks, ×, Editar, Guardar, eye, carousel dots, row info buttons, chips ≥ 44 × 44 (visual ring/dot kept
+  small by a pseudo-element); tab labels 11 px. Over-cap bars/texts amber (class `.mal` kept for the DOM contract).
+
+Before → after per finding: 1 "Disponible final · Octubre" → "Tenés hoy" + "Al cierre · estimado"; 2 future projection in
+green → gray "Proyectado para Noviembre" + Programado; 3 unlabeled totals → Cobrado/Pagado tiles + "falta" per section;
+7 Del trabajo looked uncollected / "pases" → "Cobrado X de Y"; 8 question under a number → question first; 9 three
+stacked prompts + zero rows → one at a time + one-sentence sections; 10 red hints, pending absent → amber hints, pending
+chips in the hero; 11 FAB + duplicated buttons → FAB only, tab-bar duplicates gone, FAB hides on scroll; 12 Ahorro
+headings 24 px, 8 open inputs → caption headings, disclosure; 13 "Sin pago este mes" → "Cuota N de M · estado"; 14
+four-line red re-confirm → amber two-choice box. Legacy years: same numbers, "Cálculo simple" chip.
+
+Tests: new tests/p3a.vista.test.js (12: hero state per month = cadena/tilesMes/lineasSaldo values, hero texts and
+colors, faltaSeccion adds up to flujosMes/calc over 30 months, header "falta", row states, Del trabajo states, debt
+states, empty sections, first-use gray card, savings disclosure). Updated pins (old wording → new): r5.mes (Del trabajo,
+debt text), r5.saldos (origin texts, overdue label, re-confirm block), r4.matriz ("Sin configurar"), e2e (card Gasto
+button → FAB only; Del trabajo text; "Sin configurar" chip; re-confirm text; empty notice flow opens "Cargar gastos
+variables" before typing). E2E +32 P3a checks (rendered DOM / computed styles): hero and estimated closing equal to the
+balance block, chips and their amounts, chip scroll, tiles, section falta, row states, Del trabajo, Cuota 10 de 12,
+origin chip + Editar 44 px, future month gray + Programado row chip, past month Confirmado, Usar/Dejar labels and the
+values they write, first use before any number, fresh-install order, legacy marker, tap targets ≥ 44 at 390, no
+overflow at 360/390/430 (Sep/Oct/Nov). Inventory: faltaSeccion, textoDelTrabajo classified r4.
+Results: `npm test` 700 (699 pass, 1 todo L-03d); `npm run test:e2e` 262/262; goldens unchanged.
+
+Screenshots (session scratchpad `ux/shots/`, seeded realistic year, hoy 2026-10-15): before `p3a-antes-<dark|light>-<390|1280>-*`,
+after `p3a-despues-<dark|light>-<390|1280>-*` for abrir, mes-oct, mes-sep, mes-nov, mes-ago-legacy, primer-uso, vacio-mes,
+vacio-empezar, legacy-2025 (script `ux/shoot-p3a.mjs`, light/dark via prefers-color-scheme emulation).
+
+Left for P3b: El año (finding 4), Patrimonio/USD tab (5, 15), Trabajo (6), the update notice version text (15), the
+1280 month-bar clipping and other P2 polish (expense sheet "$", "Sumar"), the FAB still covers the right edge of the
+first screen at rest on phones (consider a Gasto action in the tab bar), and terminology alignment of the balance block
+lines ("Disponible actual" / "Proyectado al cierre") with the hero ("Tenés hoy" / "Al cierre").
