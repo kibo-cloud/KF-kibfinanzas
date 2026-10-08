@@ -118,10 +118,14 @@ test('L7 markup: language, dialog, tabs, live regions', function(){
   tiene(HTML, /<div class="pild" id="pild" role="status" aria-live="polite"><\/div>/);
   var nav = /<nav id="nav"[^>]*>([\s\S]*?)<\/nav>/.exec(HTML);
   assert.ok(nav, 'nav');
-  var lista = /<div[^>]*role="tablist"[^>]*>([\s\S]*?)<\/div>/.exec(nav[1]);
-  assert.ok(lista, 'a tablist inside the tab bar');
-  var tabs = lista[1].match(/<button[^>]*>/g);
-  assert.deepEqual(tabs.map(function(b){ return /data-t="(\w+)"/.exec(b)[1]; }), ['mes', 'anio', 'usd', 'trabajo', 'ajustes']);
+  // L7 review: the buttons sit in the order they are seen (Gasto third, also for Tab); the tablist gathers the five tabs with aria-owns
+  var lista = /<div[^>]*role="tablist"[^>]*aria-owns="([^"]+)"[^>]*><\/div>/.exec(nav[1]);
+  assert.ok(lista, 'a tablist inside the tab bar that owns the tabs');
+  assert.deepEqual(lista[1].split(' '), ['tab-mes', 'tab-anio', 'tab-usd', 'tab-trabajo', 'tab-ajustes']);
+  var botones = nav[1].match(/<button[^>]*>/g);
+  assert.deepEqual(botones.map(function(b){ return (/data-t="(\w+)"/.exec(b) || [0, 'gasto'])[1]; }), ['mes', 'anio', 'gasto', 'usd', 'trabajo', 'ajustes'], 'document order = visual order');
+  assert.equal(/order:\d/.test(/\.tabs\{display:contents\}[^\n]*\n[^\n]*/.exec(CSS)[0]), false, 'no CSS order reshuffles the bar');
+  var tabs = botones.filter(function(b){ return /role="tab"/.test(b); });
   tabs.forEach(function(b){
     var t = /data-t="(\w+)"/.exec(b)[1];
     assert.match(b, /role="tab"/); assert.match(b, /aria-selected="(true|false)"/);
@@ -130,7 +134,8 @@ test('L7 markup: language, dialog, tabs, live regions', function(){
   });
   // the Gasto action is a plain button of the tab bar, outside the tablist (it is an action, not a tab)
   tiene(nav[1], /<button class="nav-gasto" id="fab" data-act="gastoRapido" aria-label="Sumar un gasto">/);
-  assert.ok(lista[1].indexOf('gastoRapido') < 0);
+  assert.equal(tabs.length, 5);
+  assert.ok(lista[1].indexOf('fab') < 0, 'Gasto is not owned by the tablist');
 });
 test('L7 CSS: a visible keyboard focus ring, reduced motion, a desktop layout from 1024 px', function(){
   tiene(CSS, /:focus-visible\{outline:2px solid/);

@@ -1548,7 +1548,7 @@ try{
     // keyboard and screen reader: tabs (role, aria-selected, arrows), the sheet (dialog, Esc, focus kept inside and given back), live regions
     await tam7(1280); await tab7('mes');
     const tecla = async (key, code, shift) => { for(const type of ['keyDown', 'keyUp']) await send('Input.dispatchKeyEvent', Object.assign({ type, key, code, windowsVirtualKeyCode: {Tab: 9, Enter: 13, Escape: 27, ArrowRight: 39}[key], modifiers: shift ? 8 : 0 }, type === 'keyDown' && key === 'Enter' ? { text: '\r' } : {})); await sleep(120); };
-    check('L7 tabs: a tablist with five tabs, the open one marked aria-selected', await ev(`(function(){ var l = document.querySelectorAll('#nav [role=tablist] [role=tab]');
+    check('L7 tabs: a tablist with five tabs, the open one marked aria-selected', await ev(`(function(){ var l = document.querySelector('#nav [role=tablist]').getAttribute('aria-owns').split(' ').map(function(i){ return document.getElementById(i); });
       return [l.length, Array.prototype.map.call(l, function(b){ return b.getAttribute('aria-selected'); }).join(','), document.documentElement.lang]; })()`), [5, 'true,false,false,false,false', 'es-AR']);
     await ev(`document.getElementById('tab-mes').focus(); true`);
     await tecla('ArrowRight', 'ArrowRight');
@@ -1574,6 +1574,19 @@ try{
     await tecla('Enter', 'Enter'); await sleep(600);
     check('L7 sheet: after Guardar re-draws the month, the focus is on the (new) button that opened the sheet', await ev(`(function(){ var a = document.activeElement;
       return [document.getElementById('velo').classList.contains('on'), a.tagName, a.getAttribute('data-act'), a.getAttribute('data-i'), a.isConnected]; })()`), [false, 'BUTTON', 'cobro', '1', true]);
+    // L7 review: the tab bar is gone through with Tab in the order it is seen (Gasto third), and it is still one tablist of five tabs
+    const visual = await ev(`Array.prototype.filter.call(document.querySelectorAll('#nav button'), function(b){ return b.offsetParent !== null; })
+      .sort(function(p, q){ return p.getBoundingClientRect().left - q.getBoundingClientRect().left; }).map(function(b){ return b.id; })`);
+    await ev(`document.getElementById('tab-mes').focus(); true`);
+    const porTab = [await ev(`document.activeElement.id`)];
+    for(let k = 1; k < visual.length; k++){ await tecla('Tab', 'Tab'); porTab.push(await ev(`document.activeElement.id`)); }
+    check('L7 keyboard: Tab goes through the tab bar in the order it is seen', [porTab, visual.length], [visual, 6]);
+    await send('Accessibility.enable');
+    const ax = (await send('Accessibility.getFullAXTree')).result.nodes;
+    const listas = ax.filter(n => !n.ignored && n.role && n.role.value === 'tablist');
+    const hijos = listas.length ? (listas[0].childIds || []).map(i => ax.find(n => n.nodeId === i)).filter(n => n && !n.ignored).map(n => n.role.value + ':' + (n.name && n.name.value)) : [];
+    check('L7 tabs: the accessibility tree has one tablist with the five tabs, Gasto outside it', [listas.length, hijos], [1, ['tab:Mes', 'tab:Año', 'tab:Patrimonio', 'tab:Trabajo', 'tab:Ajustes']]);
+    await send('Accessibility.disable');
 
     // hidden amounts: the dots are read as "oculto"
     await ev(`document.querySelector('[data-act=ojo]').click(); true`); await sleep(500);
