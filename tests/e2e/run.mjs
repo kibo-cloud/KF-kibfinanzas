@@ -1039,6 +1039,161 @@ try{
       [await texto('#hero .hero-lbl'), await textos('#heroChips .chip'), await texto('#bigFinal')], ['Disponible final', ['Cálculo simple'], await ev('fARS(calc(D.meses[9]).disponibleFinal)')]);
   }
 
+  // ── L1 (P3b): El año, Patrimonio, Trabajo, the update notice, Gasto in the tab bar, desktop, one vocabulary, fit ──
+  // hoy here is 2026-10-04. Model year from September (as the P3a block) plus: US$ 1.200 from last year, US$ 100 bought in September and
+  // US$ 50 scheduled for November; Trabajo (professional) with 1.000.000 collected, a pase on 2/10 (300.000, realized) and one on 5/11
+  // (200.000, scheduled, Q4), one open invoice due in 20 days.
+  {
+    const ms = []; for(let i=0;i<12;i++) ms.push(mes([], [], [], []));
+    ms[8] = Object.assign(mes([it('Sueldo', 1000000, true)], [it('Alquiler', 400000, true), it('Luz', 20000, false)], [it('Super', 200000, true)], []),
+      {ahorroMesARS: 150000, compraARS: 145000, compraUSD: 100, cierreReal: {valor: 275000, calculadoAlConfirmar: 280000, confirmadoEl: '2026-10-01'}});
+    ms[9] = mes([it('Sueldo', 1000000, true), it('Del trabajo', 400000, false), it('Aguinaldo', 120000, false)], [it('Alquiler', 400000, true), it('Internet', 22000, false)], [], [it('Préstamo', 100000, false)]);
+    ms[10] = Object.assign(mes([it('Sueldo', 1000000, true), it('Del trabajo', 200000, false)], [it('Alquiler', 400000, false)], [], [it('Préstamo', 100000, false)]), {ahorroMesARS: 100000, ahorroMesUSD: 50});
+    const y = {anio: 2026, pagoExplicito: true, cotizacionUSD: 1500, cotizacionFecha: '2026-10-01T12:00:00.000Z', ahorroAnioAnterior: 600000, usdAnioAnterior: 1200,
+      cripto: [{activo: 'BTC', cantidad: 0.01, precioUSD: 60000}], meses: ms, planDeudas: {'Préstamo': {total: 1200000, recargo: 0, cuotas: 12, pagadasAntes: 9}},
+      arrastre: {desde: 8, inicial: {apertura: 50000, declarado: 50000, declaradoEl: '2026-09-01', origen: 'declarado'}}};
+    const tj = {version: 1, activo: true, modo: 'pro', gastos: [], productos: [], tope: 0,
+      facturas: [{id: 'f1', tipo: 'factura', cliente: 'Panadería', numero: 'A-1', concepto: 'Mantenimiento', monto: 320000, cantidad: 1, precio: 320000, base: 320000, ajuste: 0, fecha: '2026-09-24', contado: false, plazo: 30, forma: 'transferencia', creada: '2026-09-24T10:00:00.000Z'}],
+      cobros: [{id: 'c1', cliente: '', monto: 1000000, fecha: '2026-01-01', forma: 'transferencia', aplic: []}],
+      pases: [{id: 'p1', fecha: '2026-10-02', monto: 300000, anio: 2026, mes: 9}, {id: 'p2', fecha: '2026-11-05', monto: 200000, anio: 2026, mes: 10}]};
+    const seed = async (year, trabajo, sinEsquema) => { await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); localStorage.setItem('kibo.ultimaCopia', new Date().toISOString()); ${sinEsquema ? '' : "localStorage.setItem('kibo.esquema', '1.30');"} localStorage.setItem('kibo.anio','${year.anio}');
+      localStorage.setItem('kibo.datos.${year.anio}', ${JSON.stringify(JSON.stringify(year))}); ${trabajo ? `localStorage.setItem('kibo.trabajo', ${JSON.stringify(JSON.stringify(trabajo))});` : ''} true`); await nav(URL_APP); await sleep(1300); };
+    const tamano = async (w, h) => { await send('Emulation.setDeviceMetricsOverride', { width: w, height: h || (w < 800 ? 844 : 900), deviceScaleFactor: w < 800 ? 2 : 1, mobile: w < 800 }); await sleep(400); };
+    const texto = (sel) => ev(`(document.querySelector(${JSON.stringify(sel)}) || {textContent: ''}).textContent`);
+    const textos = (sel) => ev(`Array.prototype.map.call(document.querySelectorAll(${JSON.stringify(sel)}), function(e){ return e.textContent; })`);
+    const irTab = async (t) => { await ev(`document.querySelector('[data-act=tab][data-t=${t}]').click(); true`); await sleep(1200); };
+    const filaAn = (k) => ev(`(function(){ var r = document.querySelector('#heroAnio [data-an=${k}]'); return r ? [r.querySelector('span').textContent, r.querySelector('b').textContent] : null; })()`);
+    const celdas = (sec, i) => ev(`(function(){ var r = document.querySelectorAll('#v-${sec === 'anTabla' ? 'anio' : 'usd'} [data-sec=${sec}] tbody tr')[${i}]; return r ? Array.prototype.map.call(r.children, function(c){ return c.textContent; }) : null; })()`);
+    const P = () => ev(`plain(patrimonioPantalla(D, hoyApp()))`);
+    await tamano(390);
+    await seed(y, tj);
+    const heroMes = await texto('#bigFinal');
+
+    // 1 · El año: a hoy vs al cierre del año (estimado), each figure labeled and equal to its source
+    await irTab('anio');
+    const p0 = await P(), tot = await celdas('anTabla', 12);
+    check('L1 El año: one hero, first, "Tenés hoy" = the month hero (the chain), chip "A hoy"',
+      [await ev(`document.querySelector('#v-anio').firstElementChild.id`), await ev(`document.querySelectorAll('#v-anio .saldo.hero').length`), await texto('#heroAnio .hero-lbl'), await texto('#anBig'), await textos('#heroAnio .chip')],
+      ['heroAnio', 1, 'Tenés hoy', heroMes, ['A hoy']]);
+    check('L1 El año: "Ahorro acumulado a hoy" = the Patrimonio source (patrimonioNeto)', await filaAn('ahorroHoy'), ['Ahorro acumulado a hoy', await ev(`fARS(${p0.ahorroARS})`)]);
+    check('L1 El año: the two December figures have distinct labels; the closing ones equal the table Total (December row of the chain)',
+      [await filaAn('dispCierre'), await filaAn('ahorroCierre'), await texto('#heroAnio .an-tit')],
+      [['Disponible al cierre de diciembre (estimado)', tot[8]], ['Ahorro al cierre de diciembre (estimado, con lo programado)', tot[9]], 'Al cierre del año (estimado)']);
+    check('L1 El año: the pace is not the closing ("Ahorro a este ritmo en diciembre"); "Ahorro con el que arrancaste el año" replaces "Arranque del año"; the table says the closing is estimated',
+      await ev(`(function(){ var t = document.getElementById('v-anio').textContent; return [t.indexOf('Ahorro a este ritmo en diciembre:') >= 0, t.indexOf('A este ritmo cerrás') < 0, t.indexOf('Ahorro con el que arrancaste el año') >= 0, t.indexOf('Arranque del año') < 0,
+        document.querySelector('#v-anio [data-sec=anTabla] .sub').textContent === 'Cierre ' + ${JSON.stringify(tot[8])} + 'estimado']; })()`), [true, true, true, true, true]);
+    check('L1 El año: "Ahorro acumulado" header says it is December, estimated', await texto('#v-anio [data-sec=anAhorro] .sub'), tot[9] + 'en diciembre · estimado');
+
+    // 2 · Patrimonio: the tab is named Patrimonio (internal id usd), the answer first, dollars a hoy vs programado
+    check('L1 Patrimonio: the tab bar says "Patrimonio" (data-t stays "usd"); no "USD" tab label', [(await texto('#nav [data-t=usd]')).trim(), await ev(`Array.prototype.some.call(document.querySelectorAll('#nav button'), function(b){ return b.textContent.trim() === 'USD'; })`)], ['Patrimonio', false]);
+    await irTab('usd');
+    const p1 = await P(), s11 = await ev(`serie(D)[11].usdAcumulado`);
+    check('L1 Patrimonio: the hero comes first: net worth in pesos, the dollar equivalent below it',
+      [await ev(`document.querySelector('#v-usd').firstElementChild.id`), await texto('#heroPatri .hero-lbl'), await texto('#bigPatri'), await texto('#patriUSD')],
+      ['heroPatri', 'Patrimonio neto a hoy', await ev(`fARS(${p1.patrimonioARS})`), 'En dólares: ' + await ev(`fUSD(${p1.patrimonioUSD})`)]);
+    check('L1 Patrimonio: order hero → composition → dollars → Datos; the inputs live only in Datos',
+      await ev(`(function(){ var v = document.getElementById('v-usd'), k = ['#heroPatri', '[data-sec=usdPatri]', '[data-sec=usdMeses]', '[data-sec=usdDatos]'].map(function(s){ return Array.prototype.indexOf.call(v.children, v.querySelector(s)); });
+        var datos = v.querySelector('[data-sec=usdDatos]'); return [k[0] < k[1] && k[1] < k[2] && k[2] < k[3], ['cotizacionUSD', 'usdAnioAnterior'].every(function(c){ var x = v.querySelectorAll('[data-campo=' + c + ']'); return x.length === 1 && datos.contains(x[0]); }), datos.contains(v.querySelector('[data-act=addCripto]'))]; })()`), [true, true, true]);
+    check('L1 Patrimonio: "Dólares mes a mes" never mixes the scheduled US$ 50 into "a hoy": A hoy = the composition dollars, programado apart',
+      [s11 - p1.usd, (await celdas('usdMeses', 12))[0], (await celdas('usdMeses', 12))[3], (await celdas('usdMeses', 13))[0], (await celdas('usdMeses', 13))[1], (await celdas('usdMeses', 13))[3],
+       await ev(`document.querySelector('#v-usd [data-pat=usd] label').textContent.indexOf(fUSD(${p1.usd})) >= 0`)],
+      [50, 'A hoy', await ev(`fUSD(${p1.usd})`), 'Con lo programado', await ev(`fUSD(50)`), await ev(`fUSD(${s11})`), true]);
+    check('L1 Patrimonio: the November row says "programado"; the header shows the a hoy amount', [(await celdas('usdMeses', 10))[0], await texto('#v-usd [data-sec=usdMeses] .sub')],
+      ['Noviembre programado', await ev(`fUSD(${p1.usd})`) + 'a hoy']);
+
+    // 3 · Trabajo: "Lo que pasaste a lo personal" = Ya pasaste + Programado, matching "Disponible del trabajo"; one due-date concept
+    await irTab('trabajo');
+    check('L1 Trabajo: "Lo que pasaste a lo personal": ya pasaste 300.000 + programado 200.000 (the future pase, Q4)',
+      [await texto('#v-trabajo [data-sec=tjPases] .nom'), await ev(`Array.prototype.map.call(document.querySelectorAll('#v-trabajo [data-pp]'), function(r){ return r.textContent; })`), await texto('#v-trabajo [data-sec=tjPases] .sub')],
+      ['Lo que pasaste a lo personal', ['Ya pasaste' + await ev('fARS(300000)'), 'Programado' + await ev('fARS(200000)')], await ev('fARS(300000)') + 'programado ' + await ev('fARS(200000)')]);
+    check('L1 Trabajo: "Disponible del trabajo" = cobrado - lo que ya pasaste (1.000.000 - 300.000), explained with the same words',
+      [await texto('#tjDisp'), (await texto('#v-trabajo .saldo .final')).indexOf('lo que ya pasaste a lo personal (' + await ev('fARS(300000)') + ')') >= 0, await texto('#tjProgPase')],
+      [await ev('fARS(700000)'), true, 'Programado para pasar a lo personal: ' + await ev('fARS(200000)') + '. Se descuenta en su fecha.']);
+    check('L1 Trabajo: the scheduled pase row says "Programado para el …"', await ev(`Array.prototype.some.call(document.querySelectorAll('#v-trabajo [data-act=tjVerPase] small'), function(s){ return s.textContent.indexOf('Programado para el') === 0; })`), true);
+    check('L1 Trabajo: one due-date concept: the tile says "Vence en 30 días o menos" like the invoice "Vence en N días"; no "Entra en"',
+      [await ev(`Array.prototype.map.call(document.querySelectorAll('#v-trabajo .saldo .tri small'), function(s){ return s.textContent; })`), (await texto('#v-trabajo [data-sec=tjPend]')).indexOf('Vence en ') >= 0, (await texto('#v-trabajo')).indexOf('Entra en') < 0],
+      [['Por cobrar', 'Vencido', 'Vence en 30 días o menos'], true, true]);
+
+    // 7 · one vocabulary: the balance block uses the hero words
+    await irTab('mes');
+    check('L1 vocabulary: the balance block says "Tenés hoy" / "Al cierre (estimado)" like the hero; the old terms are gone',
+      await ev(`(function(){ var t = document.getElementById('v-mes').textContent; return [t.indexOf('Tenés hoy') >= 0, t.indexOf('Al cierre (estimado)') >= 0, t.indexOf('Disponible actual') < 0, t.indexOf('Proyectado al cierre') < 0]; })()`), [true, true, true, true]);
+
+    // 6 · Gasto lives in the tab bar: never over an amount at 360 / 390 / 430; the ?gasto=1 shortcut and the action from another tab still work
+    const solapa = `(function(){ var f = document.getElementById('fab'), n = document.getElementById('nav'), hd = document.querySelector('header'); if(!f) return ['no Gasto'];
+      var r = f.getBoundingClientRect(), nr = n.getBoundingClientRect(), top = hd.getBoundingClientRect().bottom, out = [];
+      if(!n.contains(f) || r.top < nr.top - 0.5) out.push('Gasto is not inside the tab bar');
+      document.querySelectorAll('main *').forEach(function(e){ if(e.children.length || e.textContent.indexOf('$') < 0) return; var q = e.getBoundingClientRect(); if(!q.width || !q.height) return;
+        if(q.bottom <= top || q.top >= nr.top) return;   // only what is visible between the header and the tab bar
+        if(q.left < r.right && q.right > r.left && q.top < r.bottom && q.bottom > r.top) out.push(e.textContent.trim().slice(0, 30)); });
+      return out; })()`;
+    for(const w of [360, 390, 430]){
+      await tamano(w); await seed(y, tj);
+      check(`L1 Gasto at ${w} px: inside the tab bar, over no amount at load`, await ev(solapa), []);
+    }
+    await tamano(390);
+    await irTab('anio'); await ev(`document.getElementById('fab').click(); true`); await sleep(700);
+    check('L1 Gasto from another tab: goes to the month and opens the sheet', [await ev(`document.querySelector('#nav button.on').getAttribute('data-t')`), await ev(`!!document.getElementById('grMonto')`)], ['mes', true]);
+    // 5 · expense sheet polish
+    check('L1 expense sheet: the amount carries "$", a placeholder, and the button says "Sumar gasto"',
+      [await texto('#hoja .gr-monto span'), await ev(`document.getElementById('grMonto').placeholder`), await texto('#hoja [data-act=confirmarGasto]'),
+       await ev(`(function(){ var s = document.querySelector('#hoja .gr-monto span').getBoundingClientRect(), i = document.getElementById('grMonto').getBoundingClientRect(); return s.left > i.left && s.right < i.left + 48; })()`)],
+      ['$', '0', 'Sumar gasto', true]);
+    await ev(`(function(){ var b = document.querySelector('#hoja [data-act=cerrarHoja]'); if(b) b.click(); return true; })()`); await sleep(400);
+    await nav(URL_APP + '?gasto=1'); await sleep(1000);
+    check('L1 the PWA shortcut ?gasto=1 still opens the expense sheet', await ev(`!!document.getElementById('grMonto')`), true);
+    await nav(URL_APP); await sleep(800);
+
+    // 4 · the update notice: the real version, one notice at a time, "Tenés hoy" still on the first screen at 390
+    await seed(y, tj, true); await sleep(400);
+    check('L1 update notice: says the real APPVER, alone, and "Tenés hoy" stays above the tab bar at 390 x 844',
+      [await ev(`document.getElementById('avisoVersion').textContent.indexOf('versión ' + APPVER + '.') >= 0`), await ev(`document.getElementById('avisoVersion').textContent.indexOf('1.30') < 0`),
+       await ev(`Array.prototype.filter.call(document.querySelectorAll('.aviso'), function(a){ return a.offsetHeight > 0; }).length`),
+       await ev(`document.getElementById('bigFinal').getBoundingClientRect().bottom <= document.getElementById('nav').getBoundingClientRect().top`)],
+      [true, true, 1, true]);
+    const ySinConfirmar = JSON.parse(JSON.stringify(y)); delete ySinConfirmar.meses[8].cierreReal;
+    await seed(ySinConfirmar, tj, true); await sleep(400);
+    check('L1 update notice: waits while the start-of-month question is open (one notice at a time)',
+      [await ev(`!!document.getElementById('avisoCierre') && document.getElementById('avisoCierre').offsetHeight > 0`), await ev(`!!document.getElementById('avisoVersion') && document.getElementById('avisoVersion').offsetHeight === 0`)], [true, true]);
+
+    // 8 · fit on these screens: tap targets >= 44, text >= 11 px, no overflow at 360 / 390 / 430; chart axis text >= 11 px
+    const chicos = (v) => `(function(){ var out = []; document.querySelectorAll('#${v} button, #${v} a, #${v} [data-act], #${v} summary').forEach(function(t){
+      var r = t.getBoundingClientRect(); if(!r.width || !r.height || getComputedStyle(t).visibility === 'hidden') return;
+      if(r.width < 44 || r.height < 44) out.push((t.getAttribute('data-act') || t.className || t.tagName) + ' ' + Math.round(r.width) + 'x' + Math.round(r.height)); }); return out; })()`;
+    const letra = (v) => `(function(){ var out = []; document.querySelectorAll('#${v} *').forEach(function(e){ if(e.closest('svg')) return; if(!Array.prototype.some.call(e.childNodes, function(n){ return n.nodeType === 3 && n.nodeValue.trim(); })) return;
+      if(!e.getBoundingClientRect().width) return; var f = parseFloat(getComputedStyle(e).fontSize); if(f < 11) out.push(e.tagName + ' ' + f + ' ' + e.textContent.trim().slice(0, 20)); }); return out.slice(0, 5); })()`;
+    const anchos = (v) => `(function(){ var W = innerWidth, out = []; if(document.documentElement.scrollWidth > W) out.push('page ' + document.documentElement.scrollWidth);
+      document.querySelectorAll('#${v} *').forEach(function(e){ if(e.closest('.tabla') || e.closest('.tj-carps')) return; var r = e.getBoundingClientRect(); if(r.width && r.right > W + 1) out.push(e.tagName + '.' + e.className + ' ' + Math.round(r.right)); });
+      return out.slice(0, 5); })()`;
+    const ejes = `(function(){ var out = []; document.querySelectorAll('#v-anio .chart svg').forEach(function(s){ var k = s.getBoundingClientRect().width / s.viewBox.baseVal.width;
+      s.querySelectorAll('text').forEach(function(t){ var px = parseFloat(t.getAttribute('font-size')) * k; if(px < 11) out.push(t.textContent + ' ' + px.toFixed(1)); }); }); return out.slice(0, 5); })()`;
+    await seed(y, tj);
+    for(const w of [360, 390, 430]){
+      await tamano(w);
+      for(const [t, v] of [['anio', 'v-anio'], ['usd', 'v-usd'], ['trabajo', 'v-trabajo']]){
+        await irTab(t);
+        if(t === 'anio') await ev(`(function(){ ['anGraf', 'anAhorro'].forEach(function(k){ var s = document.querySelector('#v-anio [data-sec=' + k + ']'); if(s && s.classList.contains('cerrada')) s.querySelector('.sechd').click(); }); return true; })()`);
+        await sleep(300);
+        if(w === 390) check(`L1 tap targets on "${t}" at 390: all at least 44 x 44`, await ev(chicos(v)), []);
+        if(w === 390) check(`L1 text on "${t}" at 390: nothing under 11 px`, await ev(letra(v)), []);
+        check(`L1 no horizontal overflow on "${t}" at ${w} px`, await ev(anchos(v)), []);
+        if(t === 'anio' && w === 360) check('L1 chart axis labels at 360 px render at 11 px or more', await ev(ejes), []);
+      }
+    }
+
+    // 5 · desktop: the month bar shows all twelve months (ENE / FEB not clipped) and the tab bar spans the content width
+    await tamano(1280); await seed(y, tj);
+    check('L1 1280: the month bar shows all twelve months inside the content, nothing scrolled away',
+      await ev(`(function(){ var m = document.getElementById('selMes'), r = m.getBoundingClientRect(), b = m.querySelectorAll('button');
+        return [b.length, m.scrollWidth <= m.clientWidth + 1, Array.prototype.every.call(b, function(x){ var q = x.getBoundingClientRect(); return q.left >= r.left - 1 && q.right <= r.right + 1 && q.width >= 44; })]; })()`), [12, true, true]);
+    check('L1 1280: the tab bar is as wide as the content (first and last tab aligned with the month bar)',
+      await ev(`(function(){ var m = document.getElementById('selMes').getBoundingClientRect(), b = document.querySelectorAll('#nav button'), v = Array.prototype.filter.call(b, function(x){ return x.offsetWidth; });
+        var a = v[0].getBoundingClientRect(), z = v[v.length - 1].getBoundingClientRect(); return [Math.abs(a.left - m.left) <= 1, Math.abs(z.right - m.right) <= 1]; })()`), [true, true]);
+    await irTab('anio');
+    check('L1 1280: chart axis labels stay legible (11 px or more)', await ev(ejes), []);
+    await send('Emulation.clearDeviceMetricsOverride');
+  }
+
   check('no uncaught page errors', pageErrs, []);
 }catch(e){ fails++; results.push('ERROR ' + e.message); }
 finally{
