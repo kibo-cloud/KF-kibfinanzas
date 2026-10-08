@@ -18,7 +18,7 @@
 :root{
   --bg:#f2f2f7; --card:#ffffff; --card2:#ffffff; --txt:#111114; --txt2:#6c6c70;
   --sep:rgba(60,60,67,.13); --acc:#177a45; --acc-soft:rgba(23,122,69,.12); --on-acc:#ffffff;
-  --neg:#c23a30; --fill:#e9e9ee; --shadow:0 1px 2px rgba(0,0,0,.04),0 6px 18px rgba(0,0,0,.05);
+  --neg:#c23a30; --fill:#e9e9ee; --on-fill:#636366; --on-neg:#ffffff; --shadow:0 1px 2px rgba(0,0,0,.04),0 6px 18px rgba(0,0,0,.05);
   --nav:rgba(248,248,250,.88); --r:14px; --halo:rgba(23,122,69,.10);
   --dig:#1a6bc4; --dig-soft:rgba(26,107,196,.10);
 }
@@ -26,21 +26,21 @@
   :root{
     --bg:#000000; --card:#161618; --card2:#1e1e21; --txt:#f4f4f6; --txt2:#8e8e93;
     --sep:rgba(255,255,255,.10); --acc:#34c17b; --acc-soft:rgba(52,193,123,.16); --on-acc:#06210f;
-    --neg:#f0655b; --fill:#2a2a2e; --shadow:none; --nav:rgba(20,20,22,.86); --halo:rgba(52,193,123,.16);
+    --neg:#f0655b; --fill:#2a2a2e; --on-fill:#a1a1a6; --on-neg:#2a0805; --shadow:none; --nav:rgba(20,20,22,.86); --halo:rgba(52,193,123,.16);
     --dig:#6cb2ff; --dig-soft:rgba(108,178,255,.15);
   }
 }
 html[data-tema="claro"]{
   --bg:#f2f2f7; --card:#ffffff; --card2:#ffffff; --txt:#111114; --txt2:#6c6c70;
   --sep:rgba(60,60,67,.13); --acc:#177a45; --acc-soft:rgba(23,122,69,.12); --on-acc:#ffffff;
-  --neg:#c23a30; --fill:#e9e9ee; --shadow:0 1px 2px rgba(0,0,0,.04),0 6px 18px rgba(0,0,0,.05);
+  --neg:#c23a30; --fill:#e9e9ee; --on-fill:#636366; --on-neg:#ffffff; --shadow:0 1px 2px rgba(0,0,0,.04),0 6px 18px rgba(0,0,0,.05);
   --nav:rgba(248,248,250,.88); --halo:rgba(23,122,69,.10);
   --dig:#1a6bc4; --dig-soft:rgba(26,107,196,.10);
 }
 html[data-tema="oscuro"]{
   --bg:#000000; --card:#161618; --card2:#1e1e21; --txt:#f4f4f6; --txt2:#8e8e93;
   --sep:rgba(255,255,255,.10); --acc:#34c17b; --acc-soft:rgba(52,193,123,.16); --on-acc:#06210f;
-  --neg:#f0655b; --fill:#2a2a2e; --shadow:none; --nav:rgba(20,20,22,.86); --halo:rgba(52,193,123,.16);
+  --neg:#f0655b; --fill:#2a2a2e; --on-fill:#a1a1a6; --on-neg:#2a0805; --shadow:none; --nav:rgba(20,20,22,.86); --halo:rgba(52,193,123,.16);
   --dig:#6cb2ff; --dig-soft:rgba(108,178,255,.15);
 }
 /* ═══ P3a · tokens de diseño (TuGasto 1.3) ═══
@@ -367,12 +367,12 @@ nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;st
 .hoja .fila button{flex:1;min-height:50px;border-radius:14px;font-size:16px;font-weight:600;background:var(--fill)}
 .hoja .fila button.pri{background:var(--acc);color:var(--on-acc)}
 .hoja .fila button.mal{color:var(--neg)}
-.hoja .fila button.pri.mal{background:var(--neg);color:#fff}
+.hoja .fila button.pri.mal{background:var(--neg);color:var(--on-neg)}   /* L7 review: blanco sobre el rojo oscuro daba 3,1:1 */
 
 .neg{color:var(--neg)}
 /* P3a: chips de estado (una palabra que acompaña al color) */
 .chip{display:inline-flex;align-items:center;gap:4px;min-height:22px;padding:2px 9px;border-radius:11px;font-size:12px;font-weight:600;
-  line-height:1.2;white-space:nowrap;background:var(--fill);color:var(--txt2);vertical-align:middle}
+  line-height:1.2;white-space:nowrap;background:var(--fill);color:var(--on-fill);vertical-align:middle}
 .chip.real{background:var(--c-real-bg);color:var(--c-real)}
 .chip.pend{background:var(--c-pend-bg);color:var(--c-pend)}
 .chip.atras{background:var(--c-atras-bg);color:var(--c-atras)}

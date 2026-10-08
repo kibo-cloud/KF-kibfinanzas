@@ -85,6 +85,20 @@ test('L7 contrast: the text on a green button (Guardar, Gasto, the selected mont
   // white on the dark theme's light green was 2.3:1: every green fill uses --on-acc for its text
   assert.equal(/background:var\(--acc\);color:#fff/.test(CSS), false);
 });
+// L7 review: the destructive sheet button (text on --neg) and the neutral chip (12 px text on --fill) reach 4.5:1 in both themes
+test('L7 contrast: the red "Borrar" button and the neutral chip reach 4.5:1 in both themes', function(){
+  var T = temas(), out = [];
+  ['light', 'dark'].forEach(function(k){
+    var card = color(valor(T[k], 'card'));
+    [['on-neg', 'neg'], ['on-fill', 'fill']].forEach(function(p){
+      var c = contraste(color(valor(T[k], p[0])), sobre(color(valor(T[k], p[1])), card));
+      if(c < 4.5) out.push(k + ' ' + p[0] + ' on ' + p[1] + ' ' + c.toFixed(2));
+    });
+  });
+  assert.deepEqual(out, []);
+  tiene(CSS, /\.hoja \.fila button\.pri\.mal\{background:var\(--neg\);color:var\(--on-neg\)\}/);
+  tiene(CSS, /\.chip\{[^}]*background:var\(--fill\);color:var\(--on-fill\)/);
+});
 test('L7 the forced themes repeat the system themes value by value (Ajustes > Tema shows the same colors)', function(){
   var T = temas(), dif = [];
   Object.keys(T.claro).forEach(function(k){ if(T.claro[k] !== T.light[k]) dif.push('claro --' + k + ' ' + T.claro[k] + ' != ' + T.light[k]); });
