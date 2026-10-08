@@ -609,9 +609,26 @@ nav button.on .np{background:var(--acc-soft)}
 .hero-preg p{font-size:var(--fs-row)}
 .hero-preg p b{font-size:var(--fs-sec)}
 .nota.vacia{padding:14px 16px 2px;font-size:15px}
+/* L5: lo que vence esta semana, debajo de la tarjeta principal del mes en curso */
+.vence{margin:var(--gap) 0;padding:var(--s3) var(--pad-card) var(--s1)}
+.vence-hd{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding-bottom:4px}
+.vence-hd b{font-size:var(--fs-sec);font-weight:600}
+.vence-hd small{font-size:var(--fs-cap);color:var(--txt2);white-space:nowrap}
+.vence-f{display:flex;align-items:center;gap:10px;width:100%;min-height:var(--row);margin:0;padding:6px 0;border:0;border-top:1px solid var(--sep);
+  border-radius:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.vence-f:active{opacity:.7}
+.vence-f .chip{flex:0 0 auto;min-width:84px;justify-content:center}
+.vence-f .vn{flex:1;min-width:0;display:flex;flex-direction:column}
+.vence-f .vn span{font-size:var(--fs-row);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vence-f .vn small{font-size:var(--fs-cap);color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vence-f>b{font-size:var(--fs-row);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.vence-mas{padding:6px 0 10px;border-top:1px solid var(--sep)}
+.item.resalta{animation:resalta 1.8s ease-out}
+@keyframes resalta{0%,55%{background:var(--c-pend-bg)}100%{background:transparent}}
+@media (prefers-reduced-motion:reduce){.item.resalta{animation:none;background:var(--c-pend-bg)}}
 /* P3a: instalación nueva: una sola pregunta a la vez. Mientras se ve "Esta app está vacía" (restaurar o empezar de cero) no aparece la
    pregunta del primer uso ni la tarjeta; al elegir "Empezar de cero" se ve la pregunta, en el lugar de la tarjeta */
-body:has(#avisos [data-av="vacia"]) #avisoSaldo,body:has(#avisos [data-av="vacia"]) #carrMes{display:none}
+body:has(#avisos [data-av="vacia"]) #avisoSaldo,body:has(#avisos [data-av="vacia"]) #carrMes,body:has(#avisos [data-av="vacia"]) #vence{display:none}
 /* y mientras la pregunta del primer uso espera, los recordatorios comunes (copia, novedades) esperan con ella; los avisos de datos en riesgo
    (data-av: cuarentena, otra pestaña) se ven siempre */
 body:has(#primerUso) #avisos>.aviso:not([data-av]){display:none}
@@ -3082,6 +3099,122 @@ function irA(v){
   if(el.classList.contains('sec') && el.classList.contains('cerrada')){ D.ui.col[el.getAttribute('data-sec')] = false; el.classList.remove('cerrada'); tocar(); }
   if(el.scrollIntoView) el.scrollIntoView({behavior: menosMovimiento() ? 'auto' : 'smooth', block: 'start'});
 }
+/* ═══ L5: "Qué vence esta semana" (solo el mes en curso) ═══
+   Lista lo que ya tiene una fecha o un límite, sin inventar ninguno: (1) lo atrasado de meses anteriores del modelo (los mismos renglones
+   sin tildar que suma el chip "Atrasado" / "Sin cobrar de antes", cadena.resumen.vencidos); (2) los ingresos con días de cobro cargados
+   ("¿Cada cuánto lo cobrás?"); (3) lo que no tiene día vence con el mes: entra en los últimos 7 días (pasado fin de mes ya es "Atrasado",
+   la regla de siempre); (4) las facturas de Trabajo con saldo, por su vencimiento (venceFac), igual que "Cobranza de la semana". Los
+   gastos y las cuotas no tienen un día propio. "Del trabajo" no entra: lo pendiente del trabajo son sus facturas. Cada monto es el del
+   renglón (o el saldo de la factura): ninguna cuenta nueva. */
+var DIAS_VENCE = 7;    // ventana de presentación: los próximos 7 días (la misma semana que usa "Cobranza de la semana")
+var VENCE_MAX = 6;     // renglones a la vista; el resto se resume en "y N más"
+function isoDe(anio, m, dia){ return anio + '-' + dos(m + 1) + '-' + dos(dia); }
+// los días del mes m en que se cobra un ingreso, según lo que cargó el usuario (cuantosPagos usa la misma regla; semanal sin día = viernes)
+function diasCobro(it, anio, m){
+  var dim = diasDelMes(anio, m), out = [], q, dw;
+  if(it.frec === 'semanal'){ dw = it.dias.length ? it.dias[0] : 5; for(q=1;q<=dim;q++) if(new Date(anio, m, q).getDay() === dw) out.push(q); return out; }
+  if(it.frec === 'quincenal' || it.frec === 'dias' || it.frec === 'mensual'){
+    for(q=0;q<it.dias.length;q++) if(it.dias[q] >= 1 && it.dias[q] <= dim && out.indexOf(it.dias[q]) < 0) out.push(it.dias[q]);
+  }
+  return out.sort(function(a, b){ return a - b; });
+}
+// facturas = [{id, nombre, saldo, vence:'YYYY-MM-DD'}] (las arma facturasAVencer desde Trabajo); devuelve los renglones ordenados:
+// atrasado primero, después por fecha, a igual fecha el monto mayor primero
+function vencimientos(d, j, hoy, facturas){
+  if(!d || estadoMes(d.anio, j, hoy) !== 'actual') return [];
+  var out = [], secs = ['ingresos', 'gastosFijos', 'gastosVariables', 'deudas'], dim = diasDelMes(d.anio, j);
+  var desde = mesDelModelo(d, j) ? Math.max(0, Math.round(num(d.arrastre.desde))) : j, jj, s, i, k, it, dias, prox, q, f, dv;
+  var pend = function(jm, k, it){ return !estaPagado(jm, it) && num(it.monto) > 0 && !(k === 'ingresos' && esRenglonTrabajo(it.nombre)); };
+  var tipo = function(k){ return k === 'ingresos' ? 'cobrar' : 'pagar'; };
+  for(jj=desde;jj<j;jj++) for(s=0;s<secs.length;s++){
+    k = secs[s];
+    for(i=0;i<d.meses[jj][k].length;i++){
+      it = d.meses[jj][k][i]; if(!pend(jj, k, it)) continue;
+      out.push({atrasado: true, tipo: tipo(k), nombre: String(it.nombre || ''), monto: num(it.monto), fecha: isoDe(d.anio, jj, diasDelMes(d.anio, jj)), mes: jj, k: k, i: i, deMes: jj});
+    }
+  }
+  for(s=0;s<secs.length;s++){
+    k = secs[s];
+    for(i=0;i<d.meses[j][k].length;i++){
+      it = d.meses[j][k][i]; if(!pend(j, k, it)) continue;
+      dias = k === 'ingresos' ? diasCobro(it, d.anio, j) : [];
+      var x = {atrasado: false, tipo: tipo(k), nombre: String(it.nombre || ''), monto: num(it.monto), mes: j, k: k, i: i};
+      if(dias.length){
+        if(dias[dias.length - 1] < hoy.dia){ x.atrasado = true; x.era = dias[dias.length - 1]; x.fecha = isoDe(d.anio, j, x.era); out.push(x); continue; }
+        prox = dias[0]; for(q=0;q<dias.length;q++) if(dias[q] >= hoy.dia){ prox = dias[q]; break; }
+        if(prox - hoy.dia <= DIAS_VENCE){ x.fecha = isoDe(d.anio, j, prox); x.dia = prox; out.push(x); }
+      } else if(dim - hoy.dia <= DIAS_VENCE){ x.fecha = isoDe(d.anio, j, dim); x.dia = dim; x.finDeMes = true; out.push(x); }
+    }
+  }
+  for(i=0;i<(facturas || []).length;i++){
+    f = facturas[i]; if(!(num(f.saldo) > 0)) continue;
+    dv = diasEntre(hoy.iso, f.vence);
+    if(dv < 0 || dv <= DIAS_VENCE) out.push({atrasado: dv < 0, tipo: 'cobrar', trabajo: true, nombre: String(f.nombre || ''), monto: num(f.saldo), fecha: f.vence, id: f.id});
+  }
+  out.sort(function(a, b){
+    if(a.atrasado !== b.atrasado) return a.atrasado ? -1 : 1;
+    if(a.fecha !== b.fecha) return a.fecha < b.fecha ? -1 : 1;
+    return b.monto - a.monto;
+  });
+  return out;
+}
+// las facturas de Trabajo con saldo (las de contado nunca vencen); vacío si Trabajo está apagado
+function facturasAVencer(){
+  var out = [], i, f, s;
+  if(!T || !T.activo) return out;
+  for(i=0;i<T.facturas.length;i++){
+    f = T.facturas[i]; if(f.contado) continue;
+    s = saldoFac(f); if(!s) continue;
+    out.push({id: f.id, nombre: (f.cliente ? f.cliente + ' · ' : '') + nomFac(f), saldo: s, vence: venceFac(f)});
+  }
+  return out;
+}
+// el chip (cuándo) y la línea de abajo (qué es) de un renglón
+function cuandoVence(x, hoy){
+  if(x.atrasado) return 'Atrasado';
+  var dv = diasEntre(hoy.iso, x.fecha);
+  if(dv === 0) return 'Hoy';
+  if(dv === 1) return 'Mañana';
+  if(x.finDeMes) return 'Fin de mes';
+  return x.trabajo ? 'El ' + fDia(x.fecha) : 'Día ' + x.dia;
+}
+function detalleVence(x){
+  var t = x.trabajo ? 'Trabajo · a cobrar' : (x.tipo === 'cobrar' ? 'A cobrar' : 'A pagar');
+  if(x.deMes !== undefined) return t + ' · de ' + MESES[x.deMes].toLowerCase();
+  if(x.era) return t + ' · era el día ' + x.era;
+  if(x.trabajo && x.atrasado) return t + ' · venció el ' + fDia(x.fecha);
+  if(x.finDeMes) return t + ' · vence con el mes';
+  return t;
+}
+var venceL = [];
+function htmlVence(l, hoy){
+  venceL = l;
+  if(!l.length) return '';
+  var h = '<div class="saldo vence" id="vence"><div class="vence-hd"><b>Qué vence esta semana</b><small>'
+        + (l.length === 1 ? '1 cosa' : l.length + ' cosas') + '</small></div>', i, x;
+  for(i=0;i<l.length && i<VENCE_MAX;i++){
+    x = l[i];
+    h += '<button class="vence-f" data-act="irVence" data-v="' + i + '"><span class="chip ' + (x.atrasado ? 'atras' : (x.trabajo ? 'trab' : 'pend')) + '">'
+       + cuandoVence(x, hoy) + '</span><span class="vn"><span>' + esc(x.nombre || 'Sin nombre') + '</span><small>' + detalleVence(x) + '</small></span>'
+       + '<b>' + fARS(x.monto) + '</b></button>';
+  }
+  if(l.length > VENCE_MAX) h += '<div class="nota vence-mas">Y ' + (l.length - VENCE_MAX) + ' más: los ves en sus secciones' + (T && T.activo ? ' y en Trabajo' : '') + '.</div>';
+  return h + '</div>';
+}
+// tocar un renglón: una factura abre su detalle; un renglón del plan abre su mes y su sección, lo trae a la vista y lo marca un momento
+function irVence(n){
+  var x = venceL[n], el, sec;
+  if(!x) return;
+  if(x.id){ verFactura(x.id); return; }
+  if(x.mes !== mes){ mes = x.mes; renderMes(); }
+  el = document.querySelector('#v-mes .sec[data-sec="' + x.k + '"] input.monto[data-i="' + x.i + '"]');
+  el = el && el.closest('.item'); if(!el) return;
+  sec = el.closest('.sec');
+  if(sec && sec.classList.contains('cerrada')){ D.ui.col[x.k] = false; sec.classList.remove('cerrada'); tocar(); }
+  if(el.scrollIntoView) el.scrollIntoView({behavior: menosMovimiento() ? 'auto' : 'smooth', block: 'center'});
+  el.classList.remove('resalta'); void el.offsetWidth; el.classList.add('resalta');
+  setTimeout(function(){ el.classList.remove('resalta'); }, 1800);
+}
 function renderMes(){
   var hoy = hoyApp(), vm = vistaModelo(D, hoy), m = D.meses[mes], c = tilesMes(D, mes, vm), h = '';
   h += '<div class="meses" id="selMes">';
@@ -3107,6 +3240,7 @@ function renderMes(){
      +   '<button class="dot' + (carrIdx === 0 ? ' on' : '') + '" data-act="carrIr" data-v="0" aria-label="Ver el disponible"></button>'
      +   '<button class="dot' + (carrIdx === 1 ? ' on' : '') + '" data-act="carrIr" data-v="1" aria-label="Ver el gráfico de gastos"></button>'
      + '</div></div>';
+  if(!primer) h += htmlVence(vencimientos(D, mes, hoy, facturasAVencer()), hoy);   // L5: lo que vence esta semana (solo el mes en curso; nada si no vence nada)
   h += '<div id="saldoMes">' + htmlSaldo(D, mes, vm) + '</div>';   // R5: cómo se llega al disponible del mes (D2, D17); vacío en un mes legacy
 
   h += seccion(SECS[0], m);
@@ -5277,6 +5411,7 @@ document.addEventListener('click', function(ev){
   if(a === 'cobro'){ abrirComoCobras(+b.getAttribute('data-i')); return; }
   if(a === 'carrIr'){ irSlide(+b.getAttribute('data-v')); return; }
   if(a === 'irA'){ irA(b.getAttribute('data-v')); return; }
+  if(a === 'irVence'){ irVence(+b.getAttribute('data-v')); return; }
   if(a === 'verFilas'){ verFilas[b.getAttribute('data-k')] = true; conScroll(renderMes); var pf = document.querySelector('#v-mes input.monto[data-k="' + b.getAttribute('data-k') + '"]'); if(pf) pf.focus(); return; }
   if(a === 'icFrec'){
     var nf = b.getAttribute('data-v'), eraSem = cbx.frec === 'semanal', esSem = nf === 'semanal';

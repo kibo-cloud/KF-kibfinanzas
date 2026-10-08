@@ -1365,6 +1365,60 @@ try{
     await ev(`document.querySelector('[data-act=mes][data-m="9"]').click(); true`); await sleep(400);
   }
 
+  // L5 "Qué vence esta semana" (hoy = 2026-10-04): the card under the hero of the current month lists overdue rows of past model months,
+  // income collection days, rows without a day only near the month end, and Trabajo invoices by due date; each row jumps to its place.
+  {
+    const ms = []; for(let i=0;i<12;i++) ms.push(mes([], [], [], []));
+    const cobro = (nombre, monto, dias) => ({nombre, monto, pagado: false, frec: 'mensual', dias});
+    ms[8] = mes([it('Sueldo', 900000, true)], [it('Luz', 20000, false)], [], []);
+    ms[9] = mes([cobro('Sueldo', 900000, [8]), cobro('Changas', 60000, [2]), cobro('Alquiler cobrado', 300000, [25])], [it('Expensas', 70000, false)], [], []);
+    ms[10] = mes([cobro('Sueldo', 900000, [8])], [it('Luz', 22000, false)], [], []);
+    const y = {anio: 2026, pagoExplicito: true, meses: ms, arrastre: {desde: 8, inicial: {apertura: 100000, declarado: 100000, declaradoEl: '2026-09-01', origen: 'declarado'}}};
+    const trab = {version: 1, activo: true, modo: 'simple', facturas: [{id: 'f1', cliente: 'Ana', numero: '12', monto: 45000, fecha: '2026-09-21', plazo: 10},
+      {id: 'f3', cliente: 'Caro', numero: '14', monto: 15000, fecha: '2026-09-25', plazo: 10},
+      {id: 'f2', cliente: 'Beto', numero: '13', monto: 80000, fecha: '2026-10-01', plazo: 30}], cobros: [], pases: [], gastos: [], productos: [], tope: 0, rev: 1};
+    const seedL5 = async (year, t) => { await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); localStorage.setItem('kibo.ultimaCopia', new Date().toISOString()); localStorage.setItem('kibo.esquema', '1.30'); localStorage.setItem('kibo.anio','2026');
+      localStorage.setItem('kibo.datos.2026', ${JSON.stringify(JSON.stringify(year))}); ${t ? `localStorage.setItem('kibo.trabajo', ${JSON.stringify(JSON.stringify(t))});` : ''} true`); await nav(URL_APP); await sleep(900); };
+    const filasL5 = () => ev(`document.getElementById('vence') ? Array.prototype.map.call(document.querySelectorAll('#vence .vence-f'), function(b){
+      return [b.querySelector('.chip').textContent, b.querySelector('.vn span').textContent, b.querySelector('.vn small').textContent, b.querySelector('b').textContent]; }) : null`);
+    await seedL5(y, trab);
+    const $ = async (n) => ev(`fARS(${n})`);
+    check('L5 card under the hero of the current month, title and count', await ev(`(function(){ var v = document.getElementById('vence'), c = document.getElementById('carrMes');
+      return !!v && !!c && c.nextElementSibling === v && v.querySelector('.vence-hd').textContent; })()`), 'Qué vence esta semana5 cosas');
+    check('L5 rows: overdue first (past month, passed collection day, overdue invoice), then the next 7 days by date; the 25th, month-end rows and a later invoice wait',
+      await filasL5(), [['Atrasado', 'Luz', 'A pagar · de septiembre', await $(20000)], ['Atrasado', 'Ana · Factura 12', 'Trabajo · a cobrar · venció el 01/10', await $(45000)],
+        ['Atrasado', 'Changas', 'A cobrar · era el día 2', await $(60000)], ['Mañana', 'Caro · Factura 14', 'Trabajo · a cobrar', await $(15000)],
+        ['Día 8', 'Sueldo', 'A cobrar', await $(900000)]]);
+    check('L5 chips use the state colors (overdue amber, Trabajo due soon indigo, pending amber)', await ev(`Array.prototype.map.call(document.querySelectorAll('#vence .chip'), function(c){ return c.className; })`),
+      ['chip atras', 'chip atras', 'chip atras', 'chip trab', 'chip pend']);
+    check('L5 every row is a tap target of at least 44 px', await ev(`Array.prototype.every.call(document.querySelectorAll('#vence .vence-f'), function(b){ return b.getBoundingClientRect().height >= 44; })`), true);
+    // the invoice opens its detail
+    await ev(`document.querySelectorAll('#vence .vence-f')[1].click(); true`); await sleep(500);
+    check('L5 tapping the invoice opens its detail', await ev(`document.getElementById('velo').classList.contains('on') && document.querySelector('#hoja h3').textContent`), 'Ana');
+    await ev(`document.getElementById('velo').click(); true`); await sleep(400);
+    // a row of the current month: its section opens and the row is marked
+    await ev(`(function(){ var s = document.querySelector('#v-mes .sec[data-sec=ingresos]'); if(!s.classList.contains('cerrada')) s.querySelector('.sechd').click(); return true; })()`); await sleep(500);
+    await ev(`document.querySelectorAll('#vence .vence-f')[4].click(); true`); await sleep(300);
+    check('L5 tapping a row of this month opens its section and marks that row', await ev(`(function(){ var r = document.querySelector('#v-mes .item.resalta');
+      return [mes, !document.querySelector('#v-mes .sec[data-sec=ingresos]').classList.contains('cerrada'), r && r.querySelector('input.nombre').value]; })()`), [9, true, 'Sueldo']);
+    // an overdue row of September: the month changes to September and the row is marked
+    await ev(`document.querySelectorAll('#vence .vence-f')[0].click(); true`); await sleep(300);
+    check('L5 tapping an overdue row opens its month and marks that row', await ev(`(function(){ var r = document.querySelector('#v-mes .item.resalta');
+      return [mes, r && r.querySelector('input.nombre').value, !!document.getElementById('vence')]; })()`), [8, 'Luz', false]);
+    await ev(`document.querySelector('[data-act=mes][data-m="10"]').click(); true`); await sleep(400);
+    check('L5 a future month has no card', await ev(`!!document.getElementById('vence')`), false);
+    await ev(`document.querySelector('[data-act=mes][data-m="9"]').click(); true`); await sleep(400);
+    check('L5 back on the current month the card is there', await ev(`!!document.getElementById('vence')`), true);
+    // ticking a listed row takes it off the card
+    await ev(`document.querySelector('#v-mes .sec[data-sec=ingresos] [data-act=pagar][data-i="0"]').click(); true`); await sleep(500);
+    check('L5 a ticked row leaves the card', (await filasL5()).map(r => r[1]), ['Luz', 'Ana · Factura 12', 'Changas', 'Caro · Factura 14']);
+    // nothing due: no card at all (no empty message)
+    const ms2 = []; for(let i=0;i<12;i++) ms2.push(mes([], [], [], []));
+    ms2[9] = mes([it('Sueldo', 900000, true)], [it('Expensas', 70000, false)], [], []);
+    await seedL5({anio: 2026, pagoExplicito: true, meses: ms2, arrastre: {desde: 9, inicial: {apertura: 100000, declarado: 100000, declaradoEl: '2026-10-01', origen: 'declarado'}}}, null);
+    check('L5 nothing dated in the next 7 days and nothing overdue: no card', [await ev(`!!document.getElementById('vence')`), await ev(`!!document.getElementById('carrMes')`)], [false, true]);
+  }
+
   check('no uncaught page errors', pageErrs, []);
 }catch(e){ fails++; results.push('ERROR ' + e.message); }
 finally{
