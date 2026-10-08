@@ -52,6 +52,8 @@ module.exports = {
     tilesMes:           [N, 'R4.4 month card: calc() itself for a legacy month; model month: realized (past/current) or scheduled (future) flows from flujosMes, Del trabajo from pases, Disponible final from cadena (cierre / disponible actual / proyectado)'],
     gastadoTope:        [Z, 'budget cap consumption: only paid items'],
     seccion:            [R, 'section subtotal uses suma(): every loaded row; R4.4 (Q3): a Del trabajo row without pases in a model month gets a checkbox (tieneTilde); R5: also one above its pases, with the pases / excess split (repartoTrabajo)'],
+    faltaSeccion:       [N, 'P3a: what a section still has unticked in a past/current month, by the existing rules: flujosMes pending (Del trabajo only above its pases, via repartoTrabajo) in a model month, calc() pendienteX in a legacy one; 0 in a future month (programado); display only'],
+    textoDelTrabajo:    [N, 'P3a: the Del trabajo row in words: pases dated <= hoy allocated in order over the rows (as flujosMes realizes them) plus the ticked excess (R5), against the row amount; display only'],
     repartoTrabajo:     [N, 'R5 (R4.2 interpretation 4, design 7): how much of a Del trabajo row of a model month its pases cover and the excess; the same in-order allocation as flujosMes, display only (no money total)'],
     secMovimientos:     [R, 'quick-expense log total: every movement, independent of pagado'],
     secAhorro:          [Z, 'savings stock and aReponer from serie()'],

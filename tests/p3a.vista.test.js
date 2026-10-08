@@ -11,8 +11,9 @@ var M = la.loadMotor();
 var SRC = la.SRC_FOR_TESTS;
 function existe(n){ return new RegExp('^function ' + n + '\\s*\\(', 'm').test(SRC); }
 var FUNCS = ['estadoHero', 'claseHero', 'subHero', 'chipT', 'chipsHero', 'etiquetaHero', 'htmlHero', 'barra', 'fPct', 'botonOjo', 'fARS', 'grupos', 'esc',
-  'lineasSaldo'].filter(existe);
-var VARS = ['MESES', 'oculto', 'PUNTOS'];
+  'lineasSaldo', 'seccion', 'abierta', 'filaTope', 'textoDeuda', 'cuotaAdelantada', 'esProgramado', 'gastadoVista', 'datosRealizados', 'cobroTxt',
+  'faltaSeccion', 'textoFalta', 'textoDelTrabajo'].filter(existe);
+var VARS = ['MESES', 'oculto', 'PUNTOS', 'ICOSEC', 'MARCABLE', 'TOPEABLE', 'SECS'];
 
 function appMes(d, T, j, today){
   var app = H.appVista(d, T, null, today, {funcs: FUNCS, vars: VARS});
@@ -79,4 +80,75 @@ test('hero colors: red only for a negative real balance; a negative projection i
   assert.deepEqual([app.claseHero('hoy', -1), app.claseHero('cerrado', -1), app.claseHero('simple', -1), app.claseHero('hoy', 0)], ['mal', 'mal', 'mal', 'ok']);
   assert.deepEqual([app.claseHero('proyectado', -1), app.claseHero('proyectado', 5)], ['ambar', 'proy']);
   assert.equal(app.claseHero('simple', 5, true), 'proy');
+});
+
+// ── rows and section headers (finding 3, 7, 13; D) ──
+function sec(app, k){ var S = app.SECS.filter(function(s){ return s.k === k; })[0]; return app.seccion(S, app.D.meses[app.mes]); }
+var SECCIONES = ['ingresos', 'gastosFijos', 'gastosVariables', 'deudas'];
+
+test('what a section still has to pay or collect adds up to the engine pending (flujosMes in a model month, calc() in a legacy one)', function(){
+  var casos = [['model', C.seccion2(false, false)], ['model, ticked', C.seccion2(true, true)], ['legacy', H.sinModelo(C.seccion2(false, false))]], n = 0;
+  casos.forEach(function(c){
+    var app = appMes(c[1]), v = vm(app);
+    for(var j = 0; j < 12; j++){
+      var fs = SECCIONES.map(function(k){ return app.faltaSeccion(app.D, j, k, app.hoy); }), est = M.estadoMes(2026, j, app.hoy);
+      if(est === 'futuro'){ assert.deepEqual(app.plain(fs), [0, 0, 0, 0], c[0] + ' ' + j + ': a future month has nothing "missing", it is programado'); continue; }
+      if(v && !v.cad.meses[j].legacy){
+        var f = M.flujosMes(app.D, j, app.hoy, v.ctx);
+        assert.deepEqual(app.plain([fs[0], fs[1] + fs[2], fs[3]]), [f.ingresosPend, f.gastosPend, f.cuotasPend], c[0] + ' ' + j);
+      } else {
+        var k = M.calc(app.D.meses[j]);
+        assert.deepEqual(app.plain(fs), [k.pendienteIngresos, k.pendienteFijos, k.pendienteVariables, k.pendienteDeudas], c[0] + ' ' + j);
+      }
+      n++;
+    }
+  });
+  assert.equal(n, 30, 'non-vacuous');
+  var del = C.vacio(2026); C.arrastre(del, 9, 0, 'declarado'); C.mes(del, 9, {ingresos: [C.it('Del trabajo', 400000, false), C.it('Sueldo', 50000, false)]});
+  var a = appMes(del, H.trab([{fecha: '2026-10-10', monto: 300000}]), 9);
+  assert.equal(a.faltaSeccion(a.D, 9, 'ingresos', a.hoy), M.flujosMes(a.D, 9, a.hoy, vm(a).ctx).ingresosPend, 'Del trabajo: only its excess is missing');
+  assert.equal(a.faltaSeccion(a.D, 9, 'ingresos', a.hoy), 150000);
+});
+
+test('section header: "total" and below it "falta $X" only when something is pending', function(){
+  var app = appMes(C.seccion2(false, false), null, 9);
+  assert.match(sec(app, 'gastosFijos'), /<span class="sub"><span id="sub-gastosFijos">\$425\.000<\/span><small class="falta" id="falta-gastosFijos">falta \$25\.000<\/small><\/span>/);
+  assert.match(sec(app, 'ingresos'), /<small class="falta" id="falta-ingresos"><\/small>/, 'nothing pending: empty (hidden)');
+  app.mes = 10;
+  assert.match(sec(app, 'ingresos'), /<small class="falta" id="falta-ingresos"><\/small>/, 'future month: programado, not "falta"');
+});
+
+test('row states: paid = solid check; pending = ring + "Falta" (current) or "Atrasado" (past); future model month = dashed ring + "Programado"', function(){
+  var app = appMes(C.seccion2(false, true), null, 9), oct = sec(app, 'gastosFijos');
+  assert.match(oct, /<div class="item pago"><button class="chk on" data-act="pagar" data-k="gastosFijos" data-i="0"/);
+  assert.match(oct, /<div class="item pend"><button class="chk" data-act="pagar" data-k="gastosFijos" data-i="1"[^>]*>.*?<span class="mt-w"><small class="est pend">Falta<\/small><input class="monto"/);
+  app.mes = 8;
+  assert.match(sec(app, 'gastosFijos'), /<div class="item pend">.*?<small class="est atras">Atrasado<\/small>/, 'September Luz unpaid: overdue');
+  app.mes = 10;
+  var nov = sec(app, 'ingresos');
+  assert.match(nov, /<div class="item progr"><button class="chk prog" data-act="pagar"[^>]*>.*?<small class="est prog">Programado<\/small>/, 'ticked ahead: programado chip');
+  assert.doesNotMatch(nov, /Falta|item pago/);
+});
+
+test('Del trabajo: partial, complete and programado states in plain words, never "pases"', function(){
+  function caso(monto, pagado, pases, j){
+    var d = C.vacio(2026); C.arrastre(d, 9, 0, 'declarado'); C.mes(d, j || 9, {ingresos: [C.it('Del trabajo', monto, !!pagado)]});
+    var a = appMes(d, H.trab(pases), j || 9); return a.textoDelTrabajo(a.D, a.mes, a.D.meses[a.mes].ingresos[0], a.hoy);
+  }
+  var f = function(n){ return '$' + String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); };
+  assert.equal(caso(400000, false, [{fecha: '2026-10-10', monto: 300000}]), 'Cobrado ' + f(300000) + ' de ' + f(400000) + ': lo que pasaste desde Trabajo. Los ' + f(100000) + ' que faltan tildalos cuando los cobres.');
+  assert.equal(caso(400000, true, [{fecha: '2026-10-10', monto: 300000}]), 'Cobrado ' + f(400000) + ': ' + f(300000) + ' lo pasaste desde Trabajo y ' + f(100000) + ' lo marcaste vos. Se cambia desde esa pestaña.');
+  assert.equal(caso(300000, false, [{fecha: '2026-10-10', monto: 300000}]), 'Cobrado ' + f(300000) + ': lo pasaste desde Trabajo. Se cambia desde esa pestaña.');
+  assert.equal(caso(300000, false, [{fecha: '2026-10-10', monto: 100000}, {fecha: '2026-10-25', monto: 200000}]),
+    'Cobrado ' + f(100000) + ' de ' + f(300000) + ': lo que pasaste desde Trabajo. ' + f(200000) + ' los pasás más adelante desde Trabajo.', 'a pase dated after hoy is not collected yet (flujosMes trabajoProgramado)');
+  assert.equal(caso(200000, false, [{fecha: '2026-11-05', monto: 200000}], 10), 'Programado: lo que vas a pasar desde Trabajo. Se cambia desde esa pestaña.');
+});
+
+test('debt rows: "Cuota N de M" with pagada / pendiente / programada / sin pagar instead of "Sin pago este mes"', function(){
+  var app = appMes(C.seccion2(false, false), null, 9);
+  assert.match(app.textoDeuda('Préstamo', 8), /^Cuota 3 de 6 · pagada · quedan 3/);
+  assert.match(app.textoDeuda('Préstamo', 9), /^Cuota 4 de 6 · pendiente · quedan 3/);
+  assert.match(app.textoDeuda('Préstamo', 10), /^Cuota 4 de 6 · programada/);
+  assert.match(app.textoDeuda('Préstamo', 7), /^Cuota 3 de 6 · sin pagar/);
+  assert.doesNotMatch(sec(app, 'deudas'), /Sin pago este mes/);
 });

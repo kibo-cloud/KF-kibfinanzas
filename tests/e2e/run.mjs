@@ -621,7 +621,7 @@ try{
     ex.meses[9].ingresos[1] = it('Del trabajo', 400000, false); ex.meses[10].ingresos = [];
     await seed(ex, Object.assign({}, trabR44, {pases: [trabR44.pases[0]]}));
     check('R5 Del trabajo above its pases: the excess has a checkbox (Sueldo + Del trabajo)', await ev(`document.querySelectorAll('[data-act=pagar][data-k=ingresos]').length`), 2);
-    check('R5 Del trabajo above its pases: the split is said in plain words', await ev(`document.querySelector('#v-mes .tj-vienede').textContent.indexOf('De esto, ' + fARS(300000) + ' vino de pases del trabajo; el resto, ' + fARS(100000) + ', lo marcás vos.') >= 0`), true);
+    check('P3a Del trabajo above its pases: partial state in plain words (no "pases")', await ev(`document.querySelector('#v-mes .tj-vienede').textContent`), await ev(`'Cobrado ' + fARS(300000) + ' de ' + fARS(400000) + ': lo que pasaste desde Trabajo. Los ' + fARS(100000) + ' que faltan tildalos cuando los cobres.'`));
     check('R5 Del trabajo above its pases: unticked, only the pase counts (100.000 + 200.000 + 300.000 - 50.000)', await pantalla(), '550000');
     await ev(`document.querySelector('[data-act=pagar][data-k=ingresos][data-i="1"]').click(); true`); await sleep(1400);
     check('R5 Del trabajo above its pases: ticked, the excess is realized (+100.000)', [await ev(`D.meses[9].ingresos[1].pagado`), await pantalla()], [true, '650000']);

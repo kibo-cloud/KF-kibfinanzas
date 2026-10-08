@@ -189,7 +189,18 @@ h2.tit{font-size:13px;font-weight:600;color:var(--txt2);margin:22px 4px 8px;lett
 .sec>header{position:static;background:none;border:0;padding:0;backdrop-filter:none}
 .sechd{display:flex;align-items:center;gap:10px;width:100%;padding:14px 16px;min-height:52px;text-align:left}
 .sechd .nom{flex:1;font-size:var(--fs-sec);font-weight:600}
-.sechd .sub{font-size:16px;font-weight:600;color:var(--txt2)}
+.sechd .sub{font-size:16px;font-weight:600;color:var(--txt2);display:flex;flex-direction:column;align-items:flex-end;line-height:1.2;text-align:right}
+.sechd .sub .falta{font-size:var(--fs-cap);font-weight:600;color:var(--c-pend)}
+.sechd .sub .falta:empty{display:none}
+/* P3a: estado del renglón: tilde lleno = realizado; anillo ámbar + "Falta" = pendiente; anillo punteado + "Programado" = mes futuro */
+.mt-w{position:relative;flex:0 0 auto;display:flex}
+.mt-w .est{position:absolute;right:2px;top:1px;font-size:var(--fs-min);font-weight:700;line-height:1.2;padding:1px 6px;border-radius:6px;pointer-events:none;white-space:nowrap}
+.est.pend{background:var(--c-pend-bg);color:var(--c-pend)}
+.est.atras{background:var(--c-atras-bg);color:var(--c-atras)}
+.est.prog{background:var(--c-prog-bg);color:var(--c-prog)}
+.item.pend input.monto,.item.progr input.monto{padding-top:17px;padding-bottom:1px}
+.item.pend .chk{border-color:var(--c-pend)}
+.tj-vienede{color:var(--c-trab)}
 .chev{width:12px;height:12px;border-right:2px solid var(--txt2);border-bottom:2px solid var(--txt2);transform:rotate(45deg);margin-left:2px;transition:transform .18s}
 .sec.cerrada .chev{transform:rotate(-45deg)}
 .sec.cerrada .cuerpo{display:none}
@@ -2617,7 +2628,9 @@ function textoDeuda(nombre, i){
   if(!e) return 'Cargar cuotas';
   if(e.restantes === 0 && e.esteMes) return 'Última cuota: la ' + e.pagadas + ' de ' + e.plan.cuotas + '. Terminada.';
   if(e.restantes === 0) return 'Terminada: ' + e.plan.cuotas + ' cuotas pagas.';
-  var t = (e.esteMes ? 'Cuota ' + e.cuotaN : 'Sin pago este mes; va la ' + e.cuotaN) + ' de ' + e.plan.cuotas
+  // P3a: el estado de la cuota del mes en palabras (antes "Sin pago este mes; va la N", que se leía como si no hubiera nada que pagar)
+  var est = estadoMes(D.anio, i, hoy), queda = e.esteMes ? 'pagada' : (est === 'futuro' ? 'programada' : (est === 'pasado' ? 'sin pagar' : 'pendiente'));
+  var t = 'Cuota ' + e.cuotaN + ' de ' + e.plan.cuotas + ' · ' + queda
         + ' · quedan ' + e.restantes + (e.saldo ? ' (' + fARS(e.saldo) + ')' : '');
   if(e.fin) t += ' · terminás en ' + MESES[e.fin.mes].toLowerCase() + (e.fin.anio !== D.anio ? ' ' + e.fin.anio : '');
   return t;
@@ -3123,33 +3136,71 @@ function guardarTopes(k, adelante){
   cerrarHoja(); tocar(); guardar(); conScroll(renderMes);
   toast(cambiados ? (adelante ? 'Topes guardados de ' + MESES[mes].toLowerCase() + ' en adelante' : 'Topes guardados en ' + MESES[mes].toLowerCase()) : 'Sin cambios');
 }
+// P3a: lo que falta de una sección (lo cargado sin tildar) de un mes pasado o en curso, con la misma regla que ya cuenta el motor:
+// en un mes del modelo la de flujosMes (pendiente; de "Del trabajo" solo lo que sus pases no cubren), en uno legacy calc() (pendienteX).
+// Un mes futuro no tiene "falta": todo es programado. No es una regla nueva: sumadas, las secciones dan flujosMes / calc().
+function faltaSeccion(d, j, k, hoy){
+  if(estadoMes(d.anio, j, hoy) === 'futuro') return 0;
+  var m = d.meses[j], ls = m[k] || [], t = 0, i, mo, r;
+  if(!mesDelModelo(d, j)){ var c = calc(m); return k === 'ingresos' ? c.pendienteIngresos : k === 'gastosFijos' ? c.pendienteFijos : k === 'gastosVariables' ? c.pendienteVariables : c.pendienteDeudas; }
+  for(i=0;i<ls.length;i++){
+    if(estaPagado(j, ls[i])) continue;
+    mo = num(ls[i].monto);
+    if(k === 'ingresos' && esRenglonTrabajo(ls[i].nombre) && pasesDelMes(d.anio, j) > 0){ r = repartoTrabajo(d, j, ls[i]); mo = r ? r.exceso : mo; }
+    t += mo;
+  }
+  return t;
+}
+function textoFalta(n){ return n > 0 ? 'falta ' + fARS(n) : ''; }
+// P3a: el renglón "Del trabajo" en palabras simples (sin "pases"): cuánto ya entró de lo que pasaste desde Trabajo y qué falta.
+// Lo cobrado por Trabajo es lo que pasaste con fecha hasta hoy, repartido en orden entre los renglones como en flujosMes; lo que el
+// renglón tiene por encima de lo que pasaste se tilda como un ingreso común (R5). Solo presenta: no cambia ningún número.
+function textoDelTrabajo(d, j, it, hoy){
+  var total = num(it.monto), est = estadoMes(d.anio, j, hoy);
+  if(!mesDelModelo(d, j)) return 'Lo que pasaste desde Trabajo este mes. Se cambia desde esa pestaña.';
+  if(est === 'futuro') return 'Programado: lo que vas a pasar desde Trabajo. Se cambia desde esa pestaña.';
+  var lp = ctxModelo(d, hoy).pasesTrabajo[d.anio + '-' + dos(j + 1)] || [], real = 0, ls = d.meses[j].ingresos, i, mo, cub = 0, r = repartoTrabajo(d, j, it), rr;
+  for(i=0;i<lp.length;i++){ mo = num(lp[i] && lp[i].monto); if(mo > 0 && String(lp[i].fecha) <= hoy.iso) real += mo; }
+  for(i=0;i<ls.length;i++){   // lo ya pasado (fecha hasta hoy) cubre en orden la parte de cada renglón que cubren sus pases
+    if(!esRenglonTrabajo(ls[i].nombre)) continue;
+    rr = ls[i] === it ? r : repartoTrabajo(d, j, ls[i]);
+    mo = Math.max(0, Math.min(rr ? rr.pases : 0, real)); real -= mo;
+    if(ls[i] === it){ cub = mo; break; }
+  }
+  var exceso = r ? r.exceso : 0, marcado = exceso > 0 && estaPagado(j, it), cobrado = cub + (marcado ? exceso : 0);
+  if(cobrado >= total) return 'Cobrado ' + fARS(total) + ': ' + (marcado ? fARS(cub) + ' lo pasaste desde Trabajo y ' + fARS(exceso) + ' lo marcaste vos.' : 'lo pasaste desde Trabajo.')
+    + ' Se cambia desde esa pestaña.';
+  var t = 'Cobrado ' + fARS(cobrado) + ' de ' + fARS(total) + ': lo que pasaste desde Trabajo.';
+  if(exceso > 0 && !marcado) t += ' Los ' + fARS(exceso) + ' que faltan tildalos cuando los cobres.';
+  if(r && cub < r.pases) t += ' ' + fARS(r.pases - cub) + ' los pasás más adelante desde Trabajo.';
+  return t;
+}
 function seccion(S, m){
-  var lista = m[S.k], sub = suma(lista), h = '', prog = esProgramado(D, mes, hoyApp()), hayProg = false;
+  var hoy = hoyApp(), lista = m[S.k], sub = suma(lista), h = '', prog = esProgramado(D, mes, hoy), hayProg = false, est = estadoMes(D.anio, mes, hoy);
   h += '<div class="sec '+(abierta(S.k)?'':'cerrada')+'" data-sec="'+S.k+'">';
   h += '<button class="sechd" data-act="col" data-k="'+S.k+'">'
      + (ICOSEC[S.k] ? '<span class="ic">'+ICOSEC[S.k]+'</span>' : '')
      + '<span class="nom">'+S.t+'</span>'
-     + '<span class="sub" id="sub-'+S.k+'">'+fARS(sub)+'</span><i class="chev"></i></button>';
+     + '<span class="sub"><span id="sub-'+S.k+'">'+fARS(sub)+'</span><small class="falta" id="falta-'+S.k+'">'+textoFalta(faltaSeccion(D, mes, S.k, hoy))+'</small></span><i class="chev"></i></button>';
   h += '<div class="cuerpo">';
   for(var i=0;i<lista.length;i++){
     var marc = tieneTilde(D, mes, S.k, lista[i]);   // "Del trabajo" ya está cobrado: no se tilda (salvo Q3 y lo que pasa de sus pases, R5: ver tieneTilde)
     var pal = S.k === 'ingresos' ? 'cobrado' : 'pagado', antes = marc && prog && estaPagado(mes, lista[i]);   // R5: tildado antes de tiempo
     var pg = marc && !prog && estaPagado(mes, lista[i]);
     var vt = S.k === 'ingresos' && esRenglonTrabajo(lista[i].nombre) && pasesDelMes(D.anio, mes) > 0;   // lo carga Trabajo con sus pases
-    h += '<div class="item'+(pg?' pago':'')+(vt?' deltrab':'')+'">'
+    var pend = marc && !prog && !pg && est !== 'futuro' && num(lista[i].monto) > 0;   // P3a: sin tildar en un mes pasado o en curso
+    var marca = pend ? '<small class="est ' + (est === 'pasado' ? 'atras">Atrasado' : 'pend">Falta') + '</small>' : (marc && prog ? '<small class="est prog">Programado</small>' : '');
+    h += '<div class="item'+(pg?' pago':'')+(pend?' pend':'')+(marc && prog?' progr':'')+(vt?' deltrab':'')+'">'
        +   (marc && prog ? (antes ? '<button class="chk prog" data-act="pagar" data-k="'+S.k+'" data-i="'+i+'" aria-label="Programado: lo marcaste antes de tiempo. Tocá para desmarcarlo."><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>'
                                  : '<span class="chk prog" role="img" aria-label="Programado" title="Programado"></span>')
        :   marc ? '<button class="chk'+(pg?' on':'')+'" data-act="pagar" data-k="'+S.k+'" data-i="'+i+'" aria-label="'+(pg?'Marcar como no '+pal:'Marcar como '+pal)+'"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>' : '')
        +   '<input class="nombre" data-k="'+S.k+'" data-i="'+i+'" value="'+esc(lista[i].nombre)+'" aria-label="Nombre"'+(vt?' readonly':'')+'>'
-       +   '<input class="monto" inputmode="decimal" enterkeyhint="done" data-k="'+S.k+'" data-i="'+i+'" value="'+fARS(lista[i].monto)+'" aria-label="Monto"'+(vt?' readonly':'')+'>'
+       +   '<span class="mt-w">' + marca
+       +   '<input class="monto" inputmode="decimal" enterkeyhint="done" data-k="'+S.k+'" data-i="'+i+'" value="'+fARS(lista[i].monto)+'" aria-label="Monto"'+(vt?' readonly':'')+'></span>'
        +   '<button class="x" data-act="'+(vt?'tjDelTrabajo':'del')+'" data-k="'+S.k+'" data-i="'+i+'" aria-label="Borrar">×</button>'
        + '</div>';
     if(marc && prog) hayProg = true;
-    if(vt){
-      var rt = marc ? repartoTrabajo(D, mes, lista[i]) : null;   // R5: por encima de sus pases, el resto se tilda como un ingreso común
-      h += '<div class="nota tj-vienede">Viene de Trabajo: lo que pasaste a lo personal este mes. Se cambia desde esa pestaña.'
-         + (rt ? ' De esto, ' + fARS(rt.pases) + ' vino de pases del trabajo; el resto, ' + fARS(rt.exceso) + ', lo marcás vos.' : '') + '</div>';
-    }
+    if(vt) h += '<div class="nota tj-vienede">' + textoDelTrabajo(D, mes, lista[i], hoy) + '</div>';
     if(TOPEABLE[S.k] && num(lista[i].tope) > 0){
       h += filaTope(S.k, i, lista[i]);
     }
@@ -3881,6 +3932,8 @@ function refrescar(){
   for(i=0;i<SECS.length;i++){
     var e = document.getElementById('sub-'+SECS[i].k);
     if(e) e.textContent = fARS(suma(m[SECS[i].k]));
+    var fe = document.getElementById('falta-'+SECS[i].k);
+    if(fe) fe.textContent = textoFalta(faltaSeccion(D, mes, SECS[i].k, hoy));
   }
   var sa = document.getElementById('sub-ahorro'); if(sa) sa.textContent = fARS(c.ahorroMesARS);
   var big = document.getElementById('bigFinal'), hero = document.getElementById('hero'), eh = estadoHero(D, mes, vm, hoy);
