@@ -30,7 +30,7 @@ test('year views, legacy year: "El año" HTML is byte-identical to its L1 pin an
     var app = V.appAnio(c.d, c.otros, V.TRAB_PASES()), b = BASE.data[c.nombre];
     assert.ok(b, c.nombre + ': baseline present');
     assert.equal(app.vistaModelo(app.D, app.hoy), null, c.nombre + ': no model view');
-    var html = app.anio();
+    var html = V.sinAnalisis(app.anio());   // L6: the analysis sections are new and tested in l6.analisis; the rest stays byte-identical
     assert.equal(html.length, b.htmlLargo, c.nombre + ': "El año" length');
     assert.equal(sha(html), b.html, c.nombre + ': "El año" bytes');
     assert.equal(app.csv(), b.csv, c.nombre + ': CSV bytes');

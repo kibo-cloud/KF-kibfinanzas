@@ -31,8 +31,9 @@ test('L1 legacy year, "El año": the same money amounts and the same tables as b
   var n = 0;
   assert.match(BASE.meta.razon, /ec9db4a/);
   V.corpus().forEach(function(c){
-    var app = V.appAnio(c.d, c.otros, V.TRAB_PASES()), html = app.anio(), b = BASE.anio[c.nombre];
+    var app = V.appAnio(c.d, c.otros, V.TRAB_PASES()), todo = app.anio(), html = V.sinAnalisis(todo), b = BASE.anio[c.nombre];
     assert.ok(b, c.nombre + ': baseline present');
+    if(todo !== html) assert.match(todo, /data-sec="anComp"[\s\S]*<span class="chip prog">Cálculo simple<\/span>/, c.nombre + ': L6 analysis marked "Cálculo simple"');
     assert.deepEqual(montos(html), b.montos, c.nombre + ': the set of amounts on screen');
     assert.deepEqual(V.tabla(html, 'anTabla'), b.doceMeses, c.nombre + ': "Los doce meses"');
     assert.deepEqual(V.tabla(html, 'anAnios'), b.anioPorAnio, c.nombre + ': "Año por año"');

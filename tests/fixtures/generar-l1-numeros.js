@@ -25,7 +25,7 @@ var commit = 'unknown';
 try { commit = cp.execSync('git rev-parse HEAD', {cwd: __dirname}).toString().trim(); } catch(e) { /* not a git checkout */ }
 var anio = {}, usd = {};
 V.corpus().forEach(function(c){
-  var app = V.appAnio(c.d, c.otros, V.TRAB_PASES()), html = app.anio();
+  var app = V.appAnio(c.d, c.otros, V.TRAB_PASES()), html = V.sinAnalisis(app.anio());
   anio[c.nombre] = {montos: montos(html), doceMeses: V.tabla(html, 'anTabla'), anioPorAnio: V.tabla(html, 'anAnios')};
 });
 U.legacy().forEach(function(c){

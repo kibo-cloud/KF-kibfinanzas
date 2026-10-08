@@ -1419,6 +1419,59 @@ try{
     check('L5 nothing dated in the next 7 days and nothing overdue: no card', [await ev(`!!document.getElementById('vence')`), await ev(`!!document.getElementById('carrMes')`)], [false, true]);
   }
 
+  // L6 (R6) "El año" analysis (hoy = 2026-10-04): October against September and the average of July-September; categories of ticked
+  // gastos over the realized months; "Más que lo normal"; November (future, with big ticked amounts) never counts; legacy year marked.
+  {
+    const ms = []; for(let i=0;i<12;i++) ms.push(mes([], [], [], []));
+    const m6 = (ing, gas, ah) => Object.assign(mes([it('Sueldo', ing, true)], [], gas, []), {ahorroMesARS: ah});
+    ms[6] = m6(1000000, [it('Super', 200000, true), it('Nafta', 50000, true)], 100000);
+    ms[7] = m6(1000000, [it('Super', 220000, true), it('Nafta', 50000, true)], 100000);
+    ms[8] = m6(1200000, [it('Super', 180000, true), it('Nafta', 50000, true)], 160000);
+    ms[9] = m6(900000, [it('Super', 300000, true), it('Nafta', 62000, true), it('<i>Cine</i>', 10000, true)], 50000);
+    ms[10] = m6(5000000, [it('Super', 9000000, true), it('Viaje', 7000000, true)], 0);
+    const y = {anio: 2026, pagoExplicito: true, meses: ms, arrastre: {desde: 6, inicial: {apertura: 100000, declarado: 100000, declaradoEl: '2026-07-01', origen: 'declarado'}}};
+    await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); localStorage.setItem('kibo.ultimaCopia', new Date().toISOString()); localStorage.setItem('kibo.esquema', '1.30'); localStorage.setItem('kibo.anio','2026');
+      localStorage.setItem('kibo.datos.2026', ${JSON.stringify(JSON.stringify(y))}); true`);
+    await nav(URL_APP); await sleep(800);
+    await ev(`document.querySelector('[data-act=tab][data-t=anio]').click(); true`); await sleep(1200);
+    const $ = async (n) => ev(`fARS(${n})`);
+    check('L6 "Este mes contra los anteriores" right after the summary card, before "Los doce meses"', await ev(`(function(){
+      var c = document.querySelector('#v-anio .sec[data-sec=anComp]'), t = document.querySelector('#v-anio .sec[data-sec=anTend]');
+      return [c && c.querySelector('.sechd .nom').textContent, c && c.querySelector('.sechd .sub').textContent, t && t.querySelector('.sechd .nom').textContent,
+        !!c && c.previousElementSibling.classList.contains('resumen'), !!t && t.nextElementSibling.getAttribute('data-sec')]; })()`),
+      ['Este mes contra los anteriores', 'Pagado ↑ 49%', 'Cómo vienen tus gastos', true, 'anTabla']);
+    check('L6 comparison rows: October, vs September, vs the average (the "Los doce meses" numbers)', await ev(`Array.prototype.map.call(document.querySelectorAll('#v-anio .an-c-f'), function(f){
+      return Array.prototype.map.call(f.children, function(x){ return x.textContent; }); })`),
+      [['', 'Octubre', 'Septiembre', 'Promedio'], ['Cobrado', await $(900000), '↓ 25%', '↓ 16%'], ['Pagado', await $(372000), '↑ 62%', '↑ 49%'], ['Ahorro', await $(50000), '↓ 69%', '↓ 58%']]);
+    check('L6 plain sentences', await ev(`Array.prototype.map.call(document.querySelectorAll('#v-anio .an-frases p'), function(p){ return p.textContent; })`),
+      ['Este mes gastaste 49% más que tu promedio.', 'Este mes cobraste 16% menos que tu promedio.', 'Este mes ahorraste 58% menos que tu promedio.', 'Este mes gastaste 62% más que en septiembre.']);
+    check('L6 the month in progress and the base of the average are said', await ev(`document.querySelector('#v-anio .an-pie').textContent`),
+      'Octubre todavía no terminó: cuenta lo que ya cobraste y pagaste. El promedio es el de 3 meses anteriores.');
+    check('L6 categories: top of the realized months, escaped names, November\'s Viaje absent, one mini chart each', await ev(`Array.prototype.map.call(document.querySelectorAll('#v-anio .an-cat'), function(c){
+      return [c.querySelector('small span').firstChild.textContent.trim(), c.querySelector('small > span:last-child').textContent, c.querySelectorAll('svg.barritas rect').length]; })`),
+      [['Super', await $(300000) + ' en octubre', 10], ['Nafta', await $(62000) + ' en octubre', 10], ['<i>Cine</i>', await $(10000) + ' en octubre', 10]]);
+    check('L6 "Más que lo normal": Super (+50%), not Nafta (+24%); chip and sentence', await ev(`[document.querySelector('#v-anio .an-normal').textContent,
+      Array.prototype.map.call(document.querySelectorAll('#v-anio .an-cat .chip'), function(c){ return c.closest('.an-cat').querySelector('small span').firstChild.textContent.trim(); }),
+      document.querySelector('#v-anio .sec[data-sec=anTend] .sechd .sub').textContent]`),
+      ['Más que lo normal en octubre: Super (' + await $(300000) + ', 50% más que su promedio).', ['Super'], '1 más que lo normal']);
+    check('L6 nothing of the future month in the analysis', await ev(`(function(){ var t = document.querySelector('#v-anio .sec[data-sec=anComp]').textContent + document.querySelector('#v-anio .sec[data-sec=anTend]').textContent;
+      return [t.indexOf('Viaje') < 0, t.indexOf(fARS(9000000)) < 0, t.indexOf('Noviembre') < 0]; })()`), [true, true, true]);
+    await send('Emulation.setDeviceMetricsOverride', { width: 360, height: 800, deviceScaleFactor: 2, mobile: true }); await sleep(500);
+    check('L6 no horizontal overflow at 360 px', await ev(`(function(){ var s = document.querySelectorAll('#v-anio .an-comp, #v-anio .an-tend'), ok = true;
+      for(var i=0;i<s.length;i++){ if(s[i].scrollWidth > s[i].clientWidth + 1) ok = false; } return [s.length, ok, document.documentElement.scrollWidth <= 360]; })()`), [2, true, true]);
+    await send('Emulation.clearDeviceMetricsOverride');
+    // a legacy year (no month-to-month balance): its own numbers, marked "Cálculo simple"
+    const ml = []; for(let i=0;i<12;i++) ml.push(mes([], [], [], []));
+    ml[10] = m6(1000000, [it('Super', 260000, true)], 0); ml[11] = m6(1000000, [it('Super', 150000, true)], 0);
+    await ev(`localStorage.setItem('kibo.anio','2025'); localStorage.setItem('kibo.datos.2025', ${JSON.stringify(JSON.stringify({anio: 2025, pagoExplicito: true, meses: ml}))}); true`);
+    await nav(URL_APP); await sleep(800);
+    await ev(`document.querySelector('[data-act=tab][data-t=anio]').click(); true`); await sleep(1200);
+    check('L6 legacy year: December against November, its own numbers, marked "Cálculo simple"', await ev(`(function(){ var c = document.querySelector('#v-anio .sec[data-sec=anComp]');
+      return c && [c.querySelector('.sechd .nom').textContent, c.querySelector('[data-comp=pagado] b').textContent, c.querySelector('.an-frases p').textContent, !!c.querySelector('.an-pie .chip.prog')]; })()`),
+      ['Diciembre contra los anteriores', await $(150000), 'En diciembre gastaste 42% menos que tu promedio.', true]);
+    await ev(`localStorage.setItem('kibo.anio','2026'); true`);
+  }
+
   check('no uncaught page errors', pageErrs, []);
 }catch(e){ fails++; results.push('ERROR ' + e.message); }
 finally{

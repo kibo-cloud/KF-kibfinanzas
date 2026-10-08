@@ -20,7 +20,7 @@ try { commit = cp.execSync('git rev-parse HEAD', {cwd: __dirname}).toString().tr
 var data = {};
 V.corpus().forEach(function(c){
   var app = V.appAnio(c.d, c.otros, V.TRAB_PASES());
-  var html = app.anio(), csv = app.csv();
+  var html = V.sinAnalisis(app.anio()), csv = app.csv();   // L6: pinned without the analysis sections (tests/l6.analisis.test.js)
   data[c.nombre] = {html: sha(html), htmlLargo: html.length, csv: csv};
 });
 var texto = JSON.stringify({meta: {razon: razon, baseCommit: commit}, data: data}, null, 1) + '\n';

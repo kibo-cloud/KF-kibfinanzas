@@ -826,6 +826,28 @@ nav button{font-size:var(--fs-min)}
 .hero-anio .an-filas{margin-top:12px;padding-top:8px;border-top:1px solid var(--sep)}
 .an-tit{font-size:var(--fs-cap);font-weight:600;color:var(--txt2);margin:10px 0 2px}
 .an-filas .sdo-f b{font-size:var(--fs-row)}
+/* L6: este mes contra los anteriores y las categorías */
+.an-comp{padding:8px 16px 12px}
+.an-c-f{display:grid;grid-template-columns:minmax(0,1fr) auto 64px 64px;gap:8px;align-items:baseline;padding:8px 0;font-size:15px;border-top:1px solid var(--sep)}
+.an-c-f>span:first-child{color:var(--txt2)}
+.an-c-f>span:nth-child(n+3),.an-c-f>b{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.an-c-f>b{font-weight:600}
+.an-c-hd{font-size:var(--fs-min);color:var(--txt2);border-top:0;padding:0 0 2px}
+.an-c-hd>span:nth-child(2){text-align:right}
+.an-frases{margin-top:10px}
+.an-frases p{font-size:15px}
+.an-pie{padding:8px 0 0}
+.an-pie .chip{margin-left:4px}
+.an-tend{padding:8px 16px 14px}
+.an-cat{padding:9px 0}
+.an-cat small{display:flex;justify-content:space-between;align-items:center;font-size:13px;gap:10px}
+.an-cat small>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.an-cat small>span:last-child{color:var(--txt2);flex:0 0 auto}
+.an-normal{padding:4px 0 8px}
+.an-cat small .chip{font-size:var(--fs-min);min-height:18px;padding:1px 7px;margin-left:4px;vertical-align:1px}
+.an-cat .an-prom{margin:0;color:var(--txt2)}
+.an-cat .an-prom span:last-child{font-variant-numeric:tabular-nums}
+.barritas{display:block;width:100%;height:28px;margin:2px 0 4px}
 .hero-anio.hero-proyectado{border-style:dashed}
 tr.prog td{color:var(--c-prog)}
 td .chip{min-height:0;padding:1px 7px;font-size:var(--fs-min);margin-left:4px}
@@ -3729,11 +3751,120 @@ function htmlHeroAnio(n){
   else h += filaAn('ahorroCierre', 'Ahorro acumulado al cierre del año', n.ahorroCierre);
   return h + '</div></div>';
 }
+/* ═══ L6 (R6): análisis del año ═══
+   Solo compara números que ya están en "Los doce meses" (serieVista: Cobrado = totalIngresos, Pagado = totalGastos, Ahorro = ahorroMesARS,
+   los mismos de la tarjeta del mes) y, por categoría, los gastos tildados (fijos + variables) de cada mes, que sumados dan ese Pagado.
+   Meses: los ya transcurridos con algo cargado (mesesTranscurridos en un año del modelo, mesesCargados en uno sin él), nunca un mes futuro
+   (I5). El mes de referencia es el último de ellos; el promedio es el de los meses ANTERIORES a él (el mes en curso no se compara consigo
+   mismo). Un año sin el saldo mes a mes usa sus números de siempre y se marca "Cálculo simple". */
+var MAS_QUE_LO_NORMAL = 0.25;   // umbral de presentación (no es una regla de plata): 25 % o más por encima del promedio de esa categoría
+var TOP_CATEGORIAS = 5;
+function variacion(actual, base){ return base > 0 ? (actual - base) / base : null; }   // sin base (0 o nada) no hay porcentaje
+function analisisAnio(d, s, hoy, vm){
+  var act = (vm ? mesesTranscurridos(s, vm) : mesesCargados(s)).filter(function(j){ return estadoMes(d.anio, j, hoy) !== 'futuro'; });
+  if(!act.length) return null;
+  var ref = act[act.length - 1], prev = act.indexOf(ref - 1) >= 0 ? ref - 1 : null, base = act.filter(function(j){ return j < ref; });
+  var campos = {cobrado: 'totalIngresos', pagado: 'totalGastos', ahorro: 'ahorroMesARS'}, comp = {}, k, j, i, q;
+  for(k in campos){
+    var v = function(jm){ return num(s[jm][campos[k]]); }, sum = 0;
+    for(i=0;i<base.length;i++) sum += v(base[i]);
+    var prom = base.length ? sum / base.length : null, ant = prev === null ? null : v(prev);
+    comp[k] = {actual: v(ref), anterior: ant, promedio: prom,
+               vsAnterior: ant === null ? null : variacion(v(ref), ant), vsPromedio: prom === null ? null : variacion(v(ref), prom)};
+  }
+  var real = datosRealizados(d, hoy), map = Object.create(null), orden = [];   // N5 S-1: llaves = nombres del usuario
+  for(i=0;i<act.length;i++){
+    j = act[i];
+    var ls = real.meses[j].gastosFijos.concat(real.meses[j].gastosVariables);
+    for(q=0;q<ls.length;q++){
+      if(!estaPagado(j, ls[q])) continue;
+      var n = String(ls[q].nombre || '').trim() || '(sin nombre)';
+      if(!map[n]){ map[n] = {nombre: n, porMes: [0,0,0,0,0,0,0,0,0,0,0,0], total: 0}; orden.push(n); }
+      map[n].porMes[j] += num(ls[q].monto); map[n].total += num(ls[q].monto);
+    }
+  }
+  var cats = orden.map(function(n){
+    var c = map[n], sb = 0;
+    for(i=0;i<base.length;i++) sb += c.porMes[base[i]];
+    c.actual = c.porMes[ref]; c.promedio = base.length ? sb / base.length : null;
+    c.vsPromedio = c.promedio === null ? null : variacion(c.actual, c.promedio);
+    c.masQueLoNormal = c.vsPromedio !== null && c.vsPromedio >= MAS_QUE_LO_NORMAL;
+    return c;
+  });
+  var top = cats.filter(function(c){ return c.total > 0; }).sort(function(a, b){ return b.total - a.total; }).slice(0, TOP_CATEGORIAS);
+  var mas = cats.filter(function(c){ return c.masQueLoNormal; }).sort(function(a, b){ return b.vsPromedio - a.vsPromedio; });
+  return {ref: ref, anterior: prev, base: base, meses: act, enCurso: estadoMes(d.anio, ref, hoy) === 'actual', simple: !vm || !!vm.cad.meses[ref].legacy,
+          comp: comp, categorias: top, masQueLoNormal: mas};
+}
+function pctTxt(p){ return Math.round(Math.abs(p) * 100) + '%'; }
+function flecha(p){
+  if(p === null) return '<span class="mudo">—</span>';
+  var r = Math.round(p * 100);
+  return r === 0 ? '<span class="mudo">igual</span>' : (r > 0 ? '↑ ' : '↓ ') + pctTxt(p);
+}
+// "Este mes gastaste 12% más que tu promedio." (verbo según la fila; sin base para comparar, nada)
+function fraseComp(a, k, contra){
+  var c = a.comp[k], p = contra === 'promedio' ? c.vsPromedio : c.vsAnterior;
+  if(p === null) return '';
+  var quien = a.enCurso ? 'Este mes' : 'En ' + MESES[a.ref].toLowerCase(), verbo = {cobrado: 'cobraste', pagado: 'gastaste', ahorro: 'ahorraste'}[k];
+  var con = contra === 'promedio' ? 'tu promedio' : 'en ' + MESES[a.anterior].toLowerCase(), r = Math.round(p * 100);
+  return quien + ' ' + verbo + ' ' + (r === 0 ? 'lo mismo que ' + con : pctTxt(p) + (r > 0 ? ' más' : ' menos') + ' que ' + con) + '.';
+}
+// barritas de una categoría, enero..mes de referencia; la del mes de referencia en verde, las otras en gris (las mismas marcas que barras())
+function barritas(arr, ref){
+  var W = 120, H = 28, n = ref + 1, an = W / 12, max = Math.max.apply(null, arr.slice(0, n).concat([1])), g = '', i, alto;
+  for(i=0;i<n;i++){
+    alto = arr[i] > 0 ? Math.max(1.5, arr[i] / max * (H - 2)) : 0.8;
+    g += '<rect x="' + (i * an + an * 0.15).toFixed(1) + '" y="' + (H - alto).toFixed(1) + '" width="' + (an * 0.7).toFixed(1) + '" height="' + alto.toFixed(1)
+       + '" rx="1" fill="' + (i === ref ? 'var(--acc)' : 'var(--txt2)') + '" opacity="' + (i === ref ? 1 : (arr[i] > 0 ? 0.45 : 0.2)) + '"/>';
+  }
+  return '<svg class="barritas" viewBox="0 0 ' + W + ' ' + H + '" aria-hidden="true">' + g + '</svg>';
+}
+function htmlComparacion(a){
+  var nom = MESES[a.ref], filas = [['cobrado', 'Cobrado'], ['pagado', 'Pagado'], ['ahorro', 'Ahorro']], h = '<div class="an-comp">', i, c, fr = [];
+  h += '<div class="an-c-f an-c-hd"><span></span><span>' + nom + '</span><span>' + (a.anterior === null ? 'Anterior' : MESES[a.anterior])
+     + '</span><span>Promedio</span></div>';
+  for(i=0;i<filas.length;i++){
+    c = a.comp[filas[i][0]];
+    h += '<div class="an-c-f" data-comp="' + filas[i][0] + '"><span>' + filas[i][1] + '</span><b>' + fARS(c.actual) + '</b><span>' + flecha(c.vsAnterior)
+       + '</span><span>' + flecha(c.vsPromedio) + '</span></div>';
+  }
+  ['pagado', 'cobrado', 'ahorro'].forEach(function(k){ var t = fraseComp(a, k, 'promedio'); if(t) fr.push(t); });
+  var tp = fraseComp(a, 'pagado', 'anterior'); if(tp) fr.push(tp);
+  h += '<div class="res-txt an-frases">' + (fr.length ? fr.map(function(t){ return '<p>' + t + '</p>'; }).join('')
+     : '<p>Cuando tengas un mes más cargado, acá vas a ver cómo viene este contra los anteriores.</p>') + '</div>';
+  h += '<div class="nota an-pie">' + (a.enCurso ? nom + ' todavía no terminó: cuenta lo que ya cobraste y pagaste. ' : '')
+     + (a.base.length ? 'El promedio es el de ' + (a.base.length === 1 ? MESES[a.base[0]].toLowerCase() : a.base.length + ' meses anteriores') + '.' : 'Todavía no hay meses anteriores para promediar.')
+     + (a.simple ? ' <span class="chip prog">Cálculo simple</span>' : '') + '</div>';
+  return h + '</div>';
+}
+function htmlTendencias(a){
+  var h = '<div class="an-tend">', i, c, nom = MESES[a.ref].toLowerCase();
+  if(a.masQueLoNormal.length){
+    h += '<div class="nota ambar an-normal">Más que lo normal en ' + nom + ': ' + a.masQueLoNormal.map(function(x){
+      return '<b>' + esc(x.nombre) + '</b> (' + fARS(x.actual) + ', ' + pctTxt(x.vsPromedio) + ' más que su promedio)'; }).join(', ') + '.</div>';
+  }
+  if(!a.categorias.length) h += '<div class="nota" style="padding:2px 0">Cuando tildes gastos como pagados, acá vas a ver cómo viene cada categoría.</div>';
+  for(i=0;i<a.categorias.length;i++){
+    c = a.categorias[i];
+    h += '<div class="an-cat" data-cat="' + i + '"><small><span>' + esc(c.nombre) + (c.masQueLoNormal ? ' <span class="chip pend">Más que lo normal</span>' : '') + '</span><span>'
+       + fARS(c.actual) + ' en ' + nom + '</span></small>' + barritas(c.porMes, a.ref)
+       + '<small class="an-prom"><span>' + (c.promedio === null ? 'Sin meses anteriores' : 'Promedio ' + fARS(c.promedio)) + '</span><span>' + flecha(c.vsPromedio) + '</span></small></div>';
+  }
+  h += '<div class="nota" style="padding:8px 0 0">Las 5 categorías en las que más gastaste en el año, mes por mes hasta ' + nom
+     + '. "Más que lo normal": ' + Math.round(MAS_QUE_LO_NORMAL * 100) + '% o más arriba de su promedio de los meses anteriores.</div>';
+  return h + '</div>';
+}
 function renderAnio(){
   var hoy = hoyApp(), s = serieVista(D, hoy), h = '', i, vmA = vistaModelo(D, hoy), nA = numerosAnio(D, s, hoy, vmA);
   var estim = nA.modo === 'hoy' || nA.modo === 'proyectado';   // el cierre de diciembre todavía es una estimación
   h += htmlHeroAnio(nA);
   h += resumenAnio(D, s, vmA);   // sin arrastre: serie() y los meses cargados, como siempre
+  var anL6 = analisisAnio(D, s, hoy, vmA);   // L6 (R6): este mes contra los anteriores y cómo viene cada categoría (solo meses ya transcurridos)
+  if(anL6){
+    h += plegable('anComp', (anL6.enCurso ? 'Este mes' : MESES[anL6.ref]) + ' contra los anteriores', anL6.comp.pagado.vsPromedio === null ? '' : 'Pagado ' + flecha(anL6.comp.pagado.vsPromedio), htmlComparacion(anL6));
+    h += plegable('anTend', 'Cómo vienen tus gastos', anL6.masQueLoNormal.length ? '<span class="chip pend">' + (anL6.masQueLoNormal.length === 1 ? '1 más que lo normal' : anL6.masQueLoNormal.length + ' más que lo normal') + '</span>' : '', htmlTendencias(anL6));
+  }
   var T = {i:0,g:0,a:0,c:0,d:0,f:0,s:0,r:0};
   var hT = '<div class="tabla"><table><thead><tr>'
      + '<th>Mes</th><th>Ingresos</th><th>Gastos</th><th>Ahorro</th><th>A dólares</th><th>Saqué</th><th>Repuse</th><th>Deudas</th><th>Disponible</th><th>Acumulado</th>'
