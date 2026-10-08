@@ -193,10 +193,59 @@ Left for P3b: El año (finding 4), Patrimonio/USD tab (5, 15), Trabajo (6), the 
 first screen at rest on phones (consider a Gasto action in the tab bar), and terminology alignment of the balance block
 lines ("Disponible actual" / "Proyectado al cierre") with the hero ("Tenés hoy" / "Al cierre").
 
+### L1 — P3b: El año, Patrimonio, Trabajo (done)
+
+Route: delegated writer (index.html + tests; 2+ non-trivial files). No money rule changed: every figure is read from serieVista /
+cadena (estadoHero) / patrimonioNeto / patrimonioPantalla / resumenTrab. Motor goldens byte-identical. D16-15 untouched.
+Commits: 240e9ed (legacy amounts recorded before the redesign), 5786c97 (feature + updated pins), d2a4950 (E2E).
+
+Before → after per finding:
+- 4 El año: two unlabeled "December" figures, "Ahorro acumulado" year-end incl. programado next to an a-hoy Patrimonio, "Arranque
+  del año" → one hero: "Tenés hoy" (= month hero, chain) + chip "A hoy", "Ahorro acumulado a hoy" (= patrimonioNeto.ahorroARS, the
+  Patrimonio figure), then "Al cierre del año (estimado)": "Disponible al cierre de diciembre (estimado)" and "Ahorro al cierre de
+  diciembre (estimado, con lo programado)" (= December row of serieVista). The pace line is "Ahorro a este ritmo en diciembre";
+  "Los doce meses" header "Cierre $X · estimado"; "Ahorro acumulado" header "en diciembre · estimado"; "Arranque del año" →
+  "Ahorro con el que arrancaste el año". Past model year: "Cerraste el año con"; future: gray "Proyectado para diciembre";
+  legacy: "Disponible final del año" + "Cálculo simple" (same numbers). Chart axis text 13 user units (≥ 11 px at 360, ≤ 17 px at
+  1280 via max-width 440).
+- 5 / 15 Patrimonio: tab "USD" → "Patrimonio" (internal id `usd` kept; there were no deep links besides `?gasto=1`). Order: hero
+  "Patrimonio neto a hoy" in pesos + "En dólares: US$ X" (legacy: "Todo junto al cierre del año" + "Cálculo simple"), "De qué se
+  compone" (R5 composition), "Dólares mes a mes", "Datos" (cotización, cripto, dólares del año anterior: every input, only there).
+  The dollars table of a model year no longer has one "Cierre" total: "A hoy" (= patrimonioNeto.usd, the composition figure) and
+  "Con lo programado" (difference + year end); future months say "programado" (Q13, I5). Legacy table unchanged.
+- 6 Trabajo: "A lo personal $650.000" (incl. the future pase) → "Lo que pasaste a lo personal": "Ya pasaste $450.000" +
+  "Programado $200.000" (`pasesPersonal`: ya = pasado − pasadoProgramado, the split resumenTrab/Disponible already use, Q4); the
+  Disponible text says "lo que ya pasaste a lo personal" and adds "Programado para pasar a lo personal: $Y. Se descuenta en su
+  fecha."; scheduled pase rows "Programado para el …". "Entra en 30 días" → "Vence en 30 días o menos" (prox30 is the open
+  balance by invoice due date, the same concept as "Vence en N días").
+- 15 Update notice: "versión 1.30" → "versión <APPVER>", two lines; waits (CSS `:has`) while the start-of-month closing question
+  is open; "Tenés hoy" stays above the tab bar at 390 × 844.
+- P2 polish / 1280: the month bar fits the content at ≥ 720 px (12 equal buttons, nothing scrolled away); the tab bar is padded
+  to the content width; expense sheet amount with "$" prefix, placeholder "0", button "Sumar gasto".
+- 11 Gasto: the floating button became a tab-bar action (center, filled green, `id="fab"` kept, `data-act=gastoRapido`); from
+  another tab it opens the month first; `?gasto=1` still works. The scroll-away handler and the 72 px FAB clearance are gone.
+- Vocabulary: balance block "Disponible actual" / "Proyectado al cierre (estimado)" / "Disponible al cierre" → "Tenés hoy" /
+  "Al cierre (estimado)" / "Cerraste con"; future month "Proyectado para <Mes>".
+- Fit: Trabajo segmented control, cobranza and folder buttons ≥ 44; compact product badge 11 px; section titles keep ≥ 40 % of
+  the header so they do not wrap word by word.
+
+Tests: new tests/l1.vistas.test.js (6: legacy El año and Patrimonio keep the exact set of money amounts and tables recorded on
+ec9db4a in fixtures/l1-legacy-numeros.json and are marked; model El año figures = chain / patrimonioNeto / serieVista with their
+labels, one hero; past and future years; dollars a hoy vs programado and the card order; pasesPersonal adds up and matches
+Disponible). Byte pins anio-legacy.json / usd-legacy.json regenerated with TUGASTO_GOLDEN_RAZON (layout only; the year CSV is
+still the 0ad13c1 one). Updated pins (old wording → new): r4.anio (Cierre estimado, pace line), r4.cobertura (explicaDisp),
+r5.patrimonio (headline in pesos, composition title), r5.saldos and e2e (balance block words, the Patrimonio helper reads
+#bigPatri / #patriUSD). E2E +42 L1 checks. Results: `npm test` 706 (705 pass, 1 todo L-03d); `npm run test:e2e` 304/304.
+
+Screenshots (session scratchpad `ux/shots/`, script `ux/shoot-l1.mjs`, hoy 2026-10-15): `l1-<dark|light>-<390|1280>-` abrir,
+mes-oct, anio, patrimonio, trabajo, hoja-gasto, aviso-actualizacion.
+
+Left: Ajustes/other sheets microcopy (L2); `.fab` CSS rules are now unused (L10 cleanup).
+
 ## Improvement loop (owner: "ejecutá todo lo que creas necesario para mejorarla en formato loop", 2026-10-07)
 
 Ordered backlog (each item: test-first, suites green, docs, small commits; native review consent batched per slice):
-- [ ] L1 P3b: El año, Patrimonio (tab renamed from "USD"), Trabajo, update-notice version, 1280 month bar, expense sheet polish,
+- [x] L1 P3b: El año, Patrimonio (tab renamed from "USD"), Trabajo, update-notice version, 1280 month bar, expense sheet polish,
       Gasto action without covering amounts, one vocabulary across hero and balance block.
 - [ ] L2 P4: microcopy sweep of every screen, sheet, notice, error, confirmation and backup/restore text.
 - [ ] L3 R7 / D16-15: quick expense on a pending item asks (D8: mark the existing one as paid vs record a separate realized
