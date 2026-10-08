@@ -242,12 +242,72 @@ mes-oct, anio, patrimonio, trabajo, hoja-gasto, aviso-actualizacion.
 
 Left: Ajustes/other sheets microcopy (L2); `.fab` CSS rules are now unused (L10 cleanup).
 
+### L2 — Microcopy (done)
+
+Route: delegated writer (index.html + tests; 2+ non-trivial files). Text only: no money rule, no layout change, no new action.
+Motor goldens byte-identical to 58bd02d. User-derived strings still go through `esc()`; `filaAj`/`pildora` keep escaping.
+Commits: 99750e4 (Ajustes, backups, data warnings, other tab), d82768c (Trabajo + help), 3c37c84 (El año, Patrimonio, opening
+balance), bc0ffb4 (tests), e96e419 (balance block label). About 50 user-facing strings changed in index.html (58 lines).
+
+Rules applied:
+- One vocabulary across screens: Tenés hoy / Al cierre (estimado) / Cerraste con / Proyectado para / Cobrado / Pagado / Falta /
+  Programado / Lo que pasaste. No internal words on screen: pase(s), bolsillo, arrastre, modelo, cadena, LAB, R4/R5, legacy, internal
+  version numbers, "el sistema".
+- Errors say what happened and what to do; no browser error names (`NotAllowedError`) or file internals.
+- Destructive confirmations state the consequence (all nine `confirmar` calls checked by a test).
+- Icon-only buttons have an aria-label (already true; now guarded by E2E). Voseo, short, warm.
+
+| Screen | Old | New |
+| --- | --- | --- |
+| Ajustes · Año | Volver a como estaba antes de la 1.30 / Guardado al actualizar… | Volver a como estaba antes de actualizar / Se guardó al actualizar la app… |
+| Ajustes · Año | Volver a como estaba antes de los saldos / Guardado antes de empezar con los saldos… | Volver a como estaba antes del saldo mes a mes / Se guardó antes de que la app empezara a llevar tu saldo de un mes al otro… |
+| Ajustes · restore confirmations | …, antes de la 1.30. / …, antes de empezar con los saldos. | …, antes de actualizar la app. / …, antes de que la app llevara tu saldo de un mes al otro. |
+| Ajustes · restore refusals | No pude guardar una copia de lo que no se puede leer. No cambié nada. / No se pudo restaurar | No pude apartar los datos que no se pueden leer, así que no cambié nada. Hacé una copia de seguridad y probá de nuevo. / No se pudo restaurar. No cambié nada: probá de nuevo. |
+| Dónde viven tus datos | Compartir archivos en este navegador → json: sí · json como texto: sí · txt: sí | Desde este navegador la copia se puede mandar directo a Drive, al mail o a WhatsApp. (or: …no se puede mandar directo: queda en Descargas…) |
+| Dónde viven tus datos | El sistema se comprometió a conservarlos / El sistema no garantiza conservarlos / En este teléfono, sin garantía del sistema | Están protegidos (row: Protegidos: el teléfono no los borra) / No están protegidos (row: Sin protección: hacé copias seguido) / En este teléfono, sin protección asegurada |
+| Ajustes · Copia | Copiar la copia al portapapeles | Copiar la copia como texto |
+| Backup alerts | Tu navegador aceptó el archivo pero rechazó el envío (NotAllowedError)… / Tu navegador rechazó el envío (…)… | Tu navegador no dejó mandar el archivo. La copia está a salvo en Descargas… / Tu navegador no dejó mandar el archivo… |
+| Backup alerts | Probar compartir / Copiar / No se puede / Copiada al portapapeles | Compartir de nuevo / Copiar como texto / No se puede compartir (+ mandala desde la app Archivos) / Copiada como texto |
+| Versión para PC | No pude armarlo · El archivo de la app no tiene las marcas donde van los datos… / No se puede acá | No pude armar la versión para PC · No encontré dónde poner tus datos… Recargá la app con internet y probá de nuevo. / No se puede desde este navegador |
+| Other-tab notice | Hay cambios hechos en otra pestaña. Recargá para no perderlos. | Hay cambios hechos en otra pestaña. Recargá para verlos: hasta entonces esta pestaña no guarda nada. |
+| Unreadable year notice | No pude leer los datos de 2026. Guardé una copia; no se van a pisar. | No pude leer los datos de 2026. Los aparté tal cual para que no se pierdan, y ese año no se modifica. |
+| Trabajo | Borrar el pase · Se descuentan $X del renglón … | ¿Borrar lo que pasaste? · Se descuentan $X del renglón … y vuelven al disponible del trabajo. |
+| Trabajo | Pase borrado. No encontré el renglón … | Lo borré de Trabajo, pero no encontré el renglón … |
+| Mes · Del trabajo row | …borrá esos pases desde ahí… los dos lados siguen cerrando. | …borralo desde ahí… las dos pestañas siguen cerrando. |
+| Trabajo · cobranza | Hola! Te escribo por… | ¡Hola! Te escribo por… |
+| Método de uso | La idea: …lo que queda es el disponible final. Ese número grande del resumen… | …Tenés hoy… Al cierre (estimado)… Cerraste con… Proyectado para |
+| Método de uso | El botón verde de abajo / (Mes → Año → USD → Ajustes) / scrolleando / scrollear | El botón Gasto, en el medio de la barra de abajo / (Mes → Año → Patrimonio → Trabajo → Ajustes; …) / deslizando / deslizarlas |
+| Método de uso | cinco temas … si el sistema se comprometió… / Guardar la versión para PC / Exportar CSV | seis temas (+ Tu forma de trabajo) … si tus datos están protegidos / Versión para PC / CSV del año |
+| Método de uso | Los topes se arrastran… / arrastrado mes a mes y año a año / Si borrás un pase… mientras tenga pases / …gastos y pases | Los topes pasan solos… / sumado mes a mes y de un año al otro / Si borrás algo que pasaste… mientras tenga plata pasada desde Trabajo / …gastos y lo que pasaste a lo personal |
+| El año | Al cierre del año (estimado) › Disponible al cierre de diciembre (estimado) / Ahorro al cierre de diciembre (estimado, con lo programado) | Al cierre del año (estimado) › Disponible en diciembre / Ahorro en diciembre (con lo programado) |
+| Patrimonio | Lo que tenés hoy, bolsillo por bolsillo. | Lo que tenés hoy, parte por parte. |
+| Mes · saldo | Cobros pendientes de meses anteriores: | Sin cobrar de meses anteriores: (pairs with "Atrasado de meses anteriores" and the hero chip "Sin cobrar de antes") |
+| Mes · saldo de diciembre | …que no está en este teléfono con saldos. / No se pudo guardar. | …Ese año no está en este teléfono, o no lleva el saldo de un mes al otro, así que no se puede corregir desde acá. / No se pudo guardar. Probá de nuevo. |
+
+Kept on purpose: "¿Cuánto dinero tenés disponible actualmente?" (owner wording, D5/Q1); "Disponible final" in a year or month
+without the month-to-month balance ("Cálculo simple", pinned by the legacy byte fixtures); "Todavía no la editaste en este archivo"
+(cotización) and the year-CSV headers ("Ahorro ARS", "USD del mes"), because both sit in byte-pinned fixtures (usd-legacy.json, the
+0ad13c1 CSV) and the gain was too small to regenerate them; the stored snapshot field `version: 'anterior a los saldos'` (data,
+never shown). Follow-ups: a debt that already has a plan offers only Quitar / Guardar (no Cancelar; the backdrop closes it);
+"💳 Digital / Virtual" (Trabajo summary) vs "Transferencia / Virtual" (quick-sale button).
+
+Tests: tests/ui-textos.js documents and implements the extraction (markup text + title/aria-label/placeholder/alt, string literals
+with a space, comments/regex/one-word identifiers skipped, markup stripped, escapes decoded; one-word literals are left to the
+rendered-DOM walk). New tests/l2.microcopia.test.js (7): extractor sanity, the method on a synthetic source, no jargon, no
+English/programming words (Save, Cancel, Delete, Loading, Error:, undefined, NaN, null), privacidad.html, every `confirmar` has a
+consequence body, one "estimado" in El año. E2E +83 L2 checks: a planted-word control, then the rendered text and labels of the five
+tabs, three Ajustes screens and eleven sheets (quick expense, debt plan, September closing, welcome, restore confirmation, pass to
+personal, its detail and delete confirmation, new invoice, payment received, work expense): no jargon, no English words, every
+icon-only button labeled; each sheet opens and closes; the delete-confirmation text; the El año rows. Updated pins (old → new
+wording): e2e (other-tab notice, restore row, unreadable year, El año rows), n4.integridad, n7.final, r4.migracion, l1.vistas,
+r5.patrimonio. Results: `npm test` 713 (712 pass, 1 todo L-03d); `npm run test:e2e` 387/387.
+
 ## Improvement loop (owner: "ejecutá todo lo que creas necesario para mejorarla en formato loop", 2026-10-07)
 
 Ordered backlog (each item: test-first, suites green, docs, small commits; native review consent batched per slice):
 - [x] L1 P3b: El año, Patrimonio (tab renamed from "USD"), Trabajo, update-notice version, 1280 month bar, expense sheet polish,
       Gasto action without covering amounts, one vocabulary across hero and balance block.
-- [ ] L2 P4: microcopy sweep of every screen, sheet, notice, error, confirmation and backup/restore text.
+- [x] L2 P4: microcopy sweep of every screen, sheet, notice, error, confirmation and backup/restore text.
 - [ ] L3 R7 / D16-15: quick expense on a pending item asks (D8: mark the existing one as paid vs record a separate realized
       expense keeping the plan pending). Owner explicitly asked for it now; D8 is the approved rule.
 - [ ] L4 Backup reminder ("hace N días que no hacés una copia" + one-tap download).
