@@ -519,6 +519,82 @@ Route: inline in the single writer. RED first: tests/l56.revision.test.js 0/8 be
 
 Results (after L7 and the L5/L6 fixes): `npm test` 762 (761 pass, 1 todo L-03d); `npm run test:e2e` 467/467; motor goldens
 byte-identical to 956c4aa.
+### L7 review fixes
+
+Route: inline in the single writer (index.html + tests). No money rule change; motor goldens byte-identical.
+
+1. 595a198 `fix: contrast of destructive buttons and chips`. Dark-theme red sheet button was white on #f0655b (3.1:1): now dark text
+   (`--on-neg`, 5.9:1). Neutral chip `--txt2` on `--fill` was 4.3/4.4:1 at 12 px: now `--on-fill` (4.95 light, 5.56 dark). The
+   contrast test covers both pairs.
+2. cdf9847 `fix: per-payment amounts add up to the monthly amount`. Each collection date gets round(total / n) and the last one the
+   remainder (100.000 on the 1st, 10th and 20th → 33.333 + 33.333 + 33.334).
+3. 4678b2e `fix: "Qué vence" counts only uncovered collection dates for "Del trabajo"`. Pases cover the earliest dates first (as the
+   engine allocates them), so covered dates are no longer listed as overdue.
+4. b0bc8fc `fix: focus returns to the opener after a sheet re-renders the view`. `cerrarHoja` remembers the opener by id or data-*
+   attributes and focuses the re-drawn button, else the view heading or the selected tab, never the page body.
+5. 2504559 `fix: keyboard order of the tab bar matches what you see`. Document order Mes, Año, Gasto, Patrimonio, Trabajo, Ajustes
+   (no CSS `order`); the tablist owns the five tabs with `aria-owns`, Gasto stays outside. The L7 markup unit test
+   (tests/l7.accesibilidad.test.js) was updated in that same commit; nothing stale remained.
+
+### L8 — Atomic writes and CSP (done)
+
+Route: inline in the single writer (resumed after an interrupted writer; its commits f4407e5 and bdef326 reviewed and kept).
+Commits: f4407e5, bdef326, 1e2dec3.
+
+- Journal (f4407e5). A pase writes two blobs (the year of the row, then Trabajo). `escribirJuntos` first stores in `kibo.diario`
+  the FULL new text of every blob plus the revision each one has now, then writes the blobs, then deletes the journal. At start-up,
+  before anything is read or saved, `recuperarDiario`: a blob already equal to its journal text is skipped; a missing one is written
+  only if the stored blob still has the journaled prior revision; then the journal is deleted. Never applied twice (whole texts, not
+  a delta). Crash semantics: crash after the journal → the next start writes both; between the writes → it finishes Trabajo; after
+  both → it only deletes the journal; another tab changed a blob in between (stale revision) → nothing is written and the journal
+  goes to quarantine with a notice; an unreadable journal or one naming a non-data key → quarantined, never written; the journal
+  does not fit → the pase is refused, nothing written; the Trabajo write fails while the tab lives → the year is rolled back; if
+  that rollback fails too → the journal stays and the tab stops saving until a reload finishes it. `kibo.diario` is a device key
+  (not in `CLAVES_PROPIAS`): no backup carries it, no rollback deletes it. Tests: tests/l8.diario.test.js (11, a fakeStorage that
+  throws on a chosen setItem, then a fresh start).
+- Other multi-blob writers, reviewed:
+  - `duplicar`: one money blob (the new year). The pre-R4 snapshot and marker are written before it and only describe the state
+    before; `recordarAnio` is a preference. A crash in between leaves the old year untouched and at most a new year not yet
+    opened: no journal needed.
+  - Restore (`restaurarTexto` / `escribirAnios`): a user-confirmed REPLACE from a file the user still holds; it is already
+    per-year (it reports which years did not fit) and idempotent, so repeating it reaches the same state. A journal would hold a
+    second full copy of every restored year exactly when storage is fullest and would refuse restores that fit today. Accepted
+    residual risk: a crash mid-restore can leave some years from the copy and the old Trabajo until the restore is repeated.
+  - `volverAntesDe130` / `volverAntesDeR4`: the snapshot itself is the journal (complete target state, removed last, the rollback
+    is idempotent). Gap found and fixed (1e2dec3): the R4 rollback deletes the marker before the snapshot, so a model write in a
+    half-rolled-back state retook the snapshot from half data. `asegurarSnapshotR4` now keeps an existing snapshot and only sets
+    the marker back; a rollback that fails after it started deleting says "No se pudo terminar de restaurar. El respaldo sigue
+    guardado…" instead of "No cambié nada". RED observed (the new test in tests/r4.migracion.test.js failed without the fix),
+    GREEN after. The pre-1.30 snapshot was already never overwritten (`seguroActualizacion` writes it only when absent).
+- CSP (bdef326). `script-src 'self'` + the sha256 of the two inline scripts (engine and app); no `'unsafe-inline'` for scripts, no
+  `'unsafe-eval'`, `object-src 'none'`, `base-uri 'none'`, `form-action 'none'`, everything else `'self'`. The JSON data block is
+  not executable, so "Versión para PC" (only that block replaced) carries a matching CSP. tests/l8.csp.test.js fails on a stale
+  hash and prints the script-src to paste (it also proves one changed character changes the hash and CRLF = LF); the E2E runs the
+  UNMODIFIED build and its PC file via file:// with no violation and proves an injected inline script is blocked. Regenerating:
+  recompute the hashes as that test does and paste them into the meta of index.html and privacidad.html (S-4 keeps both metas
+  equal). Remaining allowance: `style-src 'self' 'unsafe-inline'`, because the app renders `style="…"` attributes (bars, colors,
+  widths); hashes do not cover attributes and removing them is a larger refactor. Styles cannot run script.
+
+### L9 — Release 1.33.0 (done)
+
+Route: inline in the single writer. Commit d58d815.
+
+- APPVER 1.33.0; service-worker cache `kibfinanzas-offline-v46` (prefix kept, only `kibfinanzas-offline-*` caches are deleted);
+  precache list unchanged and complete (tests/release.test.js checks every local file referenced by the page and the manifest);
+  LEEME changelog "TuGasto 1.33: nueva cara…" (Spanish); CSP hashes regenerated.
+- Update notice once per version: until now it only fired when coming from before 1.30 (`kibo.esquema`), so a 1.32 install would
+  not see "versión 1.33.0". New device key `kibo.versionVista` (like `kibo.esquema`: not own, not in backups, not touched by
+  rollbacks) is noted at every start; `versionNueva` announces only when the page is served by its service worker (the installed
+  app) and an older version was noted, or none was noted and years are already saved (a 1.32 phone). A fresh install, a plain tab
+  or the PC file never announce. Unit tests in tests/release.test.js (3).
+- PWA E2E (+6): a copy of the release relabeled 1.32.0 / v45 (only the copy also registers the worker on http://127.0.0.1, a
+  secure context) is installed and served from its cache; v46 is published and `registration.update()` runs: only the v46 cache is
+  left; the reopened app serves 1.33.0, shows "versión 1.33.0" once with the data intact, the next start shows none; with the
+  server stopped the installed app reloads offline and draws the month; no CSP violation and no page error on any of those loads.
+  The PC file via file:// is covered by the L8 E2E on the real 1.33.0 build.
+
+Results: `npm test` 784 (783 pass, 1 todo L-03d); `npm run test:e2e` 480/480; motor goldens byte-identical to bdef326.
+
 ## Improvement loop (owner: "ejecutá todo lo que creas necesario para mejorarla en formato loop", 2026-10-07)
 
 Ordered backlog (each item: test-first, suites green, docs, small commits; native review consent batched per slice):
@@ -531,6 +607,6 @@ Ordered backlog (each item: test-first, suites green, docs, small commits; nativ
 - [x] L5 "Qué vence esta semana" (pending with dates, installments, Trabajo invoices) on opening.
 - [x] L6 R6 analysis: month vs previous and vs average, category trends, "más que lo normal" (from the validated model).
 - [x] L7 Desktop two-column layout + accessibility (contrast, labels, focus, screen reader).
-- [ ] L8 Atomic writes (year + Trabajo) and strict CSP if feasible without breaking the PC file; else documented debt.
-- [ ] L9 Version 1.33.0 + SW, PWA update path, offline, PC/file:// verification.
+- [x] L8 Atomic writes (year + Trabajo) and strict CSP if feasible without breaking the PC file; else documented debt.
+- [x] L9 Version 1.33.0 + SW, PWA update path, offline, PC/file:// verification.
 - [ ] L10 Native review slices, final verification, GitHub (destination must be given by the owner), ALPHA verdict.
