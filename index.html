@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-13IJeOyEKqFZVOOFHo7ITxTuXUuIFB+El4nbN4kXJNQ=' 'sha256-Fy9mjYp0OtOTCQWecdOhlWGxO711Gnndj7OlGLb9aWs='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-13IJeOyEKqFZVOOFHo7ITxTuXUuIFB+El4nbN4kXJNQ=' 'sha256-XumaMDWOZDv0Z6T6g3ON6tmzUQIsPA3c5IheOuhBXEo='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -7774,13 +7774,14 @@ function volverAntesDe130(){
     'Se restaura todo tal cual estaba el ' + r.fecha.slice(8,10) + '/' + r.fecha.slice(5,7) + ', antes de actualizar la app. <b>Lo que cargaste desde entonces se pierde</b>, incluido lo de la pestaña Trabajo. Hacé una copia de seguridad antes, si no la tenés.',
     'Restaurar', function(){
       try{
-        var i, k, borrar = [];
+        var i, k, borrar = [], empezo = false;
         for(i=0;i<localStorage.length;i++){ k = localStorage.key(i); if(claveMia(k) || k === LSESQ) borrar.push(k); }   // LSESQ también: así el arranque vuelve a anotar el esquema
         if(!cuarentenaAntesDeBorrar(borrar)){ pildora('No pude apartar los datos que no se pueden leer, así que no cambié nada. Hacé una copia de seguridad y probá de nuevo.', true); return; }
+        empezo = true;   // L8: desde acá lo guardado cambia; el respaldo se borra último, así una vuelta atrás cortada se puede repetir igual
         for(i=0;i<borrar.length;i++) localStorage.removeItem(borrar[i]);
         for(k in r.datos) if(r.datos.hasOwnProperty(k) && claveMia(k)) localStorage.setItem(k, r.datos[k]);   // un respaldo viejo puede traer claves ajenas: no se escriben
         localStorage.removeItem(LSPRE130);
-      }catch(e){ pildora('No se pudo restaurar. No cambié nada: probá de nuevo.', true); return; }
+      }catch(e){ pildora(empezo ? 'No se pudo terminar de restaurar. El respaldo sigue guardado: tocá de nuevo esta opción para terminarlo.' : 'No se pudo restaurar. No cambié nada: probá de nuevo.', true); return; }
       location.reload();
     });
 }
@@ -7790,6 +7791,9 @@ function volverAntesDe130(){
 function asegurarSnapshotR4(){   // true si ya hay marca o se pudo guardar el respaldo; false si no se pudo (no hay que escribir el modelo)
   try{
     if(localStorage.getItem(LSR4)) return true;
+    // L8: sin marca pero con respaldo = una vuelta atrás que se cortó en el medio (borra la marca antes que el respaldo). Ese respaldo es lo de
+    // antes del modelo y lo que hay ahora está a medias: se conserva, nunca se pisa; solo vuelve la marca
+    if(localStorage.getItem(LSPRER4)){ localStorage.setItem(LSR4, new Date().toISOString()); return true; }
     var datos = {}, hay = false, i, k, ahora = new Date().toISOString();
     for(i=0;i<localStorage.length;i++){
       k = localStorage.key(i);
@@ -7819,13 +7823,14 @@ function volverAntesDeR4(){
     'Se restaura todo tal cual estaba el ' + r.fecha.slice(8,10) + '/' + r.fecha.slice(5,7) + ', antes de que la app llevara tu saldo de un mes al otro. <b>Lo que cargaste desde entonces se pierde</b>, incluido lo de la pestaña Trabajo. Hacé una copia de seguridad antes, si no la tenés.',
     'Restaurar', function(){
       try{
-        var i, k, borrar = [];
+        var i, k, borrar = [], empezo = false;
         for(i=0;i<localStorage.length;i++){ k = localStorage.key(i); if(claveMia(k)) borrar.push(k); }   // incluye la marca: así la app vuelve a quedar como antes del modelo
         if(!cuarentenaAntesDeBorrar(borrar)){ pildora('No pude apartar los datos que no se pueden leer, así que no cambié nada. Hacé una copia de seguridad y probá de nuevo.', true); return; }
+        empezo = true;   // L8: desde acá lo guardado cambia; el respaldo se borra último, así una vuelta atrás cortada se puede repetir igual
         for(i=0;i<borrar.length;i++) localStorage.removeItem(borrar[i]);
         for(k in r.datos) if(r.datos.hasOwnProperty(k) && claveMia(k)) localStorage.setItem(k, r.datos[k]);   // solo claves propias, venga lo que venga en el respaldo
         localStorage.removeItem(LSPRER4);
-      }catch(e){ pildora('No se pudo restaurar. No cambié nada: probá de nuevo.', true); return; }
+      }catch(e){ pildora(empezo ? 'No se pudo terminar de restaurar. El respaldo sigue guardado: tocá de nuevo esta opción para terminarlo.' : 'No se pudo restaurar. No cambié nada: probá de nuevo.', true); return; }
       location.reload();
     });
 }
