@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-13IJeOyEKqFZVOOFHo7ITxTuXUuIFB+El4nbN4kXJNQ=' 'sha256-XumaMDWOZDv0Z6T6g3ON6tmzUQIsPA3c5IheOuhBXEo='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-13IJeOyEKqFZVOOFHo7ITxTuXUuIFB+El4nbN4kXJNQ=' 'sha256-VzpjOHX8leRj+T/2oESujjlZ+IPPDL7LdZCtwo1xqdA='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -2658,7 +2658,7 @@ function hoyApp(){ return hoyDe(new Date()); }
 var M1 = '/*DATOS_' + 'INICIO*/';
 var M2 = '/*DATOS_' + 'FIN*/';
 
-var APPVER   = '1.32.0';    // versión visible en Ajustes (LAB)
+var APPVER   = '1.33.0';    // versión visible en Ajustes (LAB)
 var PREF     = 'kibo.datos.';        // kibo.datos.2026, kibo.datos.2027…
 var LSANIO   = 'kibo.anio';
 var LSCOPIA  = 'kibo.ultimaCopia';
@@ -7725,6 +7725,7 @@ function accionTj(a, b){
    que había, por las dudas. No convierte ni reescribe nada: los años siguen
    exactamente como estaban, y los campos nuevos se leen con valor por defecto. */
 var LSESQ = 'kibo.esquema', LSPRE130 = 'kibo.respaldo.pre130', ESQUEMA = '1.30';
+var LSVERVISTA = 'kibo.versionVista';   // L9: la última APPVER que arrancó en este teléfono; del teléfono como kibo.esquema: no es clave propia, no viaja en la copia
 // claves de esta app (la copia y la restauración solo tocan estas; otra app del mismo sitio puede usar "kibo.algo"): kibo.datos.AAAA + estas
 var LSR4 = 'kibo.modeloSaldos', LSPRER4 = 'kibo.respaldo.pre-r4';   // marca "este teléfono ya empezó el modelo de saldos" y la copia de lo que había justo antes (como pre130)
 var LSCUAR = 'kibo.cuarentena.';   // N4 I-3: texto tal cual de un blob que no se pudo leer (kibo.cuarentena.AAAA, kibo.cuarentena.trabajo); es del teléfono, nunca se borra
@@ -8027,6 +8028,14 @@ function activarSaldos(declarado){
   if(sucio){ delete D.arrastre; return false; }   // no se pudo guardar (otra pestaña guardó antes o el navegador no deja): en memoria tampoco queda
   return true;
 }
+// L9: true UNA vez por versión nueva, solo en la app servida por su service worker (lo que se actualiza) que ya se usaba con otra versión.
+// La 1.32 y anteriores no anotaban la versión: sin anotación, es una actualización si ya había años guardados (una instalación nueva no avisa).
+function versionNueva(){
+  var v;
+  try{ v = localStorage.getItem(LSVERVISTA); if(v === APPVER) return false; localStorage.setItem(LSVERVISTA, APPVER); }catch(e){ return false; }
+  if(!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) return false;   // una pestaña sin service worker o el archivo para PC: nada se actualizó
+  return v !== null || aniosGuardados().length > 0;
+}
 function avisoActualizado(){
   var e = document.getElementById('avisos'); if(!e) return;   // reemplaza al recordatorio de copia: este ya lo incluye
   // L1 (hallazgo 15): la versión real (APPVER) y en pocas líneas, para no empujar "Tenés hoy" fuera de la pantalla
@@ -8049,7 +8058,8 @@ if(respaldoPrevio() && diasDelRespaldo() > 30){ try{ localStorage.removeItem(LSP
 vencerRespaldoR4();
 aplicarModo();
 if(abonosNuevos) setTimeout(function(){ toast((abonosNuevos === 1 ? 'Se generó 1 abono' : 'Se generaron ' + abonosNuevos + ' abonos') + ' en Trabajo'); }, 900);
-if(actualizado130) setTimeout(avisoActualizado, 500);
+var nuevaVersion = versionNueva();   // se anota siempre; avisa una sola vez
+if(actualizado130 || nuevaVersion) setTimeout(avisoActualizado, 500);
 aplicarTema();
 aplicarOculto();
 render();

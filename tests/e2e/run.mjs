@@ -509,6 +509,60 @@ try{
   await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: cspId });
   await nav(URL_APP);
 
+  // ── L9: the INSTALLED app moves from the previous release to this one: only the new cache is left, the new APPVER is served, the update
+  //    notice says the new version once, a reload without network opens it, and no CSP violation on any of those loads ──
+  {
+    const PREV = { appver: '1.32.0', sw: 45 };   // the release this one replaces (moves with tests/release.test.js)
+    const swSrc = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8'), swN = +/kibfinanzas-offline-v(\d+)'/.exec(swSrc)[1];
+    // the app registers its worker on https only; this test origin is http://127.0.0.1 (a secure context), so only the COPY also allows it
+    const conSW = (html) => { const n = html.replace("location.protocol === 'https:'", "(location.protocol === 'https:' || location.hostname === '127.0.0.1')"); if(n === html) throw new Error('service worker registration guard not found'); return conHashes(n); };
+    const pwaDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tugasto-e2e-pwa-')); tmpDirs.push(pwaDir);
+    const publicar = (html, sw) => {
+      for(const f of fs.readdirSync(ROOT)) if(/\.(png|webmanifest)$/.test(f) || f === 'privacidad.html') fs.copyFileSync(path.join(ROOT, f), path.join(pwaDir, f));
+      fs.writeFileSync(path.join(pwaDir, 'index.html'), html); fs.writeFileSync(path.join(pwaDir, 'sw.js'), sw);
+    };
+    const realIdx = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+    publicar(conSW(realIdx.replace(/(var APPVER\s*=\s*)'[^']+'/, `$1'${PREV.appver}'`)), swSrc.replace(`kibfinanzas-offline-v${swN}'`, `kibfinanzas-offline-v${PREV.sw}'`));
+    const srvPwa = await serve(pwaDir), U = `http://127.0.0.1:${srvPwa.address().port}/index.html`, viol = [];
+    const cspPwa = (await send('Page.addScriptToEvaluateOnNewDocument', { source: 'window.__cspV = []; document.addEventListener("securitypolicyviolation", function(e){ window.__cspV.push(e.violatedDirective); });' })).result.identifier;
+    const errsPwa = pageErrs.length;
+    const servida = `(function(){ var m = null; [].forEach.call(document.scripts, function(s){ m = m || /var APPVER\\s*=\\s*'([^']+)'/.exec(s.text); }); return m && m[1]; })()`;
+    const cachesYa = `caches.keys().then(function(k){ return k.filter(function(x){ return x.indexOf('kibfinanzas-offline-') === 0; }).sort(); })`;
+    const ir = async (ms = 900) => { await nav(U); await sleep(ms); viol.push(...await ev('window.__cspV.slice()')); };
+    try{
+      await nav(U);
+      await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); localStorage.setItem('kibo.ultimaCopia', new Date().toISOString()); localStorage.setItem('kibo.esquema', '1.30');
+        localStorage.setItem('kibo.anio','2026'); localStorage.setItem('kibo.datos.2026', ${JSON.stringify(JSON.stringify(legacy))}); true`);
+      await ir();
+      await waitFor(`!!navigator.serviceWorker.controller`, true, 8000);
+      await waitFor(cachesYa, [`kibfinanzas-offline-v${PREV.sw}`], 8000);
+      await ir();
+      check(`L9 PWA: installed on v${PREV.sw} (${PREV.appver}), served by its worker from its cache`,
+        [await ev(servida), await ev(`!!navigator.serviceWorker.controller`), await ev(cachesYa)], [PREV.appver, true, [`kibfinanzas-offline-v${PREV.sw}`]]);
+      // the new release is published; the installed worker finds the new sw.js (as on the next visit with signal)
+      publicar(conSW(realIdx), swSrc);
+      await ev(`navigator.serviceWorker.getRegistration().then(function(r){ return r.update(); }).then(function(){ return true; })`);
+      check(`L9 PWA: v${swN} installs and activates, the v${PREV.sw} cache is deleted`, await waitFor(cachesYa, [`kibfinanzas-offline-v${swN}`], 10000), [`kibfinanzas-offline-v${swN}`]);
+      await ev(`localStorage.removeItem('kibo.versionVista'); true`);   // a real ${PREV.appver} phone never wrote it
+      await ir();
+      check(`L9 PWA: the reopened app is ${APPVER_EXPECTED} and says "versión ${APPVER_EXPECTED}" once, with the data as it was`,
+        [await ev(servida), await waitFor(`!!document.getElementById('avisoVersion') && document.getElementById('avisoVersion').textContent.indexOf('versión ${APPVER_EXPECTED}.') >= 0`, true),
+         await ev(`localStorage.getItem('kibo.versionVista')`), await ev(`JSON.parse(localStorage.getItem('kibo.datos.2026')).meses[0].ingresos[0].monto`)],
+        [APPVER_EXPECTED, true, APPVER_EXPECTED, 100000]);
+      await ir();
+      check('L9 PWA: the next start shows no update notice (once per version)', await ev(`!!document.getElementById('avisoVersion')`), false);
+      await new Promise(r => { srvPwa.close(r); srvPwa.closeAllConnections?.(); });   // no network from here on
+      await ir();
+      check(`L9 PWA: without network the installed ${APPVER_EXPECTED} opens from its cache and draws the month`,
+        [await ev(servida), await ev(`!!document.querySelector('#v-mes .sec')`), await ev(`!!navigator.serviceWorker.controller`)], [APPVER_EXPECTED, true, true]);
+      check('L9 PWA: no CSP violation and no uncaught page error on any of those loads', [viol, pageErrs.slice(errsPwa)], [[], []]);
+    } finally {
+      try{ await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: cspPwa }); }catch{}
+      if(srvPwa.listening) await new Promise(r => { srvPwa.close(r); srvPwa.closeAllConnections?.(); });
+    }
+    await nav(URL_APP);
+  }
+
   // ── R4.3: several tabs, model fields on reload, backup -> restore, back to pre-R4 ──
   const oct = (sueldo) => { const ms = []; for(let i=0;i<12;i++) ms.push(mes([], [], [], []));
     ms[9] = mes([it('Sueldo', sueldo, true)], [it('Alquiler', 50000, true)], [it('Super', 30000, false)], []); return ms; };
