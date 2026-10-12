@@ -626,7 +626,7 @@ regenerated in index.html and privacidad.html on every script change.
 - U5 SUGGESTIONs — e35d909: the L2 E2E seed has pre-1.30 and pre-R4 snapshots and checks both "Volver a como estaba…" rows are
   drawn; unit test for every `diagCompartir` branch.
 - U3 SUGGESTIONs — 3559c22: `generar-l1-numeros.js` refuses unless HEAD is the recorded base (or `TUGASTO_L1_OTRA_BASE=1`), tested;
-  the extractor keeps "(\$X)" parentheses. Baseline regenerated ON ec9db4a (worktree) with `TUGASTO_GOLDEN_RAZON`; diff report:
+  the extractor keeps the parentheses of "($X)". Baseline regenerated ON ec9db4a (worktree) with `TUGASTO_GOLDEN_RAZON`; diff report:
   20 cases, 24 signed amounts added, 19 unsigned removed, tables unchanged, 0 other differences.
 - U1/U6/U4b/U8 test robustness — a0ffeaa: Trabajo CSV captured by file name; the exact-ms timestamp checks first prove the page
   clock is pinned (DATE_PIN already froze it); L1 Gasto/update-notice steps wait on conditions; `L7_GRABAR=1` records and skips the
