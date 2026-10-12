@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-13IJeOyEKqFZVOOFHo7ITxTuXUuIFB+El4nbN4kXJNQ=' 'sha256-VzpjOHX8leRj+T/2oESujjlZ+IPPDL7LdZCtwo1xqdA='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-13IJeOyEKqFZVOOFHo7ITxTuXUuIFB+El4nbN4kXJNQ=' 'sha256-gUOqdkczAo+ryzZHD36l9UYAEpAdZHP8dlQVprdnkIg='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -3486,7 +3486,9 @@ function guardarTopes(k, adelante){
 // P3a: lo que falta de una sección (lo cargado sin tildar) de un mes pasado o en curso, con la misma regla que ya cuenta el motor:
 // en un mes del modelo la de flujosMes (pendiente; de "Del trabajo" solo lo que sus pases no cubren), en uno legacy calc() (pendienteX).
 // Un mes futuro no tiene "falta": todo es programado. No es una regla nueva: sumadas, las secciones dan flujosMes / calc().
-var verFilas = {};   // P3a: secciones vacías que el usuario abrió con "Cargar …" (solo en esta pestaña)
+var verFilas = {d: null};   // P3a: secciones vacías que el usuario abrió con "Cargar …" (solo en esta pestaña)
+// U2: valen para el año que estaba abierto (verFilas.d): otro año, una copia restaurada o el año releído vuelven a la frase de vacío
+function filasVer(){ if(verFilas.d !== D) verFilas = {d: D}; return verFilas; }
 function faltaSeccion(d, j, k, hoy){
   if(estadoMes(d.anio, j, hoy) === 'futuro') return 0;
   var m = d.meses[j], ls = m[k] || [], t = 0, i, mo, r;
@@ -3532,7 +3534,7 @@ function seccion(S, m){
      + '<span class="sub"><span id="sub-'+S.k+'">'+fARS(sub)+'</span><small class="falta" id="falta-'+S.k+'">'+textoFalta(faltaSeccion(D, mes, S.k, hoy))+'</small></span><i class="chev"></i></button>';
   h += '<div class="cuerpo">';
   // P3a: un año sin nada cargado muestra cada sección vacía como una frase y un botón (no los renglones en cero de la plantilla)
-  if(lista.length && !verFilas[S.k] && sub === 0 && !hayDatos(D, false)){
+  if(lista.length && !filasVer()[S.k] && sub === 0 && !hayDatos(D, false)){
     return h + '<div class="nota vacia">Todavía no cargaste nada en ' + S.t.toLowerCase() + '.</div>'
          + '<button class="mas" data-act="verFilas" data-k="' + S.k + '">Cargar ' + S.t.toLowerCase() + '</button></div></div>';
   }
@@ -5703,7 +5705,7 @@ document.addEventListener('click', function(ev){
   if(a === 'carrIr'){ irSlide(+b.getAttribute('data-v')); return; }
   if(a === 'irA'){ irA(b.getAttribute('data-v')); return; }
   if(a === 'irVence'){ irVence(+b.getAttribute('data-v')); return; }
-  if(a === 'verFilas'){ verFilas[b.getAttribute('data-k')] = true; conScroll(renderMes); var pf = document.querySelector('#v-mes input.monto[data-k="' + b.getAttribute('data-k') + '"]'); if(pf) pf.focus(); return; }
+  if(a === 'verFilas'){ filasVer()[b.getAttribute('data-k')] = true; conScroll(renderMes); var pf = document.querySelector('#v-mes input.monto[data-k="' + b.getAttribute('data-k') + '"]'); if(pf) pf.focus(); return; }
   if(a === 'icFrec'){
     var nf = b.getAttribute('data-v'), eraSem = cbx.frec === 'semanal', esSem = nf === 'semanal';
     cbx.frec = nf; marcarChips('icFrec', b);
