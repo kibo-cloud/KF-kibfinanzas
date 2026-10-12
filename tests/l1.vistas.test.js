@@ -11,9 +11,10 @@ var V = require('./fixtures/anio-vistas');
 var U = require('./fixtures/usd-vistas');
 var BASE = require('./fixtures/l1-legacy-numeros.json');
 
-// the same extraction as fixtures/generar-l1-numeros.js: every money amount in the HTML, as a sorted set
+// the same extraction as fixtures/generar-l1-numeros.js: every money amount in the HTML, as a sorted set; an accounting-style negative
+// keeps its parentheses, "($1.234)" (U3 review: they are the sign)
 function montos(html){
-  var m = html.match(/-?(?:US\$\s?|\$)-?[\d.]+(?:,\d+)?/g) || [], s = {};
+  var m = html.match(/\((?:US\$\s?|\$)[\d.]+(?:,\d+)?\)|-?(?:US\$\s?|\$)-?[\d.]+(?:,\d+)?/g) || [], s = {};
   m.forEach(function(x){ s[x.replace(/\s+/g, ' ')] = 1; });
   return Object.keys(s).sort();
 }
@@ -128,4 +129,25 @@ test('L1 Trabajo: pasesPersonal splits pasado into ya + programado; disponible =
     assert.equal(p.ya + p.programado, r.pasado, 'adds up');
     assert.equal(r.cobrado - r.gastado - p.ya, disp, 'matches Disponible del trabajo (resumenTrab)');
   });
+});
+
+// U3 review: the baseline is recorded on its base commit only. From any other HEAD the generator refuses, even with a reason, and the
+// fixture stays byte-identical (a later commit would pin the redesigned screens against themselves)
+test('U3 generar-l1-numeros refuses without a reason, and with a reason when HEAD is not the recorded base', function(){
+  var cp = require('child_process'), fs = require('fs'), path = require('path');
+  var gen = path.join(__dirname, 'fixtures', 'generar-l1-numeros.js'), fix = path.join(__dirname, 'fixtures', 'l1-legacy-numeros.json');
+  var head = cp.execSync('git rev-parse HEAD', {cwd: __dirname}).toString().trim();
+  assert.notEqual(head, BASE.meta.baseCommit, 'precondition: this checkout is not the base commit');
+  var antes = fs.readFileSync(fix);
+  var env = function(extra){ var e = {}; Object.keys(process.env).forEach(function(k){ if(k !== 'TUGASTO_GOLDEN_RAZON' && k !== 'TUGASTO_L1_OTRA_BASE') e[k] = process.env[k]; }); return Object.assign(e, extra); };
+  try{
+    var sin = cp.spawnSync(process.execPath, [gen], {env: env({}), encoding: 'utf8'});
+    assert.equal(sin.status, 1); assert.match(sin.stderr, /set TUGASTO_GOLDEN_RAZON/);
+    var otra = cp.spawnSync(process.execPath, [gen], {env: env({TUGASTO_GOLDEN_RAZON: 'test'}), encoding: 'utf8'});
+    assert.equal(otra.status, 1); assert.match(otra.stderr, /the recorded base is [0-9a-f]{40}/);
+  } finally {
+    var despues = fs.readFileSync(fix);
+    if(!despues.equals(antes)) fs.writeFileSync(fix, antes);
+    assert.ok(despues.equals(antes), 'the fixture was not touched');
+  }
 });
