@@ -1098,6 +1098,15 @@ try{
     check('P3a no hero buttons that repeat the tab bar', await ev(`[!!document.querySelector('#v-mes [data-act=tab]'), document.getElementById('hero').textContent.indexOf('El año') < 0]`), [false, true]);
     await ev(`document.querySelector('#heroChips [data-v=pagar]').click(); true`); await sleep(1000);
     check('P3a the "Te falta pagar" chip takes you to the first section with something unpaid', await ev(`(function(){ var t = document.querySelector('.sec[data-sec=gastosFijos]').getBoundingClientRect().top; return t >= 0 && t < 160; })()`), true);
+    // U2 review: the other two chips. From the top of the page (where the target is further down), each one brings its target near the top
+    const chipLleva = async (v, sel) => {
+      await ev(`window.scrollTo(0, 0); true`); await waitFor(`Math.round(window.scrollY)`, 0);
+      const antes = await ev(`Math.round(document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect().top)`);
+      await ev(`document.querySelector('#heroChips [data-v=${v}]').click(); true`);
+      return [antes >= 160, await waitFor(`(function(){ var t = document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect().top; return t >= 0 && t < 160; })()`, true)];
+    };
+    check('U2 the "Te falta cobrar" chip takes you to Ingresos', await chipLleva('cobrar', '.sec[data-sec=ingresos]'), [true, true]);
+    check('U2 the "Atrasado" chip takes you to the overdue line of the balance block', await chipLleva('atrasado', '#sdoAtrasado'), [true, true]);
     check('P3a section header: total and "falta $X"', [await texto('#sub-ingresos'), await texto('#falta-ingresos'), await texto('#falta-gastosFijos')],
       [await F(1520000), 'falta ' + await F(220000), 'falta ' + await F(22000)]);
     check('P3a row states: pending rows say "Falta", paid rows have the solid check', [await textos('#v-mes .sec[data-sec=gastosFijos] .item .est'), await ev(`document.querySelectorAll('#v-mes .sec[data-sec=gastosFijos] .item.pago .chk.on').length`)], [['Falta'], 1]);
