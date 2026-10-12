@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-13IJeOyEKqFZVOOFHo7ITxTuXUuIFB+El4nbN4kXJNQ=' 'sha256-gUOqdkczAo+ryzZHD36l9UYAEpAdZHP8dlQVprdnkIg='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-13IJeOyEKqFZVOOFHo7ITxTuXUuIFB+El4nbN4kXJNQ=' 'sha256-dC6ILiYsNSVrAlIfDzvr60wFbEKIwE7eGQCAy1wOLWw='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -5311,13 +5311,22 @@ function preguntaPago(d, j, it, hoy){
   return it.pagado !== true && num(it.monto) > 0 && !(mesDelModelo(d, j) && estadoMes(d.anio, j, hoy) === 'futuro');
 }
 function preguntarPago(it){
+  gr.fila = {mes: mes, anio: D.anio, nombre: it.nombre};   // U6: la respuesta vale solo para ESTE renglón (ver filaDelGasto)
   abrirHoja('<h3>Gasto de ' + fARS(gr.monto) + '</h3>'
     + '<div class="texto" style="margin-bottom:16px"><b>' + esc(it.nombre) + '</b> está pendiente por ' + fARS(num(it.monto)) + '. ¿Este gasto es ese pago?</div>'
     + '<div class="fila"><button data-act="gastoAparte">No, es otro gasto</button>'
     + '<button class="pri" data-act="gastoEsPago">Sí, marcarlo como pagado</button></div>'
     + '<div class="fila" style="margin-top:8px"><button data-act="cerrarHoja">Cancelar</button></div>');
 }
-function filaDelGasto(){ var l = gr && gr.cat !== null && D.meses[mes][gr.sec]; return l ? l[gr.cat] || null : null; }
+// U6: el renglón de la pregunta, buscado por su lugar; si en ese lugar ya no está el mismo (otro nombre, ya tildado, otro mes o año: otra
+// pestaña, una edición, una recarga), no se anota nada y se avisa, en vez de marcar o sumar en otro renglón
+function filaDelGasto(){
+  var l = gr && gr.cat !== null && D.meses[mes][gr.sec], it = l ? l[gr.cat] || null : null, f = gr && gr.fila;
+  if(f && !(it && mes === f.mes && D.anio === f.anio && it.nombre === f.nombre && it.pagado !== true)){
+    cerrarHoja(); toast(f.nombre + ' cambió mientras respondías: no anoté nada. Volvé a sumar el gasto.'); return null;
+  }
+  return it;
+}
 function gastoEsPago(){
   var it = filaDelGasto(); if(!it){ cerrarHoja(); return; }
   if(num(it.monto) === gr.monto){ marcarPago(false); return; }

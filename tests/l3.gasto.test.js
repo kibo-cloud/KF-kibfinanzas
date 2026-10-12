@@ -107,3 +107,35 @@ test('L3 a stored movement keeps what undo needs (normalizar): tipo and the prev
   var n = plain(M.normalizar(C.copy(d), C.hoy('2026-10-15')).meses[9].movimientos);
   assert.deepEqual([n[0].tipo, n[0].ma, n[1].tipo, n[1].ma, n[2].tipo, n[2].ma], ['pago', 30000, 'aparte', undefined, undefined, undefined]);
 });
+
+// U6: the answer acts on the row the question was about. If the month changed while the sheet was open (another tab, an edit, a
+// reload) and that index now holds another row, or the row was ticked meanwhile, nothing is written and the user is told why.
+test('U6 the answer refuses when the row at that index is no longer the one asked about (renamed, moved, ticked, other month)', function(){
+  var casos = [
+    ['another row now sits at that index', function(a){ a.D.meses[9].gastosVariables.unshift(C.it('Nafta', 30000, false)); }],
+    ['the row was ticked meanwhile', function(a){ a.D.meses[9].gastosVariables[0].pagado = true; }],
+    ['the row was deleted', function(a){ a.D.meses[9].gastosVariables.splice(0, 1); }],
+    ['the month on screen changed', function(a){ a.mes = 8; }]
+  ];
+  ['gastoEsPago', 'gastoAparte', 'marcarPago'].forEach(function(accion){
+    casos.forEach(function(c){
+      var a = app(modelo({gastosVariables: [C.it('Super', 50000, false)]}));
+      gasto(a, 20000);
+      assert.equal(a.hojas.length, 1, 'precondition: the question is open');
+      c[1](a);
+      var antes = plain(a.D.meses);
+      a[accion](true);
+      assert.deepEqual(plain(a.D.meses), antes, accion + ', ' + c[0] + ': nothing written');
+      assert.deepEqual(a.toasts.map(function(t){ return t[0]; }), ['Super cambió mientras respondías: no anoté nada. Volvé a sumar el gasto.'], accion + ', ' + c[0]);
+    });
+  });
+});
+
+test('U6 the same row (same name, still pending) is still answered after unrelated edits', function(){
+  var a = app(modelo({gastosVariables: [C.it('Super', 50000, false), C.it('Nafta', 30000, false)]}));
+  gasto(a, 50000);
+  a.D.meses[9].gastosVariables[1].monto = 35000;   // another row edited meanwhile
+  a.gastoEsPago();
+  assert.deepEqual(filas(a.D.meses[9].gastosVariables), [{nombre: 'Super', monto: 50000, pagado: true}, {nombre: 'Nafta', monto: 35000, pagado: false}]);
+  assert.equal(a.toasts[0][0], 'Marqué Super como pagado');
+});
