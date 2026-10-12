@@ -103,8 +103,8 @@ Must stay (technical compatibility), each with its reason:
   same data).
 - Internal identifiers: CSS class `.kf`, local variables named `kf`, the `window.__kf` test hook, package.json `name`, the
   `KF-kibfinanzas` repository/URL in LEEME (P11 decides the remote). None of them is shown in the app.
-- Follow-up for P11 (outside P2's edit surface): `.gitignore` ignores `kibfinanzas-*.json`; personal exports are now
-  `tugasto-*.json` / `.csv` / `.html` and need the same rule before publishing.
+- Follow-up for P11 (outside P2's edit surface), done in 2e68947: `.gitignore` now ignores `tugasto-*.json`, `tugasto-*.html` and
+  `*.csv` next to the old `kibfinanzas-*` patterns.
 
 Tests:
 - New tests/p2.marca.test.js (9): old-brand scan of index.html, privacidad.html, manifest.webmanifest and sw.js with an
@@ -594,6 +594,48 @@ Route: inline in the single writer. Commit d58d815.
   The PC file via file:// is covered by the L8 E2E on the real 1.33.0 build.
 
 Results: `npm test` 784 (783 pass, 1 todo L-03d); `npm run test:e2e` 480/480; motor goldens byte-identical to bdef326.
+
+### Native review follow-ups (U1-U9)
+
+Route: one delegated writer (index.html + tests, several files). Every item was checked against 5af3628 first; all still applied
+except where noted. No money rule changed; motor goldens byte-identical to 5af3628; APPVER 1.33.0 / sw v46 kept; CSP hashes
+regenerated in index.html and privacidad.html on every script change.
+
+- U2 `verFilas` (WARNING) — fixed in 143ed6b. "Cargar …" was remembered per section for the whole tab; it is now tied to the open
+  year object (`filasVer`), so another empty year, a restored copy or the same year read again show the one-sentence empty state.
+  Unit test (RED first).
+- U6 quick-expense row by index (WARNING) — fixed in 95aa2db. The question keeps the row's name, month and year; the answer
+  (`gastoEsPago` / `marcarPago` / `gastoAparte`) refuses with "<row> cambió mientras respondías: no anoté nada…" when that index
+  holds another row, the row was ticked or deleted, or the month changed. Unit tests (RED first).
+- U7 `irVence` silent miss (WARNING) — fixed in b4b7e3b. A row is looked up by its place AND its name in the data; a section showing
+  the empty-year sentence is opened first; a stale card is redrawn with a message instead of returning silently. `irVence` no longer
+  reads an amount input, so it left the money inventory (tests/inventario.data.js). E2E (stale row, scroll into view).
+- U7 category sum (WARNING) — claim verified, test added in c866ba6. Pagado (`totalGastos`) is ticked fijos + variables in both the
+  model (`flujosMes.gastosReal`) and legacy (`calc`); paid installments are `totalDeudas` and "Del trabajo" is income, so the
+  categories do add up to Pagado. No label change; pinned with installments, Del trabajo and an unpaid row, model and legacy.
+- U8 hidden-amounts observer (WARNING) — fixed in a27fa65. Mutations are batched to one requestAnimationFrame, only changed subtrees
+  are walked (the whole page on the first pass after hiding), the observer is disconnected while labeling. E2E: 20 nodes added in
+  20 callbacks are all labeled with one walk (RED on the old code: 21 walks).
+- U9 journal 'amedias' (WARNING) — test added in 7e9789b (the path already worked): Trabajo write and the year rollback both fail →
+  journal kept, `obsoleta`, `avisoDiario('pendiente')`; the next start finishes the pase once.
+- U9 vencimientos divisor (SUGGESTION) — fixed in 4995ffe. `cuantosPagos` now counts `diasCobro` dates, so `cobroTxt` and "Qué
+  vence" divide by the same number. They only differed on a repeated day (old data), not on weekly rows (same count before and
+  after, asserted). Unit test (RED first).
+- U5 L2 confirmar scanner (WARNING, test bug) — fixed in 6c134ba: no 600-char window, whole strings skipped (quotes, template,
+  escapes), nesting tracked; synthetic long-string test.
+- U5 SUGGESTIONs — e35d909: the L2 E2E seed has pre-1.30 and pre-R4 snapshots and checks both "Volver a como estaba…" rows are
+  drawn; unit test for every `diagCompartir` branch.
+- U3 SUGGESTIONs — 3559c22: `generar-l1-numeros.js` refuses unless HEAD is the recorded base (or `TUGASTO_L1_OTRA_BASE=1`), tested;
+  the extractor keeps "(\$X)" parentheses. Baseline regenerated ON ec9db4a (worktree) with `TUGASTO_GOLDEN_RAZON`; diff report:
+  20 cases, 24 signed amounts added, 19 unsigned removed, tables unchanged, 0 other differences.
+- U1/U6/U4b/U8 test robustness — a0ffeaa: Trabajo CSV captured by file name; the exact-ms timestamp checks first prove the page
+  clock is pinned (DATE_PIN already froze it); L1 Gasto/update-notice steps wait on conditions; `L7_GRABAR=1` records and skips the
+  comparison (reported as a failing check).
+- U2 SUGGESTIONs — 2dbe1b0: E2E for the "Te falta cobrar" and "Atrasado" chips. Gasto hide/show on scroll: obsolete (L1 moved Gasto
+  into the tab bar; no code adds `.fab.fuera` any more, only the dead CSS rule remains).
+- U1 SUGGESTION — stale P2 note about the `.gitignore` tugasto patterns updated (done in 2e68947).
+
+Results: `npm test` 793 (792 pass, 1 todo L-03d); `npm run test:e2e` 487/487; motor goldens byte-identical to 5af3628.
 
 ## Improvement loop (owner: "ejecutá todo lo que creas necesario para mejorarla en formato loop", 2026-10-07)
 
