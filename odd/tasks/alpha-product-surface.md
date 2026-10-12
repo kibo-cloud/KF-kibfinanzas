@@ -661,7 +661,7 @@ Ordered backlog (each item: test-first, suites green, docs, small commits; nativ
 
 Native gentle-ai review, owner consent per slice, reliability lens, every slice APPROVED with no correction and acknowledged
 (authority burned): U1 review-3382a9f2426dd01c (6ff871d..2e68947), U2 review-f64d58e00ea4f7f1 (..ec9db4a), U3
-review-dadec48e50b95f07 (..240e9ed), U4b review-4c71def0c1 (5786c97..58bd02d), U5 review-f79a3b50493153dd (..ae166a3), U6
+review-dadec48e50b95f07 (..240e9ed), U4b review-4c7a85fb71def0c1 (5786c97..58bd02d), U5 review-f79a3b50493153dd (..ae166a3), U6
 review-c98f4bf9f72e5a50 (..2f702bb), U7 review-015ff96329fb993f (..956c4aa), U8 review-1b6bf84b79338039 (..611a53c), U9
 review-aa2f0ed02d40bbf3 (..5af3628), V1 review-77553780d7658f7f (5af3628..b6549b1).
 - U4a (240e9ed..5786c97, single commit) exceeds the native lens context budget even alone (two regenerated layout fixtures with long
