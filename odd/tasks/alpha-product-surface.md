@@ -634,6 +634,10 @@ regenerated in index.html and privacidad.html on every script change.
 - U2 SUGGESTIONs — 2dbe1b0: E2E for the "Te falta cobrar" and "Atrasado" chips. Gasto hide/show on scroll: obsolete (L1 moved Gasto
   into the tab bar; no code adds `.fab.fuera` any more, only the dead CSS rule remains).
 - U1 SUGGESTION — stale P2 note about the `.gitignore` tugasto patterns updated (done in 2e68947).
+- U4a independent review: fixed in 16ffb71. In a model year the "A hoy" row's "Pagados a" and the "Este año compraste…" paragraph
+  summed purchases over all 12 months (a future-month compra leaked into a hoy). They now count only realized months
+  (`costoDolaresHoy`, via `esProgramado`); a scheduled purchase shows the year average on "Con lo programado" and in its own
+  "Con lo programado, en el año: …" line. Legacy years unchanged. tests/u4a.dolares.test.js (RED first; mutation re-checked).
 
 Results: `npm test` 793 (792 pass, 1 todo L-03d); `npm run test:e2e` 487/487; motor goldens byte-identical to 5af3628.
 
