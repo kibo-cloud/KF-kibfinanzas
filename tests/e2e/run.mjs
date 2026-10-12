@@ -377,6 +377,9 @@ try{
   check('reload: no empty notice', await ev(`!!document.querySelector('#avisos [data-av=vacia]')`), false);
   // L4: never backed up -> no reminder on the first day with data; the first day is recorded on this phone
   check('L4 reload: no backup reminder on the first day with data (never backed up)', await ev(`!!document.querySelector('#avisos [data-av=copia]')`), false);
+  // U4b review: the timestamps below compare to the millisecond because the page clock is pinned (DATE_PIN); prove it is, so a change
+  // of the pin fails here with a clear name instead of as a flaky timestamp
+  check('L4 the page clock is pinned (exact timestamp comparisons below rely on it)', await ev(`[Date.now() === new Date(2026, 9, 4, 12, 0, 0).getTime(), new Date().toISOString() === new Date().toISOString()]`), [true, true]);
   check('L4 the first day with data is recorded (device key)', await ev(`localStorage.getItem('kibo.datosDesde') === new Date().toISOString()`), true);
   const avisoCopia = () => ev(`(function(){ var a = document.querySelectorAll('#avisos .aviso'), c = document.querySelector('#avisos [data-av=copia]');
     return c ? [a.length, c.querySelector('p').textContent, Array.prototype.map.call(c.querySelectorAll('button'), function(b){ return b.textContent; })] : null; })()`);
@@ -1038,16 +1041,19 @@ try{
     await ev(`(function(){ var h = document.querySelector('#hoja [data-act=cerrar]'); if(h) h.click(); return true; })()`); await sleep(300);
     check('P2 brand: the Ajustes footer starts with "TuGasto v"', await ev(`document.querySelector('#v-ajustes .pie').textContent.indexOf('TuGasto v' + APPVER) === 0`), true);
     // exported file names, through the real actions (Web Share disabled so the backup takes the download path)
-    const nombres = await ev(`(async function(){ var n = [], o = HTMLAnchorElement.prototype.click, ou = URL.createObjectURL, csvT = null;
+    // U1 review: each blob is matched to its download by its object URL (the anchor's href), so the Trabajo CSV is picked by its file
+    // name, not by the order of the downloads
+    const nombres = await ev(`(async function(){ var n = [], o = HTMLAnchorElement.prototype.click, ou = URL.createObjectURL, blobs = {}, porNombre = {}, csvT = null, k;
       Object.defineProperty(navigator, 'share', {value: undefined, configurable: true});
-      HTMLAnchorElement.prototype.click = function(){ if(this.download) n.push(this.download); };
-      URL.createObjectURL = function(b){ if(n.length === 3) csvT = b; return ou.call(URL, b); };
+      HTMLAnchorElement.prototype.click = function(){ if(this.download){ n.push(this.download); porNombre[this.download] = blobs[this.href] || null; } };
+      URL.createObjectURL = function(b){ var u = ou.call(URL, b); blobs[u] = b; return u; };
       var dar = function(a){ var b = document.createElement('button'); b.setAttribute('data-act', a); document.body.appendChild(b); b.click(); document.body.removeChild(b); };
       try{
         dar('copia'); dar('expcsv'); dar('verpc');
         for(var i = 0; i < 80 && n.length < 3; i++) await new Promise(function(r){ setTimeout(r, 100); });
         dar('tjCSV');
       } finally { HTMLAnchorElement.prototype.click = o; URL.createObjectURL = ou; delete navigator.share; }
+      for(k in porNombre) if(/^tugasto-trabajo-.*\\.csv$/.test(k)) csvT = porNombre[k];
       var primera = csvT ? (await csvT.text()).replace(/^\\ufeff/, '').split('\\r\\n')[0] : null;
       return {nombres: n.map(function(x){ return x.replace(/\\d{4}-\\d{2}-\\d{2}/, 'FECHA'); }), primera: primera && primera.replace(/exportado el .*$/, 'exportado el …')}; })()`);
     check('P2 brand: exported file names start with "tugasto-"', nombres.nombres, ['tugasto-copia-FECHA.json', 'tugasto-2026.csv', 'tugasto-2026.html', 'tugasto-trabajo-FECHA.csv']);
@@ -1251,27 +1257,28 @@ try{
       check(`L1 Gasto at ${w} px: inside the tab bar, over no amount at load`, await ev(solapa), []);
     }
     await tamano(390);
-    await irTab('anio'); await ev(`document.getElementById('fab').click(); true`); await sleep(700);
-    check('L1 Gasto from another tab: goes to the month and opens the sheet', [await ev(`document.querySelector('#nav button.on').getAttribute('data-t')`), await ev(`!!document.getElementById('grMonto')`)], ['mes', true]);
+    // U1 review: condition waits instead of fixed sleeps in this block
+    await irTab('anio'); await ev(`document.getElementById('fab').click(); true`);
+    check('L1 Gasto from another tab: goes to the month and opens the sheet', await waitFor(`[document.querySelector('#nav button.on').getAttribute('data-t'), !!document.getElementById('grMonto')]`, ['mes', true]), ['mes', true]);
     // 5 · expense sheet polish
     check('L1 expense sheet: the amount carries "$", a placeholder, and the button says "Sumar gasto"',
       [await texto('#hoja .gr-monto span'), await ev(`document.getElementById('grMonto').placeholder`), await texto('#hoja [data-act=confirmarGasto]'),
        await ev(`(function(){ var s = document.querySelector('#hoja .gr-monto span').getBoundingClientRect(), i = document.getElementById('grMonto').getBoundingClientRect(); return s.left > i.left && s.right < i.left + 48; })()`)],
       ['$', '0', 'Sumar gasto', true]);
-    await ev(`(function(){ var b = document.querySelector('#hoja [data-act=cerrarHoja]'); if(b) b.click(); return true; })()`); await sleep(400);
-    await nav(URL_APP + '?gasto=1'); await sleep(1000);
-    check('L1 the PWA shortcut ?gasto=1 still opens the expense sheet', await ev(`!!document.getElementById('grMonto')`), true);
-    await nav(URL_APP); await sleep(800);
+    await ev(`(function(){ var b = document.querySelector('#hoja [data-act=cerrarHoja]'); if(b) b.click(); return true; })()`); await waitFor(`document.getElementById('velo').classList.contains('on')`, false);
+    await nav(URL_APP + '?gasto=1');
+    check('L1 the PWA shortcut ?gasto=1 still opens the expense sheet', await waitFor(`!!document.getElementById('grMonto')`, true), true);
+    await nav(URL_APP); await waitFor(`!!document.getElementById('bigFinal') && !document.getElementById('velo').classList.contains('on')`, true);
 
     // 4 · the update notice: the real version, one notice at a time, "Tenés hoy" still on the first screen at 390
-    await seed(y, tj, true); await sleep(400);
+    await seed(y, tj, true); await waitFor(`!!document.getElementById('avisoVersion') && !!document.getElementById('bigFinal')`, true);
     check('L1 update notice: says the real APPVER, alone, and "Tenés hoy" stays above the tab bar at 390 x 844',
       [await ev(`document.getElementById('avisoVersion').textContent.indexOf('versión ' + APPVER + '.') >= 0`), await ev(`document.getElementById('avisoVersion').textContent.indexOf('1.30') < 0`),
        await ev(`Array.prototype.filter.call(document.querySelectorAll('.aviso'), function(a){ return a.offsetHeight > 0; }).length`),
        await ev(`document.getElementById('bigFinal').getBoundingClientRect().bottom <= document.getElementById('nav').getBoundingClientRect().top`)],
       [true, true, 1, true]);
     const ySinConfirmar = JSON.parse(JSON.stringify(y)); delete ySinConfirmar.meses[8].cierreReal;
-    await seed(ySinConfirmar, tj, true); await sleep(400);
+    await seed(ySinConfirmar, tj, true); await waitFor(`!!document.getElementById('avisoCierre') && document.getElementById('avisoCierre').offsetHeight > 0`, true);
     check('L1 update notice: waits while the start-of-month question is open (one notice at a time)',
       [await ev(`!!document.getElementById('avisoCierre') && document.getElementById('avisoCierre').offsetHeight > 0`), await ev(`!!document.getElementById('avisoVersion') && document.getElementById('avisoVersion').offsetHeight === 0`)], [true, true]);
 
@@ -1609,12 +1616,18 @@ try{
     const movil = {};
     for(const t of ['mes', 'anio', 'usd', 'trabajo']){ await tab7(t); movil[t] = await cajas(t); }
     const FIX = path.join(ROOT, 'tests', 'fixtures', 'l7-movil-390.json');
-    if(process.env.L7_GRABAR === '1') fs.writeFileSync(FIX, '{\n' + Object.keys(movil).map(t => ' ' + JSON.stringify(t) + ': {\n'
-      + Object.keys(movil[t]).map(k => '  ' + JSON.stringify(k) + ': ' + JSON.stringify(movil[t][k])).join(',\n') + '\n }').join(',\n') + '\n}\n');
-    const antes = JSON.parse(fs.readFileSync(FIX, 'utf8'));
-    for(const t of Object.keys(antes)){
-      const dif = Object.keys(antes[t]).filter(k => !movil[t][k] || antes[t][k].some((v, i) => Math.abs(v - movil[t][k][i]) > 1));
-      check(`L7 390 px ${t}: every key box where it was before L7 (${Object.keys(antes[t]).length} boxes)`, dif.map(k => [k, antes[t][k], movil[t][k] || null]), []);
+    // U8 review: a recording run never compares (it would compare the boxes with themselves and always pass): it writes the fixture and
+    // reports one failing check, so a recording can never be mistaken for a green run. Run again without L7_GRABAR to compare
+    if(process.env.L7_GRABAR === '1'){
+      fs.writeFileSync(FIX, '{\n' + Object.keys(movil).map(t => ' ' + JSON.stringify(t) + ': {\n'
+        + Object.keys(movil[t]).map(k => '  ' + JSON.stringify(k) + ': ' + JSON.stringify(movil[t][k])).join(',\n') + '\n }').join(',\n') + '\n}\n');
+      check('L7 390 px: L7_GRABAR=1 recorded the fixture; the layout comparison is skipped in a recording run', 'recorded, not compared', 'compared');
+    } else {
+      const antes = JSON.parse(fs.readFileSync(FIX, 'utf8'));
+      for(const t of Object.keys(antes)){
+        const dif = Object.keys(antes[t]).filter(k => !movil[t][k] || antes[t][k].some((v, i) => Math.abs(v - movil[t][k][i]) > 1));
+        check(`L7 390 px ${t}: every key box where it was before L7 (${Object.keys(antes[t]).length} boxes)`, dif.map(k => [k, antes[t][k], movil[t][k] || null]), []);
+      }
     }
     await tab7('mes');
 
