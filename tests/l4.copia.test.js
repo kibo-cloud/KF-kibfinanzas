@@ -84,3 +84,17 @@ test('L4 revisarCopia: records the first day this phone had data; an empty phone
   assert.equal(b.avisos.innerHTML, '');
   assert.equal(vacio.d['kibo.datosDesde'], undefined);
 });
+
+// U5 review: what Ajustes · Dónde viven tus datos says about sending the backup, for each kind of browser (diagCompartir)
+test('U5 diagCompartir: no share menu, a share menu without canShare, files accepted, files refused', function(){
+  var con = function(nav){ function F(partes, nombre, o){ this.name = nombre; this.type = o && o.type; } return la.loadApp({funcs: ['diagCompartir'], globals: {navigator: nav, File: F}}); };
+  var no = 'Desde este navegador la copia no se puede mandar directo: queda en Descargas y la compartís desde la app Archivos.';
+  assert.equal(con({}).diagCompartir(), no, 'no navigator.share');
+  assert.equal(con({share: function(){}}).diagCompartir(), 'Este navegador tiene menú de compartir, pero no avisa si acepta la copia: si no se manda, queda en Descargas.');
+  var tipos = [];
+  assert.equal(con({share: function(){}, canShare: function(o){ tipos.push(o.files[0].name + ' ' + o.files[0].type); return o.files[0].type === 'text/plain'; }}).diagCompartir(),
+    'Desde este navegador la copia se puede mandar directo a Drive, al mail o a WhatsApp.', 'some file type accepted');
+  assert.deepEqual(tipos, ['x.json application/json', 'x.json text/plain', 'x.txt text/plain'], 'the three combinations are tried');
+  assert.equal(con({share: function(){}, canShare: function(){ return false; }}).diagCompartir(), no, 'no file type accepted');
+  assert.equal(con({share: function(){}, canShare: function(){ throw new Error('x'); }}).diagCompartir(), no, 'canShare throws: treated as refused');
+});

@@ -1332,7 +1332,11 @@ try{
       pases: [{id: 'p1', fecha: '2026-10-02', monto: 300000, anio: 2026, mes: 9}, {id: 'p2', fecha: '2026-11-05', monto: 200000, anio: 2026, mes: 10}]};
     await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
     await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); localStorage.setItem('kibo.ultimaCopia', new Date().toISOString()); localStorage.setItem('kibo.esquema', '1.30'); localStorage.setItem('kibo.anio','2026');
-      localStorage.setItem('kibo.datos.2026', ${JSON.stringify(JSON.stringify(y))}); localStorage.setItem('kibo.trabajo', ${JSON.stringify(JSON.stringify(tj))}); true`);
+      localStorage.setItem('kibo.datos.2026', ${JSON.stringify(JSON.stringify(y))}); localStorage.setItem('kibo.trabajo', ${JSON.stringify(JSON.stringify(tj))});
+      // U5 review: a pre-1.30 and a pre-R4 restore point, so Ajustes draws both "Volver a como estaba…" rows and the word walk reads them
+      var viejo = {'kibo.datos.2026': ${JSON.stringify(JSON.stringify(y))}};
+      localStorage.setItem('kibo.respaldo.pre130', JSON.stringify({version: 'anterior', fecha: new Date().toISOString(), datos: viejo}));
+      localStorage.setItem('kibo.respaldo.pre-r4', JSON.stringify({version: 'anterior a los saldos', fecha: new Date().toISOString(), datos: viejo})); true`);
     await nav(URL_APP); await sleep(1300);
     const fuentes = (l) => '[' + l.map((r) => r.toString()).join(',') + ']';
     // words: every text node of the page (shown or folded) plus title / aria-label / placeholder / alt; icon-only: visible buttons
@@ -1364,6 +1368,8 @@ try{
     for(const v of ['datos', 'ayuda', 'privacidad']){ await irTab('ajustes'); await tocar(`[data-act=ajVista][data-v=${v}]`); await sleep(800); await revisar(`Ajustes · ${v}`); }
     await irTab('ajustes');
     check('L2 Ajustes: restore points and data rows use plain words (no internal versions)', await ev(`(function(){ var t = document.getElementById('v-ajustes').textContent; return [/1\\.30|saldos\\b/.test(t), t.indexOf('el sistema') >= 0]; })()`), [false, false]);
+    check('U5 L2 Ajustes: both restore-point rows are on screen (pre-1.30 and pre-R4 seeded), so the checks above read them', await ev(`[['volver130', 'Volver a como estaba antes de actualizar'], ['volverR4', 'Volver a como estaba antes del saldo mes a mes']].map(function(x){ var b = document.querySelector('#v-ajustes [data-act=' + x[0] + ']'); return !!b && b.textContent.indexOf(x[1]) >= 0; })`),
+      [true, true]);
     await irTab('mes');
     const hojas = [
       ['the quick expense sheet', () => tocar('[data-act=gastoRapido]')],
