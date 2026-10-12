@@ -656,3 +656,29 @@ Ordered backlog (each item: test-first, suites green, docs, small commits; nativ
 - [x] L8 Atomic writes (year + Trabajo) and strict CSP if feasible without breaking the PC file; else documented debt.
 - [x] L9 Version 1.33.0 + SW, PWA update path, offline, PC/file:// verification.
 - [ ] L10 Native review slices, final verification, GitHub (destination must be given by the owner), ALPHA verdict.
+
+## L10 — Native review and Alpha verdict (2026-10-12)
+
+Native gentle-ai review, owner consent per slice, reliability lens, every slice APPROVED with no correction and acknowledged
+(authority burned): U1 review-3382a9f2426dd01c (6ff871d..2e68947), U2 review-f64d58e00ea4f7f1 (..ec9db4a), U3
+review-dadec48e50b95f07 (..240e9ed), U4b review-4c71def0c1 (5786c97..58bd02d), U5 review-f79a3b50493153dd (..ae166a3), U6
+review-c98f4bf9f72e5a50 (..2f702bb), U7 review-015ff96329fb993f (..956c4aa), U8 review-1b6bf84b79338039 (..611a53c), U9
+review-aa2f0ed02d40bbf3 (..5af3628), V1 review-77553780d7658f7f (5af3628..b6549b1).
+- U4a (240e9ed..5786c97, single commit) exceeds the native lens context budget even alone (two regenerated layout fixtures with long
+  lines); covered instead by an independent read-only review: no money/XSS/deep-link defect, legacy money identical to the ec9db4a
+  baseline; one LOW finding (future dollar purchases in the "A hoy" cost) fixed in 16ffb71 and reviewed in V1.
+- Advisories: all U1-U9 items fixed, already fixed, or obsolete (see "Native review follow-ups (U1-U9)"). V1: R3-001 (weekly default
+  in cuantosPagos) NOT a defect — `diasCobro` applies the Friday default; R3-002 (l1 test needs git metadata), R3-003 (`conProg`
+  compares USD only), R3-004 (stale irVence opens an empty section) accepted as LOW follow-ups.
+
+Final state (parent-verified at b6549b1): `npm test` 797 (796 pass, 0 fail, 1 todo L-03d), `npm run test:e2e` 487/487, motor goldens
+byte-identical, APPVER 1.33.0, SW `kibfinanzas-offline-v46`, CSP without script 'unsafe-inline', tree clean, no AI trailers.
+
+GitHub: owner decided "No publicar todavía" (2026-10-12). Repository prepared (.gitignore, secret/PII scan clean; commit author email
+visible if published). No remote configured; push pending owner decision.
+
+Verdict: `ALPHA_READY` (product, technical and repository criteria met; publication deliberately deferred by the owner).
+Open OWNER_DECISION_REQUIRED (none blocking): N1-B, N2-B (MEDIUM, L-03d legacy two-row "Del trabajo"), N3a-A/B, N3b-A/B, N4-A/B,
+L3 partial payment + "(otro gasto)" vs topes, L5 optional due day for expenses/installments, GitHub destination/visibility.
+Residual risks: MEDIUM N2-B; LOW restore without journal (repeatable), style-src 'unsafe-inline', V1 LOW advisories, quarantine copies
+accumulate (N4-B), undo info lost when a new backup is restored into an older app version.
