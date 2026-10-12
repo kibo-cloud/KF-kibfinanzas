@@ -1503,6 +1503,14 @@ try{
     // ticking a listed row takes it off the card
     await ev(`document.querySelector('#v-mes .sec[data-sec=ingresos] [data-act=pagar][data-i="0"]').click(); true`); await sleep(500);
     check('L5 a ticked row leaves the card', (await filasL5()).map(r => r[1]), ['Luz', 'Ana · Factura 12', 'Changas', 'Caro · Factura 14']);
+    // U7: a row tapped while the card is stale (the row changed after the card was drawn) never fails silently: the card is redrawn and
+    // a message says so; nothing else is marked. A row far down the page is scrolled into view
+    await ev(`(function(){ D.meses[9].ingresos[1].nombre = 'Changas de octubre'; document.querySelectorAll('#vence .vence-f')[2].click(); return true; })()`); await sleep(300);
+    check('U7 a stale row: message, card redrawn with the current name, no other row marked', [await toastTxt(), await ev(`!!document.querySelector('#v-mes .item.resalta')`), (await filasL5()).map(r => r[1])],
+      ['Ese renglón cambió desde que se armó la lista: la actualicé.', false, ['Luz', 'Ana · Factura 12', 'Changas de octubre', 'Caro · Factura 14']]);
+    await ev(`window.scrollTo(0, 0); document.querySelectorAll('#vence .vence-f')[2].click(); true`);
+    check('U7 the tapped row is marked and brought into view', await waitFor(`(function(){ var r = document.querySelector('#v-mes .item.resalta'); if(!r) return null; var b = r.getBoundingClientRect();
+      return [r.querySelector('input.nombre').value, b.top >= 0 && b.bottom <= innerHeight]; })()`, ['Changas de octubre', true]), ['Changas de octubre', true]);
     // nothing due: no card at all (no empty message)
     const ms2 = []; for(let i=0;i<12;i++) ms2.push(mes([], [], [], []));
     ms2[9] = mes([it('Sueldo', 900000, true)], [it('Expensas', 70000, false)], [], []);

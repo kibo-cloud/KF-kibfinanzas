@@ -80,7 +80,6 @@ module.exports = {
     copiarAnterior:     [O, 'copies previous-month amounts, resets pagado; L3 review: skips the one-off "<row> (otro gasto)" rows'],
     vencimientos:       [N, 'L5 "Qué vence esta semana": lists single rows, no sum: pending rows (not ticked, monto > 0) of past model months (the rows cadena.resumen.vencidos adds up) and of the current month with a collection day or near the month end, plus Trabajo invoice open balances (saldoFac) by due date; display only'],
     htmlVence:          [O, 'L5 card: shows each listed row amount as is; no aggregation'],
-    irVence:            [O, 'L5: scrolls to one row (finds its amount input); no aggregation'],
     analisisAnio:       [M, 'L6 (R6) analysis of "El año": Cobrado / Pagado / Ahorro read from the serieVista rows (realized: tilesMes in a model month, calc in a legacy one) of the transcurred months only (no future month, I5), compared with the previous month and the average of the earlier ones; per category the ticked gastos (estaPagado on datosRealizados), which add up to Pagado; display only, no new rule'],
     abrirComoCobras:    [O, 'opens the weekly/frequency charge editor for one item'],
     pintarNotaCobras:   [O, EDIT],

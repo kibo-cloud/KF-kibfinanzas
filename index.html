@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-13IJeOyEKqFZVOOFHo7ITxTuXUuIFB+El4nbN4kXJNQ=' 'sha256-dC6ILiYsNSVrAlIfDzvr60wFbEKIwE7eGQCAy1wOLWw='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-13IJeOyEKqFZVOOFHo7ITxTuXUuIFB+El4nbN4kXJNQ=' 'sha256-UQA6wM8up2cTKqNnmgKcPAAAcWnL3c5Aj6r0WCoWC+0='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -3312,14 +3312,22 @@ function htmlVence(l, hoy){
   if(l.length > VENCE_MAX) h += '<div class="nota vence-mas">Y ' + (l.length - VENCE_MAX) + ' más: los ves en sus secciones' + (T && T.activo ? ' y en Trabajo' : '') + '.</div>';
   return h + '</div>';
 }
+// el renglón de la lista en pantalla, solo si en ese lugar de los datos sigue el mismo (mismo nombre) que cuando se armó la lista
+function filaVence(x){
+  var it = ((D.meses[x.mes] || {})[x.k] || [])[x.i], nm = document.querySelector('#v-mes .sec[data-sec="' + x.k + '"] input.nombre[data-i="' + x.i + '"]');
+  return it && String(it.nombre || '') === x.nombre && nm ? nm.closest('.item') : null;
+}
 // tocar un renglón: una factura abre su detalle; un renglón del plan abre su mes y su sección, lo trae a la vista y lo marca un momento
 function irVence(n){
   var x = venceL[n], el, sec;
   if(!x) return;
   if(x.id){ verFactura(x.id); return; }
   if(x.mes !== mes){ mes = x.mes; renderMes(); }
-  el = document.querySelector('#v-mes .sec[data-sec="' + x.k + '"] input.monto[data-i="' + x.i + '"]');
-  el = el && el.closest('.item'); if(!el) return;
+  el = filaVence(x);
+  // U7: si la sección muestra la frase de vacío en vez de sus renglones, primero se abren; si el renglón ya no está (la lista quedó vieja
+  // por un cambio en otra pestaña o una edición), se redibuja y se avisa: nunca falla en silencio
+  if(!el && !filasVer()[x.k]){ filasVer()[x.k] = true; renderMes(); el = filaVence(x); }
+  if(!el){ renderMes(); toast('Ese renglón cambió desde que se armó la lista: la actualicé.'); return; }
   sec = el.closest('.sec');
   if(sec && sec.classList.contains('cerrada')){ D.ui.col[x.k] = false; sec.classList.remove('cerrada'); tocar(); }
   if(el.scrollIntoView) el.scrollIntoView({behavior: menosMovimiento() ? 'auto' : 'smooth', block: 'center'});
