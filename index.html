@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-13IJeOyEKqFZVOOFHo7ITxTuXUuIFB+El4nbN4kXJNQ=' 'sha256-SB762dNsJotNDDs5XLYjuoqRgw0dERi26Ej/ATew9Uo='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-13IJeOyEKqFZVOOFHo7ITxTuXUuIFB+El4nbN4kXJNQ=' 'sha256-lKvUYAhuC6IEHI0b1Nn424KBwnsxZVDDNG+Kr8Zz1fs='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -4175,8 +4175,15 @@ function htmlHeroPatri(p){
 }
 // L1 (hallazgo 5, Q13, I5): en un año con modelo los dólares "a hoy" son los de patrimonioNeto (el mismo número que la composición) y lo
 // que entra en un mes futuro es programado: la tabla lo marca y el total no lo mezcla (a hoy por un lado, con lo programado por el otro)
+// U4a: lo mismo con lo que pagaste: "A hoy" y el párrafo cuentan solo las compras de los meses ya pasados (o el actual); una compra de
+// un mes futuro va en "Con lo programado" y en su propia línea "en el año, con lo programado"
+function costoDolaresHoy(d, hoy){
+  var ars = 0, usd = 0;
+  for(var i=0;i<12;i++) if(!esProgramado(d, i, hoy)){ ars += num(d.meses[i].compraARS); usd += num(d.meses[i].compraUSD); }
+  return {ars: ars, usd: usd, promedio: usd > 0 ? ars/usd : 0};
+}
 function htmlDolaresMes(d, s, p, hoy){
-  var cd = costoDolares(d), i, prog, h = '<div class="tabla"><table><thead><tr>'
+  var cd = costoDolares(d), ch = p.modelo ? costoDolaresHoy(d, hoy) : cd, conProg = !!p.modelo && cd.usd !== ch.usd, i, prog, h = '<div class="tabla"><table><thead><tr>'
      + '<th>Mes</th><th>Entraron</th><th>Pagados a</th><th>Acumulado</th><th>En pesos hoy</th></tr></thead><tbody>';
   for(i=0;i<12;i++){
     prog = !!p.modelo && esProgramado(d, i, hoy);
@@ -4186,19 +4193,22 @@ function htmlDolaresMes(d, s, p, hoy){
   if(!p.modelo) h += '<tr class="tot"><td>Cierre</td><td>' + hUSD(s[11].usdAcumulado - num(d.usdAnioAnterior)) + '</td><td>' + (cd.promedio ? fARS(cd.promedio) : '—') + '</td>'
      + '<td>' + hUSD(s[11].usdAcumulado) + '</td><td>' + hARS(s[11].equivalenteARS) + '</td></tr>';
   else {
-    h += '<tr class="tot" data-usd="hoy"><td>A hoy</td><td>' + hUSD(p.usd - num(d.usdAnioAnterior)) + '</td><td>' + (cd.promedio ? fARS(cd.promedio) : '—') + '</td>'
+    h += '<tr class="tot" data-usd="hoy"><td>A hoy</td><td>' + hUSD(p.usd - num(d.usdAnioAnterior)) + '</td><td>' + (ch.promedio ? fARS(ch.promedio) : '—') + '</td>'
        + '<td>' + hUSD(p.usd) + '</td><td>' + hARS(p.modelo.usdARS) + '</td></tr>';
-    if(s[11].usdAcumulado !== p.usd) h += '<tr class="tot prog" data-usd="prog"><td>Con lo programado</td><td>' + hUSD(s[11].usdAcumulado - p.usd) + '</td><td>—</td>'
+    if(s[11].usdAcumulado !== p.usd) h += '<tr class="tot prog" data-usd="prog"><td>Con lo programado</td><td>' + hUSD(s[11].usdAcumulado - p.usd) + '</td><td>' + (conProg && cd.promedio ? fARS(cd.promedio) : '—') + '</td>'
        + '<td>' + hUSD(s[11].usdAcumulado) + '</td><td>' + hARS(s[11].equivalenteARS) + '</td></tr>';
   }
   h += '</tbody></table></div>';
-  if(cd.usd > 0){
-    var vale = cd.usd * num(d.cotizacionUSD), dif = vale - cd.ars;
-    h += '<div style="padding:14px 16px;border-top:1px solid var(--sep)">'
-       + '<div>Este año compraste <b>' + fUSD(cd.usd) + '</b> con <b>' + fARS(cd.ars) + '</b>, a <b>' + fARS(cd.promedio) + '</b> por dólar en promedio.</div>'
+  if(ch.usd > 0 || conProg){
+    var vale = ch.usd * num(d.cotizacionUSD), dif = vale - ch.ars;
+    h += '<div style="padding:14px 16px;border-top:1px solid var(--sep)">';
+    if(ch.usd > 0) h += '<div>Este año compraste <b>' + fUSD(ch.usd) + '</b> con <b>' + fARS(ch.ars) + '</b>, a <b>' + fARS(ch.promedio) + '</b> por dólar en promedio.</div>'
        + '<div class="mudo" style="font-size:14px;margin-top:6px">A la cotización de hoy valen ' + fARS(vale) + ': '
        + (Math.abs(dif) < 1 ? 'ni ganaste ni perdiste.' : (dif > 0 ? '<span class="ok">' + fARS(dif) + ' más</span> de lo que pagaste.' : '<span class="neg">' + fARS(-dif) + ' menos</span> de lo que pagaste.'))
-       + '</div></div>';
+       + '</div>';
+    if(conProg) h += '<div class="mudo" style="font-size:14px;margin-top:6px">Con lo programado, en el año: ' + fUSD(cd.usd) + ' con ' + fARS(cd.ars)
+       + (cd.promedio ? ', a ' + fARS(cd.promedio) + ' por dólar.' : '.') + '</div>';
+    h += '</div>';
   }
   return h;
 }
