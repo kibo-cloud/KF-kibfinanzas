@@ -1691,6 +1691,17 @@ try{
     check('L7 hidden amounts: every hidden amount of the month is read as "oculto"', await ev(`(function(){ var o = document.querySelectorAll('#v-mes .oc[role=img][aria-label=oculto]').length, sueltos = 0, w = document.createTreeWalker(document.getElementById('v-mes'), 4, null), n;
       while((n = w.nextNode())) if(n.nodeValue.indexOf('\\u2022\\u2022\\u2022\\u2022') >= 0 && !n.parentNode.classList.contains('oc')) sueltos++;
       return [o > 3, sueltos]; })()`), [true, 0]);
+    // U8: the labeling batches the mutations of a frame and walks only what changed: 20 nodes added in 20 separate mutation callbacks
+    // are all labeled, by ONE walk over the part that changed (before, every callback walked the whole document)
+    check('U8 hidden amounts: new nodes are labeled, with one walk per frame batch', await ev(`new Promise(async function(res){
+      var d = document.createElement('div'), tw = document.createTreeWalker, walks = 0, i, p;
+      document.createTreeWalker = function(r){ if(r && r.contains && r.contains(d)) walks++; return tw.apply(document, arguments); };
+      document.getElementById('v-mes').appendChild(d);
+      for(i = 0; i < 20; i++){ p = document.createElement('p'); p.textContent = 'Monto \\u2022\\u2022\\u2022\\u2022'; d.appendChild(p); await Promise.resolve(); }
+      await new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(r); }); });
+      await new Promise(function(r){ setTimeout(r, 100); });
+      document.createTreeWalker = tw;
+      var ok = d.querySelectorAll('.oc[role=img][aria-label=oculto]').length; d.remove(); res([ok, walks]); })`), [20, 1]);
     await ev(`document.querySelector('[data-act=ojo]').click(); true`); await sleep(400);
 
     // reduced motion: no animations or transitions when the system asks for it

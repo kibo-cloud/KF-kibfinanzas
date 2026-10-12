@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-13IJeOyEKqFZVOOFHo7ITxTuXUuIFB+El4nbN4kXJNQ=' 'sha256-UQA6wM8up2cTKqNnmgKcPAAAcWnL3c5Aj6r0WCoWC+0='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-13IJeOyEKqFZVOOFHo7ITxTuXUuIFB+El4nbN4kXJNQ=' 'sha256-0EJF4wJGZt9gZlR3a0g4Mtv+imMy0VAQmP8VkeIAI/U='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -2862,15 +2862,24 @@ document.addEventListener('keydown', function(ev){
   ev.preventDefault(); l[i].focus();
 });
 // L7: con los montos ocultos, el lector de pantalla dice "oculto" en vez de leer cuatro puntos
-function rotularOcultos(){
+// U8: recorre solo las raíces que cambiaron (sin raíces, toda la página); una raíz dentro de otra de la lista no se recorre dos veces
+function rotularOcultos(raices){
   if(!oculto || !document.createTreeWalker) return;
-  var raiz = document.body, w = document.createTreeWalker(raiz, 4, null), n, l = [];
-  while((n = w.nextNode())){
+  var l = [], rs = raices && raices.length ? raices : [document.body], w, n;
+  var mirar = function(n){
     var p = n.parentNode;
-    if(n.nodeValue.indexOf(PUNTOS) < 0 || !p || p.namespaceURI !== 'http://www.w3.org/1999/xhtml') continue;
-    if(/^(SCRIPT|STYLE|TEXTAREA|OPTION|TITLE)$/.test(p.nodeName) || (p.classList && p.classList.contains('oc'))) continue;
-    l.push(n);
-  }
+    if(n.nodeValue.indexOf(PUNTOS) < 0 || !p || p.namespaceURI !== 'http://www.w3.org/1999/xhtml') return;
+    if(/^(SCRIPT|STYLE|TEXTAREA|OPTION|TITLE)$/.test(p.nodeName) || (p.classList && p.classList.contains('oc'))) return;
+    if(l.indexOf(n) < 0) l.push(n);
+  };
+  rs = rs.filter(function(r, i){
+    return r && document.body.contains(r) && rs.indexOf(r) === i && !rs.some(function(o){ return o !== r && o && o.contains && o.contains(r); });
+  });
+  rs.forEach(function(r){
+    if(r.nodeType === 3){ mirar(r); return; }
+    w = document.createTreeWalker(r, 4, null);
+    while((n = w.nextNode())) mirar(n);
+  });
   l.forEach(function(n){
     var f = document.createDocumentFragment();
     n.nodeValue.split(PUNTOS).forEach(function(x, i){
@@ -2880,7 +2889,28 @@ function rotularOcultos(){
     n.parentNode.replaceChild(f, n);
   });
 }
-if(window.MutationObserver && document.body) new MutationObserver(function(){ if(oculto) rotularOcultos(); }).observe(document.body, {childList: true, subtree: true, characterData: true});
+// U8: los cambios de un mismo cuadro se juntan y se rotulan una vez, en el próximo requestAnimationFrame, recorriendo solo lo que cambió
+// (un contador animado ya no hace recorrer toda la página en cada paso). Al pasar a ocultos, la primera vez se recorre toda la página.
+// El rotulado no se observa a sí mismo: mientras cambia la página la observación está desconectada (lo que otro código cambió antes en el
+// mismo cuadro se toma con takeRecords y entra en esta pasada)
+var ocRaices = null, ocVisto = false, ocObs = null, OC_OPC = {childList: true, subtree: true, characterData: true};
+function observarOcultos(recs){
+  if(!oculto){ ocVisto = false; return; }
+  var prim = !ocRaices, i;
+  if(prim) ocRaices = [];
+  if(!ocVisto){ ocVisto = true; ocRaices.todo = true; }
+  for(i=0;i<recs.length && !ocRaices.todo;i++) ocRaices.push(recs[i].target);
+  if(ocRaices.length > 50) ocRaices.todo = true;
+  if(prim) (window.requestAnimationFrame || function(f){ return setTimeout(f, 16); })(function(){
+    var r = ocRaices, pend = ocObs.takeRecords(), j;
+    for(j=0;j<pend.length;j++) r.push(pend[j].target);
+    ocRaices = null;
+    ocObs.disconnect();
+    try{ rotularOcultos(r.todo || r.length > 50 ? null : r); }
+    finally{ ocObs.observe(document.body, OC_OPC); }
+  });
+}
+if(window.MutationObserver && document.body){ ocObs = new MutationObserver(observarOcultos); ocObs.observe(document.body, OC_OPC); }
 function scrollLateral(el){
   try{ var ov = window.getComputedStyle(el).overflowX; return ov === 'auto' || ov === 'scroll'; }
   catch(e){ return true; }   // si no se puede saber, se comporta como antes
