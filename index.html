@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-13IJeOyEKqFZVOOFHo7ITxTuXUuIFB+El4nbN4kXJNQ=' 'sha256-0EJF4wJGZt9gZlR3a0g4Mtv+imMy0VAQmP8VkeIAI/U='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-13IJeOyEKqFZVOOFHo7ITxTuXUuIFB+El4nbN4kXJNQ=' 'sha256-SB762dNsJotNDDs5XLYjuoqRgw0dERi26Ej/ATew9Uo='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -2745,15 +2745,11 @@ function notaCompra(m, acum){
 var DIASEM = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
 var DIASEMC = ['D','L','M','M','J','V','S'];
 function diasDelMes(anio, m){ return new Date(anio, m + 1, 0).getDate(); }
+// U9 review: un cobro por cada fecha de diasCobro (un día repetido es un solo cobro), así "N pagos de $X" y las fechas de "Qué vence"
+// dividen por lo mismo; mensual sin día = 1 cobro, quincenal o días sin días = 0, sin frecuencia = 1
 function cuantosPagos(it, anio, m){
-  if(it.frec === 'semanal'){
-    var d = it.dias.length ? it.dias[0] : 5, n = 0, dim = diasDelMes(anio, m), q;
-    for(q=1;q<=dim;q++) if(new Date(anio, m, q).getDay() === d) n++;
-    return n;
-  }
-  if(it.frec === 'quincenal' || it.frec === 'dias' || it.frec === 'mensual'){
-    var dim2 = diasDelMes(anio, m), c = 0, w;
-    for(w=0;w<it.dias.length;w++) if(it.dias[w] >= 1 && it.dias[w] <= dim2) c++;
+  if(it.frec === 'semanal' || it.frec === 'quincenal' || it.frec === 'dias' || it.frec === 'mensual'){
+    var c = diasCobro(it, anio, m).length;
     return c || (it.frec === 'mensual' ? 1 : 0);
   }
   return 1;

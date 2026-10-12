@@ -104,3 +104,22 @@ test('L5 card: nothing due -> no card at all; names are escaped; more than six r
   assert.match(h, /Y 2 más: los ves en sus secciones\./);
   assert.ok(h.indexOf('<img') < 0 && h.indexOf('&lt;img src=x onerror=alert(1)&gt;') > 0, 'the row name is escaped');
 });
+
+// U9 review: each date of "Qué vence" carries what "¿Cada cuánto lo cobrás?" (cobroTxt) says each collection is: the same divisor.
+// A repeated day (imported or old data: the day picker never repeats one) counted twice in cuantosPagos but once as a date, so the
+// sheet said "3 pagos de $30.000" while the card listed two dates of $45.000.
+test('U9 the per-date amount uses the same number of collections as cobroTxt (a repeated day is one collection; weekly as before)', function(){
+  var a = la.loadApp({today: '2026-10-15', funcs: FUNCS.concat(['cobroTxt']), vars: ['MESES', 'DIAS_VENCE', 'VENCE_MAX', 'venceL', 'oculto', 'PUNTOS', 'DIASEM'], globals: {T: null}});
+  var raw = C.vacio(2026);
+  C.arrastre(raw, 9, 0);
+  C.mes(raw, 9, {ingresos: [ing('Changas', 90000, false, 'dias', [10, 10, 20]), ing('Feria', 40000, false, 'semanal', [5])]});
+  var d = anio(a, raw);
+  d.meses[9].ingresos[0].dias = [10, 10, 20];   // as stored by an old copy (normalizar may keep it)
+  a.D = d; a.mes = 9;
+  var l = resumen(a.vencimientos(d, 9, a.hoy, [])).filter(function(x){ return x[2] === 'Changas'; });
+  assert.deepEqual(l, [['atrasado', 'cobrar', 'Changas', 45000, '2026-10-10'], ['semana', 'cobrar', 'Changas', 45000, '2026-10-20']]);
+  assert.equal(a.cuantosPagos(d.meses[9].ingresos[0], 2026, 9), 2);
+  assert.match(a.cobroTxt(d.meses[9].ingresos[0]), / · 2 pagos de \$45\.000$/, 'the sheet says the same as the card');
+  assert.equal(a.cuantosPagos(d.meses[9].ingresos[1], 2026, 9), a.diasCobro(d.meses[9].ingresos[1], 2026, 9).length, 'weekly: one collection per date, as before');
+  assert.match(a.cobroTxt(d.meses[9].ingresos[1]), / · 5 pagos de \$8\.000$/);
+});
