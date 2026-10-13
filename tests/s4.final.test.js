@@ -139,3 +139,47 @@ test('3: a year that does not follow December live loads as before (no shift)', 
   assert.match(a.g.toasts[0], /^Cargué 3 cuotas de /);
   assert.equal(a.D.planDeudas['Préstamo'].pagadasAntes, 3);
 });
+
+// ── 4 (MEDIUM): 2025 has no month-to-month balance (legacy) and 2026 declares it from October. A pase dated 2025-12-20 left Trabajo and
+// never reached the 2026 Disponible (bruto -300.000): desdeDelSaldo said -1 for a year without arrastre. Refused like M1, pointing to
+// where the balance starts; deleting such a pase is refused too ──
+function appPaseAnios(fecha, conModelo){
+  var y25 = C.vacio(2025), y26 = C.vacio(2026);
+  y25.meses[11].ingresos = [C.it('Del trabajo', 0, true)];
+  if(conModelo !== false) C.arrastre(y26, 9, 100000, 'declarado');
+  var store = {'kibo.datos.2025': JSON.stringify(M.normalizar(C.copy(y25), C.hoy('2026-10-15'))), 'kibo.datos.2026': JSON.stringify(M.normalizar(C.copy(y26), C.hoy('2026-10-15')))};
+  var g = {campos: {psFecha: fecha, psMonto: '1000'}, notas: [], aplicados: [], alertas: [], escritos: 0, boton: {textContent: 'Pasar'}, nota: {className: '', innerHTML: ''}};
+  var a = H.appVista(JSON.parse(store['kibo.datos.2026']), H.trab([], 500000), store, '2026-10-15', {funcs: ['guardarPase', 'notaPase', 'destinoPase', 'anioExiste', 'avisoPaseAntes', 'desdeDelSaldo', 'inicioDelSaldo', 'aniosGuardados', 'quitarPase', 'sacarPaseT', 'tjId', 'sumarPaseT', 'fDiaLargo'], vars: ['MESES'],
+    globals: {val: function(id){ return g.campos[id] || ''; }, leerMonto: function(id){ var v = Number(g.campos[id]); return {ok: true, v: v, vacio: !g.campos[id]}; },
+      errorEn: function(id, t){ g.notas.push(t); }, aplicarPase: function(p, signo, cambiarT){ g.aplicados.push(p); cambiarT(); return true; }, alerta: function(t, c){ g.alertas.push([t, c]); },
+      guardarTrab: function(){ g.escritos++; }, paseQuitado: null, confirmar: function(t, c, b, fn){ fn(); },
+      cerrarHoja: function(){}, renderTrabajo: function(){}, toast: function(){}, fARS: function(n){ return '$' + n; }, tjAntes: null, obsoleta: false, RENGLON_TRABAJO: 'Del trabajo',
+      document: {getElementById: function(id){ return id === 'psNota' ? g.nota : {focus: function(){}}; }, querySelector: function(){ return g.boton; }}}});
+  a.resumenTrab = function(){ return {paraPasar: 500000}; };
+  a.g = g; return a;
+}
+var NO_ANTES_ANIO = 'Esa fecha (20/12/2025) es anterior a Octubre 2026, desde cuando llevás el saldo mes a mes: pasarlo con esa fecha haría aparecer o desaparecer plata. Elegí una fecha desde Octubre 2026.';
+test('4: a pase into a year without the month-to-month balance, before a later year that declares it, is refused', function(){
+  var a = appPaseAnios('2025-12-20');
+  assert.equal(a.avisoPaseAntes(a.destinoPase()), NO_ANTES_ANIO);
+  a.guardarPase();
+  assert.equal(a.g.aplicados.length, 0, 'not saved');
+  assert.deepEqual(a.g.notas, [NO_ANTES_ANIO]);
+});
+test('4: deleting a pase into such a year is refused; nothing changes', function(){
+  var a = appPaseAnios('2026-10-10'), viejo = {id: 'p1', fecha: '2025-12-20', monto: 300000, anio: 2025, mes: 11, creada: '2025-12-20T00:00:00.000Z'};
+  a.T.pases = [viejo];
+  var antes = JSON.stringify(a.T);
+  a.quitarPase('p1', true);
+  assert.equal(JSON.stringify(a.T), antes);
+  assert.equal(a.g.aplicados.length, 0);
+  assert.deepEqual(a.g.alertas, [['No se puede borrar', 'Lo que pasaste el 20/12/2025 es anterior a Octubre 2026, desde cuando llevás el saldo mes a mes: el saldo con el que arrancaste ya la tiene en cuenta, así que borrarlo haría aparecer plata en Trabajo. No cambié nada.']]);
+});
+test('4: still allowed: a date from where the balance starts, and any date when no later year has the month-to-month balance', function(){
+  var a = appPaseAnios('2026-10-10');
+  assert.equal(a.avisoPaseAntes(a.destinoPase()), '');
+  a.guardarPase(); assert.equal(a.g.aplicados.length, 1);
+  var b = appPaseAnios('2025-12-20', false);
+  assert.equal(b.avisoPaseAntes(b.destinoPase()), '');
+  b.guardarPase(); assert.equal(b.g.aplicados.length, 1);
+});

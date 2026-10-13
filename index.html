@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-m0FsNrKE73h2m1lGiYUqZD6t4bAlfJSonNC+5xnK/pA=' 'sha256-zbwm/kBe4tTqAPrC6T1pd2ZBoEsb+4FxGtlSN4DsLDE='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-m0FsNrKE73h2m1lGiYUqZD6t4bAlfJSonNC+5xnK/pA=' 'sha256-iQSvZ0Q5S6GMcMdFHWKjBteXXaKzbhOhl7+Pj4BkGXE='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -7988,9 +7988,23 @@ function desdeDelSaldo(anio, mes){   // el mes desde el que ese año lleva el sa
   var y = anio === D.anio ? D : leerAnio(anio), ar = y && y.arrastre;
   return ar && typeof ar === 'object' && mes < num(ar.desde) ? num(ar.desde) : -1;
 }
+/* Final audit 4: un año sin el saldo mes a mes (o que no está) ANTES del primer año guardado que lo lleva: si ese año arranca de un saldo
+   declarado (o desde un mes que no es enero), lo pasado ahí tampoco llega a ningún disponible. {anio, mes} desde donde se lleva el saldo, o null */
+function inicioDelSaldo(anio, mes){
+  var k = desdeDelSaldo(anio, mes), y = anio === D.anio ? D : leerAnio(anio), l, i, ar;
+  if(k >= 0) return {anio:anio, mes:k};
+  if(y && y.arrastre) return null;
+  l = aniosGuardados().concat([D.anio]).filter(function(a, i, t){ return a > anio && t.indexOf(a) === i; }).sort(function(a, b){ return a - b; });
+  for(i=0;i<l.length;i++){
+    y = l[i] === D.anio ? D : leerAnio(l[i]); ar = y && y.arrastre;
+    if(!ar || typeof ar !== 'object') continue;
+    return num(ar.desde) > 0 || !ar.inicial || ar.inicial.origen !== 'arrastre' ? {anio:l[i], mes:num(ar.desde)} : null;
+  }
+  return null;
+}
 function avisoPaseAntes(dest){   // '' si la fecha cae en un mes que lleva el saldo mes a mes (o en un año sin eso)
-  var k = desdeDelSaldo(dest.anio, dest.mes), md = k < 0 ? '' : MESES[k] + ' ' + dest.anio;
-  return k < 0 ? '' : 'Esa fecha (' + fDiaLargo(dest.fecha) + ') es anterior a ' + md + ', desde cuando llevás el saldo mes a mes: pasarlo con esa fecha haría aparecer o desaparecer plata. Elegí una fecha desde ' + md + '.';
+  var r = inicioDelSaldo(dest.anio, dest.mes), md = r ? MESES[r.mes] + ' ' + r.anio : '';
+  return !r ? '' : 'Esa fecha (' + fDiaLargo(dest.fecha) + ') es anterior a ' + md + ', desde cuando llevás el saldo mes a mes: pasarlo con esa fecha haría aparecer o desaparecer plata. Elegí una fecha desde ' + md + '.';
 }
 function abrirPase(){
   var r = resumenTrab();
@@ -8039,9 +8053,9 @@ function quitarPase(id, avisar){
   var p = null, i;
   for(i=0;i<T.pases.length;i++) if(T.pases[i].id === id) p = T.pases[i];
   if(!p) return;
-  var k = desdeDelSaldo(p.anio, p.mes);
-  if(k >= 0){   // S2 M1: el saldo que declaró ya cuenta esa plata; borrarlo la haría aparecer en Trabajo. No se toca nada
-    alerta('No se puede borrar', 'Lo que pasaste el ' + fDiaLargo(p.fecha) + ' es anterior a ' + MESES[k] + ' ' + p.anio
+  var k = inicioDelSaldo(p.anio, p.mes);
+  if(k){   // S2 M1: el saldo que declaró ya cuenta esa plata; borrarlo la haría aparecer en Trabajo. No se toca nada
+    alerta('No se puede borrar', 'Lo que pasaste el ' + fDiaLargo(p.fecha) + ' es anterior a ' + MESES[k.mes] + ' ' + k.anio
       + ', desde cuando llevás el saldo mes a mes: el saldo con el que arrancaste ya la tiene en cuenta, así que borrarlo haría aparecer plata en Trabajo. No cambié nada.');
     return;
   }

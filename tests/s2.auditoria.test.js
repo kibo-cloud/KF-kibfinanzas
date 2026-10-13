@@ -217,7 +217,7 @@ function appPase(fecha){
   var d = C.vacio(2026); C.arrastre(d, 8, 100000, 'declarado');
   var g = {campos: {psFecha: fecha, psMonto: '1000'}, notas: [], aplicados: [], alertas: [], toasts: [], escritos: 0, boton: {textContent: 'Pasar'},
     nota: {className: '', innerHTML: ''}};
-  var a = H.appVista(d, H.trab([], 500000), null, '2026-10-15', {funcs: ['guardarPase', 'notaPase', 'destinoPase', 'anioExiste', 'avisoPaseAntes', 'desdeDelSaldo', 'quitarPase', 'sacarPaseT', 'tjId', 'sumarPaseT', 'fDiaLargo'], vars: ['MESES'],
+  var a = H.appVista(d, H.trab([], 500000), null, '2026-10-15', {funcs: ['guardarPase', 'notaPase', 'destinoPase', 'anioExiste', 'avisoPaseAntes', 'desdeDelSaldo', 'inicioDelSaldo', 'aniosGuardados', 'quitarPase', 'sacarPaseT', 'tjId', 'sumarPaseT', 'fDiaLargo'], vars: ['MESES'],
     globals: {val: function(id){ return g.campos[id] || ''; }, leerMonto: function(id){ var v = Number(g.campos[id]); return {ok: true, v: v, vacio: !g.campos[id]}; },
       errorEn: function(id, t){ g.notas.push(t); }, aplicarPase: function(p, signo, cambiarT){ g.aplicados.push(p); cambiarT(); return true; }, alerta: function(t, c){ g.alertas.push([t, c]); },
       guardarTrab: function(){ g.escritos++; }, paseQuitado: null,

@@ -212,7 +212,7 @@ test('L-05 duplicar through the REAL save path: the new year is written with its
 });
 
 var PASE_FUNCS = ['renglonTrabajo', 'blobAlDia', 'aplicarPase', 'quitarPase', 'reponerPase', 'guardarPase', 'resumenTrab', 'hoyISO', 'esISO', 'utcDe', 'sumarDias', 'diasEntre', 'ganancia',
-  'saldoFac', 'venceFac', 'sinAsignar', 'paseAlModelo', 'mesDelModelo', 'pasesDelMes', 'avisoPaseAntes', 'desdeDelSaldo', 'fDiaLargo'];
+  'saldoFac', 'venceFac', 'sinAsignar', 'paseAlModelo', 'mesDelModelo', 'pasesDelMes', 'avisoPaseAntes', 'desdeDelSaldo', 'inicioDelSaldo', 'aniosGuardados', 'fDiaLargo'];
 function appPase(ls, hechos){
   return H.appAlmacen(ls, '2026-10-15', {
     leerMonto: function(){ return {ok: true, v: hechos.monto}; },
