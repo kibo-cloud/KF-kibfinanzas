@@ -398,3 +398,16 @@ test('S3-R1 undoing a quick sale after another tab saved is refused: memory, sto
   assert.equal(c.a.obsoleta, true);
   assert.match(c.a.avisosEl.innerHTML, /otra pestaña/);
 });
+
+// ── review fix (S2 L3): "a plazo, sin cobrar" is what today's a-plazo sales still owe (their saldo), not sold − collected in cash ──
+test('S3-R5 a same-day cobro of today\'s a-plazo sale lowers "a plazo, sin cobrar"; fully collected, the part disappears', function(){
+  var c = cargada([], [], {funcs: ['lineaHoy']});
+  var plazo = venta('f2', 'Juan', 70000, 'transferencia', '2026-10-15', {tipo: 'factura', contado: false, plazo: 30, cliente: 'Juan'});
+  c.a.T.facturas = [venta('f1', 'Café', 30000, 'efectivo', '2026-10-15'), plazo];
+  c.a.T.cobros = [{id: 'c1', cliente: 'Juan', monto: 20000, fecha: '2026-10-15', forma: 'transferencia', aplic: [{f: 'f2', m: 20000, r: 0}]}];
+  assert.equal(c.a.lineaHoy(c.a.resumenTrab()), 'Hoy: 2 ventas · efectivo $30000 · a plazo, sin cobrar $50000');
+  c.a.T.cobros[0].monto = 70000; c.a.T.cobros[0].aplic[0].m = 70000;
+  assert.equal(c.a.lineaHoy(c.a.resumenTrab()), 'Hoy: 2 ventas · efectivo $30000');
+  c.a.T.cobros = [];
+  assert.equal(c.a.lineaHoy(c.a.resumenTrab()), 'Hoy: 2 ventas · efectivo $30000 · a plazo, sin cobrar $70000');
+});

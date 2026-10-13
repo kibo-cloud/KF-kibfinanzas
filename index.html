@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-m0FsNrKE73h2m1lGiYUqZD6t4bAlfJSonNC+5xnK/pA=' 'sha256-Yh9S6Ur1btDiQwUNXV7x12pBLO8oYs+Rga+AqG5zgks='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-m0FsNrKE73h2m1lGiYUqZD6t4bAlfJSonNC+5xnK/pA=' 'sha256-es2IxgFXx+8MuFIA/2cD2xf/Zw/h4ickKFevpeC3y5M='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -6335,7 +6335,7 @@ function pendientes(sinCobro){
 }
 function resumenTrab(){
   var hoy = hoyISO(), mesAct = hoy.slice(0,7), i;
-  var r = {porCobrar:0, vencido:0, prox30:0, cobradoMes:0, sinAsignar:0, hoyVendido:0, hoyVentas:0, mesVendido:0,
+  var r = {porCobrar:0, vencido:0, prox30:0, cobradoMes:0, sinAsignar:0, hoyVendido:0, hoyVentas:0, hoyAPlazo:0, mesVendido:0,
            cobrado:0, aAcreditar:0, hayPlazo:false, mesDig:0, mesEfe:0};
   for(i=0;i<T.facturas.length;i++){
     var f = T.facturas[i];
@@ -6348,7 +6348,9 @@ function resumenTrab(){
       continue;
     }
     r.hayPlazo = true;
-    var s = saldoFac(f); if(!s) continue;
+    var s = saldoFac(f);
+    if(f.fecha === hoy) r.hoyAPlazo += s;   // S2 L3: lo vendido a plazo hoy que todavía se debe (un cobro del mismo día lo baja)
+    if(!s) continue;
     var d = diasEntre(hoy, venceFac(f));
     r.porCobrar += s;
     if(d < 0) r.vencido += s; else if(d <= 30) r.prox30 += s;
@@ -6561,8 +6563,7 @@ function filaVenta(f){
 function lineaHoy(r){
   var p = [r.hoyVentas + (r.hoyVentas === 1 ? ' venta' : ' ventas')], orden = ['efectivo','transferencia','echeq','otra'], i;
   for(i=0;i<orden.length;i++) if(r.hoyForma[orden[i]]) p.push((orden[i] === 'transferencia' ? 'transferencias' : nombreForma(orden[i]).toLowerCase()) + ' ' + fARS(r.hoyForma[orden[i]]));
-  var cobradoHoy = 0, k; for(k in r.hoyForma) if(Object.prototype.hasOwnProperty.call(r.hoyForma, k)) cobradoHoy += r.hoyForma[k];
-  if(r.hoyVendido - cobradoHoy > 0.5) p.push('a plazo, sin cobrar ' + fARS(r.hoyVendido - cobradoHoy));   // S2 L3: lo vendido a plazo hoy no es plata cobrada
+  if(r.hoyAPlazo > 0.5) p.push('a plazo, sin cobrar ' + fARS(r.hoyAPlazo));   // S2 L3: lo vendido a plazo hoy que sigue sin cobrar (su saldo)
   if(r.hayCosto) p.push('ganancia ' + fARS(r.hoyGanancia));
   return 'Hoy: ' + p.join(' · ');
 }
