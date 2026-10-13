@@ -65,7 +65,7 @@ Commits: `290fc6b` (stale tab refuses sales/product edits before changing anythi
   link below "Nueva venta", out of sight with many products.
 - **S3d.** Local only, existing tokens: the payment icon of each card and the folder titles are 44 px touch targets (visual size
   unchanged), cards lay out as a column, help text updated (pie, + Producto, Editar producto). No global redesign.
-- **Tests.** `tests/s3.ventas.test.js` (35 unit tests: pie data and percentages, sale copy unaffected by product edits, stale-tab
+- **Tests.** `tests/s3.ventas.test.js` (31 unit tests: pie data and percentages, sale copy unaffected by product edits, stale-tab
   refusal, add/edit paths); e2e S3a-S3d checks in `tests/e2e/run.mjs` (pie values and text table, ⋮ geometry at 360/390/430 px in both
   views, long press on ⋮ never sells, + Producto in the viewed folder, empty state, S3d 44 px targets — RED observed at 32x32 / 36 px
   before `9051c2f`).
