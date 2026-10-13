@@ -135,3 +135,26 @@ None of these has an owner answer recorded; the built defaults stay and nothing 
 
 Safe to build without the owner (presentation only): N2-B (a) detection notice (built `46f33df`); H1 / M1 / M3 interim notices (built `b55dade`, `8653da0`, `4717c65`); N3b-B prominent "sin cargar" label; N4-A (c) download
 action. Everything else waits for the owner.
+
+### Native review (W1-W3, 2026-10-13)
+
+- **Consent basis.** The owner's explicit loop authorization of 2026-10-13 ("tenés autorización para ... realizar revisiones ... No pidas
+  aprobación entre ... revisiones").
+- **Slices.** All reliability lens, APPROVED, no correction, acknowledged.
+
+| Slice | Range | Review |
+| --- | --- | --- |
+| W1 | `b6549b1..890be85` | `review-b350fed44778bd11` |
+| W2 | `890be85..eae79d6` | `review-bc75c8e9bfa59a52` |
+| W3 | `eae79d6..63fcbd5` | `review-15c630d77721fa70` |
+
+- **W3 capture.** Interrupted 20 times by the account session limit; completed on resume.
+- **Advisories.**
+  - W1: the `tests/s3.ventas.test.js` count in this document said 35; the real count is 31 (fixed, `84d62e6`).
+  - W2: R3-deriva-falso-positivo (already fixed in `07601db`).
+  - W2: the M1 two-tap pase confirmation lived on the button found by querySelector: with no button the pase could never be saved, and a
+    date change kept "Pasar igual". The confirmed date is now sheet state (`paseOk`), reset when the sheet opens or the date changes
+    (fixed, `e6ea163`; RED observed for both paths).
+  - W3: the quick-expense undo refusal branch (`exacto = -2`) had no tests: a new same-named row, another row renamed to that name, and
+    a stored `fo` without `fn` (older shape: the fo-th same-named row; out of range refuses) are now covered (`d1ea18a`,
+    characterization, no behavior change).
