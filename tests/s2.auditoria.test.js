@@ -40,3 +40,40 @@ test('H2: the hero says "a hoy" for the current year and "al cierre de <año>" f
   assert.match(w.a.htmlHeroPatri(w.p), /Patrimonio neto al cierre de 2026/);
   assert.doesNotMatch(w.a.htmlHeroPatri(w.p), /a hoy/);
 });
+
+// ── M2: quick-expense undo reverts the exact row it changed, even with two rows of the same name ──
+var FUNCS_GASTO = ['sumarGasto', 'quitarMov', 'esc', 'fARS', 'grupos', 'preguntaPago', 'preguntarPago', 'gastoEsPago', 'marcarPago', 'gastoAparte', 'filaDelGasto', 'anotarMov'];
+function appGasto(raw){
+  var t = [];
+  var a = H.appVista(raw, null, null, null, {funcs: FUNCS_GASTO, vars: ['gr'], globals: {oculto: false, PUNTOS: '..', document: {getElementById: function(){ return null; }},
+    abrirHoja: function(){}, cerrarHoja: function(){}, tocar: function(){}, conScroll: function(){}, renderMes: function(){},
+    toast: function(x, ac, act, id){ t.push([x, ac, act, id]); }}});
+  a.mes = 9; a.t = t; return a;
+}
+function mesCon(rows){ var d = C.vacio(2026); C.arrastre(d, 9, 100000, 'declarado'); C.mes(d, 9, {gastosVariables: rows}); return d; }
+function filas(a){ return a.plain(a.D.meses[9].gastosVariables); }
+test('M2: "Sí, es ese pago" on the second of two "Super" rows, then Deshacer: the month is exactly as before', function(){
+  var a = appGasto(mesCon([C.it('Super', 30000, true), C.it('Super', 50000, false)])), antes = filas(a);
+  a.gr = {monto: 50000, cat: 1, sec: 'gastosVariables'}; a.sumarGasto(); a.gastoEsPago();
+  a.quitarMov(a.t[a.t.length - 1][3]);
+  assert.deepEqual(filas(a), antes);
+  assert.equal(a.D.meses[9].movimientos.length, 0);
+});
+test('M2: a plain quick expense on the second "Super" row, then Deshacer: the month is exactly as before', function(){
+  var a = appGasto(mesCon([C.it('Super', 30000, true), C.it('Super', 0, false)])), antes = filas(a);
+  a.gr = {monto: 20000, cat: 1, sec: 'gastosVariables'}; a.sumarGasto();
+  a.quitarMov(a.t[a.t.length - 1][3]);
+  assert.deepEqual(filas(a), antes);
+});
+test('M2: the row identity survives normalizar; old movements without it still undo by name', function(){
+  var a = appGasto(mesCon([C.it('Super', 30000, true), C.it('Super', 0, false)]));
+  a.gr = {monto: 20000, cat: 1, sec: 'gastosVariables'}; a.sumarGasto();
+  var mv = a.plain(a.D.meses[9].movimientos[0]);
+  assert.equal(mv.fi, 1);
+  var n = a.normalizar(C.copy(a.D), a.hoy);
+  assert.equal(n.meses[9].movimientos[0].fi, 1);
+  var b = appGasto(mesCon([C.it('Luz', 5000, true)]));
+  b.D.meses[9].movimientos.push({id: 'viejo', fecha: '', sec: 'gastosVariables', nombre: 'Luz', monto: 5000});
+  b.quitarMov('viejo');
+  assert.equal(b.D.meses[9].gastosVariables[0].monto, 0);
+});
