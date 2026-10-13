@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-m0FsNrKE73h2m1lGiYUqZD6t4bAlfJSonNC+5xnK/pA=' 'sha256-p98No41kq0+8t0nYSlks8zI4qps+Z6wRJj/CkYdKs+4='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-m0FsNrKE73h2m1lGiYUqZD6t4bAlfJSonNC+5xnK/pA=' 'sha256-usS3EB1dU68Ww1UXVQyilNkuLUt2GuFnbkaSvOOD6A4='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -5003,7 +5003,8 @@ function avisoCopiaTrabajo(j, claves){   // sin conflicto (mezclaTrabajo ya rech
 }
 /* S2 M3 (preferencia del dueño: conservar los datos y bloquear): una copia que dejaría los renglones «Del trabajo» de un año y el Trabajo
    saliendo de dos lugares distintos no se restaura. (1) La copia no trae Trabajo y el Trabajo de este teléfono pasó plata a un año que la
-   copia reemplaza; (2) el Trabajo de la copia pasó plata a un año que la copia no trae y este teléfono sí tiene. '' si no hay conflicto. */
+   copia reemplaza; (2) el Trabajo de la copia pasó plata a un año que la copia no trae y este teléfono sí tiene; (3) al revés: el Trabajo de
+   este teléfono pasó plata a un año que la copia no trae y este teléfono conserva. '' si no hay conflicto. */
 function mezclaTrabajo(j, claves){
   var fin = ' Restaurá una copia completa (', cola = '), o hacé primero una copia de seguridad de lo que tenés en este teléfono. No cambié nada.';
   var rompe = ': los renglones «Del trabajo» y Trabajo dejarían de coincidir.', tel = aniosGuardados().map(String), ys;
@@ -5012,7 +5013,11 @@ function mezclaTrabajo(j, claves){
     return ys.length ? 'La copia no trae Trabajo, y el Trabajo de este teléfono pasó plata a lo personal en ' + ys.join(', ') + ', que la copia reemplaza' + rompe + fin + 'con Trabajo' + cola : '';
   }
   ys = aniosDePases(j.trabajo.pases).filter(function(a){ return claves.indexOf(a) < 0 && tel.indexOf(a) > -1; });
-  return ys.length ? 'El Trabajo de la copia pasó plata a lo personal en ' + ys.join(', ') + ', pero la copia no trae ' + ys.join(', ') + ' y este teléfono sí lo tiene' + rompe + fin + 'con todos esos años' + cola : '';
+  if(ys.length) return 'El Trabajo de la copia pasó plata a lo personal en ' + ys.join(', ') + ', pero la copia no trae ' + ys.join(', ') + ' y este teléfono sí lo tiene' + rompe + fin + 'con todos esos años' + cola;
+  // (3, final audit 2) el Trabajo de este teléfono pasó plata a un año que la copia no trae y este teléfono conserva: el Trabajo de la copia
+  // no la tiene (si la tuviera, (2) ya lo rechazó), así que esa plata quedaría en el renglón «Del trabajo» y otra vez en Trabajo
+  ys = aniosDePases(T && T.pases).filter(function(a){ return claves.indexOf(a) < 0 && tel.indexOf(a) > -1; });
+  return ys.length ? 'El Trabajo de este teléfono pasó plata a lo personal en ' + ys.join(', ') + ', que la copia no trae y este teléfono conserva, pero el Trabajo de la copia no tiene eso' + rompe + fin + 'con todos esos años' + cola : '';
 }
 function restaurarTexto(txt){
   (function(){

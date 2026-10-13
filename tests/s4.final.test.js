@@ -76,3 +76,37 @@ test('1: a pase written into 2026 (year + Trabajo together) stores the copy of 2
   assert.equal(JSON.parse(ls.d['kibo.datos.2027']).copiaDiciembre.ahorro, 800000);
   assert.equal(patrimonio(ls.d, 2027, '2027-01-10').ahorro, 900000);
 });
+
+// ── 2 (HIGH): a backup WITH Trabajo restores 2026 only; this phone's Trabajo passed money to 2025, which the phone keeps. The restored
+// Trabajo has no pase into 2025 while the 2025 "Del trabajo" row stays: the money counted twice (Trabajo disponible 700.000 -> 1.000.000) ──
+function hojaRestaurar(copia, pasesTel, aniosTel){
+  var guardados = {};
+  (aniosTel || []).forEach(function(y){ guardados['kibo.datos.' + y] = JSON.stringify(C.vacio(y)); });
+  var ls = H.fakeStorage(guardados), a = H.appAlmacen(ls, '2026-10-15', {tieneTrab: function(){ return !!pasesTel; }}, ['avisoCopiaTrabajo', 'mezclaTrabajo', 'aniosDePases', 'descTrabajo', 'fARS', 'esc']);
+  a.D = a.normalizar(C.vacio(2026), a.hoy);
+  if(pasesTel) a.T.pases = pasesTel.map(function(f, i){ return {id: 'p' + i, fecha: f, monto: 300000, anio: +f.slice(0, 4), mes: +f.slice(5, 7) - 1, creada: f + 'T00:00:00.000Z'}; });
+  var antes = JSON.stringify(ls.d), tAntes = JSON.stringify(a.T);
+  a.pendiente = null;
+  a.restaurarTexto(JSON.stringify(copia));
+  return {hoja: a.g.hojas[a.g.hojas.length - 1] || '', alertas: a.g.alertas, a: a, ls: ls, intacto: JSON.stringify(ls.d) === antes && JSON.stringify(a.T) === tAntes};
+}
+function copiaDe(anios, tr){ var o = {app: 'TuGasto', version: 1, anios: {}}; anios.forEach(function(y){ o.anios[y] = C.vacio(y); }); if(tr) o.trabajo = tr; return o; }
+test('2: a backup with Trabajo that would drop this phone\'s pases into a year the phone keeps is refused; nothing written', function(){
+  var r = hojaRestaurar(copiaDe([2026], H.trab([], 1000000)), ['2025-12-20'], [2025, 2026]);
+  assert.equal(r.hoja, '', 'no confirmation sheet');
+  assert.equal(r.a.pendiente, null);
+  assert.equal(r.intacto, true);
+  assert.deepEqual(r.alertas, [['No restauré la copia', 'El Trabajo de este teléfono pasó plata a lo personal en 2025, que la copia no trae y este teléfono conserva, pero el Trabajo de la copia no tiene eso: los renglones «Del trabajo» y Trabajo dejarían de coincidir. Restaurá una copia completa (con todos esos años), o hacé primero una copia de seguridad de lo que tenés en este teléfono. No cambié nada.']]);
+});
+test('2: restores without that conflict are still offered (the year comes in the backup; the phone does not have it; pases only into replaced years)', function(){
+  var tr = H.trab([{fecha: '2025-12-20', monto: 300000}], 1000000);
+  [[copiaDe([2025, 2026], tr), ['2025-12-20'], [2025, 2026]],    // the backup brings 2025 too
+   [copiaDe([2026], H.trab([], 1000000)), ['2025-12-20'], [2026]],   // the phone does not keep 2025: no row to count twice
+   [copiaDe([2026], H.trab([], 1000000)), ['2026-03-10'], [2025, 2026]]   // the phone's pases go to the year the backup replaces
+  ].forEach(function(c, i){
+    var r = hojaRestaurar(c[0], c[1], c[2]);
+    assert.equal(r.alertas.length, 0, 'case ' + i);
+    assert.equal(typeof r.a.pendiente, 'function', 'case ' + i);
+    assert.match(r.hoja, /Va a <b>reemplazar<\/b>/);
+  });
+});
