@@ -342,3 +342,43 @@ test('S3b a stale tab refuses the edit from the grid too', function(){
   c.a.guardarProducto();
   assert.equal(c.a.prodPorId('p1').nombre, 'Café');
 });
+
+// ── task 4 (S3c): "+ Producto" always at hand ──
+function conBarra(productos){
+  return cargada(productos, [], {funcs: FUNCS_B.concat(['botonesProductos', 'grillaProds', 'vistaProd', 'enCarpeta', 'coincideProd', 'textoSinRes']), busqProd: '', LSVISTA: 'kibo.vistaProd',
+    attrMonto: function(n){ return ' value="' + (n || '') + '"'; }, FORMAS: [['transferencia', 'Transferencia'], ['echeq', 'Echeq'], ['efectivo', 'Efectivo'], ['otra', 'Otra']]});
+}
+test('S3c the product toolbar holds the search box, a labeled "+ Producto" and the view switch, inside the products zone', function(){
+  var c = conBarra([CAFE, MEDIA]);
+  var h = c.a.botonesProductos();
+  assert.match(h, /^<div class="tj-zona" id="tjZona"><div class="tj-phd" id="tjBarra">/);
+  var barra = h.slice(0, h.indexOf('</div>', h.indexOf('id="tjBarra"')));
+  assert.match(barra, /id="tjBuscar"[^>]*aria-label="Buscar producto"/);
+  assert.deepEqual(botones(barra).map(function(x){ return [x[1], x[2]]; }), [['tjNuevoProdGrilla', 'Agregar producto'], ['tjVista', 'Pasar a grilla compacta']]);
+  assert.match(barra, />\+ Producto<\/button>/);
+  assert.equal((h.match(/data-act="tjNuevoProdGrilla"/g) || []).length, 1, 'one add button');
+  assert.match(h, /<\/div><\/div>$/, 'the zone closes after the grid (the toolbar sticks only while the products scroll)');
+});
+
+test('S3c no products yet: the call to action is the add button, no search box', function(){
+  var c = conBarra([]);
+  var h = c.a.botonesProductos();
+  assert.doesNotMatch(h, /tjBuscar/);
+  assert.deepEqual(botones(h).map(function(x){ return [x[0], x[1]]; }), [['tj-nuevo', 'tjNuevoProdGrilla']]);
+  assert.match(h, /\+ Agregar producto/);
+});
+
+test('S3c a new product from the toolbar starts in the folder you are looking at, has Cancelar, and saves back to the grid', function(){
+  var c = conBarra([CAFE, MEDIA]);
+  c.a.carpSel = 'bebidas'; c.a.carpSelGeneral = false;
+  c.a.abrirProducto(null, false, 'grilla');
+  var h = c.a.g.hojas[c.a.g.hojas.length - 1];
+  assert.match(h, /<h3>Nuevo producto<\/h3>/);
+  assert.match(h, /id="pxCarp"[^>]*value="Bebidas"/);
+  assert.deepEqual(botones(h).filter(function(x){ return /cerrarHoja|tjGuardarProd|tjProds/.test(x[1]); }).map(function(x){ return x[1]; }), ['cerrarHoja', 'tjGuardarProd']);
+  Object.assign(c.a.campos, {pxNombre: 'Té', pxPrecio: '900', pxCarp: 'Bebidas'});
+  var cerr = c.a.g.hojasCerradas;
+  c.a.guardarProducto();
+  var nuevo = c.a.T.productos[2];
+  assert.deepEqual([nuevo.nombre, nuevo.carpeta, nuevo.color, c.a.T.facturas.length, c.a.g.listas, c.a.g.hojasCerradas], ['Té', 'Bebidas', 'azul', 0, 0, cerr + 1]);
+});

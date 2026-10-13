@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-13IJeOyEKqFZVOOFHo7ITxTuXUuIFB+El4nbN4kXJNQ=' 'sha256-pH/rfApU2r3YxKbzhWsA9+c5vd3HXKikRiGbHtZSewU='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-13IJeOyEKqFZVOOFHo7ITxTuXUuIFB+El4nbN4kXJNQ=' 'sha256-AEw6EYfZQv4Xny2k07tpF7antgZYQcVXraI4/spK1Kc='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -83,6 +83,7 @@ html[data-tema="oscuro"]{
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0;overflow-x:hidden}
+body{overflow-x:clip}   /* S3c: clip, not hidden: a hidden body is a scroll container of its own, so nothing sticky (the header, the product toolbar) ever stuck */
 body{
   background:var(--bg); color:var(--txt);
   font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;
@@ -440,7 +441,19 @@ button.tj-f:active{background:var(--fill)}
 .tj-modo{margin-bottom:6px}
 .tj-prods{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
 .tj-phd{display:flex;gap:8px;align-items:center;margin-top:14px}
-.tj-busca{flex:1;min-width:0;height:40px;padding:0 12px;border-radius:12px;border:1px solid var(--sep);background:var(--card);color:var(--txt);font:inherit;font-size:16px;-webkit-appearance:none;appearance:none}
+/* S3c: la barra de productos, fija debajo del encabezado (con su fondo, para que la grilla pase por debajo) */
+.tj-zona{position:relative}
+.tj-zona>.tj-phd{position:sticky;top:var(--hd-alto,calc(57px + env(safe-area-inset-top)));z-index:6;margin-top:6px;padding:8px 0;background:var(--bg);box-shadow:0 0 0 16px var(--bg);clip-path:inset(0 -16px)}
+.tj-nuevo{flex:0 0 auto;height:var(--tap);min-height:0;padding:0 14px;border-radius:12px;background:var(--acc);color:var(--on-acc);font-size:15px;font-weight:700;white-space:nowrap}
+.tj-nuevo:active{opacity:.85}
+.tj-prod-vacio{margin-top:14px;padding:16px;border-radius:14px;background:var(--card);border:1px dashed var(--sep);text-align:center}
+.tj-prod-vacio p{margin:0 0 12px;font-size:14px;color:var(--txt2);line-height:1.4}
+.tj-prod-vacio p b{display:block;font-size:16px;color:var(--txt);margin-bottom:2px}
+.tj-prod-vacio .tj-nuevo{width:100%;font-size:16px}
+.tj-carps.mas-der{-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 40px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 40px),transparent)}
+.tj-carps.mas-izq{-webkit-mask-image:linear-gradient(to left,#000 calc(100% - 40px),transparent);mask-image:linear-gradient(to left,#000 calc(100% - 40px),transparent)}
+.tj-carps.mas-izq.mas-der{-webkit-mask-image:linear-gradient(to right,transparent,#000 40px,#000 calc(100% - 40px),transparent);mask-image:linear-gradient(to right,transparent,#000 40px,#000 calc(100% - 40px),transparent)}
+.tj-busca{flex:1;min-width:0;height:var(--tap);padding:0 12px;border-radius:12px;border:1px solid var(--sep);background:var(--card);color:var(--txt);font:inherit;font-size:16px;-webkit-appearance:none;appearance:none}
 .tj-busca::placeholder{color:var(--txt2)}
 .tj-busca:focus{outline:none;border-color:var(--acc)}
 .tj-vista{flex:0 0 auto;width:40px;height:40px;min-height:0;padding:0;border-radius:12px;background:var(--fill);color:var(--txt);display:flex;align-items:center;justify-content:center}
@@ -504,20 +517,20 @@ button.tj-f:active{background:var(--fill)}
 .tj-prod .vc .ag{color:var(--neg);font-weight:600}
 .tj-cobra{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
 /* S3a: cobrado en el mes, efectivo contra digital (torta + leyenda; la tabla oculta repite los números para el lector de pantalla) */
-.tj-cob{margin:12px 0 14px;padding:12px 14px;border-radius:14px;background:var(--card2);border:1px solid var(--sep);min-width:0}
+.tj-cob{margin:10px 0 12px;padding:10px 14px;border-radius:14px;background:var(--card2);border:1px solid var(--sep);min-width:0}
 .tj-cob small{display:block;font-size:12px;color:var(--txt2)}
-.tj-cob-hd b{display:block;font-size:28px;font-weight:700;letter-spacing:-.03em;line-height:1.15;margin-top:1px;color:var(--txt);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tj-cob-hd b.largo{font-size:23px}
-.tj-cob-cu{display:flex;align-items:center;gap:14px;margin-top:8px;min-width:0}
-.tj-cob-torta{flex:0 0 84px;width:84px;height:84px;display:block}
+.tj-cob-hd b{display:block;font-size:24px;font-weight:700;letter-spacing:-.03em;line-height:1.15;margin-top:1px;color:var(--txt);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tj-cob-hd b.largo{font-size:20px}
+.tj-cob-cu{display:flex;align-items:center;gap:14px;margin-top:6px;min-width:0}
+.tj-cob-torta{flex:0 0 76px;width:76px;height:76px;display:block}
 .tj-cob-ley{flex:1;min-width:0;max-width:380px}
-.tj-cob-f{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:14px;min-width:0}
+.tj-cob-f{display:grid;grid-template-columns:10px minmax(0,1fr) auto;grid-template-areas:"i n b" ". p p";column-gap:8px;align-items:center;padding:4px 0;font-size:14px;min-width:0}
 .tj-cob-f+.tj-cob-f{border-top:1px solid var(--sep)}
-.tj-cob-f i{flex:0 0 10px;width:10px;height:10px;border-radius:3px;background:var(--dig)}
+.tj-cob-f i{grid-area:i;width:10px;height:10px;border-radius:3px;background:var(--dig)}
 .tj-cob-f.efectivo i{background:var(--acc)}
-.tj-cob-f .n{flex:1;min-width:0;line-height:1.25;overflow-wrap:break-word}
-.tj-cob-f .p{flex:0 0 auto;font-size:13px;color:var(--txt2);font-variant-numeric:tabular-nums}
-.tj-cob-f b{flex:0 0 auto;font-weight:600;font-variant-numeric:tabular-nums}
+.tj-cob-f .n{grid-area:n;min-width:0;line-height:1.25;overflow-wrap:break-word}
+.tj-cob-f .p{grid-area:p;font-size:12px;color:var(--txt2);font-variant-numeric:tabular-nums}
+.tj-cob-f b{grid-area:b;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
 .tj-cob.vacio p{margin:4px 0 0;font-size:14px;color:var(--txt2);line-height:1.4}
 .tj-sr{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .tj-cobra button{min-height:56px;border-radius:14px;font-size:17px;font-weight:600;background:var(--acc);color:var(--on-acc)}
@@ -5672,6 +5685,8 @@ document.addEventListener('touchend', function(ev){
   if(lpHecho && Date.now() - lpHecho < 1500 && ev.cancelable){ ev.preventDefault(); lpHecho = 0; }   // soltar el dedo no cobra ni cierra la hoja; el próximo toque (💵/💳) ya vale
 }, {passive:false});
 document.addEventListener('touchcancel', function(){ if(lpT){ clearTimeout(lpT); lpT = null; } }, {passive:true});
+document.addEventListener('scroll', function(ev){ if(ev.target && ev.target.id === 'tjCarps') marcarTiraCarps(); }, {passive:true, capture:true});
+window.addEventListener('resize', function(){ altoEncabezado(); marcarTiraCarps(); }, {passive:true});
 document.addEventListener('click', function(ev){
   if(!lpHecho) return;
   if(Date.now() - lpHecho > 1500){ lpHecho = 0; return; }
@@ -6659,20 +6674,24 @@ function grillaProds(lista, comp, q){
   return {h: h + '</div>', n: n};
 }
 function botonesProductos(){
-  if(!T.productos.length) return '';
+  if(!T.productos.length)
+    return '<div class="tj-zona" id="tjZona"><div class="tj-prod-vacio"><p><b>Productos rápidos</b>Cargá lo que vendés seguido y cobralo con un toque.</p>'
+      + '<button class="tj-nuevo pri" data-act="tjNuevoProdGrilla">+ Agregar producto</button></div></div>';
   var comp = vistaProd() === 'compacta', q = clave(busqProd), vis = 0, i, j, g;
   var l = carpetas(), hayC = l.length > 0;
   // si la carpeta elegida ya no existe (la vaciaste o la renombraste), vuelve a Todas
   var sel = null;
   if(carpSel !== '' || carpSelGeneral) for(i=0;i<l.length;i++) if(l[i].k === carpSel && !!l[i].general === carpSelGeneral) sel = l[i];
   if(!sel){ carpSel = ''; carpSelGeneral = false; }
-  var h = '<div class="tj-phd"><input type="search" id="tjBuscar" class="tj-busca" placeholder="🔍 Buscar producto..." autocomplete="off" enterkeyhint="search" value="' + esc(busqProd) + '">'
+  // S3c: la barra (buscar + "+ Producto" + vista) queda fija debajo del encabezado mientras bajás por los productos (sticky dentro de .tj-zona)
+  var h = '<div class="tj-zona" id="tjZona"><div class="tj-phd" id="tjBarra"><input type="search" id="tjBuscar" class="tj-busca" placeholder="🔍 Buscar producto..." aria-label="Buscar producto" autocomplete="off" enterkeyhint="search" value="' + esc(busqProd) + '">'
+        + '<button class="tj-nuevo" data-act="tjNuevoProdGrilla" aria-label="Agregar producto" title="Agregar producto">+ Producto</button>'
         + '<button class="tj-vista" data-act="tjVista" aria-label="' + (comp ? 'Pasar a vista completa' : 'Pasar a grilla compacta') + '" title="' + (comp ? 'Vista completa' : 'Grilla compacta') + '">'
         + (comp ? '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="6" rx="1.5"/><rect x="4" y="14" width="16" height="6" rx="1.5"/></svg>'
                 : '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1.2"/><rect x="14" y="4" width="6" height="6" rx="1.2"/><rect x="4" y="14" width="6" height="6" rx="1.2"/><rect x="14" y="14" width="6" height="6" rx="1.2"/></svg>')
         + '</button></div>';
   if(hayC){
-    h += '<div class="tj-carps" id="tjCarps"><button data-act="tjCarp" data-v="" class="' + (sel ? '' : 'on') + '">Todas <i>' + T.productos.length + '</i></button>';
+    h += '<div class="tj-carps" id="tjCarps" role="group" aria-label="Carpetas"><button data-act="tjCarp" data-v="" class="' + (sel ? '' : 'on') + '">Todas <i>' + T.productos.length + '</i></button>';
     for(i=0;i<l.length;i++){
       var on = sel && sel.k === l[i].k && !!sel.general === !!l[i].general;
       h += '<button data-act="tjCarp" data-v="' + esc(l[i].k) + '"' + (l[i].general ? ' data-g="1"' : '') + ' class="' + (on ? 'on' : '') + '">'
@@ -6702,8 +6721,16 @@ function botonesProductos(){
     }
   }
   h += '</div>';
-  return h + '<div class="tj-sinres" id="tjSinRes"' + (vis ? ' style="display:none"' : '') + '>' + esc(textoSinRes()) + '</div>';
+  return h + '<div class="tj-sinres" id="tjSinRes"' + (vis ? ' style="display:none"' : '') + '>' + esc(textoSinRes()) + '</div></div>';
 }
+// S3c: la tira de carpetas se desliza de costado; un degradé en el borde avisa que hay más carpetas de ese lado
+function marcarTiraCarps(){
+  var t = document.getElementById('tjCarps'); if(!t) return;
+  var max = t.scrollWidth - t.clientWidth;
+  t.classList.toggle('mas-izq', max > 1 && t.scrollLeft > 1);
+  t.classList.toggle('mas-der', max > 1 && t.scrollLeft < max - 1);
+}
+function altoEncabezado(){ var e = document.querySelector('header'); if(e) document.documentElement.style.setProperty('--hd-alto', e.offsetHeight + 'px'); }
 /* S3a: cómo te pagaron este mes. Sale SOLO de resumenTrab (mesEfe / mesDig): lo cobrado hasta hoy en el mes, ventas al contado y cobros;
    nunca facturas a plazo pendientes ni ventas con fecha futura. Un lado en cero no se dibuja; los porcentajes suman 100. */
 function cobradoMes(r){
@@ -6765,7 +6792,7 @@ function renderTrabajo(){
   h += '<div class="tj-acc"><button class="pri" data-act="tjNuevaFac">' + (pro ? 'Nueva factura' : 'Nueva venta') + '</button>'
      + (pro ? '<button data-act="tjNuevoCobro">Entró un pago</button>' : '') + '</div>'
      + '<button class="tj-linea" data-act="tjNuevoGasto">+ Cargar un gasto del trabajo</button>'
-     + (pro ? '' : '<button class="tj-linea" data-act="tjProds">' + (T.productos.length ? 'Cambiar mis productos rápidos' : '+ Crear un producto rápido') + '</button>');
+     + (pro || !T.productos.length ? '' : '<button class="tj-linea" data-act="tjProds">Cambiar mis productos rápidos</button>');
   if(!pro){
     var sm = [];
     if(r.vendidoSimpleMes) sm.push('vendiste ' + fARS(r.vendidoSimpleMes));
@@ -6843,6 +6870,7 @@ function renderTrabajo(){
   var tiraV = document.getElementById('tjCarps'), tiraX = tiraV ? tiraV.scrollLeft : 0;
   v.innerHTML = h;
   var tiraN = document.getElementById('tjCarps'); if(tiraN && tiraX) tiraN.scrollLeft = tiraX;
+  altoEncabezado(); marcarTiraCarps();
   contar('tjDisp', r.disponible, function(x){ return fARS(Math.round(x)); });
   marcarVencidos();
 }
@@ -7777,6 +7805,7 @@ function accionTj(a, b){
   if(a === 'tjReponer'){ abrirProducto(id, true); return; }
   if(a === 'tjProds'){ abrirProductos(); return; }
   if(a === 'tjNuevoProd'){ abrirProducto(null); return; }
+  if(a === 'tjNuevoProdGrilla'){ abrirProducto(null, false, 'grilla'); return; }   // S3c: desde la barra; arranca en la carpeta elegida
   if(a === 'tjEditProd'){ abrirProducto(id); return; }
   if(a === 'tjGuardarProd'){ guardarProducto(); return; }
   if(a === 'tjBorrarProd'){ borrarProducto(id); return; }

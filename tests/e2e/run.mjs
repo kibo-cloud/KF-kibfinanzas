@@ -1856,6 +1856,62 @@ try{
     await ev(`document.querySelector('#hoja [data-act=tjGuardarProd]').click(); true`); await sleep(500);
     check('S3b the list path keeps its behavior: saving from the product list goes back to the list', await ev(`[document.getElementById('velo').classList.contains('on'), document.querySelector('#hoja h3').textContent]`), [true, 'Productos rápidos']);
     await ev(`document.querySelector('#hoja [data-act=cerrarHoja]').click(); true`); await sleep(400);
+    // ── S3c: "+ Producto" stays at hand while the 25 products scroll; the folder strip scrolls sideways with a visible edge ──
+    // the toolbar: inside the window between the header and the tab bar, really on top at its center, and covering no product text that is meant to be read
+    const barraS3 = (fase) => ev(`(function(){
+      var b = document.querySelector('#tjBarra [data-act=tjNuevoProdGrilla]'), r = b.getBoundingClientRect(), barra = document.getElementById('tjBarra').getBoundingClientRect();
+      var hd = document.querySelector('header').getBoundingClientRect().bottom, nav = document.getElementById('nav').getBoundingClientRect().top, malos = [];
+      if(r.top < hd - 0.5 || r.bottom > nav + 0.5 || r.left < 0 || r.right > document.documentElement.clientWidth + 0.5) malos.push('out of view ' + [r.top, r.bottom, hd, nav].map(Math.round));
+      var e = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); if(!e || !e.closest('[data-act=tjNuevoProdGrilla]')) malos.push('covered by ' + (e && e.className));
+      if(r.width < 44 || r.height < 44) malos.push('small');
+      if(document.documentElement.scrollWidth > document.documentElement.clientWidth) malos.push('page wider than the window');
+      function corta(a, c){ return a.left < c.right - 0.5 && c.left < a.right - 0.5 && a.top < c.bottom - 0.5 && c.top < a.bottom - 0.5; }
+      var cards = Array.prototype.filter.call(document.querySelectorAll('#v-trabajo .tj-pw'), function(w){ return w.offsetParent !== null; });
+      // at load the toolbar sits above the grid; at the bottom the last row of cards is fully readable (not under the toolbar or the tab bar)
+      var mirar = '${fase}' === 'carga' ? cards : cards.slice(-2);
+      mirar.forEach(function(w){ w.querySelectorAll('.nom, .vp').forEach(function(t){ var x = t.getBoundingClientRect(); if(corta(x, barra)) malos.push('covers ' + t.textContent); if('${fase}' !== 'carga' && (x.bottom > nav + 0.5 || x.top < barra.bottom - 0.5)) malos.push('hidden ' + t.textContent); }); });
+      return malos; })()`);
+    const alFondo = `(function(){ var l = Array.prototype.filter.call(document.querySelectorAll('#v-trabajo .tj-pw'), function(w){ return w.offsetParent !== null; }).pop();
+      var nav = document.getElementById('nav').getBoundingClientRect().top; window.scrollTo(0, l.getBoundingClientRect().bottom + scrollY - nav + 12); return Math.round(scrollY) > 0; })()`;
+    for(const w of [360, 390, 430, 1280]){
+      await tamS3(w, w < 800 ? 800 : 900); await seedS3();
+      check(`S3c ${w} px at load: "+ Producto" is in view, on top, covering no product`, await barraS3('carga'), []);
+      await ev(alFondo); await sleep(400);
+      check(`S3c ${w} px scrolled to the last product: "+ Producto" still in view under the header, the last row readable`, await barraS3('fondo'), []);
+      check(`S3c ${w} px scrolled: the toolbar is stuck under the header`, await ev(`Math.abs(document.getElementById('tjBarra').getBoundingClientRect().top - document.querySelector('header').getBoundingClientRect().bottom) <= 1`), true);
+    }
+    await tamS3(390); await seedS3();
+    check('S3c "+ Producto" is a real button with an accessible name the screen reader says, reachable with the keyboard', await ev(`(function(){ var b = document.querySelector('#tjBarra [data-act=tjNuevoProdGrilla]'); b.focus();
+      return [b.tagName, b.getAttribute('aria-label'), b.textContent, document.activeElement === b, b.tabIndex, document.getElementById('tjBuscar').getAttribute('aria-label')]; })()`),
+      ['BUTTON', 'Agregar producto', '+ Producto', true, 0, 'Buscar producto']);
+    check('S3c one add button on the screen; the bottom link is the list entry', await ev(`[document.querySelectorAll('[data-act=tjNuevoProdGrilla]').length, Array.prototype.map.call(document.querySelectorAll('#v-trabajo [data-act=tjProds]'), function(b){ return b.textContent; })]`),
+      [1, ['Cambiar mis productos rápidos']]);
+    // the folder strip: three folders do not fit at 390 px: it scrolls sideways, and a fading edge shows on the side where there is more
+    check('S3c the folder strip scrolls sideways and fades on the right while there is more', await ev(`(function(){ var t = document.getElementById('tjCarps');
+      return [getComputedStyle(t).overflowX, t.scrollWidth > t.clientWidth, t.classList.contains('mas-der'), t.classList.contains('mas-izq'), getComputedStyle(t).maskImage !== 'none' || getComputedStyle(t).webkitMaskImage !== 'none']; })()`),
+      ['auto', true, true, false, true]);
+    await ev(`(function(){ var t = document.getElementById('tjCarps'); t.scrollLeft = t.scrollWidth; return true; })()`); await sleep(300);
+    check('S3c at the end of the strip the fade moves to the left and the last folder is whole', await ev(`(function(){ var t = document.getElementById('tjCarps'), r = t.getBoundingClientRect(), u = t.lastElementChild.getBoundingClientRect();
+      return [t.classList.contains('mas-der'), t.classList.contains('mas-izq'), u.right <= r.right + 0.5]; })()`), [false, true, true]);
+    // folder selected -> "+ Producto" -> the editor starts in that folder; saving adds the product there and closes back to the grid, no sale
+    await ev(`document.querySelector('#tjCarps [data-act=tjCarp][data-v="panaderia"]').click(); true`); await sleep(400);
+    const antesC = await guardadoS3();
+    await ev(`document.querySelector('#tjBarra [data-act=tjNuevoProdGrilla]').click(); true`); await sleep(500);
+    check('S3c "+ Producto" opens a new product in the folder you are looking at, with Cancelar and Guardar', await ev(`(function(){ var h = document.getElementById('hoja');
+      return [h.querySelector('h3').textContent, document.getElementById('pxCarp').value, Array.prototype.map.call(h.querySelectorAll('.fila button'), function(b){ return b.textContent; })]; })()`),
+      ['Nuevo producto', 'Panadería', ['Cancelar', 'Guardar']]);
+    await ev(`(function(){ document.getElementById('pxNombre').value = 'Budín'; var p = document.getElementById('pxPrecio'); p.value = '4200'; p.dispatchEvent(new Event('input', {bubbles: true}));
+      document.querySelector('#hoja [data-act=tjGuardarProd]').click(); return true; })()`); await sleep(600);
+    check('S3c saved: back to the grid of that folder with the new card; no sale was made', await ev(`(function(){ var t = JSON.parse(localStorage.getItem('kibo.trabajo')), n = t.productos[t.productos.length - 1];
+      return [document.getElementById('velo').classList.contains('on'), n.nombre, n.carpeta, n.precio, t.facturas.length, !!Array.prototype.filter.call(document.querySelectorAll('#v-trabajo .tj-pw .nom'), function(e){ return e.textContent === 'Budín'; }).length]; })()`),
+      [false, 'Budín', 'Panadería', 4200, antesC.n, true]);
+    // no products yet: the call to action is the add button (and no duplicate link at the bottom)
+    await seedS3(Object.assign({}, trS3, {productos: []}));
+    check('S3c no products: one primary "+ Agregar producto", no search box, no duplicate bottom link', await ev(`[Array.prototype.map.call(document.querySelectorAll('#v-trabajo [data-act=tjNuevoProdGrilla]'), function(b){ return b.textContent; }),
+      !!document.getElementById('tjBuscar'), document.querySelectorAll('#v-trabajo [data-act=tjProds]').length]`), [['+ Agregar producto'], false, 0]);
+    await ev(`document.querySelector('#v-trabajo [data-act=tjNuevoProdGrilla]').click(); true`); await sleep(400);
+    check('S3c no products: the call to action opens the new product editor', await ev(`document.querySelector('#hoja h3').textContent`), 'Nuevo producto');
+    await ev(`document.querySelector('#hoja [data-act=cerrarHoja]').click(); true`); await sleep(400);
     await send('Emulation.clearDeviceMetricsOverride');
   }
 
