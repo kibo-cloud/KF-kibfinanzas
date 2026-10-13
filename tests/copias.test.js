@@ -78,7 +78,7 @@ function guardarApp(ls){
   g.quitarAvisoVacia = function(){};
   g.pildora = function(t, mal){ g.pildoras.push([t, !!mal]); };
   g.document = {getElementById: function(id){ return id === 'avisos' ? g.avisos : null; }};
-  var app = loadApp({funcs: ['guardar', 'revGuardada', 'escribirConRev'], vars: ['PREF', 'sucio', 'arrancado', 'obsoleta'], globals: g});
+  var app = loadApp({funcs: ['guardar', 'copiaDelSiguiente', 'revGuardada', 'escribirConRev'], vars: ['PREF', 'sucio', 'arrancado', 'obsoleta'], globals: g});
   app.g = g; app.arrancado = true; app.D = {anio: 2026};
   return app;
 }

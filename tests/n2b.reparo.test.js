@@ -28,7 +28,7 @@ function datos(){
   return d;
 }
 var FUNCS = ['mesesTrabajoDoble', 'avisoTrabajoDoble', 'exactoTrabajo', 'planOrdenTrabajo', 'conOrdenTrabajo', 'efectoOrdenTrabajo', 'abrirOrdenTrabajo',
-  'ordenarTrabajo', 'leerReparo', 'deshacerOrdenTrabajo', 'olvidarOrdenTrabajo', 'guardar', 'escribirConRev', 'revGuardada', 'blobAlDia', 'esc', 'listaY', 'copiaJSON', 'mesDelModelo', 'ctxModelo'];
+  'ordenarTrabajo', 'leerReparo', 'deshacerOrdenTrabajo', 'olvidarOrdenTrabajo', 'guardar', 'copiaDelSiguiente', 'escribirConRev', 'revGuardada', 'blobAlDia', 'esc', 'listaY', 'copiaJSON', 'mesDelModelo', 'ctxModelo'];
 function app(store){
   var d = datos(), ls = H.fakeStorage(store || {}), g = {hojas: [], toasts: [], alertas: [], otra: 0, renders: 0, pild: []};
   if(!store) ls.d[Y] = JSON.stringify(Object.assign(M.normalizar(C.copy(d), C.hoy('2026-10-15')), {rev: 1}));

@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-m0FsNrKE73h2m1lGiYUqZD6t4bAlfJSonNC+5xnK/pA=' 'sha256-NuMK/m7m7xCBt58CDUuJ2+Ma/gq4gAy1fnhi4/ZiPkQ='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-m0FsNrKE73h2m1lGiYUqZD6t4bAlfJSonNC+5xnK/pA=' 'sha256-p98No41kq0+8t0nYSlks8zI4qps+Z6wRJj/CkYdKs+4='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -4681,7 +4681,7 @@ function guardar(){
   if(obsoleta){ avisoOtraPestana(); return false; }
   var ant = D.actualizado;
   D.actualizado = new Date().toISOString();
-  var eraSucio = sucio, recupero = !hayLS, r = escribirConRev(PREF + D.anio, D);
+  var eraSucio = sucio, recupero = !hayLS, r = copiaDelSiguiente(D.anio) ? escribirConRev(PREF + D.anio, D) : 'error';
   if(r === 'conflicto'){ D.actualizado = ant; obsoleta = true; avisoOtraPestana(); return false; }
   if(r === 'roto'){ D.actualizado = ant; avisoCuarentena(D.anio); return false; }   // N4 I-3: no se pisa un año que no se puede leer
   if(r === 'ok'){ sucio = false; hayLS = true; }   // si ahora guarda, el navegador volvió a funcionar
@@ -4693,6 +4693,19 @@ function guardar(){
   if(eraSucio && hayLS && Date.now() - ultPild > 7000) pildora('Cambios guardados');
   if(eraSucio && !hayLS) pildora('No se pudo guardar', true);
   return hayLS;   // true solo si quedó escrito (lo usan los que escriben dos blobs, como un pase)
+}
+/* Final audit 1: un año creado por 1.32/1.33 no tiene copiaDiciembre guardada; leerAnio la adopta solo en memoria. Antes de guardar el año anterior
+   (que puede cambiar diciembre), esa copia se guarda tomada de diciembre TAL COMO ESTÁ GUARDADO: así el año siguiente sigue a diciembre después del
+   cambio en vez de quedar congelado. Solo si el siguiente sigue a diciembre en vivo y no la tiene; lo demás del blob queda como está.
+   false si no se pudo escribir: entonces tampoco se guarda el año (no queda una deriva en silencio). */
+function copiaDelSiguiente(anio){
+  var clave = PREF + (+anio + 1), s, o, sig;
+  try{ s = localStorage.getItem(clave); o = s ? JSON.parse(s) : null; }catch(e){ return true; }   // ilegible: no se toca (N4 I-3)
+  if(!o || typeof o !== 'object' || Array.isArray(o) || o.copiaDiciembre) return true;
+  sig = leerAnio(+anio + 1);
+  if(!sig || !sig.copiaDiciembre) return true;   // no sigue a diciembre en vivo
+  o.copiaDiciembre = sig.copiaDiciembre;
+  return escribirConRev(clave, o) === 'ok';   // con la revisión que se acaba de leer: si otra pestaña lo cambió, no se pisa
 }
 function leerAnio(a){   // null si no hay año guardado o si lo guardado no se puede leer (N4 I-3: ese texto no se pisa, ver escribirConRev)
   var d;
@@ -7845,6 +7858,7 @@ function blobAlDia(clave, obj){   // lo guardado sigue en la revisión que esta 
    incluye, así que ninguna copia, respaldo ni vuelta atrás la lleva o la borra. */
 function escribirJuntos(lista, op){   // lista [{clave, obj}] en orden; 'ok' | 'conflicto' | 'roto' | 'error' (nada escrito) | 'amedias' (lo termina el próximo arranque)
   var plan = [], previos = [], ahora = new Date().toISOString(), i, j, b, st, mia, rv, ac, falla;
+  for(i=0;i<lista.length;i++) if(lista[i].clave.indexOf(PREF) === 0 && !copiaDelSiguiente(lista[i].clave.slice(PREF.length))) return 'error';   // final audit 1
   for(i=0;i<lista.length;i++){
     b = lista[i]; st = revGuardada(b.clave); mia = revValida(b.obj.rev) || 0;
     if(st.roto){ if(b.clave !== LSTRAB || !ponerEnCuarentena(b.clave, st.texto)) return 'roto'; }   // como escribirConRev: un año ilegible no se pisa; Trabajo sí, ya copiado
