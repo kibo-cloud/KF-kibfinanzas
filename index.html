@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-13IJeOyEKqFZVOOFHo7ITxTuXUuIFB+El4nbN4kXJNQ=' 'sha256-sG93wq62YHQOve7Zukl7qozC1dwQzpvCTnD8sgs2bNU='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-13IJeOyEKqFZVOOFHo7ITxTuXUuIFB+El4nbN4kXJNQ=' 'sha256-uKvavQopy80GdUQ4R/4ifghKHDcSLYxU+g/qBWOBZXk='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -4137,11 +4137,15 @@ function barras(arr){
 
 // "Patrimonio total" de la pestaña Dólares. Año sin arrastre: patrimonio() de siempre (cierre del año, D4). Año con modelo: el neto de D7
 // a hoy (disponible + ahorro + dólares + cripto + Trabajo, Q2, − deudas), en pesos y en dólares a la cotización guardada.
+// S2 H2 (§1 "a hoy"): con un año FUTURO abierto (creado antes de que termine el de hoy) el patrimonio a hoy sale del año que contiene hoy,
+// leído de lo guardado, así da lo mismo qué año tengas abierto. Un año pasado abierto muestra su cierre, dicho como "al cierre de <año>".
 function patrimonioPantalla(d, hoy){
+  if(d && d.anio > hoy.anio){ var dh = leerAnio(hoy.anio); if(dh && dh.arrastre) d = dh; }
   var vm = vistaModelo(d, hoy); if(!vm) return patrimonio(d);
   vm.ctx.trabajoDisponible = trabajoDisponible();
   var pn = patrimonioNeto(d, hoy, vm.ctx), cot = num(d.cotizacionUSD);
-  return {ahorroARS: pn.ahorroARS, usd: pn.usd, criptoUSD: pn.criptoUSD, patrimonioUSD: cot > 0 ? pn.neto / cot : 0, patrimonioARS: pn.neto, modelo: pn};
+  return {ahorroARS: pn.ahorroARS, usd: pn.usd, criptoUSD: pn.criptoUSD, patrimonioUSD: cot > 0 ? pn.neto / cot : 0, patrimonioARS: pn.neto, modelo: pn,
+          anio: d.anio, cierre: d.anio < hoy.anio};
 }
 // R5 (D7, Q2, Q6, Q14, §6): la composición auditable del patrimonio de un año con modelo. Cada número es un campo de patrimonioNeto
 // (una sola fuente, D13): disponible + ahorro + dólares + cripto + Trabajo = bruto; bruto - deudas = neto. Sin cotización, dólares y cripto
@@ -4163,8 +4167,9 @@ function filasPatrimonio(pn){
 }
 function htmlPatrimonio(p){
   var f = filasPatrimonio(p.modelo), h = '', i, x, det;
-  var etq = {disponible:'Disponible a hoy', ahorro:'Ahorro en pesos', usd:'Dólares', cripto:'Cripto', trabajo:'Plata del trabajo'};
-  h += '<div class="nota">Lo que tenés hoy, parte por parte. Lo de los meses que vienen no cuenta.</div>';
+  var etq = {disponible:p.cierre ? 'Disponible al cierre' : 'Disponible a hoy', ahorro:'Ahorro en pesos', usd:'Dólares', cripto:'Cripto', trabajo:'Plata del trabajo'};
+  h += '<div class="nota">' + (p.cierre ? 'Lo que tenías al cierre de ' + p.anio + ', parte por parte.'
+      : 'Lo que tenés hoy, parte por parte. Lo de los meses que vienen no cuenta.' + (p.anio && D && p.anio !== D.anio ? ' Sale de ' + p.anio + ', el año en el que estamos.' : '')) + '</div>';
   for(i=0;i<f.filas.length;i++){
     x = f.filas[i]; det = '';
     if(x.estimado && x.falta) det = ' <small class="mudo">(' + fUSD(x.usd) + ', falta la cotización)</small>';
@@ -4192,8 +4197,8 @@ function htmlPatrimonio(p){
    el patrimonio sale de patrimonioPantalla (patrimonioNeto a hoy en un año con modelo, patrimonio() de siempre sin modelo). */
 function htmlHeroPatri(p){
   var sinCot = !!p.modelo && !(p.modelo.cotizacion > 0);
-  var lbl = p.modelo ? 'Patrimonio neto a hoy' : 'Todo junto al cierre del año';
-  var chip = p.modelo ? '<span class="chip real">A hoy</span>' : '<span class="chip prog">Cálculo simple</span>';
+  var lbl = p.modelo ? (p.cierre ? 'Patrimonio neto al cierre de ' + p.anio : 'Patrimonio neto a hoy') : 'Todo junto al cierre del año';
+  var chip = p.modelo ? (p.cierre ? '<span class="chip real">Al cierre</span>' : '<span class="chip real">A hoy</span>') : '<span class="chip prog">Cálculo simple</span>';
   return '<div class="saldo hero" id="heroPatri" data-modo="' + (p.modelo ? 'hoy' : 'simple') + '">'
      +   '<div class="final"><small class="hero-lbl">' + lbl + '</small>'
      +     '<div class="final-fila"><div class="big ' + (p.patrimonioARS < 0 ? 'mal' : 'ok') + '" id="bigPatri">' + fARS(p.patrimonioARS) + '</div></div>'

@@ -1,0 +1,42 @@
+'use strict';
+// S2: end-to-end financial audit fixes (odd/tasks/stabilization-quick-sales.md, "S2 — Financial audit"). Each block reproduces one
+// finding (the scratchpad probe turned into a test) and pins the fixed behavior. No money rule changes here: the fixes make the screens
+// say what §1 already defines.
+var test = require('node:test');
+var assert = require('node:assert/strict');
+var H = require('./fixtures/r45-harness');
+var C = require('./fixtures/r4-casos');
+var la = require('./load-app');
+
+// ── H2: "Patrimonio neto a hoy" is computed on the year that contains today, whichever year is open ──
+// 2026-12-10: the user creates 2027 (duplicar). With 2027 open, iHoy = -1 dropped the 2026 Disponible (3.980.000 -> 2.700.000).
+function dosAnios(hoyIso){
+  var M = la.loadMotor(), HOY = C.hoy('2026-12-10');
+  var y26 = M.normalizar(C.copy(C.seccion2(true, true)), HOY);
+  var ls = H.fakeStorage({'kibo.datos.2026': JSON.stringify(y26)}), app = H.appAlmacen(ls, '2026-12-10');
+  H.cargarEn(app, ls, 2026); app.duplicar();
+  var raw26 = ls.d['kibo.datos.2026'], raw27 = ls.d['kibo.datos.2027'], T = H.trab([], 500000);
+  var extra = {funcs: ['htmlHeroPatri'], globals: {fARS: function(n){ return '$' + Math.round(n); }, fUSD: function(n){ return 'US$' + Math.round(n); }}};
+  return {
+    abierto: function(anio){
+      var a = anio === 2026 ? H.appVista(JSON.parse(raw26), T, {'kibo.datos.2027': raw27}, hoyIso, extra)
+                            : H.appVista(JSON.parse(raw27), T, {'kibo.datos.2026': raw26}, hoyIso, extra);
+      return {a: a, p: a.plain(a.patrimonioPantalla(a.D, a.hoy))};
+    }
+  };
+}
+test('H2: Patrimonio neto a hoy is the same with 2026 or 2027 open (today 2026-12-10)', function(){
+  var y = dosAnios('2026-12-10'), p26 = y.abierto(2026).p, p27 = y.abierto(2027).p;
+  assert.equal(p26.patrimonioARS, 3980000);
+  assert.equal(p27.patrimonioARS, p26.patrimonioARS);
+  assert.deepEqual(p27.modelo, p26.modelo);
+  assert.equal(p27.anio, 2026); assert.equal(p27.cierre, false);
+});
+test('H2: the hero says "a hoy" for the current year and "al cierre de <año>" for a past year', function(){
+  var y = dosAnios('2026-12-10'), v = y.abierto(2027);
+  assert.match(v.a.htmlHeroPatri(v.p), /Patrimonio neto a hoy/);
+  var z = dosAnios('2027-02-10'), w = z.abierto(2026);
+  assert.equal(w.p.cierre, true); assert.equal(w.p.anio, 2026);
+  assert.match(w.a.htmlHeroPatri(w.p), /Patrimonio neto al cierre de 2026/);
+  assert.doesNotMatch(w.a.htmlHeroPatri(w.p), /a hoy/);
+});
