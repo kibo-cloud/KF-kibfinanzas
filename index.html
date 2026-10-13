@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-O98NkFGD9VZPa0Y6g7O0jGoMOfjWLZKiNEQITiVGMMY=' 'sha256-WxADXA/Elql35TVcR7pF2wyBX51zpu7MnrmibaIIvvI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-O98NkFGD9VZPa0Y6g7O0jGoMOfjWLZKiNEQITiVGMMY=' 'sha256-gF970BAV51Rl/wAvTBC2PIewMu0LWfagEuYQjLe3WoQ='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -4142,8 +4142,8 @@ function barras(arr){
 // a hoy (disponible + ahorro + dólares + cripto + Trabajo, Q2, − deudas), en pesos y en dólares a la cotización guardada.
 // S2 H2 (§1 "a hoy"): con un año FUTURO abierto (creado antes de que termine el de hoy) el patrimonio a hoy sale del año que contiene hoy,
 // leído de lo guardado, así da lo mismo qué año tengas abierto. Un año pasado abierto muestra su cierre, dicho como "al cierre de <año>".
-function patrimonioPantalla(d, hoy){
-  if(d && d.anio > hoy.anio){ var dh = leerAnio(hoy.anio); if(dh && dh.arrastre) d = dh; }
+function patrimonioPantalla(d, hoy, propio){   // propio: el del año abierto tal cual, sin pasar al año de hoy (la tabla de dólares)
+  if(!propio && d && d.anio > hoy.anio){ var dh = leerAnio(hoy.anio); if(dh && dh.arrastre) d = dh; }
   var vm = vistaModelo(d, hoy); if(!vm) return patrimonio(d);
   vm.ctx.trabajoDisponible = trabajoDisponible();
   var pn = patrimonioNeto(d, hoy, vm.ctx), cot = num(d.cotizacionUSD);
@@ -4306,9 +4306,12 @@ function renderUSD(){
       : '<div class="fila-in"><label>Ahorro líquido en pesos</label><span class="mudo">' + hARS(p.ahorroARS) + '</span></div>'
       + '<div class="fila-in"><label>Dólares guardados</label><span class="mudo">' + hUSD(p.usd) + '</span></div>'
       + '<div class="fila-in"><label>Cripto</label><span class="mudo">' + hUSD(p.criptoUSD) + '</span></div>');
-  var subM = p.modelo ? fUSD(p.usd) + '<small class="sub-cap">a hoy</small>'   // lo programado va aparte, en la tabla
-                      : fUSD(s[11].usdAcumulado);
-  h += plegable('usdMeses', 'Dólares mes a mes', subM, htmlDolaresMes(D, s, p, hoy), false);
+  // S2 H2: el héroe y la composición son los de hoy (otro año si el abierto es futuro), pero la tabla mes a mes es la del año abierto:
+  // sus dólares a hoy y su usdAnioAnterior tienen que ser del mismo año (si no, 'Entraron' resta dólares de dos años distintos)
+  var pa = p.anio === D.anio ? p : patrimonioPantalla(D, hoy, true);
+  var subM = pa.modelo ? fUSD(pa.usd) + '<small class="sub-cap">a hoy</small>'   // lo programado va aparte, en la tabla
+                       : fUSD(s[11].usdAcumulado);
+  h += plegable('usdMeses', 'Dólares mes a mes', subM, htmlDolaresMes(D, s, pa, hoy), false);
   h += plegable('usdDatos', 'Datos', 'cotización ' + fARS(D.cotizacionUSD), htmlDatosPatri(D))
      + '<div style="height:20px"></div>';
   document.getElementById('v-usd').innerHTML = h;

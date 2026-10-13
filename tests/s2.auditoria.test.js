@@ -315,3 +315,36 @@ test('M2-R the same-name place survives normalizar (non-negative integers only)'
   assert.equal('fo' in n.meses[9].movimientos[0], false);
   assert.equal('fo' in n.meses[9].movimientos[1], false);
 });
+
+// ── review fix (H2): the "Dólares mes a mes" table is the OPEN year's, even when "a hoy" comes from the year that contains today ──
+// today 2026-11-10, 2027 created: 2027's table subtracted 2027's usdAnioAnterior (1300) from 2026's dollars a hoy (1100): "Entraron" (US$ 200,00)
+function usdDosAnios(){
+  var U = require('./fixtures/usd-vistas'), M = la.loadMotor(), HOY = C.hoy('2026-11-10');
+  var y26 = M.normalizar(C.copy(C.seccion2(true, true)), HOY);
+  y26.meses[11].compraUSD = 200; y26.meses[11].compraARS = 300000; y26.meses[10].compraUSD = 100; y26.meses[10].compraARS = 150000;
+  var ls = H.fakeStorage({'kibo.datos.2026': JSON.stringify(y26)}), app = H.appAlmacen(ls, '2026-11-10');
+  H.cargarEn(app, ls, 2026); app.duplicar();
+  var raw26 = ls.d['kibo.datos.2026'], raw27 = ls.d['kibo.datos.2027'], T = H.trab([], 500000);
+  return {
+    a26: U.appUSD(JSON.parse(raw26), T, {'kibo.datos.2027': raw27}, '2026-11-10'),
+    a27: U.appUSD(JSON.parse(raw27), T, {'kibo.datos.2026': raw26}, '2026-11-10')
+  };
+}
+function seccion(html, k){ var i = html.indexOf('data-sec="' + k + '"'), j = html.indexOf('data-sec="', i + 1); return html.slice(html.lastIndexOf('<div', i), j < 0 ? html.length : html.lastIndexOf('<div', j)); }
+function totales(html){ return (seccion(html, 'usdMeses').match(/<tr class="tot[^>]*>.*?<\/tr>/g) || []).map(function(r){ return r.replace(/<[^>]+>/g, '|').replace(/\|+/g, '|'); }); }
+test('H2-R with 2027 open (today in 2026) the dollars table and its subtitle are 2027\'s own: no negative "Entraron", no 2026 dollars', function(){
+  var y = usdDosAnios(), h27 = y.a27.usd(), h26 = y.a26.usd();
+  var p27 = y.a27.plain(y.a27.patrimonioPantalla(y.a27.D, y.a27.hoy, true));
+  assert.equal(p27.anio, 2027, 'the open year\'s own model');
+  totales(h27).forEach(function(r){ assert.doesNotMatch(r, /\(US\$/, 'no negative total: ' + r); });
+  assert.notDeepEqual(totales(h27), totales(h26), 'not 2026\'s table');
+  var sub = /data-sec="usdMeses"[\s\S]*?<\/button>/.exec(seccion(h27, 'usdMeses'));
+  assert.ok(sub, 'the section header is there');
+  var de26 = y.a27.fUSD(1100);   // 2026's dollars a hoy
+  assert.equal(sub[0].indexOf(de26), -1, 'the subtitle is not 2026\'s dollars a hoy');
+  assert.ok(sub[0].indexOf(y.a27.fUSD(p27.usd)) >= 0, 'the subtitle is 2027\'s own dollars a hoy');
+  // the hero and the composition stay "a hoy" from the year that contains today (H2)
+  var comp = seccion(h27, 'usdPatri');
+  assert.match(comp, /Sale de 2026/);
+  assert.ok(comp.indexOf(de26) >= 0, 'the composition keeps 2026\'s dollars a hoy');
+});
