@@ -77,3 +77,21 @@ test('M2: the row identity survives normalizar; old movements without it still u
   b.quitarMov('viejo');
   assert.equal(b.D.meses[9].gastosVariables[0].monto, 0);
 });
+
+// ── L4: Deshacer from the toast after moving to another month undoes in the movement's own month, never silently nothing ──
+test('L4: undo after switching month reverts the movement in its own month', function(){
+  var a = appGasto(mesCon([C.it('Super', 0, false)])), antes = filas(a);
+  a.gr = {monto: 20000, cat: 0, sec: 'gastosVariables'}; a.sumarGasto();
+  var id = a.t[a.t.length - 1][3];
+  a.mes = 3;   // the user went to April before tapping Deshacer
+  a.quitarMov(id);
+  assert.deepEqual(filas(a), antes);
+  assert.equal(a.D.meses[9].movimientos.length, 0);
+  assert.equal(a.t[a.t.length - 1][0], 'Deshecho');
+});
+test('L4: an undo that finds nothing (another year open) says so', function(){
+  var a = appGasto(mesCon([C.it('Super', 0, false)])), n = a.t.length;
+  a.quitarMov('no-existe');
+  assert.equal(a.t.length, n + 1);
+  assert.match(a.t[a.t.length - 1][0], /no pude deshacer/i);
+});

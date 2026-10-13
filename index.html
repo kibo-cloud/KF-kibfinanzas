@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1+qBvcl2GMAluCUYw4i+OJGBaH+KeJmbqI2Oz/29mJk=' 'sha256-gAnbnakUhAyUJL3n6f0cwe5l47GT4+Usg1WOCQpG6rc='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1+qBvcl2GMAluCUYw4i+OJGBaH+KeJmbqI2Oz/29mJk=' 'sha256-Km9n0TjTdswGr1QtFIOctArGiUwaVni5sUrSKEVJ29k='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -5449,9 +5449,10 @@ function volverBorrado(){
   tocar(); conScroll(renderMes); toast('Lo devolví a su lugar');
 }
 function quitarMov(id){
-  var m = D.meses[mes], k = -1, i;
-  for(i=0;i<m.movimientos.length;i++) if(m.movimientos[i].id === id) k = i;
-  if(k < 0) return;
+  // S2 L4: el gasto se busca en su propio mes (el Deshacer del aviso puede tocarse después de cambiar de mes); si no está en el año abierto, se dice
+  var m = null, k = -1, i, j;
+  for(j=0;j<12 && k<0;j++) for(i=0;i<D.meses[j].movimientos.length;i++) if(D.meses[j].movimientos[i].id === id){ m = D.meses[j]; k = i; }
+  if(k < 0){ toast('No pude deshacer: ese gasto ya no está en el año que tenés abierto.'); return; }
   var mv = m.movimientos[k], ls = m[mv.sec] || [], hallado = false;
   // S2 M2: si el gasto guardó su renglón y en ese lugar sigue uno con el mismo nombre, se deshace ESE; si no (gastos viejos, renglón movido), el primero con ese nombre
   var exacto = typeof mv.fi === 'number' && ls[mv.fi] && ls[mv.fi].nombre === mv.nombre ? mv.fi : -1;
