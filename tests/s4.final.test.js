@@ -228,3 +228,16 @@ test('5: a first repair whose year cannot be saved leaves no undo record', funct
   assert.equal(a.ordenarTrabajo(), false);
   assert.equal(a.ls.d[REP26], undefined);
 });
+test('6: a second repair after later edits, then «Deshacer»: the later edits are kept (undo goes back to just before that repair)', function(){
+  var a = appRep();
+  assert.equal(a.ordenarTrabajo(), true);                     // repair 1: March and October
+  var oct = a.D.meses[9].ingresos;                             // [Del trabajo 300000 ✓, Dél trabajo 100000 ✗]
+  oct.push(C.it('Sueldo', 50000, true));                       // the user adds an income
+  oct[0].nombre = 'Dél trabajo'; oct[1].nombre = 'Del trabajo';   // and renames: the exact row is now the second one
+  a.sucio = true; assert.equal(a.guardar(), true);
+  var antes2 = filasRep(a.D, 9), mar0 = plain(datosRep().meses[2].ingresos).map(function(x){ return [x.nombre, x.monto, x.pagado]; });
+  assert.equal(a.ordenarTrabajo(), true);                     // repair 2: October again
+  assert.equal(a.deshacerOrdenTrabajo(), true);
+  assert.deepEqual(filasRep(a.D, 9), antes2, 'October as right before repair 2: the added Sueldo and the renames are still there');
+  assert.deepEqual(filasRep(a.D, 2).map(function(r){ return r[0]; }), mar0.map(function(r){ return r[0]; }), 'March (untouched since repair 1) goes back to its original order');
+});

@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-m0FsNrKE73h2m1lGiYUqZD6t4bAlfJSonNC+5xnK/pA=' 'sha256-Y4e6DodK+mihbOYSC8KjdiYtdrJ/er3lnkZO2s0eXI8='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-m0FsNrKE73h2m1lGiYUqZD6t4bAlfJSonNC+5xnK/pA=' 'sha256-gY1m4D7Z9Zur7tpIgBk5FpccHb7NBBJQvDrofrOvNbE='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -7002,7 +7002,9 @@ function ordenarTrabajo(){
   try{ previo = localStorage.getItem(LSREPARO + D.anio); }catch(e){}   // final audit 5: si el año no se guarda, la copia vuelve a ser exactamente esta
   plan.forEach(function(p){
     var ls = D.meses[p.mes].ingresos, ya = rep.meses[p.mes];
-    rep.meses[p.mes] = {antes: ya ? ya.antes : copiaJSON(ls), despues: copiaJSON(conOrdenTrabajo(ls, p))};   // si ya se había ordenado, se guarda el primer «antes»
+    // final audit 6: el primer «antes» se conserva solo si el mes sigue como quedó al ordenar; si cambió después, la copia arranca de nuevo
+    // desde cómo está ahora (deshacer nunca pierde lo que el usuario cambió en el medio)
+    rep.meses[p.mes] = {antes: ya && JSON.stringify(ls) === JSON.stringify(ya.despues) ? ya.antes : copiaJSON(ls), despues: copiaJSON(conOrdenTrabajo(ls, p))};
   });
   rep.creado = new Date().toISOString();
   try{ localStorage.setItem(LSREPARO + D.anio, JSON.stringify(rep)); }
