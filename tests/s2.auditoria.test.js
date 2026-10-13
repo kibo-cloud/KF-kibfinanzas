@@ -95,3 +95,13 @@ test('L4: an undo that finds nothing (another year open) says so', function(){
   assert.equal(a.t.length, n + 1);
   assert.match(a.t[a.t.length - 1][0], /no pude deshacer/i);
 });
+
+// ── L1: "Te quedan" in El año is income − expenses − installments, the §1 Resultado (it used to leave the installments out) ──
+test('L1: El año "Te quedan" subtracts the installments', function(){
+  var V = require('./fixtures/anio-vistas'), d = C.vacio(2026), j;
+  for(j = 0; j < 3; j++) C.mes(d, j, {ingresos: [C.it('Sueldo', 100000, true)], gastosFijos: [C.it('Alquiler', 30000, true)], deudas: [C.it('Préstamo', 10000, true)]});
+  var a = V.appAnio(d, {}, null, '2026-10-15'), html = a.anio();
+  var m = /Te quedan <b>([^<]*)<\/b>/.exec(html);
+  assert.ok(m, 'the sentence is there');
+  assert.equal(m[1], a.fARS(60000));
+});

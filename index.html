@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1+qBvcl2GMAluCUYw4i+OJGBaH+KeJmbqI2Oz/29mJk=' 'sha256-Km9n0TjTdswGr1QtFIOctArGiUwaVni5sUrSKEVJ29k='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1+qBvcl2GMAluCUYw4i+OJGBaH+KeJmbqI2Oz/29mJk=' 'sha256-TpkXUFN/bshqHc2Bzvy9sMw86bOYrjlH8uCljbPkvBM='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -3847,10 +3847,10 @@ function resumenAnio(d, s, vm){   // d: el año de s y vm
   var act = vm ? mesesTranscurridos(s, vm) : mesesCargados(s), i, n = act.length;
   if(n < 2) return '<div class="resumen vacio">'
     + '<div class="res-txt"><p>Cargá ' + (n === 0 ? 'un par de meses' : 'un mes más') + ' y acá te resumo el año: cuánto entra, cuánto se va y con cuánto cerrás.</p></div></div>';
-  var sumG = 0, sumI = 0, sumA = 0, peor = act[0], mejor = act[0], rojos = [];
+  var sumG = 0, sumI = 0, sumA = 0, sumD = 0, peor = act[0], mejor = act[0], rojos = [];
   for(i=0;i<n;i++){
     var c = s[act[i]];
-    sumG += c.totalGastos; sumI += c.totalIngresos; sumA += c.ahorroMesARS;
+    sumG += c.totalGastos; sumI += c.totalIngresos; sumA += c.ahorroMesARS; sumD += num(c.totalDeudas);
     if(c.totalGastos > s[peor].totalGastos) peor = act[i];
     if(c.totalGastos < s[mejor].totalGastos) mejor = act[i];
     if(mesEnRojo(d, s, act[i], vm)) rojos.push(MESES[act[i]]);
@@ -3862,7 +3862,7 @@ function resumenAnio(d, s, vm){   // d: el año de s y vm
      + '<div class="res-pct"><b>' + Math.round(pct*100) + '%</b>'
      + '<small>de lo que entra lo estás ahorrando</small></div></div>';
   h += '<div class="res-txt">';
-  h += '<p>Por mes entran <b>'+fARS(promI)+'</b> y se van <b>'+fARS(promG)+'</b>. Te quedan <b>'+fARS(promI-promG)+'</b>.</p>';
+  h += '<p>Por mes entran <b>'+fARS(promI)+'</b> y se van <b>'+fARS(promG)+'</b>' + (sumD ? ', más <b>' + fARS(Math.round(sumD/n)) + '</b> de cuotas' : '') + '. Te quedan <b>'+fARS(promI-promG-Math.round(sumD/n))+'</b>.</p>';   // S2 L1: el Resultado de §1 (ingresos − gastos − cuotas)
   h += '<p>Gastaste más en <b>'+MESES[peor]+'</b> y menos en <b>'+MESES[mejor]+'</b>.</p>';
   if(faltan > 0 && promA !== 0) h += '<p>Ahorro a este ritmo en diciembre: <b>'+fARS(s[ultimo].ahorroAcumulado + promA*faltan)+'</b>.</p>';   // L1: un ritmo, no el cierre (ese está arriba, marcado como estimado)
   if(rojos.length) h += '<p class="mal">' + (rojos.length === 1 ? 'En <b>'+rojos[0]+'</b> gastaste' : 'En <b>'+rojos.length+' meses</b> gastaste')
