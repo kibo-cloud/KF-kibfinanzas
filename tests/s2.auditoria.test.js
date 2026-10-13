@@ -129,3 +129,12 @@ test('L2: Trabajo CSV summary splits the scheduled pases and adds up to Disponib
   assert.equal(r['Programado para pasar a lo personal'], 200000);
   assert.equal(r['Cobrado hasta hoy'] - r['Gastos hasta hoy'] - r['Pasado a lo personal'], r['Disponible del trabajo']);
 });
+
+// ── L3: "Hoy vendiste" counts every sale of today (a-plazo invoices too); the line under it says which part is not collected ──
+test('L3: the "Hoy" line separates the a-plazo part from what was collected today', function(){
+  var a = la.loadApp({funcs: ['lineaHoy'], globals: {fARS: function(n){ return '$' + Math.round(n); }, nombreForma: function(f){ return f === 'efectivo' ? 'Efectivo' : f; }}});
+  var r = {hoyVentas: 3, hoyVendido: 100000, hoyForma: {efectivo: 30000}, hayCosto: false, hoyGanancia: 0};
+  assert.equal(a.lineaHoy(r), 'Hoy: 3 ventas · efectivo $30000 · a plazo, sin cobrar $70000');
+  r = {hoyVentas: 1, hoyVendido: 30000, hoyForma: {efectivo: 30000}, hayCosto: false, hoyGanancia: 0};
+  assert.equal(a.lineaHoy(r), 'Hoy: 1 venta · efectivo $30000');
+});

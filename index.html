@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1+qBvcl2GMAluCUYw4i+OJGBaH+KeJmbqI2Oz/29mJk=' 'sha256-DDa+nHC6W90ystUyiWWBTO8xhKhHOe5Pdo4q4jR+sbk='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1+qBvcl2GMAluCUYw4i+OJGBaH+KeJmbqI2Oz/29mJk=' 'sha256-4XsHtLHBvQ3J/3mXghosrfOZDbrRg83P+6+MgniTl/o='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -6479,6 +6479,8 @@ function filaVenta(f){
 function lineaHoy(r){
   var p = [r.hoyVentas + (r.hoyVentas === 1 ? ' venta' : ' ventas')], orden = ['efectivo','transferencia','echeq','otra'], i;
   for(i=0;i<orden.length;i++) if(r.hoyForma[orden[i]]) p.push((orden[i] === 'transferencia' ? 'transferencias' : nombreForma(orden[i]).toLowerCase()) + ' ' + fARS(r.hoyForma[orden[i]]));
+  var cobradoHoy = 0, k; for(k in r.hoyForma) if(Object.prototype.hasOwnProperty.call(r.hoyForma, k)) cobradoHoy += r.hoyForma[k];
+  if(r.hoyVendido - cobradoHoy > 0.5) p.push('a plazo, sin cobrar ' + fARS(r.hoyVendido - cobradoHoy));   // S2 L3: lo vendido a plazo hoy no es plata cobrada
   if(r.hayCosto) p.push('ganancia ' + fARS(r.hoyGanancia));
   return 'Hoy: ' + p.join(' · ');
 }
