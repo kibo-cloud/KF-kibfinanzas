@@ -1741,6 +1741,41 @@ try{
     await send('Emulation.clearDeviceMetricsOverride');
   }
 
+  // ── S3 quick sales ("productos rápidos" in Trabajo, Simple mode; hoy = 2026-10-04): 25 products in 3 folders, sales by tapping ──
+  {
+    const carps = [['Bebidas', 'azul'], ['Panadería', 'naranja'], ['Kiosco y golosinas', 'violeta']];
+    const prods = [];
+    for(let i = 0; i < 25; i++){
+      const c = carps[i % 3];
+      prods.push({id: 'p' + i, nombre: (['Café', 'Medialuna', 'Alfajor', 'Agua', 'Factura', 'Chicle', 'Jugo', 'Pan', 'Turrón'][i % 9]) + ' ' + (i + 1), precio: 500 + i * 250,
+        costo: i % 4 ? 0 : 200, forma: i % 5 === 4 ? '' : (i % 2 ? 'transferencia' : 'efectivo'), stock: i % 3 === 1 ? null : 10, carpeta: c[0], color: c[1], creada: ''});
+    }
+    const ventaS3 = (id, concepto, monto, forma, fecha) => ({id, tipo: 'simple', concepto, cantidad: 1, precio: monto, monto, costo: 0, contado: true, fecha, forma, creada: fecha + 'T10:00:00.000Z'});
+    const trS3 = {version: 1, activo: true, modo: 'simple', productos: prods, cobros: [], pases: [], gastos: [], tope: 0, rev: 2,
+      facturas: [ventaS3('v1', 'Café 1', 3000, 'efectivo', '2026-10-01'), ventaS3('v2', 'Torta (a mano)', 9000, 'transferencia', '2026-10-02'),
+        ventaS3('v3', 'Echeq', 1000, 'echeq', '2026-10-03'), ventaS3('v4', 'Futura', 50000, 'efectivo', '2026-10-20'), ventaS3('v5', 'Septiembre', 7000, 'efectivo', '2026-09-30'),
+        {id: 'f1', tipo: 'factura', cliente: 'Ana', numero: '1', concepto: 'Plazo', monto: 80000, cantidad: 1, precio: 80000, fecha: '2026-10-02', contado: false, plazo: 30, forma: 'transferencia', creada: ''}]};
+    const seedS3 = async (t) => { await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); localStorage.setItem('kibo.ultimaCopia', new Date().toISOString()); localStorage.setItem('kibo.esquema', '1.30');
+      localStorage.setItem('kibo.trabajo', ${JSON.stringify(JSON.stringify(t || trS3))}); true`); await nav(URL_APP); await sleep(900);
+      await ev(`document.querySelector('[data-act=tab][data-t=trabajo]').click(); window.scrollTo(0, 0); true`); await sleep(900); };
+    const tamS3 = async (w, h) => { await send('Emulation.setDeviceMetricsOverride', { width: w, height: h || (w < 800 ? 800 : 900), deviceScaleFactor: w < 800 ? 2 : 1, mobile: w < 800 }); await sleep(400); };
+    const guardadoS3 = () => ev(`(function(){ var t = JSON.parse(localStorage.getItem('kibo.trabajo')); return {n: t.facturas.length, stock: t.productos.map(function(p){ return p.stock; })}; })()`);
+    await tamS3(390); await seedS3();
+    check('S3 quick sales: the 25 products render in their 3 folders', await ev(`[document.querySelectorAll('#v-trabajo .tj-pw').length, document.querySelectorAll('#v-trabajo .tj-carp').length]`), [25, 3]);
+    await ev(`document.querySelector('#v-trabajo .tj-prod[data-id=p0]').click(); true`); await sleep(300);
+    let gS3 = await guardadoS3();
+    check('S3 quick sales: one tap on a product with a default payment sells it: one more sale, one unit less of stock, saved', [gS3.n, gS3.stock[0]], [7, 9]);
+    check('S3 quick sales: the toast names the product and offers Deshacer', await ev(`[document.getElementById('toast').textContent.indexOf('Café 1') === 0, !!document.querySelector('#toast [data-act=tjDeshacer]')]`), [true, true]);
+    await ev(`document.querySelector('#toast [data-act=tjDeshacer]').click(); true`); await sleep(300);
+    gS3 = await guardadoS3();
+    check('S3 quick sales: Deshacer takes the sale back and returns the unit of stock', [gS3.n, gS3.stock[0]], [6, 10]);
+    await ev(`document.querySelector('#v-trabajo .tj-prod[data-id=p4]').click(); true`); await sleep(400);
+    check('S3 quick sales: "Preguntar siempre" opens the payment sheet and sells nothing yet', [await ev(`!!document.querySelector('.hoja [data-act=tjCobrar][data-id=p4]')`), (await guardadoS3()).n], [true, 6]);
+    await ev(`document.querySelector('.hoja [data-act=tjCobrar][data-id=p4][data-v=efectivo]').click(); true`); await sleep(400);
+    check('S3 quick sales: the sheet sale stores the chosen payment', await ev(`(function(){ var t = JSON.parse(localStorage.getItem('kibo.trabajo')), f = t.facturas[t.facturas.length - 1]; return [f.concepto, f.forma, f.monto]; })()`), ['Factura 5', 'efectivo', 1500]);
+    await send('Emulation.clearDeviceMetricsOverride');
+  }
+
   check('no uncaught page errors', pageErrs, []);
 }catch(e){ fails++; results.push('ERROR ' + e.message); }
 finally{
