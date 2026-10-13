@@ -342,6 +342,43 @@ test('M2-R the same-name place survives normalizar (non-negative integers only)'
   assert.equal('fo' in n.meses[9].movimientos[1], false);
 });
 
+// review advisory (W3): the refusal branch (exacto = -2). When the rows of that name are no longer the same set (one added or renamed into
+// the name), Deshacer cannot know which row it was: nothing moves, the expense stays recorded, and it says so
+function rehusa(a, id, antes){
+  a.quitarMov(id);
+  assert.deepEqual(filas(a), antes, 'no money moved');
+  assert.equal(a.t[a.t.length - 1][0], 'No encontré el renglón para deshacer');
+  assert.equal(a.D.meses[9].movimientos.length, 1, 'the expense stays recorded');
+}
+test('M2-R adding a new row with the same name before Deshacer: refuses, no money moved', function(){
+  var a = appGasto(mesCon([C.it('Super', 0, false), C.it('Super', 70000, true)]));
+  a.gr = {monto: 20000, cat: 0, sec: 'gastosVariables'}; a.sumarGasto(); var id = a.t[a.t.length - 1][3];
+  assert.equal(a.plain(a.D.meses[9].movimientos[0]).fn, 2);
+  a.D.meses[9].gastosVariables.unshift({nombre: 'Super', monto: 5000, tope: 0, frec: '', dias: [], pagado: true});
+  rehusa(a, id, filas(a));
+});
+test('M2-R renaming another row to the same name before Deshacer: refuses, no money moved', function(){
+  var a = appGasto(mesCon([C.it('Luz', 1000, true), C.it('Super', 0, false)]));
+  a.gr = {monto: 20000, cat: 1, sec: 'gastosVariables'}; a.sumarGasto(); var id = a.t[a.t.length - 1][3];
+  assert.deepEqual(resumen(a), [['Luz', 1000, true], ['Super', 20000, true]]);
+  a.D.meses[9].gastosVariables[0].nombre = 'Super';   // Luz renamed to Super
+  rehusa(a, id, filas(a));
+});
+test('M2-R a stored fo without fn (older data shape): the fo-th row of that name is reverted; out of range refuses', function(){
+  var a = appGasto(mesCon([C.it('Super', 0, false), C.it('Super', 70000, true)])), antes = filas(a);
+  a.gr = {monto: 20000, cat: 0, sec: 'gastosVariables'}; a.sumarGasto(); var id = a.t[a.t.length - 1][3];
+  delete a.D.meses[9].movimientos[0].fn;
+  a.D.meses[9].gastosVariables.push({nombre: 'Super', monto: 9000, tope: 0, frec: '', dias: [], pagado: true});   // without fn, a new row does not refuse
+  antes.push(a.plain(a.D.meses[9].gastosVariables[2]));
+  a.quitarMov(id);
+  assert.deepEqual(filas(a), antes, 'the first Super (fo 0) is reverted, the others keep their money');
+  assert.equal(a.t[a.t.length - 1][0], 'Deshecho');
+  var b = appGasto(mesCon([C.it('Super', 0, false), C.it('Super', 70000, true)]));
+  b.gr = {monto: 20000, cat: 0, sec: 'gastosVariables'}; b.sumarGasto(); var id2 = b.t[b.t.length - 1][3];
+  delete b.D.meses[9].movimientos[0].fn; b.D.meses[9].movimientos[0].fo = 5;
+  rehusa(b, id2, filas(b));
+});
+
 // ── review fix (H2): the "Dólares mes a mes" table is the OPEN year's, even when "a hoy" comes from the year that contains today ──
 // today 2026-11-10, 2027 created: 2027's table subtracted 2027's usdAnioAnterior (1300) from 2026's dollars a hoy (1100): "Entraron" (US$ 200,00)
 function usdDosAnios(){
