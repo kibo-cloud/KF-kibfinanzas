@@ -1912,6 +1912,13 @@ try{
     await ev(`document.querySelector('#v-trabajo [data-act=tjNuevoProdGrilla]').click(); true`); await sleep(400);
     check('S3c no products: the call to action opens the new product editor', await ev(`document.querySelector('#hoja h3').textContent`), 'Nuevo producto');
     await ev(`document.querySelector('#hoja [data-act=cerrarHoja]').click(); true`); await sleep(400);
+    // ── S3d: the payment icon of each card and each folder title are 44 px touch targets; the icon stays inside its card ──
+    await seedS3(); await tamS3(390);
+    check('S3d 390 px: every payment icon and folder title is at least 44x44 and the icon stays inside its card', await ev(`(function(){ var malos = [], n = 0;
+      document.querySelectorAll('#v-trabajo .tj-pw > .tj-medio, #v-trabajo .tj-carp-hd').forEach(function(b){ if(b.offsetParent === null) return; n++;
+        var r = b.getBoundingClientRect(); if(r.width < 44 || r.height < 44) malos.push(b.className + ' ' + r.width + 'x' + r.height);
+        var w = b.closest('.tj-pw'); if(w){ var c = w.getBoundingClientRect(); if(r.left < c.left - 0.5 || r.right > c.right + 0.5 || r.top < c.top - 0.5) malos.push('outside'); } });
+      return [n > 20, malos.slice(0, 4)]; })()`), [true, []]);
     await send('Emulation.clearDeviceMetricsOverride');
   }
 

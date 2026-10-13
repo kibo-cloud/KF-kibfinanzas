@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-13IJeOyEKqFZVOOFHo7ITxTuXUuIFB+El4nbN4kXJNQ=' 'sha256-AEw6EYfZQv4Xny2k07tpF7antgZYQcVXraI4/spK1Kc='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-13IJeOyEKqFZVOOFHo7ITxTuXUuIFB+El4nbN4kXJNQ=' 'sha256-sG93wq62YHQOve7Zukl7qozC1dwQzpvCTnD8sgs2bNU='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -469,7 +469,7 @@ button.tj-f:active{background:var(--fill)}
 .pt.gen{background:transparent;border:2px solid var(--txt2)}
 .tj-carps button.on .pt{box-shadow:0 0 0 2px #fff}
 .tj-carp{margin-top:10px}
-.tj-carp-hd{display:flex;align-items:center;gap:8px;width:100%;min-height:36px;padding:4px 2px;background:none;color:var(--txt);text-align:left}
+.tj-carp-hd{display:flex;align-items:center;gap:8px;width:100%;min-height:var(--tap);padding:4px 2px;background:none;color:var(--txt);text-align:left}
 .tj-carp-hd b{font-size:15px;font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tj-carp-hd i{flex:1}
 .tj-carp.cerrada .chev{transform:rotate(-45deg)}
@@ -501,14 +501,15 @@ button.tj-f:active{background:var(--fill)}
 .tj-prod .vc{font-size:11.5px;color:var(--txt2);opacity:.85;margin-top:1px}
 .tj-pw{position:relative;display:flex;min-width:0}
 .tj-pw>.tj-prod{flex:1;min-width:0;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
-.tj-pw .nom{padding-right:28px}
-.tj-medio{position:absolute;top:5px;right:5px;width:32px;height:32px;min-height:0;padding:0;border-radius:10px;background:var(--fill);font-size:16px;line-height:32px;text-align:center}
-.tj-medio:active{background:var(--acc-soft)}
+.tj-pw .nom{padding-right:34px}
+.tj-medio{position:absolute;top:0;right:0;z-index:1;isolation:isolate;width:var(--tap);height:var(--tap);min-height:0;padding:0;border-radius:0 14px 0 12px;background:none;font-size:16px;display:flex;align-items:center;justify-content:center}
+.tj-medio::before{content:'';position:absolute;top:6px;right:6px;width:32px;height:32px;border-radius:10px;background:var(--fill);z-index:-1}
+.tj-medio:active::before{background:var(--acc-soft)}
 /* S3b: el "⋮" de cada producto, fuera del botón que vende: abajo a la derecha (vista completa) o una franja a la derecha (grilla compacta); 44 px */
 .tj-opc{position:absolute;right:0;bottom:0;z-index:1;width:var(--tap);height:var(--tap);min-height:0;padding:0;border-radius:12px 0 14px 0;background:none;color:var(--txt2);display:flex;align-items:center;justify-content:center}
 .tj-opc svg{width:18px;height:18px;fill:currentColor}
 .tj-opc:active{background:var(--acc-soft)}
-.tj-prods:not(.compacta) .tj-prod{min-height:98px}
+.tj-prods:not(.compacta) .tj-prod{min-height:98px;display:flex;flex-direction:column;justify-content:flex-start}
 .tj-prods:not(.compacta) .tj-prod .vg,.tj-prods:not(.compacta) .tj-prod .vc{padding-right:34px}
 .tj-prods.compacta .tj-opc{top:0;height:auto;border-radius:0 12px 12px 0}
 .tj-prods.compacta .tj-pw>.tj-prod{padding-right:var(--tap);min-height:var(--tap)}
@@ -4392,7 +4393,7 @@ function manual(){
   h += bloque('trabajo', 'Trabajo por tu cuenta',
       '<p>Si vendés o facturás por tu cuenta, aunque sea de vez en cuando, prendé <b>Vendo o facturo por mi cuenta</b> en Ajustes y aparece la pestaña <b>Trabajo</b>. Si la apagás, no se borra nada. Deslizando el dedo también llegás a ella: queda entre USD y Ajustes.</p>'
     + '<p>Arriba elegís cómo trabajás. En <b>Simple</b> anotás ventas sueltas, como algo que vendiste por Marketplace o a un conocido: qué, cuánto y cómo te pagaron, y quedan cobradas. Arriba ves lo que vendiste hoy, separado en efectivo y transferencias, para cerrar la caja.</p>'
-    + '<p>Si vendés siempre lo mismo, cargalos como <b>productos rápidos</b>: aparecen como botones arriba de Nueva venta y cada venta queda con un solo toque, con Deshacer por si te equivocaste. El toque cobra con el medio de pago por defecto del producto; para cobrar distinto una vez, tocá el iconito de la esquina (💵 o 💳) o mantené apretado. Si lo dejás en <b>Preguntar siempre</b>, cada toque te pregunta si es efectivo o virtual. Arriba ves lo cobrado en el mes separado en Digital y Efectivo, con el total abajo (echeqs y otros medios cuentan como digital). Si le cargás <b>stock</b>, cada venta descuenta una unidad y la tarjeta muestra cuántas quedan; en cero dice Agotado y te deja vender igual o reponer. Si lo dejás vacío, no hay control de stock. Arriba de los botones tenés un buscador que filtra mientras escribís, y un botón para pasar a la <b>grilla compacta</b>: tarjetas más bajas con nombre, precio y stock (S: 12), que cobran igual con un toque y te dejan elegir el medio manteniendo apretado. La app recuerda qué vista elegiste. Con muchos productos, ordenalos en <b>carpetas</b> con color (Bebidas, Comidas…): arriba aparece una tira para ver una sola carpeta, y en Todas cada carpeta se pliega y despliega tocando su título. Los que no tienen carpeta van a General. Si además ponés lo que te cuesta cada uno, la app te muestra la <b>ganancia</b> del día, no solo lo que entró; ese costo es solo informativo y no se descuenta del disponible, para eso están los gastos.</p>'
+    + '<p>Si vendés siempre lo mismo, cargalos como <b>productos rápidos</b>: aparecen como botones arriba de Nueva venta y cada venta queda con un solo toque, con Deshacer por si te equivocaste. El toque cobra con el medio de pago por defecto del producto; para cobrar distinto una vez, tocá el iconito de la esquina (💵 o 💳) o mantené apretado. Si lo dejás en <b>Preguntar siempre</b>, cada toque te pregunta si es efectivo o virtual. Arriba ves lo <b>cobrado en el mes hasta hoy</b>, con una torta que lo separa en Efectivo y Digital / Virtual (echeqs y otros medios cuentan como digital; no entran las facturas a plazo sin cobrar ni las ventas con fecha más adelante). Si le cargás <b>stock</b>, cada venta descuenta una unidad y la tarjeta muestra cuántas quedan; en cero dice Agotado y te deja vender igual o reponer. Si lo dejás vacío, no hay control de stock. Arriba de los botones tenés un buscador que filtra mientras escribís, el botón <b>+ Producto</b> para agregar uno (arranca en la carpeta que estás mirando) y un botón para pasar a la <b>grilla compacta</b>; esa barra queda fija arriba mientras bajás por los productos. Para cambiar un producto, tocá los tres puntos (⋮) de su tarjeta y <b>Editar producto</b>: eso no vende nada, y las ventas que ya cargaste quedan con el nombre y el precio que tenían. La grilla compacta tiene tarjetas más bajas con nombre, precio y stock (S: 12), que cobran igual con un toque y te dejan elegir el medio manteniendo apretado. La app recuerda qué vista elegiste. Con muchos productos, ordenalos en <b>carpetas</b> con color (Bebidas, Comidas…): arriba aparece una tira para ver una sola carpeta, y en Todas cada carpeta se pliega y despliega tocando su título. Los que no tienen carpeta van a General. Si además ponés lo que te cuesta cada uno, la app te muestra la <b>ganancia</b> del día, no solo lo que entró; ese costo es solo informativo y no se descuenta del disponible, para eso están los gastos.</p>'
     + '<p>Si cobrás por semana o por quincena (apps de reparto o de viajes, changas), elegí <b>Semana</b> o <b>Quincena</b> arriba de la hoja: ponés de dónde salió, cuánto cobraste y desde qué día es. En <b>De dónde viene</b> ves cuánto te dejó cada plataforma este mes. En <b>Profesional</b> cargás facturas con cliente, número y plazo, y quedan en <b>Por cobrar</b> hasta que entra el pago; si el plazo es <b>Contado</b>, quedan cobradas en el acto. Cambiar de modo no borra nada.</p>'
     + '<p>Cuando entra plata de una factura, tocás <b>Entró un pago</b>: la app busca qué facturas pendientes de ese cliente suman ese monto. Si falta hasta un 10 %, probablemente es una retención; si falta más, la factura queda con saldo. El número de cada factura nueva ya viene sugerido: el siguiente al de la última. Si una factura se repite todos los meses, marcala como <b>abono</b> y se genera sola cada mes; para repetirla una sola vez, tocá <b>Repetir el mes que viene</b>.</p>'
     + '<p><b>Cobranza de la semana</b> junta por cliente lo vencido y lo que vence en los próximos 7 días. Con <b>Recordar</b> armás el mensaje con sus facturas y lo mandás por WhatsApp o mail desde el menú de compartir del teléfono; no pasa por ningún servidor.</p>'
