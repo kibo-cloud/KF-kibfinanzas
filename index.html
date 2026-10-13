@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-13IJeOyEKqFZVOOFHo7ITxTuXUuIFB+El4nbN4kXJNQ=' 'sha256-lKvUYAhuC6IEHI0b1Nn424KBwnsxZVDDNG+Kr8Zz1fs='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-13IJeOyEKqFZVOOFHo7ITxTuXUuIFB+El4nbN4kXJNQ=' 'sha256-8Gyt3zYXRQBON86/X4CKMfy2Bb3mI6gNGNew931oTas='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -6829,8 +6829,14 @@ function chipsPlazo(otro){
   }
   return h + '<button data-act="tjFxPlazo" data-v="otro" class="' + (otro ? 'on' : '') + '">Otro</button>';
 }
+// S3: una pestaña vieja (otra guardó Trabajo después de que esta lo leyó) no cambia nada, ni en memoria: avisa y no sigue
+function trabVieja(){
+  if(!obsoleta && blobAlDia(LSTRAB, T)) return false;
+  obsoleta = true; avisoOtraPestana(); return true;
+}
 function venderProducto(id, forma){
   var p = prodPorId(id); if(!p) return;
+  if(trabVieja()) return;
   var fo = forma ? formaValida(forma) : p.forma;
   if(!fo){ abrirCobroProd(id); return; }   // sin medio por defecto: siempre pregunta
   antesDeCambiar();   // Deshacer vuelve la venta y también la unidad de stock
@@ -6845,6 +6851,7 @@ function venderProducto(id, forma){
 }
 function tocarProducto(id){
   var p = prodPorId(id); if(!p) return;
+  if(trabVieja()) return;
   if(!p.forma || (p.stock !== null && p.stock <= 0)){ abrirCobroProd(id); return; }   // sin medio por defecto o agotado: se elige, no se cobra de golpe
   venderProducto(id);
 }
@@ -6919,6 +6926,7 @@ function guardarProducto(){
     stk = parseEntero(rs, true);   // puede quedar negativo si vendiste de más
     if(isNaN(stk)){ errorEn('pxNota', 'Stock: poné un número entero de unidades, o dejalo vacío si no querés controlarlo.'); document.getElementById('pxStock').focus(); return; }
   }
+  if(trabVieja()){ errorEn('pxNota', 'Hay cambios hechos en otra pestaña. Recargá antes de guardar.'); return; }
   var carp = nomCarpeta(val('pxCarp')), col = '', lc = carpetas(), ci;
   if(carp){
     for(ci=0;ci<lc.length;ci++) if(!lc[ci].general && lc[ci].k === clave(carp)){ carp = lc[ci].nombre; col = lc[ci].color; }   // misma carpeta aunque la escribas distinto
@@ -6934,8 +6942,9 @@ function guardarProducto(){
   pildora(viejo ? 'Producto actualizado' : 'Producto guardado');
 }
 function borrarProducto(id){
-  var p = prodPorId(id); if(!p) return;
+  var p = prodPorId(id); if(!p || trabVieja()) return;
   confirmar('Borrar el producto', 'Se borra el botón de <b>' + esc(p.nombre) + '</b>. Las ventas que ya cargaste con él no se tocan.', 'Borrar', function(){
+    if(trabVieja()) return;
     antesDeCambiar();
     T.productos = T.productos.filter(function(x){ return x.id !== id; });
     guardarTrab(true); renderTrabajo(); abrirProductos();
