@@ -31,7 +31,7 @@ Owner brief: "TuGasto — LOOP DE ESTABILIZACIÓN, AUDITORÍA FINANCIERA Y UX DE
       charts). Route: delegated read-only explorer. Done (map used by S3a-d).
 - [ ] S1 Pending decisions review (N1-B, N2-B, N3a-A/B, N3b-A/B, N4-A/B, L3 partial payment + "(otro gasto)" vs topes, L5 due day):
       context, alternatives, effects, recommendation; apply only what is already approved.
-- [ ] S2 End-to-end financial flow audit (entry → display → persistence → export → restore), findings with repro/impact/cause/test.
+- [x] S2 End-to-end financial flow audit (entry → display → persistence → export → restore), findings with repro/impact/cause/test.
       Route: delegated read-only auditor; fixes by a writer, RED first.
 - [x] S3a Quick-sales pie chart (data-backed metrics, period explicit, text alternative).
 - [x] S3b "⋮ → Editar producto" from the product screen (no sale on edit; history preserved).
@@ -73,6 +73,30 @@ Commits: `290fc6b` (stale tab refuses sales/product edits before changing anythi
   before: `s3-before-*.png`. Reviewed: no clipped text besides the intended ellipsis on long secondary lines, no overlap of ⋮ and the
   payment icon, contrast unchanged (existing tokens).
 
+### S2 — Financial audit
+
+Audit route: delegated read-only auditor (probes in `scratchpad/s2/`, `node <file>` with `loader.js`); fixes by one writer, RED first, one
+commit each, mutation check (`scratchpad/s2/mut.js`: the fix line is reverted/weakened and the test must fail). Tests:
+`tests/s2.auditoria.test.js` (one block per finding). Motor goldens byte-identical to a264d6a; no money rule changed.
+
+| Id | Severity | Repro | Impact | Cause | Test (RED observed) | Status / commit |
+|---|---|---|---|---|---|---|
+| H2 | HIGH | 2026-12-10, create 2027 (duplicar) and open it (`p7-futyear.js`) | Patrimonio neto a hoy 3.980.000 → 2.700.000: the 2026 Disponible vanishes while a future year is open | `patrimonioNeto` with `iHoy = -1` for a future year evaluates the open year, not "a hoy" | same Patrimonio a hoy with 2026 or 2027 open; a past year says "al cierre de 2026" (RED: 2.700.000 ≠ 3.980.000) | fixed `3068ba5`: `patrimonioPantalla` reads the year that contains today from storage when a future year is open (legacy year → previous behavior); a past year shows its closing labeled "Patrimonio neto al cierre de <año>" |
+| M2 | MEDIUM | two "Super" rows, quick expense on the second, Deshacer (`p6-undo.js`) | undo reverts the FIRST row: one row unticked/reduced wrongly, the other left changed | `quitarMov` matched the row by name only | deepEqual month after undo with duplicate names (RED: first row unticked) | fixed `0c49689`: the movement stores `fi` (row index, with name and section); `normalizar` keeps it; undo uses it when the row there still has that name, older movements fall back to the name |
+| L4 | LOW | quick expense in October, go to April, tap Deshacer on the toast | nothing happens, silently | `quitarMov` searched only `D.meses[mes]` | undo after switching month restores the October month; an id not in the open year gives a message (RED: row unchanged) | fixed `51535bc`: searched in its own month; otherwise "No pude deshacer: ese gasto ya no está en el año que tenés abierto." |
+| L1 | LOW | El año of a model year with installments | "Te quedan" overstated by the average installment | sentence used income − expenses | model year with 3 months 100.000 / 30.000 / 10.000 → 60.000 (RED: 70.000) | fixed `d6376e5` + `e20ab2a` (model years only; a year without the model stays byte-identical to its pins, D4); the model-year pin in r4.anio now reads the §1 Resultado |
+| L2 | LOW | Trabajo CSV with a past pase 300.000 and a scheduled one 200.000 | summary did not add up (Pasado 500.000 vs Disponible 700.000) | summary used `r.pasado` (includes scheduled) | Cobrado − Gastos − Pasado = Disponible; separate "Programado para pasar a lo personal" (RED: 500.000 ≠ 300.000) | fixed `33a9191` (uses `pasesPersonal`, the same split as the screen) |
+| L3 | LOW | Simple mode, an a-plazo invoice dated today | "Hoy vendiste" mixed it with what was collected; the line under it only split collected money | presentation | line says "a plazo, sin cobrar $X" (RED: missing) | fixed `2239b12` (presentation only) |
+| L5 | LOW | plan "Préstamo" with no rows in any month | keeps counting as a liability and cannot be reached (plans open from a row) | no entry point | composition offers "Quitar plan" only for row-less plans; confirmation states the consequence; Pasivos after removal = the others (RED: functions missing) | fixed `235313a` (user action; no rule change) |
+| H1 | HIGH | edit December 2026 after creating 2027 (`p1-carry.js`, `p3-cuotas.js`) | 2027 keeps the old ahorro / USD / a reponer / pagadasAntes | `duplicar` stores a snapshot | notice appears with the changed parts; copied values untouched (RED: functions missing) | interim `b55dade`: notice in the Patrimonio tab "Diciembre <año-1> cambió después de crear <año>: … pueden no coincidir." No re-sync. **OWNER_DECISION_REQUIRED** (see S1) |
+| M1 | MEDIUM | pase dated in a month before `arrastre.desde` (`p2-backpase.js`) | money leaves Trabajo but never reaches the Disponible | months before `desde` are legacy for the chain | first tap warns ("Esa fecha es anterior a desde cuándo llevás el saldo mes a mes: esa plata no se va a reflejar en el disponible.") and changes the button to "Pasar igual"; second tap saves (RED: saved at once) | interim `8653da0` (warn + confirm, not blocked; wording avoids the L2 jargon "pase"). **OWNER_DECISION_REQUIRED** |
+| M3 | MEDIUM | restore a backup without `trabajo`, or whose Trabajo passed money to years it does not bring (`p8-trab.js`) | "Del trabajo" rows and the Trabajo ledger can disagree after restore | restore writes Trabajo only when present | confirmation says "La copia no trae Trabajo: se mantiene el Trabajo de este teléfono…" or names the missing years (RED: missing) | interim `4717c65`. **OWNER_DECISION_REQUIRED** |
+| N2-B (a) | MEDIUM | legacy month with "Dél trabajo" + "Del trabajo" | pases spread over both rows | old matcher data | notice lists the months with more than one "Del trabajo" row; no data change (RED: missing) | interim `46f33df` (Trabajo screen); the engine fix (b) still waits for the owner |
+
+Verification per commit: `npm test` 0 fail before each commit (gated script); `npm run test:e2e` run on 9051c2f (534/0), 3068ba5 (534/0)
+and on the final head (see S6/handoff). Test pins touched on purpose: r4.anio model-year summary (L1), harness function lists (usd-vistas,
+r45-harness, r4.migracion, l8.diario, r4.cobertura, r4.integracion, seguridad), inventario.data (`derivaAnioPrevio`).
+
 ### S1 — Pending decisions (review 2026-10-12)
 
 None of these has an owner answer recorded; the built defaults stay and nothing is marked resolved. Each keeps
@@ -90,7 +114,10 @@ None of these has an owner answer recorded; the built defaults stay and nothing 
 | N3b-A (LOW) | Ticking ahead in future model months is blocked; a row already ticked ahead can only be unticked. | (a) keep (built); (b) allow ticking ahead as a marker; (c) clear ticks ahead (rewrites data). | None while future. | (a). |
 | N3b-B (LOW) | `normalizar` stores cotización 1499 when none; the composition shows "cotización sin cargar". | (a) keep (built); (b) exclude USD/crypto from the net until loaded (motor/golden change). | Net worth includes USD at 1499 until loaded. | (a) + make the "sin cargar" label prominent. |
 | N4-A (LOW) | Unreadable Trabajo blob: copied to quarantine, next save writes Trabajo. | (a) keep (built); (b) block Trabajo writes until a restore; (c) warning with "Descargar el texto". | Raw text always kept. | (a) + (c) (download action is presentation). |
+| H1 (HIGH, from S2) | `duplicar` copies December's ahorroAcumulado, usdAcumulado, aReponer and each plan's pagadasAntes into the new year as a snapshot; a later edit of December (late savings, retiro, installment ticked) does not reach the new year (S2 H1). | (a) live carry: the new year reads savings / USD / aReponer and pagadasAntes from the stored previous year, like the Disponible already does (D6, `cierreAnioAnterior`); (b) keep the snapshot + drift notice + a "Volver a tomar de diciembre" (re-sync) action; (c) keep the snapshot silently. | (a) the new year always matches December; (b) correct after the user acts; (c) silent mismatch. | (a), consistent with D6 / the live Disponible carry. Interim notice built (`b55dade`). OWNER_DECISION_REQUIRED |
+| M1 (MEDIUM, from S2) | A pase dated in a month before `arrastre.desde` of a model year leaves Trabajo but never reaches the Disponible (those months are legacy for the chain) (S2 M1). | (a) block such dates with a message; (b) warn and let the user confirm; (c) count it into the first model month. | (a) no lost money, one more refusal; (b) the user may still lose track; (c) new allocation rule (motor/golden change). | (a) block with a message. Interim (b) built (`8653da0`). OWNER_DECISION_REQUIRED |
+| M3 (MEDIUM, from S2) | Restore writes Trabajo only when the backup has it, so "Del trabajo" rows of restored years and the device's Trabajo can disagree (S2 M3). | (a) keep the device Trabajo (today); (b) require a complete backup (years with "Del trabajo" pases + Trabajo); (c) repair the rows from the Trabajo pases after restore. | (a) possible mismatch; (b) some old backups refused; (c) rewrites stored rows (against D14). | Warn (built, `4717c65`) and offer to also restore Trabajo when the backup has it. OWNER_DECISION_REQUIRED |
 | N4-B (LOW) | Quarantine copies are kept forever and travel in backups. | (a) keep (built); (b) Ajustes row to download and delete each; (c) auto-delete when readable (against "never delete"). | Storage only. | (b), owner to confirm deletion UX. |
 
-Safe to build without the owner (presentation only): N2-B (a) detection notice; N3b-B prominent "sin cargar" label; N4-A (c) download
+Safe to build without the owner (presentation only): N2-B (a) detection notice (built `46f33df`); H1 / M1 / M3 interim notices (built `b55dade`, `8653da0`, `4717c65`); N3b-B prominent "sin cargar" label; N4-A (c) download
 action. Everything else waits for the owner.
