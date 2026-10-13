@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1+qBvcl2GMAluCUYw4i+OJGBaH+KeJmbqI2Oz/29mJk=' 'sha256-9l9OjXgp69KFik24e12cIFr2lofwKlIfOsSv2tFwks0='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1+qBvcl2GMAluCUYw4i+OJGBaH+KeJmbqI2Oz/29mJk=' 'sha256-uDE5/JyL1VTwfKodYTLjAUMMrgM5/P0r+fEkSJaaeyo='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -7765,6 +7765,13 @@ function fechaPaseDefecto(){
 }
 function destinoPase(){ var fe = val('psFecha'); if(!esISO(fe)) fe = hoyISO(); return {fecha:fe, anio:+fe.slice(0,4), mes:+fe.slice(5,7) - 1}; }
 function anioExiste(a){ return a === D.anio || !!leerAnio(a); }
+/* S2 M1 (OWNER_DECISION_REQUIRED, aviso provisorio): en un año con modelo, un pase con fecha de un mes anterior a arrastre.desde no llega al
+   disponible (esos meses son legacy). Hasta que el dueño decida, la hoja lo avisa y pide confirmar; no se bloquea ni cambia ninguna regla. */
+function avisoPaseAntes(dest){   // '' si la fecha cae en un mes que lleva el saldo mes a mes (o en un año sin eso)
+  var y = dest.anio === D.anio ? D : leerAnio(dest.anio), ar = y && y.arrastre;
+  return ar && typeof ar === 'object' && dest.mes < num(ar.desde)
+    ? 'Esa fecha es anterior a desde cuándo llevás el saldo mes a mes: esa plata no se va a reflejar en el disponible.' : '';
+}
 function abrirPase(){
   var r = resumenTrab();
   if(r.paraPasar <= 0){
@@ -7790,7 +7797,8 @@ function notaPase(){
   if(!anioExiste(d.anio)){ e.className = 'nota mal'; e.innerHTML = 'El ' + d.anio + ' no está creado en la app. Elegí una fecha de un año que tengas.'; return; }
   if(m > r.paraPasar + 0.5){ e.className = 'nota mal'; e.innerHTML = 'Es más de lo que tenés disponible (' + fARS(r.paraPasar) + ').'; return; }
   e.innerHTML = 'Se suma a Ingresos de <b>' + MESES[d.mes] + ' ' + d.anio + '</b>, en el renglón <b>' + RENGLON_TRABAJO + '</b>. Disponible: ' + fARS(r.paraPasar) + '.'
-    + (d.anio !== D.anio ? '<br><span class="neg">Ojo: tenés abierto ' + D.anio + ', así que en la pestaña Mes no lo vas a ver hasta que cambies de año.</span>' : '');
+    + (d.anio !== D.anio ? '<br><span class="neg">Ojo: tenés abierto ' + D.anio + ', así que en la pestaña Mes no lo vas a ver hasta que cambies de año.</span>' : '')
+    + (avisoPaseAntes(d) ? '<br><span class="neg">' + avisoPaseAntes(d) + '</span>' : '');
 }
 function guardarPase(){
   var rq = leerMonto('psMonto'), m = Math.round(rq.v), d = destinoPase(), r = resumenTrab();
@@ -7798,6 +7806,12 @@ function guardarPase(){
   if(!(m > 0)){ errorEn('psNota', 'Falta cuánto querés pasar.'); document.getElementById('psMonto').focus(); return; }
   if(m > r.paraPasar + 0.5){ errorEn('psNota', 'Es más de lo que tenés disponible (' + fARS(r.paraPasar) + ').'); return; }
   if(!anioExiste(d.anio)){ errorEn('psNota', 'El ' + d.anio + ' no está creado en la app. Elegí una fecha de un año que tengas.'); return; }
+  var avAntes = avisoPaseAntes(d), bp = avAntes ? document.querySelector('#hoja [data-act=tjGuardarPase]') : null;
+  if(avAntes && !(bp && bp.getAttribute('data-ok') === d.fecha)){   // S2 M1: el primer toque avisa; el segundo, con la misma fecha, confirma
+    if(bp){ bp.setAttribute('data-ok', d.fecha); bp.textContent = 'Pasar igual'; }
+    errorEn('psNota', avAntes + ' Si igual querés pasarlo, tocá «Pasar igual».');
+    return;
+  }
   var p = {id:tjId(), fecha:d.fecha, monto:m, anio:d.anio, mes:d.mes, creada:new Date().toISOString()};
   if(aplicarPase(p, 1, sumarPaseT(p)) !== true){ errorEn('psNota', obsoleta ? 'Hay cambios hechos en otra pestaña. Recargá antes de pasar.' : 'No pude sumarlo al mes. Probá de nuevo.'); return; }
   tjAntes = null;

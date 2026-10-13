@@ -198,3 +198,34 @@ test('H1: December savings and installments changed after creating the year: a v
   assert.match(h, /Diciembre 2026 cambió después de crear 2027: el ahorro y las cuotas que pasaron al año nuevo pueden no coincidir\./);
   assert.deepEqual([a.D.ahorroAnioAnterior, a.D.planDeudas['Préstamo'].pagadasAntes], antes);
 });
+
+// ── M1 (OWNER_DECISION_REQUIRED, interim warning only): a pase dated before the month the model starts (arrastre.desde) does not reach
+// the Disponible; the pase sheet says so before saving and asks to confirm (it does not block) ──
+function appPase(fecha){
+  var d = C.vacio(2026); C.arrastre(d, 8, 100000, 'declarado');
+  var g = {campos: {psFecha: fecha, psMonto: '1000'}, notas: [], aplicados: [], boton: {textContent: 'Pasar', at: {}, getAttribute: function(k){ return this.at[k] || null; }, setAttribute: function(k, v){ this.at[k] = v; }}};
+  var a = H.appVista(d, H.trab([], 500000), null, '2026-10-15', {funcs: ['guardarPase', 'destinoPase', 'anioExiste', 'avisoPaseAntes', 'tjId', 'sumarPaseT'], vars: ['MESES'],
+    globals: {val: function(id){ return g.campos[id] || ''; }, leerMonto: function(id){ return {ok: true, v: Number(g.campos[id])}; },
+      errorEn: function(id, t){ g.notas.push(t); }, aplicarPase: function(p){ g.aplicados.push(p); return true; },
+      cerrarHoja: function(){}, renderTrabajo: function(){}, toast: function(){}, fARS: function(n){ return '$' + n; }, tjAntes: null, obsoleta: false,
+      document: {getElementById: function(){ return {focus: function(){}}; }, querySelector: function(){ return g.boton; }}}});
+  a.resumenTrab = function(){ return {paraPasar: 500000}; };
+  a.g = g; return a;
+}
+test('M1: a pase dated before the model months warns, asks to confirm, and only then is saved', function(){
+  var a = appPase('2026-03-10');
+  assert.notEqual(a.avisoPaseAntes(a.destinoPase()), '');
+  a.guardarPase();
+  assert.equal(a.g.aplicados.length, 0, 'not saved on the first tap');
+  assert.match(a.g.notas[0], /Esa fecha es anterior a desde cuándo llevás el saldo mes a mes: esa plata no se va a reflejar en el disponible/);
+  assert.equal(a.g.boton.textContent, 'Pasar igual');
+  a.guardarPase();
+  assert.equal(a.g.aplicados.length, 1, 'saved after confirming');
+});
+test('M1: a pase dated inside the model months is saved on the first tap, with no warning', function(){
+  var a = appPase('2026-09-10');
+  assert.equal(a.avisoPaseAntes(a.destinoPase()), '');
+  a.guardarPase();
+  assert.equal(a.g.aplicados.length, 1);
+  assert.equal(a.g.notas.length, 0);
+});
