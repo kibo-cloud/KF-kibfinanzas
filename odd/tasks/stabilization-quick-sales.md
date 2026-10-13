@@ -97,6 +97,20 @@ Verification per commit: `npm test` 0 fail before each commit (gated script); `n
 and on the final head (see S6/handoff). Test pins touched on purpose: r4.anio model-year summary (L1), harness function lists (usd-vistas,
 r45-harness, r4.migracion, l8.diario, r4.cobertura, r4.integracion, seguridad), inventario.data (`derivaAnioPrevio`).
 
+### S2/S3 independent review fixes
+
+One fix per commit, each with a RED test first and a mutation check (the reverted line makes the new test fail). No money rule
+changes, motor goldens byte-identical, APPVER 1.33.0 / sw v46 kept, CSP hashes regenerated in index.html and privacidad.html.
+`npm test` 855 (854 pass + 1 todo), `npm run test:e2e` 534/534.
+
+| Finding | Repro | Fix | Test |
+|---|---|---|---|
+| MEDIUM — undo of a quick sale in a stale tab replaced `T` from `tjAntes` before `guardarTrab`; the save was refused but memory and screen showed the undo and the toast said "Listo, quedó como antes". | Sale → another tab saves Trabajo → Deshacer: memory 0 sales / stock 3, storage unchanged, toast shown. | `deshacerTj` returns up front on `trabVieja()` (other-tab notice), nothing changes (`d2e6cab`). | `S3-R1` (s3.ventas); L-08 harness gets `trabVieja`. |
+| MEDIUM — quick-expense undo found the row by its position `fi`; after deleting/reordering OTHER rows a different same-named row sat there. | `[Luz, Super 0, Super 70000✓]`, +20000 to the first Super, delete Luz, Deshacer → `[Super 20000✓, Super 50000✓]`. | `anotarMov` stores `fo` (place among rows with the same name) and `fn` (how many had that name); undo takes the `fo`-th same-named row only while there are still `fn` of them, otherwise changes nothing and says "No encontré el renglón para deshacer". `fi` is kept as a hint for older versions; movements without `fo` keep the old fi / first-by-name path. `normalizar` keeps `fo` (integer ≥ 0) and `fn` (integer ≥ 1) (`49ac393`). | `M2-R` ×4 (s2.auditoria): other row deleted, Ordenar (`aplicarOrden`), target row deleted, normalizar. |
+| LOW-MEDIUM — with a future year open, the "Dólares mes a mes" table got "a hoy" from today's year but subtracted the open year's `usdAnioAnterior`. | Today 2026-11-10, 2027 created: 2027's "A hoy" row showed Entraron (US$ 200,00) with 2026's US$ 1.100. | `renderUSD` renders the table and its subtitle from the open year's own model (`patrimonioPantalla(D, hoy, true)` skips the swap); the hero and composition stay "a hoy" from today's year (`0ef5d3b`). | `H2-R` (s2.auditoria). |
+| LOW — the H1 "Diciembre cambió" notice compared December against the editable starting fields, so editing them on purpose raised it. | Edit `usdAnioAnterior` / `ahorroAnioAnterior` / a plan's `pagadasAntes` in the new year → notice. | `duplicar` stores `copiaDiciembre` {ahorro, aReponer, usd, cuotas} (year-level, kept by `normalizar`, junk dropped, never invented); the notice compares December against it. A year created before this has no snapshot and shows no notice (nothing to compare against) (`07601db`). | `H1-R` ×3 (s2.auditoria): manual edit → none; real change → notice; normalizar / old year. |
+| LOW — "a plazo, sin cobrar" was `hoyVendido − cobradoHoy`, so a same-day cobro of today's a-plazo sale did not lower it. | Cash 30000 + a-plazo 70000 today, cobro 20000 on it → "sin cobrar $70000". | `resumenTrab` sums `saldoFac(f)` of today's a-plazo sales (`hoyAPlazo`); `lineaHoy` shows that (`215f391`). | `S3-R5` (s3.ventas); the L3 unit test passes `hoyAPlazo`. |
+
 ### S1 — Pending decisions (review 2026-10-12)
 
 None of these has an owner answer recorded; the built defaults stay and nothing is marked resolved. Each keeps
