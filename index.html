@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1+qBvcl2GMAluCUYw4i+OJGBaH+KeJmbqI2Oz/29mJk=' 'sha256-uDE5/JyL1VTwfKodYTLjAUMMrgM5/P0r+fEkSJaaeyo='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1+qBvcl2GMAluCUYw4i+OJGBaH+KeJmbqI2Oz/29mJk=' 'sha256-UWlSO2Xk7lucHreUUdR7DR7bJkKyrsyEco4BBr12rF8='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -4944,6 +4944,16 @@ function avisarRestauro(total, fallaron, trabajoFallo, saltados){
     + '<b>' + falta.join(', ') + '</b>.<br><br>Puede ser que el navegador no tenga más lugar o que tenga el almacenamiento bloqueado. Lo que ya había de eso en este teléfono sigue como estaba. Liberá espacio y probá de nuevo, o abrí la copia en otro navegador.'
     + (nota ? '<br><br>' + nota : ''));
 }
+/* S2 M3 (OWNER_DECISION_REQUIRED, aviso provisorio): restaurar escribe los años de la copia y Trabajo solo si viene en ella. Si la copia no
+   trae Trabajo, o trae uno que pasó plata a años que no vienen, los renglones "Del trabajo" pueden quedar sin su Trabajo: se dice antes de confirmar. */
+function avisoCopiaTrabajo(j, claves){
+  if(!(j.trabajo && typeof j.trabajo === 'object')) return tieneTrab() ? ' La copia no trae Trabajo: se mantiene el Trabajo de este teléfono, y lo que pasaste a lo personal puede no coincidir con los años que trae la copia.' : '';
+  var ps = Array.isArray(j.trabajo.pases) ? j.trabajo.pases : [], faltan = [];
+  ps.forEach(function(p){ var a = String(p && p.fecha || '').slice(0, 4); if(anioValido(a) && claves.indexOf(a) < 0 && faltan.indexOf(a) < 0) faltan.push(a); });
+  faltan.sort();
+  return faltan.length ? ' Ese Trabajo pasó plata a lo personal en ' + faltan.join(', ') + ', pero la copia no trae ' + faltan.join(', ')
+    + ': ahí quedan los renglones de este teléfono, que pueden no coincidir.' : '';
+}
 function restaurarTexto(txt){
   (function(){
     var j;
@@ -4977,6 +4987,7 @@ function restaurarTexto(txt){
     abrirHoja('<h3>Restaurar copia</h3><div class="texto" style="margin-bottom:16px">La copia trae ' + claves.length + (claves.length === 1 ? ' año: ' : ' años: ')
       + '<b>' + claves.join(', ') + '</b>. Va a <b>reemplazar</b> lo que tengas guardado de esos años en este teléfono.'
       + (j.trabajo && typeof j.trabajo === 'object' ? ' También trae tus datos de trabajo (' + descTrabajo(j.trabajo) + '), que reemplazan a los de este teléfono.' : '')
+      + avisoCopiaTrabajo(j, claves)
       + '</div>'
       + '<div class="fila"><button data-act="cerrarHoja">Cancelar</button><button class="pri mal" data-act="confirmar">Reemplazar</button></div>');
   })();

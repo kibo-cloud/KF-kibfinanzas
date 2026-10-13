@@ -229,3 +229,24 @@ test('M1: a pase dated inside the model months is saved on the first tap, with n
   assert.equal(a.g.aplicados.length, 1);
   assert.equal(a.g.notas.length, 0);
 });
+
+// ── M3 (OWNER_DECISION_REQUIRED, interim notice only): the restore confirmation says when the backup brings no Trabajo, or a Trabajo whose
+// pases go to years the backup does not bring (those "Del trabajo" rows stay as they are on this phone) ──
+function hojaRestaurar(copia, conTrab){
+  var ls = H.fakeStorage({}), a = H.appAlmacen(ls, '2026-10-15', {tieneTrab: function(){ return !!conTrab; }}, ['avisoCopiaTrabajo', 'descTrabajo', 'fARS', 'esc']);
+  a.D = a.normalizar(C.vacio(2026), a.hoy);
+  a.restaurarTexto(JSON.stringify(copia));
+  return a.g.hojas[a.g.hojas.length - 1] || '';
+}
+test('M3: a backup without Trabajo says the Trabajo of this phone is kept', function(){
+  var h = hojaRestaurar({app: 'kibFinanzas', version: 1, anios: {2026: C.vacio(2026)}}, true);
+  assert.match(h, /La copia no trae Trabajo: se mantiene el Trabajo de este teléfono/);
+  assert.doesNotMatch(hojaRestaurar({app: 'kibFinanzas', version: 1, anios: {2026: C.vacio(2026)}}, false), /no trae Trabajo/);
+});
+test('M3: a backup whose Trabajo passed money to a year it does not bring says which year', function(){
+  var tr = H.trab([{fecha: '2025-12-20', monto: 1000}, {fecha: '2026-03-01', monto: 2000}], 5000);
+  var h = hojaRestaurar({app: 'kibFinanzas', version: 1, anios: {2026: C.vacio(2026)}, trabajo: tr}, true);
+  assert.match(h, /no trae 2025/);
+  var tr2 = H.trab([{fecha: '2026-03-01', monto: 2000}], 5000);
+  assert.doesNotMatch(hojaRestaurar({app: 'kibFinanzas', version: 1, anios: {2026: C.vacio(2026)}, trabajo: tr2}, true), /no trae/);
+});
