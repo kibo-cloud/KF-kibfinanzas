@@ -251,7 +251,7 @@ function fakeStorage(init, rechaza){
 }
 var FUNCS = ['claveMia', 'dos', 'revGuardada', 'claveCuarentena', 'ponerEnCuarentena', 'cuarentenaAntesDeBorrar', 'avisoCuarentena', 'esc', 'escribirConRev', 'avisoOtraPestana', 'hayEdicion', 'alCambiarOtraPestana', 'recargarDesdeAlmacenamiento',
   'asegurarSnapshotR4', 'respaldoR4', 'diasDelRespaldoR4', 'vencerRespaldoR4', 'volverAntesDeR4', 'ctxModelo', 'cierreAnioAnterior', 'activarSaldos',
-  'guardar', 'guardarTrab', 'blobAlDia', 'leerAnio', 'aniosGuardados', 'normTrab', 'leerTrab', 'anioValido', 'escribirAnios', 'armarCopia', 'restaurarTexto', 'avisoCopiaGrande', 'duplicar', 'avisarRestauro'];
+  'guardar', 'guardarTrab', 'blobAlDia', 'leerAnio', 'aniosGuardados', 'normTrab', 'leerTrab', 'anioValido', 'escribirAnios', 'armarCopia', 'restaurarTexto', 'avisoCopiaTrabajo', 'avisoCopiaGrande', 'duplicar', 'avisarRestauro'];
 var VARS = ['PREF', 'LSANIO', 'LSCOPIA', 'LSOCULTO', 'LSBIENV', 'LSHIST', 'LSTRAB', 'LSVISTA', 'LSR4', 'LSAVCIERRE', 'LSDATOSDESDE', 'LSCOPIAPOS', 'CLAVES_PROPIAS', 'sucio', 'arrancado', 'obsoleta', 'pendiente', 'MAX_COPIA', 'LSCUAR', 'LSDIARIO'];
 function nuevaApp(ls, today, extra){
   var g = {localStorage: ls, pildoras: [], recargas: 0, renders: 0, alertas: [], hojas: [], ultPild: 0};
@@ -349,6 +349,28 @@ test('volverAntesDeR4 ignores foreign keys that a snapshot may contain and does 
   assert.equal(ls.d['kibo.datos.2026'], 'viejo');
   assert.equal(ls.d['kibo.otraApp'], 'vivo');
   assert.equal(ls.d['otro.suelto'], undefined);
+});
+
+test('L8 an interrupted volverAntesDeR4 is honest, keeps the snapshot (never retaken from the half state) and a retry finishes it', function(){
+  var falla = false, ls = fakeStorage(PROPIAS, function(k){ return falla && k === 'kibo.datos.2025'; }), app = nuevaApp(ls);
+  app.asegurarSnapshotR4();
+  var snap = ls.d['kibo.respaldo.pre-r4'];
+  ls.d['kibo.datos.2026'] = '{"a":99}';
+  falla = true;
+  app.volverAntesDeR4();   // the marker and the own keys are gone, kibo.datos.2025 does not fit: half state
+  assert.equal(app.g.recargas, 0);
+  assert.match(app.g.pildoras[0][0], /^No se pudo terminar de restaurar\. El respaldo sigue guardado/);
+  assert.equal(ls.d['kibo.modeloSaldos'], undefined);
+  assert.equal(ls.d['kibo.respaldo.pre-r4'], snap, 'the snapshot is removed last');
+  assert.equal(app.asegurarSnapshotR4(), true, 'a model write in the half state');
+  assert.equal(ls.d['kibo.respaldo.pre-r4'], snap, 'the half state never replaces the pre-model snapshot');
+  assert.ok(ls.d['kibo.modeloSaldos']);
+  falla = false;
+  app.volverAntesDeR4();
+  assert.equal(app.g.recargas, 1);
+  Object.keys(PROPIAS).forEach(function(k){ assert.equal(ls.d[k], PROPIAS[k], k); });
+  assert.equal(ls.d['kibo.respaldo.pre-r4'], undefined);
+  assert.equal(ls.d['kibo.modeloSaldos'], undefined);
 });
 
 // ── 5. activarSaldos: snapshot first, then the model, idempotent ──

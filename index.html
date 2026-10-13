@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-13IJeOyEKqFZVOOFHo7ITxTuXUuIFB+El4nbN4kXJNQ=' 'sha256-Fy9mjYp0OtOTCQWecdOhlWGxO711Gnndj7OlGLb9aWs='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-m0FsNrKE73h2m1lGiYUqZD6t4bAlfJSonNC+5xnK/pA=' 'sha256-Ze6iYaTadz6LUkhUKwQ73QmJOn3Uy/DzEJjcAL4hlSo='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -83,6 +83,7 @@ html[data-tema="oscuro"]{
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0;overflow-x:hidden}
+body{overflow-x:clip}   /* S3c: clip, not hidden: a hidden body is a scroll container of its own, so nothing sticky (the header, the product toolbar) ever stuck */
 body{
   background:var(--bg); color:var(--txt);
   font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;
@@ -440,7 +441,19 @@ button.tj-f:active{background:var(--fill)}
 .tj-modo{margin-bottom:6px}
 .tj-prods{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
 .tj-phd{display:flex;gap:8px;align-items:center;margin-top:14px}
-.tj-busca{flex:1;min-width:0;height:40px;padding:0 12px;border-radius:12px;border:1px solid var(--sep);background:var(--card);color:var(--txt);font:inherit;font-size:16px;-webkit-appearance:none;appearance:none}
+/* S3c: la barra de productos, fija debajo del encabezado (con su fondo, para que la grilla pase por debajo) */
+.tj-zona{position:relative}
+.tj-zona>.tj-phd{position:sticky;top:var(--hd-alto,calc(57px + env(safe-area-inset-top)));z-index:6;margin-top:6px;padding:8px 0;background:var(--bg);box-shadow:0 0 0 16px var(--bg);clip-path:inset(0 -16px)}
+.tj-nuevo{flex:0 0 auto;height:var(--tap);min-height:0;padding:0 14px;border-radius:12px;background:var(--acc);color:var(--on-acc);font-size:15px;font-weight:700;white-space:nowrap}
+.tj-nuevo:active{opacity:.85}
+.tj-prod-vacio{margin-top:14px;padding:16px;border-radius:14px;background:var(--card);border:1px dashed var(--sep);text-align:center}
+.tj-prod-vacio p{margin:0 0 12px;font-size:14px;color:var(--txt2);line-height:1.4}
+.tj-prod-vacio p b{display:block;font-size:16px;color:var(--txt);margin-bottom:2px}
+.tj-prod-vacio .tj-nuevo{width:100%;font-size:16px}
+.tj-carps.mas-der{-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 40px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 40px),transparent)}
+.tj-carps.mas-izq{-webkit-mask-image:linear-gradient(to left,#000 calc(100% - 40px),transparent);mask-image:linear-gradient(to left,#000 calc(100% - 40px),transparent)}
+.tj-carps.mas-izq.mas-der{-webkit-mask-image:linear-gradient(to right,transparent,#000 40px,#000 calc(100% - 40px),transparent);mask-image:linear-gradient(to right,transparent,#000 40px,#000 calc(100% - 40px),transparent)}
+.tj-busca{flex:1;min-width:0;height:var(--tap);padding:0 12px;border-radius:12px;border:1px solid var(--sep);background:var(--card);color:var(--txt);font:inherit;font-size:16px;-webkit-appearance:none;appearance:none}
 .tj-busca::placeholder{color:var(--txt2)}
 .tj-busca:focus{outline:none;border-color:var(--acc)}
 .tj-vista{flex:0 0 auto;width:40px;height:40px;min-height:0;padding:0;border-radius:12px;background:var(--fill);color:var(--txt);display:flex;align-items:center;justify-content:center}
@@ -456,7 +469,7 @@ button.tj-f:active{background:var(--fill)}
 .pt.gen{background:transparent;border:2px solid var(--txt2)}
 .tj-carps button.on .pt{box-shadow:0 0 0 2px #fff}
 .tj-carp{margin-top:10px}
-.tj-carp-hd{display:flex;align-items:center;gap:8px;width:100%;min-height:36px;padding:4px 2px;background:none;color:var(--txt);text-align:left}
+.tj-carp-hd{display:flex;align-items:center;gap:8px;width:100%;min-height:var(--tap);padding:4px 2px;background:none;color:var(--txt);text-align:left}
 .tj-carp-hd b{font-size:15px;font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tj-carp-hd i{flex:1}
 .tj-carp.cerrada .chev{transform:rotate(-45deg)}
@@ -470,7 +483,7 @@ button.tj-f:active{background:var(--fill)}
 .tj-cols.apagado{opacity:.35;pointer-events:none}
 .tj-sinres{font-size:13px;color:var(--txt2);text-align:center;padding:14px 0 4px}
 .tj-prods.compacta{gap:6px}
-@media (min-width:380px){.tj-prods.compacta{grid-template-columns:1fr 1fr 1fr}.tj-prods.compacta .tj-prod .vp{font-size:17px!important}.tj-prods.compacta .tj-prod .vp.l{font-size:14px!important;letter-spacing:-.01em}}
+@media (min-width:430px){.tj-prods.compacta{grid-template-columns:1fr 1fr 1fr}.tj-prods.compacta .tj-prod .vp{font-size:17px!important}.tj-prods.compacta .tj-prod .vp.l{font-size:14px!important;letter-spacing:-.01em}}
 .tj-prods.compacta .tj-prod{min-height:0;padding:7px 9px;border-radius:12px}
 .tj-prods.compacta .tj-pw .nom{font-size:13px;line-height:1.2;padding-right:0}
 .tj-prods.compacta{row-gap:12px;padding-top:4px}
@@ -488,25 +501,39 @@ button.tj-f:active{background:var(--fill)}
 .tj-prod .vc{font-size:11.5px;color:var(--txt2);opacity:.85;margin-top:1px}
 .tj-pw{position:relative;display:flex;min-width:0}
 .tj-pw>.tj-prod{flex:1;min-width:0;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
-.tj-pw .nom{padding-right:28px}
-.tj-medio{position:absolute;top:5px;right:5px;width:32px;height:32px;min-height:0;padding:0;border-radius:10px;background:var(--fill);font-size:16px;line-height:32px;text-align:center}
-.tj-medio:active{background:var(--acc-soft)}
+.tj-pw .nom{padding-right:34px}
+.tj-medio{position:absolute;top:0;right:0;z-index:1;isolation:isolate;width:var(--tap);height:var(--tap);min-height:0;padding:0;border-radius:0 14px 0 12px;background:none;font-size:16px;display:flex;align-items:center;justify-content:center}
+.tj-medio::before{content:'';position:absolute;top:6px;right:6px;width:32px;height:32px;border-radius:10px;background:var(--fill);z-index:-1}
+.tj-medio:active::before{background:var(--acc-soft)}
+/* S3b: el "⋮" de cada producto, fuera del botón que vende: abajo a la derecha (vista completa) o una franja a la derecha (grilla compacta); 44 px */
+.tj-opc{position:absolute;right:0;bottom:0;z-index:1;width:var(--tap);height:var(--tap);min-height:0;padding:0;border-radius:12px 0 14px 0;background:none;color:var(--txt2);display:flex;align-items:center;justify-content:center}
+.tj-opc svg{width:18px;height:18px;fill:currentColor}
+.tj-opc:active{background:var(--acc-soft)}
+.tj-prods:not(.compacta) .tj-prod{min-height:98px;display:flex;flex-direction:column;justify-content:flex-start}
+.tj-prods:not(.compacta) .tj-prod .vg,.tj-prods:not(.compacta) .tj-prod .vc{padding-right:34px}
+.tj-prods.compacta .tj-opc{top:0;height:auto;border-radius:0 12px 12px 0}
+.tj-prods.compacta .tj-pw>.tj-prod{padding-right:var(--tap);min-height:var(--tap)}
+.tj-prods.compacta .sb{pointer-events:none}
 .tj-pw.agot>.tj-prod{opacity:.5;box-shadow:none}
 .tj-prod .vc .ag{color:var(--neg);font-weight:600}
 .tj-cobra{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
-.tj-medios{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin:12px 0 14px;position:relative}
-.tj-md{min-width:0;padding:10px 12px;border-radius:14px;display:flex;flex-direction:column;justify-content:space-between}
-.tj-md.dig{background:var(--dig-soft)} .tj-md.efe{background:var(--acc-soft)}
-.tj-md small{display:block;font-size:12px;font-weight:600;line-height:1.25;margin-bottom:3px}
-.tj-md.dig small{color:var(--dig)} .tj-md.efe small{color:var(--acc)}
-.tj-md b,.tj-mt b{display:block;color:var(--txt);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tj-md b{font-size:18px;font-weight:700;letter-spacing:-.02em;line-height:1.2}
-.tj-md b.largo{font-size:15px}
-.tj-mt{grid-column:1 / -1;min-width:0;padding:12px 14px;border-radius:14px;background:var(--card2);border:1px solid var(--sep)}
-.tj-mt small{display:block;font-size:12px;color:var(--txt2)}
-.tj-mt b{font-size:28px;font-weight:700;letter-spacing:-.03em;line-height:1.15;margin-top:1px}
-.tj-mt b.largo{font-size:23px}
-@media (max-width:370px){.tj-md b{font-size:16px}.tj-md b.largo{font-size:14px}}
+/* S3a: cobrado en el mes, efectivo contra digital (torta + leyenda; la tabla oculta repite los números para el lector de pantalla) */
+.tj-cob{margin:10px 0 12px;padding:10px 14px;border-radius:14px;background:var(--card2);border:1px solid var(--sep);min-width:0}
+.tj-cob small{display:block;font-size:12px;color:var(--txt2)}
+.tj-cob-hd b{display:block;font-size:24px;font-weight:700;letter-spacing:-.03em;line-height:1.15;margin-top:1px;color:var(--txt);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tj-cob-hd b.largo{font-size:20px}
+.tj-cob-cu{display:flex;align-items:center;gap:14px;margin-top:6px;min-width:0}
+.tj-cob-torta{flex:0 0 76px;width:76px;height:76px;display:block}
+.tj-cob-ley{flex:1;min-width:0;max-width:380px}
+.tj-cob-f{display:grid;grid-template-columns:10px minmax(0,1fr) auto;grid-template-areas:"i n b" ". p p";column-gap:8px;align-items:center;padding:4px 0;font-size:14px;min-width:0}
+.tj-cob-f+.tj-cob-f{border-top:1px solid var(--sep)}
+.tj-cob-f i{grid-area:i;width:10px;height:10px;border-radius:3px;background:var(--dig)}
+.tj-cob-f.efectivo i{background:var(--acc)}
+.tj-cob-f .n{grid-area:n;min-width:0;line-height:1.25;overflow-wrap:break-word}
+.tj-cob-f .p{grid-area:p;font-size:12px;color:var(--txt2);font-variant-numeric:tabular-nums}
+.tj-cob-f b{grid-area:b;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tj-cob.vacio p{margin:4px 0 0;font-size:14px;color:var(--txt2);line-height:1.4}
+.tj-sr{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .tj-cobra button{min-height:56px;border-radius:14px;font-size:17px;font-weight:600;background:var(--acc);color:var(--on-acc)}
 .tj-cobra button.sec{background:var(--fill);color:var(--txt)}
 .tj-cobra button:active{transform:scale(.975);transition-duration:var(--toque)}
@@ -2031,6 +2058,12 @@ function normalizar(d, hoy){
   d.ahorroAnioAnterior = num(d.ahorroAnioAnterior);
   d.usdAnioAnterior = num(d.usdAnioAnterior);
   d.aReponerAnterior = num(d.aReponerAnterior);   // lo que quedó por reponer al ahorro al cerrar el año anterior
+  // S2 H1: lo que duplicar() copió de diciembre del año anterior (para avisar si diciembre cambia después); un año sin esto no se inventa
+  if(d.copiaDiciembre && typeof d.copiaDiciembre === 'object'){
+    var cdOrig = d.copiaDiciembre, cdc = cdOrig.cuotas && typeof cdOrig.cuotas === 'object' ? cdOrig.cuotas : {};
+    d.copiaDiciembre = {ahorro:num(cdOrig.ahorro), aReponer:num(cdOrig.aReponer), usd:num(cdOrig.usd), cuotas:Object.create(null)};   // llaves = nombres de deudas (N5 S-1)
+    Object.keys(cdc).forEach(function(k){ d.copiaDiciembre.cuotas[k] = Math.max(0, Math.round(num(cdc[k]))); });
+  } else delete d.copiaDiciembre;
   d.cotizacionUSD = num(d.cotizacionUSD) || 1499;
   d.cotizacionFecha = typeof d.cotizacionFecha === 'string' ? d.cotizacionFecha : '';
   if(!Array.isArray(d.cripto)) d.cripto = [{activo:'BTC',cantidad:0,precioUSD:0}];
@@ -2072,6 +2105,9 @@ function normalizar(d, hoy){
       if(typeof x.pp === 'boolean') mo.pp = x.pp;   // pagado que tenía el renglón antes de este gasto: lo usa Deshacer
       if(x.tipo === 'pago' || x.tipo === 'aparte') mo.tipo = x.tipo;   // L3: qué respondió el usuario (Deshacer)
       if(x.tipo === 'pago') mo.ma = num(x.ma);   // L3: monto que tenía el renglón antes de marcarlo pagado (Deshacer)
+      if(typeof x.fi === 'number' && x.fi >= 0 && Math.floor(x.fi) === x.fi) mo.fi = x.fi;   // S2 M2: lugar del renglón que cambió (Deshacer)
+      if(typeof x.fo === 'number' && x.fo >= 0 && Math.floor(x.fo) === x.fo) mo.fo = x.fo;   // S2 M2: cuál de los renglones con ese nombre (0 = el primero)
+      if(typeof x.fn === 'number' && x.fn >= 1 && Math.floor(x.fn) === x.fn) mo.fn = x.fn;   // S2 M2: cuántos renglones tenían ese nombre
       return mo;
     });
     m.metaAhorroPct = m.metaAhorroPct==null ? 0.10 : num(m.metaAhorroPct);
@@ -2658,7 +2694,7 @@ function hoyApp(){ return hoyDe(new Date()); }
 var M1 = '/*DATOS_' + 'INICIO*/';
 var M2 = '/*DATOS_' + 'FIN*/';
 
-var APPVER   = '1.32.0';    // versión visible en Ajustes (LAB)
+var APPVER   = '1.33.0';    // versión visible en Ajustes (LAB)
 var PREF     = 'kibo.datos.';        // kibo.datos.2026, kibo.datos.2027…
 var LSANIO   = 'kibo.anio';
 var LSCOPIA  = 'kibo.ultimaCopia';
@@ -2745,15 +2781,11 @@ function notaCompra(m, acum){
 var DIASEM = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
 var DIASEMC = ['D','L','M','M','J','V','S'];
 function diasDelMes(anio, m){ return new Date(anio, m + 1, 0).getDate(); }
+// U9 review: un cobro por cada fecha de diasCobro (un día repetido es un solo cobro), así "N pagos de $X" y las fechas de "Qué vence"
+// dividen por lo mismo; mensual sin día = 1 cobro, quincenal o días sin días = 0, sin frecuencia = 1
 function cuantosPagos(it, anio, m){
-  if(it.frec === 'semanal'){
-    var d = it.dias.length ? it.dias[0] : 5, n = 0, dim = diasDelMes(anio, m), q;
-    for(q=1;q<=dim;q++) if(new Date(anio, m, q).getDay() === d) n++;
-    return n;
-  }
-  if(it.frec === 'quincenal' || it.frec === 'dias' || it.frec === 'mensual'){
-    var dim2 = diasDelMes(anio, m), c = 0, w;
-    for(w=0;w<it.dias.length;w++) if(it.dias[w] >= 1 && it.dias[w] <= dim2) c++;
+  if(it.frec === 'semanal' || it.frec === 'quincenal' || it.frec === 'dias' || it.frec === 'mensual'){
+    var c = diasCobro(it, anio, m).length;
     return c || (it.frec === 'mensual' ? 1 : 0);
   }
   return 1;
@@ -2862,15 +2894,24 @@ document.addEventListener('keydown', function(ev){
   ev.preventDefault(); l[i].focus();
 });
 // L7: con los montos ocultos, el lector de pantalla dice "oculto" en vez de leer cuatro puntos
-function rotularOcultos(){
+// U8: recorre solo las raíces que cambiaron (sin raíces, toda la página); una raíz dentro de otra de la lista no se recorre dos veces
+function rotularOcultos(raices){
   if(!oculto || !document.createTreeWalker) return;
-  var raiz = document.body, w = document.createTreeWalker(raiz, 4, null), n, l = [];
-  while((n = w.nextNode())){
+  var l = [], rs = raices && raices.length ? raices : [document.body], w, n;
+  var mirar = function(n){
     var p = n.parentNode;
-    if(n.nodeValue.indexOf(PUNTOS) < 0 || !p || p.namespaceURI !== 'http://www.w3.org/1999/xhtml') continue;
-    if(/^(SCRIPT|STYLE|TEXTAREA|OPTION|TITLE)$/.test(p.nodeName) || (p.classList && p.classList.contains('oc'))) continue;
-    l.push(n);
-  }
+    if(n.nodeValue.indexOf(PUNTOS) < 0 || !p || p.namespaceURI !== 'http://www.w3.org/1999/xhtml') return;
+    if(/^(SCRIPT|STYLE|TEXTAREA|OPTION|TITLE)$/.test(p.nodeName) || (p.classList && p.classList.contains('oc'))) return;
+    if(l.indexOf(n) < 0) l.push(n);
+  };
+  rs = rs.filter(function(r, i){
+    return r && document.body.contains(r) && rs.indexOf(r) === i && !rs.some(function(o){ return o !== r && o && o.contains && o.contains(r); });
+  });
+  rs.forEach(function(r){
+    if(r.nodeType === 3){ mirar(r); return; }
+    w = document.createTreeWalker(r, 4, null);
+    while((n = w.nextNode())) mirar(n);
+  });
   l.forEach(function(n){
     var f = document.createDocumentFragment();
     n.nodeValue.split(PUNTOS).forEach(function(x, i){
@@ -2880,7 +2921,28 @@ function rotularOcultos(){
     n.parentNode.replaceChild(f, n);
   });
 }
-if(window.MutationObserver && document.body) new MutationObserver(function(){ if(oculto) rotularOcultos(); }).observe(document.body, {childList: true, subtree: true, characterData: true});
+// U8: los cambios de un mismo cuadro se juntan y se rotulan una vez, en el próximo requestAnimationFrame, recorriendo solo lo que cambió
+// (un contador animado ya no hace recorrer toda la página en cada paso). Al pasar a ocultos, la primera vez se recorre toda la página.
+// El rotulado no se observa a sí mismo: mientras cambia la página la observación está desconectada (lo que otro código cambió antes en el
+// mismo cuadro se toma con takeRecords y entra en esta pasada)
+var ocRaices = null, ocVisto = false, ocObs = null, OC_OPC = {childList: true, subtree: true, characterData: true};
+function observarOcultos(recs){
+  if(!oculto){ ocVisto = false; return; }
+  var prim = !ocRaices, i;
+  if(prim) ocRaices = [];
+  if(!ocVisto){ ocVisto = true; ocRaices.todo = true; }
+  for(i=0;i<recs.length && !ocRaices.todo;i++) ocRaices.push(recs[i].target);
+  if(ocRaices.length > 50) ocRaices.todo = true;
+  if(prim) (window.requestAnimationFrame || function(f){ return setTimeout(f, 16); })(function(){
+    var r = ocRaices, pend = ocObs.takeRecords(), j;
+    for(j=0;j<pend.length;j++) r.push(pend[j].target);
+    ocRaices = null;
+    ocObs.disconnect();
+    try{ rotularOcultos(r.todo || r.length > 50 ? null : r); }
+    finally{ ocObs.observe(document.body, OC_OPC); }
+  });
+}
+if(window.MutationObserver && document.body){ ocObs = new MutationObserver(observarOcultos); ocObs.observe(document.body, OC_OPC); }
 function scrollLateral(el){
   try{ var ov = window.getComputedStyle(el).overflowX; return ov === 'auto' || ov === 'scroll'; }
   catch(e){ return true; }   // si no se puede saber, se comporta como antes
@@ -3312,14 +3374,22 @@ function htmlVence(l, hoy){
   if(l.length > VENCE_MAX) h += '<div class="nota vence-mas">Y ' + (l.length - VENCE_MAX) + ' más: los ves en sus secciones' + (T && T.activo ? ' y en Trabajo' : '') + '.</div>';
   return h + '</div>';
 }
+// el renglón de la lista en pantalla, solo si en ese lugar de los datos sigue el mismo (mismo nombre) que cuando se armó la lista
+function filaVence(x){
+  var it = ((D.meses[x.mes] || {})[x.k] || [])[x.i], nm = document.querySelector('#v-mes .sec[data-sec="' + x.k + '"] input.nombre[data-i="' + x.i + '"]');
+  return it && String(it.nombre || '') === x.nombre && nm ? nm.closest('.item') : null;
+}
 // tocar un renglón: una factura abre su detalle; un renglón del plan abre su mes y su sección, lo trae a la vista y lo marca un momento
 function irVence(n){
   var x = venceL[n], el, sec;
   if(!x) return;
   if(x.id){ verFactura(x.id); return; }
   if(x.mes !== mes){ mes = x.mes; renderMes(); }
-  el = document.querySelector('#v-mes .sec[data-sec="' + x.k + '"] input.monto[data-i="' + x.i + '"]');
-  el = el && el.closest('.item'); if(!el) return;
+  el = filaVence(x);
+  // U7: si la sección muestra la frase de vacío en vez de sus renglones, primero se abren; si el renglón ya no está (la lista quedó vieja
+  // por un cambio en otra pestaña o una edición), se redibuja y se avisa: nunca falla en silencio
+  if(!el && !filasVer()[x.k]){ filasVer()[x.k] = true; renderMes(); el = filaVence(x); }
+  if(!el){ renderMes(); toast('Ese renglón cambió desde que se armó la lista: la actualicé.'); return; }
   sec = el.closest('.sec');
   if(sec && sec.classList.contains('cerrada')){ D.ui.col[x.k] = false; sec.classList.remove('cerrada'); tocar(); }
   if(el.scrollIntoView) el.scrollIntoView({behavior: menosMovimiento() ? 'auto' : 'smooth', block: 'center'});
@@ -3486,7 +3556,9 @@ function guardarTopes(k, adelante){
 // P3a: lo que falta de una sección (lo cargado sin tildar) de un mes pasado o en curso, con la misma regla que ya cuenta el motor:
 // en un mes del modelo la de flujosMes (pendiente; de "Del trabajo" solo lo que sus pases no cubren), en uno legacy calc() (pendienteX).
 // Un mes futuro no tiene "falta": todo es programado. No es una regla nueva: sumadas, las secciones dan flujosMes / calc().
-var verFilas = {};   // P3a: secciones vacías que el usuario abrió con "Cargar …" (solo en esta pestaña)
+var verFilas = {d: null};   // P3a: secciones vacías que el usuario abrió con "Cargar …" (solo en esta pestaña)
+// U2: valen para el año que estaba abierto (verFilas.d): otro año, una copia restaurada o el año releído vuelven a la frase de vacío
+function filasVer(){ if(verFilas.d !== D) verFilas = {d: D}; return verFilas; }
 function faltaSeccion(d, j, k, hoy){
   if(estadoMes(d.anio, j, hoy) === 'futuro') return 0;
   var m = d.meses[j], ls = m[k] || [], t = 0, i, mo, r;
@@ -3532,7 +3604,7 @@ function seccion(S, m){
      + '<span class="sub"><span id="sub-'+S.k+'">'+fARS(sub)+'</span><small class="falta" id="falta-'+S.k+'">'+textoFalta(faltaSeccion(D, mes, S.k, hoy))+'</small></span><i class="chev"></i></button>';
   h += '<div class="cuerpo">';
   // P3a: un año sin nada cargado muestra cada sección vacía como una frase y un botón (no los renglones en cero de la plantilla)
-  if(lista.length && !verFilas[S.k] && sub === 0 && !hayDatos(D, false)){
+  if(lista.length && !filasVer()[S.k] && sub === 0 && !hayDatos(D, false)){
     return h + '<div class="nota vacia">Todavía no cargaste nada en ' + S.t.toLowerCase() + '.</div>'
          + '<button class="mas" data-act="verFilas" data-k="' + S.k + '">Cargar ' + S.t.toLowerCase() + '</button></div></div>';
   }
@@ -3783,10 +3855,10 @@ function resumenAnio(d, s, vm){   // d: el año de s y vm
   var act = vm ? mesesTranscurridos(s, vm) : mesesCargados(s), i, n = act.length;
   if(n < 2) return '<div class="resumen vacio">'
     + '<div class="res-txt"><p>Cargá ' + (n === 0 ? 'un par de meses' : 'un mes más') + ' y acá te resumo el año: cuánto entra, cuánto se va y con cuánto cerrás.</p></div></div>';
-  var sumG = 0, sumI = 0, sumA = 0, peor = act[0], mejor = act[0], rojos = [];
+  var sumG = 0, sumI = 0, sumA = 0, sumD = 0, peor = act[0], mejor = act[0], rojos = [];
   for(i=0;i<n;i++){
     var c = s[act[i]];
-    sumG += c.totalGastos; sumI += c.totalIngresos; sumA += c.ahorroMesARS;
+    sumG += c.totalGastos; sumI += c.totalIngresos; sumA += c.ahorroMesARS; if(vm) sumD += num(c.totalDeudas);   // S2 L1: solo en un año con modelo (un año sin modelo queda idéntico, D4)
     if(c.totalGastos > s[peor].totalGastos) peor = act[i];
     if(c.totalGastos < s[mejor].totalGastos) mejor = act[i];
     if(mesEnRojo(d, s, act[i], vm)) rojos.push(MESES[act[i]]);
@@ -3798,7 +3870,7 @@ function resumenAnio(d, s, vm){   // d: el año de s y vm
      + '<div class="res-pct"><b>' + Math.round(pct*100) + '%</b>'
      + '<small>de lo que entra lo estás ahorrando</small></div></div>';
   h += '<div class="res-txt">';
-  h += '<p>Por mes entran <b>'+fARS(promI)+'</b> y se van <b>'+fARS(promG)+'</b>. Te quedan <b>'+fARS(promI-promG)+'</b>.</p>';
+  h += '<p>Por mes entran <b>'+fARS(promI)+'</b> y se van <b>'+fARS(promG)+'</b>' + (sumD ? ', más <b>' + fARS(Math.round(sumD/n)) + '</b> de cuotas' : '') + '. Te quedan <b>'+fARS(promI-promG-Math.round(sumD/n))+'</b>.</p>';   // S2 L1: el Resultado de §1 (ingresos − gastos − cuotas)
   h += '<p>Gastaste más en <b>'+MESES[peor]+'</b> y menos en <b>'+MESES[mejor]+'</b>.</p>';
   if(faltan > 0 && promA !== 0) h += '<p>Ahorro a este ritmo en diciembre: <b>'+fARS(s[ultimo].ahorroAcumulado + promA*faltan)+'</b>.</p>';   // L1: un ritmo, no el cierre (ese está arriba, marcado como estimado)
   if(rojos.length) h += '<p class="mal">' + (rojos.length === 1 ? 'En <b>'+rojos[0]+'</b> gastaste' : 'En <b>'+rojos.length+' meses</b> gastaste')
@@ -4074,11 +4146,15 @@ function barras(arr){
 
 // "Patrimonio total" de la pestaña Dólares. Año sin arrastre: patrimonio() de siempre (cierre del año, D4). Año con modelo: el neto de D7
 // a hoy (disponible + ahorro + dólares + cripto + Trabajo, Q2, − deudas), en pesos y en dólares a la cotización guardada.
-function patrimonioPantalla(d, hoy){
+// S2 H2 (§1 "a hoy"): con un año FUTURO abierto (creado antes de que termine el de hoy) el patrimonio a hoy sale del año que contiene hoy,
+// leído de lo guardado, así da lo mismo qué año tengas abierto. Un año pasado abierto muestra su cierre, dicho como "al cierre de <año>".
+function patrimonioPantalla(d, hoy, propio){   // propio: el del año abierto tal cual, sin pasar al año de hoy (la tabla de dólares)
+  if(!propio && d && d.anio > hoy.anio){ var dh = leerAnio(hoy.anio); if(dh && dh.arrastre) d = dh; }
   var vm = vistaModelo(d, hoy); if(!vm) return patrimonio(d);
   vm.ctx.trabajoDisponible = trabajoDisponible();
   var pn = patrimonioNeto(d, hoy, vm.ctx), cot = num(d.cotizacionUSD);
-  return {ahorroARS: pn.ahorroARS, usd: pn.usd, criptoUSD: pn.criptoUSD, patrimonioUSD: cot > 0 ? pn.neto / cot : 0, patrimonioARS: pn.neto, modelo: pn};
+  return {ahorroARS: pn.ahorroARS, usd: pn.usd, criptoUSD: pn.criptoUSD, patrimonioUSD: cot > 0 ? pn.neto / cot : 0, patrimonioARS: pn.neto, modelo: pn,
+          anio: d.anio, cierre: d.anio < hoy.anio};
 }
 // R5 (D7, Q2, Q6, Q14, §6): la composición auditable del patrimonio de un año con modelo. Cada número es un campo de patrimonioNeto
 // (una sola fuente, D13): disponible + ahorro + dólares + cripto + Trabajo = bruto; bruto - deudas = neto. Sin cotización, dólares y cripto
@@ -4100,8 +4176,9 @@ function filasPatrimonio(pn){
 }
 function htmlPatrimonio(p){
   var f = filasPatrimonio(p.modelo), h = '', i, x, det;
-  var etq = {disponible:'Disponible a hoy', ahorro:'Ahorro en pesos', usd:'Dólares', cripto:'Cripto', trabajo:'Plata del trabajo'};
-  h += '<div class="nota">Lo que tenés hoy, parte por parte. Lo de los meses que vienen no cuenta.</div>';
+  var etq = {disponible:p.cierre ? 'Disponible al cierre' : 'Disponible a hoy', ahorro:'Ahorro en pesos', usd:'Dólares', cripto:'Cripto', trabajo:'Plata del trabajo'};
+  h += '<div class="nota">' + (p.cierre ? 'Lo que tenías al cierre de ' + p.anio + ', parte por parte.'
+      : 'Lo que tenés hoy, parte por parte. Lo de los meses que vienen no cuenta.' + (p.anio && D && p.anio !== D.anio ? ' Sale de ' + p.anio + ', el año en el que estamos.' : '')) + '</div>';
   for(i=0;i<f.filas.length;i++){
     x = f.filas[i]; det = '';
     if(x.estimado && x.falta) det = ' <small class="mudo">(' + fUSD(x.usd) + ', falta la cotización)</small>';
@@ -4111,8 +4188,11 @@ function htmlPatrimonio(p){
   h += '<div class="fila-in" data-pat="bruto"><label><b>Patrimonio bruto</b></label><span>' + hARS(f.bruto) + '</span></div>';
   h += '<div class="fila-in" data-pat="deudas"><label>Deudas (lo que te falta pagar)</label><span class="mudo">' + hARS(-f.deudas) + '</span></div>';
   for(i=0;i<f.detalleDeudas.length;i++){
-    h += '<div class="fila-in" data-pat="deuda"><label class="mudo" style="font-size:14px;padding-left:12px">' + esc(f.detalleDeudas[i].nombre) + '</label>'
-       + '<span class="mudo" style="font-size:14px">' + fARS(f.detalleDeudas[i].saldo) + '</span></div>';
+    var dd = f.detalleDeudas[i], suelto = dd.conPlan && D && (!p.anio || p.anio === D.anio) && planSinRenglones(D, dd.nombre);   // S2 L5
+    h += '<div class="fila-in" data-pat="deuda"><label class="mudo" style="font-size:14px;padding-left:12px">' + esc(dd.nombre)
+       + (suelto ? ' <small>(sin cuotas cargadas en ningún mes)</small>' : '') + '</label>'
+       + '<span class="mudo" style="font-size:14px">' + fARS(dd.saldo) + '</span></div>'
+       + (suelto ? '<div class="fila-in" data-pat="deuda-suelta"><label></label><button class="mini" style="min-height:var(--tap)" data-act="quitarPlanSuelto" data-n="' + esc(dd.nombre) + '">Quitar plan</button></div>' : '');
   }
   h += '<div class="fila-in" data-pat="neto"><label><b>Patrimonio neto</b></label><span><b>' + hARS(f.neto) + '</b></span></div>';
   h += '<div class="nota">' + (f.sinCotizacion
@@ -4129,8 +4209,8 @@ function htmlPatrimonio(p){
    el patrimonio sale de patrimonioPantalla (patrimonioNeto a hoy en un año con modelo, patrimonio() de siempre sin modelo). */
 function htmlHeroPatri(p){
   var sinCot = !!p.modelo && !(p.modelo.cotizacion > 0);
-  var lbl = p.modelo ? 'Patrimonio neto a hoy' : 'Todo junto al cierre del año';
-  var chip = p.modelo ? '<span class="chip real">A hoy</span>' : '<span class="chip prog">Cálculo simple</span>';
+  var lbl = p.modelo ? (p.cierre ? 'Patrimonio neto al cierre de ' + p.anio : 'Patrimonio neto a hoy') : 'Todo junto al cierre del año';
+  var chip = p.modelo ? (p.cierre ? '<span class="chip real">Al cierre</span>' : '<span class="chip real">A hoy</span>') : '<span class="chip prog">Cálculo simple</span>';
   return '<div class="saldo hero" id="heroPatri" data-modo="' + (p.modelo ? 'hoy' : 'simple') + '">'
      +   '<div class="final"><small class="hero-lbl">' + lbl + '</small>'
      +     '<div class="final-fila"><div class="big ' + (p.patrimonioARS < 0 ? 'mal' : 'ok') + '" id="bigPatri">' + fARS(p.patrimonioARS) + '</div></div>'
@@ -4139,8 +4219,15 @@ function htmlHeroPatri(p){
 }
 // L1 (hallazgo 5, Q13, I5): en un año con modelo los dólares "a hoy" son los de patrimonioNeto (el mismo número que la composición) y lo
 // que entra en un mes futuro es programado: la tabla lo marca y el total no lo mezcla (a hoy por un lado, con lo programado por el otro)
+// U4a: lo mismo con lo que pagaste: "A hoy" y el párrafo cuentan solo las compras de los meses ya pasados (o el actual); una compra de
+// un mes futuro va en "Con lo programado" y en su propia línea "en el año, con lo programado"
+function costoDolaresHoy(d, hoy){
+  var ars = 0, usd = 0;
+  for(var i=0;i<12;i++) if(!esProgramado(d, i, hoy)){ ars += num(d.meses[i].compraARS); usd += num(d.meses[i].compraUSD); }
+  return {ars: ars, usd: usd, promedio: usd > 0 ? ars/usd : 0};
+}
 function htmlDolaresMes(d, s, p, hoy){
-  var cd = costoDolares(d), i, prog, h = '<div class="tabla"><table><thead><tr>'
+  var cd = costoDolares(d), ch = p.modelo ? costoDolaresHoy(d, hoy) : cd, conProg = !!p.modelo && cd.usd !== ch.usd, i, prog, h = '<div class="tabla"><table><thead><tr>'
      + '<th>Mes</th><th>Entraron</th><th>Pagados a</th><th>Acumulado</th><th>En pesos hoy</th></tr></thead><tbody>';
   for(i=0;i<12;i++){
     prog = !!p.modelo && esProgramado(d, i, hoy);
@@ -4150,19 +4237,22 @@ function htmlDolaresMes(d, s, p, hoy){
   if(!p.modelo) h += '<tr class="tot"><td>Cierre</td><td>' + hUSD(s[11].usdAcumulado - num(d.usdAnioAnterior)) + '</td><td>' + (cd.promedio ? fARS(cd.promedio) : '—') + '</td>'
      + '<td>' + hUSD(s[11].usdAcumulado) + '</td><td>' + hARS(s[11].equivalenteARS) + '</td></tr>';
   else {
-    h += '<tr class="tot" data-usd="hoy"><td>A hoy</td><td>' + hUSD(p.usd - num(d.usdAnioAnterior)) + '</td><td>' + (cd.promedio ? fARS(cd.promedio) : '—') + '</td>'
+    h += '<tr class="tot" data-usd="hoy"><td>A hoy</td><td>' + hUSD(p.usd - num(d.usdAnioAnterior)) + '</td><td>' + (ch.promedio ? fARS(ch.promedio) : '—') + '</td>'
        + '<td>' + hUSD(p.usd) + '</td><td>' + hARS(p.modelo.usdARS) + '</td></tr>';
-    if(s[11].usdAcumulado !== p.usd) h += '<tr class="tot prog" data-usd="prog"><td>Con lo programado</td><td>' + hUSD(s[11].usdAcumulado - p.usd) + '</td><td>—</td>'
+    if(s[11].usdAcumulado !== p.usd) h += '<tr class="tot prog" data-usd="prog"><td>Con lo programado</td><td>' + hUSD(s[11].usdAcumulado - p.usd) + '</td><td>' + (conProg && cd.promedio ? fARS(cd.promedio) : '—') + '</td>'
        + '<td>' + hUSD(s[11].usdAcumulado) + '</td><td>' + hARS(s[11].equivalenteARS) + '</td></tr>';
   }
   h += '</tbody></table></div>';
-  if(cd.usd > 0){
-    var vale = cd.usd * num(d.cotizacionUSD), dif = vale - cd.ars;
-    h += '<div style="padding:14px 16px;border-top:1px solid var(--sep)">'
-       + '<div>Este año compraste <b>' + fUSD(cd.usd) + '</b> con <b>' + fARS(cd.ars) + '</b>, a <b>' + fARS(cd.promedio) + '</b> por dólar en promedio.</div>'
+  if(ch.usd > 0 || conProg){
+    var vale = ch.usd * num(d.cotizacionUSD), dif = vale - ch.ars;
+    h += '<div style="padding:14px 16px;border-top:1px solid var(--sep)">';
+    if(ch.usd > 0) h += '<div>Este año compraste <b>' + fUSD(ch.usd) + '</b> con <b>' + fARS(ch.ars) + '</b>, a <b>' + fARS(ch.promedio) + '</b> por dólar en promedio.</div>'
        + '<div class="mudo" style="font-size:14px;margin-top:6px">A la cotización de hoy valen ' + fARS(vale) + ': '
        + (Math.abs(dif) < 1 ? 'ni ganaste ni perdiste.' : (dif > 0 ? '<span class="ok">' + fARS(dif) + ' más</span> de lo que pagaste.' : '<span class="neg">' + fARS(-dif) + ' menos</span> de lo que pagaste.'))
-       + '</div></div>';
+       + '</div>';
+    if(conProg) h += '<div class="mudo" style="font-size:14px;margin-top:6px">Con lo programado, en el año: ' + fUSD(cd.usd) + ' con ' + fARS(cd.ars)
+       + (cd.promedio ? ', a ' + fARS(cd.promedio) + ' por dólar.' : '.') + '</div>';
+    h += '</div>';
   }
   return h;
 }
@@ -4189,18 +4279,48 @@ function htmlDatosPatri(d){
      +   '<input class="monto usd" inputmode="decimal" data-campo="usdAnioAnterior" value="' + fUSD(d.usdAnioAnterior) + '"></div>';
   return h;
 }
+/* S2 H1 (OWNER_DECISION_REQUIRED, aviso provisorio): al crear un año, duplicar() copia el ahorro, los dólares, lo que falta reponer y las cuotas
+   ya pagadas de diciembre. Si el año anterior cambia después, esos valores copiados no se actualizan solos: solo se avisa (no se cambia nada). */
+// Se compara diciembre de hoy contra lo que se COPIÓ (copiaDiciembre), no contra los campos de arranque: el usuario puede editarlos a propósito.
+// Un año creado antes de guardar esa copia no tiene contra qué comparar: no avisa (no se adivina qué se copió)
+function derivaAnioPrevio(d, hoy){
+  var prev = leerAnio(d.anio - 1), out = [], c = d.copiaDiciembre;
+  if(!prev || !c) return out;
+  var s = serie(prev)[11], dif = function(a, b){ return Math.abs(num(a) - num(b)) > 0.5; };
+  if(dif(c.ahorro, s.ahorroAcumulado) || dif(c.aReponer, s.aReponer)) out.push('ahorro');
+  if(dif(c.usd, s.usdAcumulado)) out.push('dolares');
+  var cuotas = false;
+  Object.keys(d.planDeudas || {}).forEach(function(k){
+    if(!prev.planDeudas || !Object.prototype.hasOwnProperty.call(prev.planDeudas, k)) return;
+    if(!c.cuotas || !Object.prototype.hasOwnProperty.call(c.cuotas, k)) return;   // un plan que no se copió de diciembre
+    var e = estadoDeuda(prev, k, 11, hoy); if(e && e.pagadas !== num(c.cuotas[k])) cuotas = true;
+  });
+  if(cuotas) out.push('cuotas');
+  return out;
+}
+function avisoDerivaPrevio(d, hoy){
+  var q = derivaAnioPrevio(d, hoy); if(!q.length) return '';
+  var nom = {ahorro:'el ahorro', dolares:'los dólares', cuotas:'las cuotas'}, p = q.map(function(k){ return nom[k]; });
+  var lista = p.length > 1 ? p.slice(0, -1).join(', ') + ' y ' + p[p.length - 1] : p[0];
+  return '<div class="aviso" data-av="deriva" role="status"><p>Diciembre ' + (d.anio - 1) + ' cambió después de crear ' + d.anio + ': ' + lista
+    + ' que pasaron al año nuevo pueden no coincidir.</p></div>';
+}
 function renderUSD(){
   var hoy = hoyApp(), s = serie(D), p = patrimonioPantalla(D, hoy), h = '';
   h += htmlHeroPatri(p);
+  h += avisoDerivaPrevio(D, hoy);
   // la composición: año con modelo, la auditable de R5 (patrimonioNeto); año sin modelo, las tres filas de siempre
   h += plegable('usdPatri', 'De qué se compone', fARS(p.patrimonioARS),
         p.modelo ? htmlPatrimonio(p)
       : '<div class="fila-in"><label>Ahorro líquido en pesos</label><span class="mudo">' + hARS(p.ahorroARS) + '</span></div>'
       + '<div class="fila-in"><label>Dólares guardados</label><span class="mudo">' + hUSD(p.usd) + '</span></div>'
       + '<div class="fila-in"><label>Cripto</label><span class="mudo">' + hUSD(p.criptoUSD) + '</span></div>');
-  var subM = p.modelo ? fUSD(p.usd) + '<small class="sub-cap">a hoy</small>'   // lo programado va aparte, en la tabla
-                      : fUSD(s[11].usdAcumulado);
-  h += plegable('usdMeses', 'Dólares mes a mes', subM, htmlDolaresMes(D, s, p, hoy), false);
+  // S2 H2: el héroe y la composición son los de hoy (otro año si el abierto es futuro), pero la tabla mes a mes es la del año abierto:
+  // sus dólares a hoy y su usdAnioAnterior tienen que ser del mismo año (si no, 'Entraron' resta dólares de dos años distintos)
+  var pa = p.anio === D.anio ? p : patrimonioPantalla(D, hoy, true);
+  var subM = pa.modelo ? fUSD(pa.usd) + '<small class="sub-cap">a hoy</small>'   // lo programado va aparte, en la tabla
+                       : fUSD(s[11].usdAcumulado);
+  h += plegable('usdMeses', 'Dólares mes a mes', subM, htmlDolaresMes(D, s, pa, hoy), false);
   h += plegable('usdDatos', 'Datos', 'cotización ' + fARS(D.cotizacionUSD), htmlDatosPatri(D))
      + '<div style="height:20px"></div>';
   document.getElementById('v-usd').innerHTML = h;
@@ -4320,7 +4440,7 @@ function manual(){
   h += bloque('trabajo', 'Trabajo por tu cuenta',
       '<p>Si vendés o facturás por tu cuenta, aunque sea de vez en cuando, prendé <b>Vendo o facturo por mi cuenta</b> en Ajustes y aparece la pestaña <b>Trabajo</b>. Si la apagás, no se borra nada. Deslizando el dedo también llegás a ella: queda entre USD y Ajustes.</p>'
     + '<p>Arriba elegís cómo trabajás. En <b>Simple</b> anotás ventas sueltas, como algo que vendiste por Marketplace o a un conocido: qué, cuánto y cómo te pagaron, y quedan cobradas. Arriba ves lo que vendiste hoy, separado en efectivo y transferencias, para cerrar la caja.</p>'
-    + '<p>Si vendés siempre lo mismo, cargalos como <b>productos rápidos</b>: aparecen como botones arriba de Nueva venta y cada venta queda con un solo toque, con Deshacer por si te equivocaste. El toque cobra con el medio de pago por defecto del producto; para cobrar distinto una vez, tocá el iconito de la esquina (💵 o 💳) o mantené apretado. Si lo dejás en <b>Preguntar siempre</b>, cada toque te pregunta si es efectivo o virtual. Arriba ves lo cobrado en el mes separado en Digital y Efectivo, con el total abajo (echeqs y otros medios cuentan como digital). Si le cargás <b>stock</b>, cada venta descuenta una unidad y la tarjeta muestra cuántas quedan; en cero dice Agotado y te deja vender igual o reponer. Si lo dejás vacío, no hay control de stock. Arriba de los botones tenés un buscador que filtra mientras escribís, y un botón para pasar a la <b>grilla compacta</b>: tarjetas más bajas con nombre, precio y stock (S: 12), que cobran igual con un toque y te dejan elegir el medio manteniendo apretado. La app recuerda qué vista elegiste. Con muchos productos, ordenalos en <b>carpetas</b> con color (Bebidas, Comidas…): arriba aparece una tira para ver una sola carpeta, y en Todas cada carpeta se pliega y despliega tocando su título. Los que no tienen carpeta van a General. Si además ponés lo que te cuesta cada uno, la app te muestra la <b>ganancia</b> del día, no solo lo que entró; ese costo es solo informativo y no se descuenta del disponible, para eso están los gastos.</p>'
+    + '<p>Si vendés siempre lo mismo, cargalos como <b>productos rápidos</b>: aparecen como botones arriba de Nueva venta y cada venta queda con un solo toque, con Deshacer por si te equivocaste. El toque cobra con el medio de pago por defecto del producto; para cobrar distinto una vez, tocá el iconito de la esquina (💵 o 💳) o mantené apretado. Si lo dejás en <b>Preguntar siempre</b>, cada toque te pregunta si es efectivo o virtual. Arriba ves lo <b>cobrado en el mes hasta hoy</b>, con una torta que lo separa en Efectivo y Digital / Virtual (echeqs y otros medios cuentan como digital; no entran las facturas a plazo sin cobrar ni las ventas con fecha más adelante). Si le cargás <b>stock</b>, cada venta descuenta una unidad y la tarjeta muestra cuántas quedan; en cero dice Agotado y te deja vender igual o reponer. Si lo dejás vacío, no hay control de stock. Arriba de los botones tenés un buscador que filtra mientras escribís, el botón <b>+ Producto</b> para agregar uno (arranca en la carpeta que estás mirando) y un botón para pasar a la <b>grilla compacta</b>; esa barra queda fija arriba mientras bajás por los productos. Para cambiar un producto, tocá los tres puntos (⋮) de su tarjeta y <b>Editar producto</b>: eso no vende nada, y las ventas que ya cargaste quedan con el nombre y el precio que tenían. La grilla compacta tiene tarjetas más bajas con nombre, precio y stock (S: 12), que cobran igual con un toque y te dejan elegir el medio manteniendo apretado. La app recuerda qué vista elegiste. Con muchos productos, ordenalos en <b>carpetas</b> con color (Bebidas, Comidas…): arriba aparece una tira para ver una sola carpeta, y en Todas cada carpeta se pliega y despliega tocando su título. Los que no tienen carpeta van a General. Si además ponés lo que te cuesta cada uno, la app te muestra la <b>ganancia</b> del día, no solo lo que entró; ese costo es solo informativo y no se descuenta del disponible, para eso están los gastos.</p>'
     + '<p>Si cobrás por semana o por quincena (apps de reparto o de viajes, changas), elegí <b>Semana</b> o <b>Quincena</b> arriba de la hoja: ponés de dónde salió, cuánto cobraste y desde qué día es. En <b>De dónde viene</b> ves cuánto te dejó cada plataforma este mes. En <b>Profesional</b> cargás facturas con cliente, número y plazo, y quedan en <b>Por cobrar</b> hasta que entra el pago; si el plazo es <b>Contado</b>, quedan cobradas en el acto. Cambiar de modo no borra nada.</p>'
     + '<p>Cuando entra plata de una factura, tocás <b>Entró un pago</b>: la app busca qué facturas pendientes de ese cliente suman ese monto. Si falta hasta un 10 %, probablemente es una retención; si falta más, la factura queda con saldo. El número de cada factura nueva ya viene sugerido: el siguiente al de la última. Si una factura se repite todos los meses, marcala como <b>abono</b> y se genera sola cada mes; para repetirla una sola vez, tocá <b>Repetir el mes que viene</b>.</p>'
     + '<p><b>Cobranza de la semana</b> junta por cliente lo vencido y lo que vence en los próximos 7 días. Con <b>Recordar</b> armás el mensaje con sus facturas y lo mandás por WhatsApp o mail desde el menú de compartir del teléfono; no pasa por ningún servidor.</p>'
@@ -4838,6 +4958,16 @@ function avisarRestauro(total, fallaron, trabajoFallo, saltados){
     + '<b>' + falta.join(', ') + '</b>.<br><br>Puede ser que el navegador no tenga más lugar o que tenga el almacenamiento bloqueado. Lo que ya había de eso en este teléfono sigue como estaba. Liberá espacio y probá de nuevo, o abrí la copia en otro navegador.'
     + (nota ? '<br><br>' + nota : ''));
 }
+/* S2 M3 (OWNER_DECISION_REQUIRED, aviso provisorio): restaurar escribe los años de la copia y Trabajo solo si viene en ella. Si la copia no
+   trae Trabajo, o trae uno que pasó plata a años que no vienen, los renglones "Del trabajo" pueden quedar sin su Trabajo: se dice antes de confirmar. */
+function avisoCopiaTrabajo(j, claves){
+  if(!(j.trabajo && typeof j.trabajo === 'object')) return tieneTrab() ? ' La copia no trae Trabajo: se mantiene el Trabajo de este teléfono, y lo que pasaste a lo personal puede no coincidir con los años que trae la copia.' : '';
+  var ps = Array.isArray(j.trabajo.pases) ? j.trabajo.pases : [], faltan = [];
+  ps.forEach(function(p){ var a = String(p && p.fecha || '').slice(0, 4); if(anioValido(a) && claves.indexOf(a) < 0 && faltan.indexOf(a) < 0) faltan.push(a); });
+  faltan.sort();
+  return faltan.length ? ' Ese Trabajo pasó plata a lo personal en ' + faltan.join(', ') + ', pero la copia no trae ' + faltan.join(', ')
+    + ': ahí quedan los renglones de este teléfono, que pueden no coincidir.' : '';
+}
 function restaurarTexto(txt){
   (function(){
     var j;
@@ -4871,6 +5001,7 @@ function restaurarTexto(txt){
     abrirHoja('<h3>Restaurar copia</h3><div class="texto" style="margin-bottom:16px">La copia trae ' + claves.length + (claves.length === 1 ? ' año: ' : ' años: ')
       + '<b>' + claves.join(', ') + '</b>. Va a <b>reemplazar</b> lo que tengas guardado de esos años en este teléfono.'
       + (j.trabajo && typeof j.trabajo === 'object' ? ' También trae tus datos de trabajo (' + descTrabajo(j.trabajo) + '), que reemplazan a los de este teléfono.' : '')
+      + avisoCopiaTrabajo(j, claves)
       + '</div>'
       + '<div class="fila"><button data-act="cerrarHoja">Cancelar</button><button class="pri mal" data-act="confirmar">Reemplazar</button></div>');
   })();
@@ -4994,7 +5125,8 @@ function duplicar(){
     if(!asegurarSnapshotR4()){ alerta('No pude crear el año', 'No pude guardar la copia previa de seguridad, así que no cambié nada. Probá de nuevo.'); return; }
   }
   n.ahorroAnioAnterior = s[11].ahorroAcumulado;
-  Object.keys(n.planDeudas).forEach(function(k){ var e = estadoDeuda(D, k, 11, hoyApp()); if(e) n.planDeudas[k].pagadasAntes = e.pagadas; });
+  n.copiaDiciembre = {ahorro:s[11].ahorroAcumulado, aReponer:s[11].aReponer, usd:s[11].usdAcumulado, cuotas:Object.create(null)};   // S2 H1: qué se copió (el aviso compara contra esto)
+  Object.keys(n.planDeudas).forEach(function(k){ var e = estadoDeuda(D, k, 11, hoyApp()); if(e){ n.planDeudas[k].pagadasAntes = e.pagadas; n.copiaDiciembre.cuotas[k] = e.pagadas; } });
   n.usdAnioAnterior = s[11].usdAcumulado;
   n.aReponerAnterior = s[11].aReponer;
   n.actualizado = '';
@@ -5298,6 +5430,12 @@ function sumarGasto(){
 function anotarMov(it, monto, pp, extra){   // el gasto rápido queda en la lista del mes, con lo que Deshacer necesita para volver atrás
   var id = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
   var mv = {id:id, fecha:new Date().toISOString(), sec:gr.sec, nombre:it.nombre, monto:monto, pp:pp};
+  var ls = D.meses[mes][gr.sec] || [], fi = ls.indexOf(it), q;
+  if(fi >= 0){   // S2 M2: QUÉ renglón cambió, para que Deshacer no toque otro del mismo nombre
+    mv.fi = fi;   // el lugar: solo una pista (lo leen las versiones anteriores); borrar u ordenar otros renglones lo corre
+    mv.fo = 0; mv.fn = 0;   // cuál de los del mismo nombre es y cuántos había: no cambia al borrar u ordenar renglones de otro nombre
+    for(q=0;q<ls.length;q++) if(ls[q].nombre === it.nombre){ if(q < fi) mv.fo++; mv.fn++; }
+  }
   if(extra) for(var k in extra) if(extra.hasOwnProperty(k)) mv[k] = extra[k];
   D.meses[mes].movimientos.push(mv);
   return id;
@@ -5309,13 +5447,22 @@ function preguntaPago(d, j, it, hoy){
   return it.pagado !== true && num(it.monto) > 0 && !(mesDelModelo(d, j) && estadoMes(d.anio, j, hoy) === 'futuro');
 }
 function preguntarPago(it){
+  gr.fila = {mes: mes, anio: D.anio, nombre: it.nombre};   // U6: la respuesta vale solo para ESTE renglón (ver filaDelGasto)
   abrirHoja('<h3>Gasto de ' + fARS(gr.monto) + '</h3>'
     + '<div class="texto" style="margin-bottom:16px"><b>' + esc(it.nombre) + '</b> está pendiente por ' + fARS(num(it.monto)) + '. ¿Este gasto es ese pago?</div>'
     + '<div class="fila"><button data-act="gastoAparte">No, es otro gasto</button>'
     + '<button class="pri" data-act="gastoEsPago">Sí, marcarlo como pagado</button></div>'
     + '<div class="fila" style="margin-top:8px"><button data-act="cerrarHoja">Cancelar</button></div>');
 }
-function filaDelGasto(){ var l = gr && gr.cat !== null && D.meses[mes][gr.sec]; return l ? l[gr.cat] || null : null; }
+// U6: el renglón de la pregunta, buscado por su lugar; si en ese lugar ya no está el mismo (otro nombre, ya tildado, otro mes o año: otra
+// pestaña, una edición, una recarga), no se anota nada y se avisa, en vez de marcar o sumar en otro renglón
+function filaDelGasto(){
+  var l = gr && gr.cat !== null && D.meses[mes][gr.sec], it = l ? l[gr.cat] || null : null, f = gr && gr.fila;
+  if(f && !(it && mes === f.mes && D.anio === f.anio && it.nombre === f.nombre && it.pagado !== true)){
+    cerrarHoja(); toast(f.nombre + ' cambió mientras respondías: no anoté nada. Volvé a sumar el gasto.'); return null;
+  }
+  return it;
+}
 function gastoEsPago(){
   var it = filaDelGasto(); if(!it){ cerrarHoja(); return; }
   if(num(it.monto) === gr.monto){ marcarPago(false); return; }
@@ -5360,12 +5507,21 @@ function volverBorrado(){
   tocar(); conScroll(renderMes); toast('Lo devolví a su lugar');
 }
 function quitarMov(id){
-  var m = D.meses[mes], k = -1, i;
-  for(i=0;i<m.movimientos.length;i++) if(m.movimientos[i].id === id) k = i;
-  if(k < 0) return;
+  // S2 L4: el gasto se busca en su propio mes (el Deshacer del aviso puede tocarse después de cambiar de mes); si no está en el año abierto, se dice
+  var m = null, k = -1, i, j;
+  for(j=0;j<12 && k<0;j++) for(i=0;i<D.meses[j].movimientos.length;i++) if(D.meses[j].movimientos[i].id === id){ m = D.meses[j]; k = i; }
+  if(k < 0){ toast('No pude deshacer: ese gasto ya no está en el año que tenés abierto.'); return; }
   var mv = m.movimientos[k], ls = m[mv.sec] || [], hallado = false;
+  // S2 M2: el renglón es el n.º fo entre los que se llaman igual, si siguen siendo fn (borrar u ordenar renglones de otro nombre no lo cambia);
+  // si ya no son los mismos (se borró, agregó o renombró uno de ese nombre) no se sabe cuál es: no se toca nada y se avisa.
+  // Gastos viejos sin fo: el de su lugar fi si sigue con ese nombre; si no, el primero con ese nombre
+  var exacto = -1, mismos = [];
+  if(typeof mv.fo === 'number'){
+    for(i=0;i<ls.length;i++) if(ls[i].nombre === mv.nombre) mismos.push(i);
+    exacto = (typeof mv.fn !== 'number' || mismos.length === mv.fn) && mv.fo < mismos.length ? mismos[mv.fo] : -2;
+  } else if(typeof mv.fi === 'number' && ls[mv.fi] && ls[mv.fi].nombre === mv.nombre) exacto = mv.fi;
   for(i=0;i<ls.length;i++){
-    if(ls[i].nombre === mv.nombre){
+    if(exacto >= 0 ? i === exacto : exacto === -1 && ls[i].nombre === mv.nombre){
       hallado = true;
       // L3 "Sí": se revierte SOLO ese pago (el cambio de monto que hizo y el tilde); otros gastos o ediciones posteriores del renglón quedan
       if(mv.tipo === 'pago' && typeof mv.pp === 'boolean'){ ls[i].monto = Math.max(0, num(ls[i].monto) - num(mv.monto) + num(mv.ma)); ls[i].pagado = mv.pp; break; }
@@ -5559,6 +5715,23 @@ function guardarPlan(quitar){
   cerrarHoja(); tocar(); renderMes();
   if(!quitar) ofrecerCarga(n, mes);
 }
+// S2 L5: un plan de deuda sin ningún renglón en el año seguía contando como deuda y no había cómo sacarlo (el plan se abre desde un renglón).
+// Quitarlo es una acción del usuario, con confirmación: solo se borra el plan; ningún mes ni gasto cambia.
+function planSinRenglones(d, nombre){
+  var n = String(nombre || '').trim(), j, q;
+  for(j=0;j<12;j++) for(q=0;q<d.meses[j].deudas.length;q++) if(String(d.meses[j].deudas[q].nombre || '').trim() === n) return false;
+  return true;
+}
+function quitarPlanSuelto(nombre){
+  var n = String(nombre || '').trim(), k = null;
+  Object.keys(D.planDeudas || {}).forEach(function(x){ if(String(x).trim() === n) k = x; });
+  if(k === null || !planSinRenglones(D, n)) return;
+  confirmar('¿Quitar el plan de ' + esc(n) + '?', 'No tiene cuotas cargadas en ningún mes de ' + D.anio + ', pero sigue contando como deuda en tu patrimonio. '
+    + 'Si lo quitás, deja de restar. No se borra ningún mes ni ningún gasto.', 'Quitar plan', function(){
+    delete D.planDeudas[k];
+    tocar(); render(); toast('Quité el plan de ' + n);
+  });
+}
 function ofrecerCarga(nombre, desde){
   var p = planDe(D, nombre); if(!p || !p.cuotas || !p.total) return;
   var pc = planDeCarga(D, nombre, desde);
@@ -5604,6 +5777,8 @@ document.addEventListener('touchend', function(ev){
   if(lpHecho && Date.now() - lpHecho < 1500 && ev.cancelable){ ev.preventDefault(); lpHecho = 0; }   // soltar el dedo no cobra ni cierra la hoja; el próximo toque (💵/💳) ya vale
 }, {passive:false});
 document.addEventListener('touchcancel', function(){ if(lpT){ clearTimeout(lpT); lpT = null; } }, {passive:true});
+document.addEventListener('scroll', function(ev){ if(ev.target && ev.target.id === 'tjCarps') marcarTiraCarps(); }, {passive:true, capture:true});
+window.addEventListener('resize', function(){ altoEncabezado(); marcarTiraCarps(); }, {passive:true});
 document.addEventListener('click', function(ev){
   if(!lpHecho) return;
   if(Date.now() - lpHecho > 1500){ lpHecho = 0; return; }
@@ -5703,7 +5878,7 @@ document.addEventListener('click', function(ev){
   if(a === 'carrIr'){ irSlide(+b.getAttribute('data-v')); return; }
   if(a === 'irA'){ irA(b.getAttribute('data-v')); return; }
   if(a === 'irVence'){ irVence(+b.getAttribute('data-v')); return; }
-  if(a === 'verFilas'){ verFilas[b.getAttribute('data-k')] = true; conScroll(renderMes); var pf = document.querySelector('#v-mes input.monto[data-k="' + b.getAttribute('data-k') + '"]'); if(pf) pf.focus(); return; }
+  if(a === 'verFilas'){ filasVer()[b.getAttribute('data-k')] = true; conScroll(renderMes); var pf = document.querySelector('#v-mes input.monto[data-k="' + b.getAttribute('data-k') + '"]'); if(pf) pf.focus(); return; }
   if(a === 'icFrec'){
     var nf = b.getAttribute('data-v'), eraSem = cbx.frec === 'semanal', esSem = nf === 'semanal';
     cbx.frec = nf; marcarChips('icFrec', b);
@@ -5720,6 +5895,7 @@ document.addEventListener('click', function(ev){
   if(a === 'quitarCobroIng'){ guardarComoCobras(true); return; }
   if(a === 'guardarPlan'){ guardarPlan(false); return; }
   if(a === 'quitarPlan'){ guardarPlan(true); return; }
+  if(a === 'quitarPlanSuelto'){ quitarPlanSuelto(b.getAttribute('data-n')); return; }
   if(a === 'colAyuda'){ var ka = b.getAttribute('data-k'); ayudaAbierta[ka] = !ayudaAbierta[ka]; plegarAnim(b.parentNode, !ayudaAbierta[ka]); return; }
   if(a === 'gastoRapido' || a === 'rapido'){ gastoRapido(); return; }   // el FAB (P3a: único botón "Gasto"; 'rapido' queda para el atajo)
   if(a === 'chip'){
@@ -6121,7 +6297,7 @@ function guardarTrab(silencio){
 function tieneTrab(){ return !!(T && (T.facturas.length || T.cobros.length || T.pases.length || T.gastos.length || T.productos.length || T.tope)); }
 function antesDeCambiar(){ tjAntes = JSON.stringify(T); }
 function deshacerTj(){
-  if(!tjAntes) return;
+  if(!tjAntes || trabVieja()) return;   // S3: una pestaña vieja no deshace: el guardado se negaría y la pantalla mentiría
   var modo = T.modo, activo = T.activo, col = T.ui.col, rev = T.rev;
   T = normTrab(JSON.parse(tjAntes)); tjAntes = null;
   T.modo = modo; T.activo = activo; T.ui.col = col;   // se deshace lo que cargaste, no cómo estás mirando la pestaña
@@ -6159,7 +6335,7 @@ function pendientes(sinCobro){
 }
 function resumenTrab(){
   var hoy = hoyISO(), mesAct = hoy.slice(0,7), i;
-  var r = {porCobrar:0, vencido:0, prox30:0, cobradoMes:0, sinAsignar:0, hoyVendido:0, hoyVentas:0, mesVendido:0,
+  var r = {porCobrar:0, vencido:0, prox30:0, cobradoMes:0, sinAsignar:0, hoyVendido:0, hoyVentas:0, hoyAPlazo:0, mesVendido:0,
            cobrado:0, aAcreditar:0, hayPlazo:false, mesDig:0, mesEfe:0};
   for(i=0;i<T.facturas.length;i++){
     var f = T.facturas[i];
@@ -6172,7 +6348,9 @@ function resumenTrab(){
       continue;
     }
     r.hayPlazo = true;
-    var s = saldoFac(f); if(!s) continue;
+    var s = saldoFac(f);
+    if(f.fecha === hoy) r.hoyAPlazo += s;   // S2 L3: lo vendido a plazo hoy que todavía se debe (un cobro del mismo día lo baja)
+    if(!s) continue;
     var d = diasEntre(hoy, venceFac(f));
     r.porCobrar += s;
     if(d < 0) r.vencido += s; else if(d <= 30) r.prox30 += s;
@@ -6385,6 +6563,7 @@ function filaVenta(f){
 function lineaHoy(r){
   var p = [r.hoyVentas + (r.hoyVentas === 1 ? ' venta' : ' ventas')], orden = ['efectivo','transferencia','echeq','otra'], i;
   for(i=0;i<orden.length;i++) if(r.hoyForma[orden[i]]) p.push((orden[i] === 'transferencia' ? 'transferencias' : nombreForma(orden[i]).toLowerCase()) + ' ' + fARS(r.hoyForma[orden[i]]));
+  if(r.hoyAPlazo > 0.5) p.push('a plazo, sin cobrar ' + fARS(r.hoyAPlazo));   // S2 L3: lo vendido a plazo hoy que sigue sin cobrar (su saldo)
   if(r.hayCosto) p.push('ganancia ' + fARS(r.hoyGanancia));
   return 'Hoy: ' + p.join(' · ');
 }
@@ -6564,13 +6743,15 @@ var carpSelGeneral = false;   // General no tiene nombre propio: se elige con es
 function tarjetaProd(p, comp, ve){
   var gp = p.costo > 0 ? p.precio - p.costo : 0, ag = p.stock !== null && p.stock <= 0;
   var cc = p.carpeta ? ' style="--cc:' + hexColor(p.color) + '"' : '', ccl = p.carpeta ? ' cc' : '';
+  var opc = '<button class="tj-opc" data-act="tjOpcProd" data-id="' + esc(p.id) + '" aria-label="Opciones de ' + esc(p.nombre) + '">'
+          + '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></button>';
   var abre = '<div class="tj-pw' + (ag ? ' agot' : '') + '" data-id="' + esc(p.id) + '"' + (ve ? '' : ' style="display:none"') + '>'
            + '<button class="tj-prod' + ccl + '"' + cc + ' data-act="tjVender" data-id="' + esc(p.id) + '">'
            + '<b class="nom">' + esc(p.nombre) + '</b>';
   if(comp){
     return abre
       + '<span class="vp' + (fARS(p.precio).length >= 8 ? ' l' : '') + '">' + fARS(p.precio) + '</span>'
-      + '</button>'
+      + '</button>' + opc
       + (p.stock === null ? '' : '<span class="sb">S: ' + p.stock + '</span>')
       + '</div>';
   }
@@ -6580,7 +6761,7 @@ function tarjetaProd(p, comp, ve){
     + (gp ? '<span class="vg">' + fARS(gp) + ' de ganancia</span>' : '')
     + '<span class="vc">' + st + (p.costo ? 'Te cuesta ' + fARS(p.costo) + ' · ' : '') + textoForma(p.forma) + '</span>'
     + '</button>'
-    + '<button class="tj-medio" data-act="tjMedio" data-id="' + esc(p.id) + '" aria-label="Elegir cómo te pagan">' + iconoForma(p.forma) + '</button>'
+    + '<button class="tj-medio" data-act="tjMedio" data-id="' + esc(p.id) + '" aria-label="Elegir cómo te pagan">' + iconoForma(p.forma) + '</button>' + opc
     + '</div>';
 }
 function grillaProds(lista, comp, q){
@@ -6589,20 +6770,24 @@ function grillaProds(lista, comp, q){
   return {h: h + '</div>', n: n};
 }
 function botonesProductos(){
-  if(!T.productos.length) return '';
+  if(!T.productos.length)
+    return '<div class="tj-zona" id="tjZona"><div class="tj-prod-vacio"><p><b>Productos rápidos</b>Cargá lo que vendés seguido y cobralo con un toque.</p>'
+      + '<button class="tj-nuevo pri" data-act="tjNuevoProdGrilla">+ Agregar producto</button></div></div>';
   var comp = vistaProd() === 'compacta', q = clave(busqProd), vis = 0, i, j, g;
   var l = carpetas(), hayC = l.length > 0;
   // si la carpeta elegida ya no existe (la vaciaste o la renombraste), vuelve a Todas
   var sel = null;
   if(carpSel !== '' || carpSelGeneral) for(i=0;i<l.length;i++) if(l[i].k === carpSel && !!l[i].general === carpSelGeneral) sel = l[i];
   if(!sel){ carpSel = ''; carpSelGeneral = false; }
-  var h = '<div class="tj-phd"><input type="search" id="tjBuscar" class="tj-busca" placeholder="🔍 Buscar producto..." autocomplete="off" enterkeyhint="search" value="' + esc(busqProd) + '">'
+  // S3c: la barra (buscar + "+ Producto" + vista) queda fija debajo del encabezado mientras bajás por los productos (sticky dentro de .tj-zona)
+  var h = '<div class="tj-zona" id="tjZona"><div class="tj-phd" id="tjBarra"><input type="search" id="tjBuscar" class="tj-busca" placeholder="🔍 Buscar producto..." aria-label="Buscar producto" autocomplete="off" enterkeyhint="search" value="' + esc(busqProd) + '">'
+        + '<button class="tj-nuevo" data-act="tjNuevoProdGrilla" aria-label="Agregar producto" title="Agregar producto">+ Producto</button>'
         + '<button class="tj-vista" data-act="tjVista" aria-label="' + (comp ? 'Pasar a vista completa' : 'Pasar a grilla compacta') + '" title="' + (comp ? 'Vista completa' : 'Grilla compacta') + '">'
         + (comp ? '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="6" rx="1.5"/><rect x="4" y="14" width="16" height="6" rx="1.5"/></svg>'
                 : '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1.2"/><rect x="14" y="4" width="6" height="6" rx="1.2"/><rect x="4" y="14" width="6" height="6" rx="1.2"/><rect x="14" y="14" width="6" height="6" rx="1.2"/></svg>')
         + '</button></div>';
   if(hayC){
-    h += '<div class="tj-carps" id="tjCarps"><button data-act="tjCarp" data-v="" class="' + (sel ? '' : 'on') + '">Todas <i>' + T.productos.length + '</i></button>';
+    h += '<div class="tj-carps" id="tjCarps" role="group" aria-label="Carpetas"><button data-act="tjCarp" data-v="" class="' + (sel ? '' : 'on') + '">Todas <i>' + T.productos.length + '</i></button>';
     for(i=0;i<l.length;i++){
       var on = sel && sel.k === l[i].k && !!sel.general === !!l[i].general;
       h += '<button data-act="tjCarp" data-v="' + esc(l[i].k) + '"' + (l[i].general ? ' data-g="1"' : '') + ' class="' + (on ? 'on' : '') + '">'
@@ -6632,7 +6817,59 @@ function botonesProductos(){
     }
   }
   h += '</div>';
-  return h + '<div class="tj-sinres" id="tjSinRes"' + (vis ? ' style="display:none"' : '') + '>' + esc(textoSinRes()) + '</div>';
+  return h + '<div class="tj-sinres" id="tjSinRes"' + (vis ? ' style="display:none"' : '') + '>' + esc(textoSinRes()) + '</div></div>';
+}
+// S3c: la tira de carpetas se desliza de costado; un degradé en el borde avisa que hay más carpetas de ese lado
+function marcarTiraCarps(){
+  var t = document.getElementById('tjCarps'); if(!t) return;
+  var max = t.scrollWidth - t.clientWidth;
+  t.classList.toggle('mas-izq', max > 1 && t.scrollLeft > 1);
+  t.classList.toggle('mas-der', max > 1 && t.scrollLeft < max - 1);
+}
+function altoEncabezado(){ var e = document.querySelector('header'); if(e) document.documentElement.style.setProperty('--hd-alto', e.offsetHeight + 'px'); }
+/* S3a: cómo te pagaron este mes. Sale SOLO de resumenTrab (mesEfe / mesDig): lo cobrado hasta hoy en el mes, ventas al contado y cobros;
+   nunca facturas a plazo pendientes ni ventas con fecha futura. Un lado en cero no se dibuja; los porcentajes suman 100. */
+function cobradoMes(r){
+  var efe = Math.max(0, Math.round(num(r.mesEfe))), dig = Math.max(0, Math.round(num(r.mesDig))), total = efe + dig, pe;
+  if(!total) return {total:0, partes:[]};
+  pe = Math.round(efe * 100 / total);
+  if(efe && dig) pe = Math.min(99, Math.max(1, pe));   // un lado que existe nunca dice 0% ni 100%
+  var out = [];
+  if(efe) out.push({k:'efectivo', n:'Efectivo', v:efe, p:pe});
+  if(dig) out.push({k:'digital', n:'Digital / Virtual', v:dig, p:100 - pe});
+  return {total:total, partes:out};
+}
+function htmlCobradoMes(r, nomMes){
+  var d = cobradoMes(r), tit = 'Cobrado en ' + nomMes + ', hasta hoy', i;
+  if(!d.total) return '<div class="tj-cob vacio" id="tjCobrado"><small>' + esc(tit) + '</small><p>Todavía no cobraste nada este mes. Cuando vendas, acá vas a ver cuánto entró en efectivo y cuánto en digital.</p></div>';
+  var rr = 54, cir = 2 * Math.PI * rr, acum = 0, svg = '', ley = '', filas = '';
+  for(i=0;i<d.partes.length;i++){
+    var p = d.partes[i], arco = cir * p.v / d.total, col = p.k === 'efectivo' ? 'var(--acc)' : 'var(--dig)';
+    svg += '<circle cx="70" cy="70" r="' + rr + '" fill="none" stroke="' + col + '" stroke-width="24" stroke-dasharray="' + arco.toFixed(2) + ' ' + (cir - arco).toFixed(2) + '"'
+         + ' stroke-dashoffset="' + (-acum).toFixed(2) + '" transform="rotate(-90 70 70)"></circle>';
+    acum += arco;
+    ley += '<div class="tj-cob-f ' + p.k + '"><i></i><span class="n">' + p.n + '</span><span class="p">' + p.p + '%</span><b>' + fARS(p.v) + '</b></div>';
+    filas += '<tr><th scope="row">' + p.n + '</th><td>' + p.p + '%</td><td>' + fARS(p.v) + '</td></tr>';
+  }
+  return '<div class="tj-cob" id="tjCobrado">'
+    + '<div class="tj-cob-hd" aria-hidden="true"><small>' + esc(tit) + '</small><b class="' + largo(fARS(d.total)) + '">' + fARS(d.total) + '</b></div>'
+    + '<div class="tj-cob-cu" aria-hidden="true"><svg viewBox="0 0 140 140" class="tj-cob-torta" aria-hidden="true" focusable="false">' + svg + '</svg><div class="tj-cob-ley">' + ley + '</div></div>'
+    + '<div class="tj-sr"><table><caption>' + esc(tit) + '</caption><tr><th scope="col">Medio</th><th scope="col">Parte</th><th scope="col">Monto</th></tr>' + filas
+    + '<tr><th scope="row">Total</th><td>100%</td><td>' + fARS(d.total) + '</td></tr></table></div>'
+    + '</div>';
+}
+/* S2 N2-B (a) (aviso provisorio, sin cambiar datos): datos viejos pueden tener dos renglones "Del trabajo" en un mes (el buscador anterior aceptaba
+   variantes); lo que pasás se reparte entre ellos en orden y puede contar un monto sin tildar. Se listan esos meses para revisarlos y juntarlos. */
+function mesesTrabajoDoble(d){
+  var out = [], j, q, n;
+  for(j=0;j<12;j++){ n = 0; for(q=0;q<d.meses[j].ingresos.length;q++) if(esRenglonTrabajo(d.meses[j].ingresos[q].nombre)) n++; if(n > 1) out.push(j); }
+  return out;
+}
+function avisoTrabajoDoble(d){
+  var m = d ? mesesTrabajoDoble(d) : []; if(!m.length) return '';
+  var nom = m.map(function(j){ return MESES[j]; }), lista = nom.length > 1 ? nom.slice(0, -1).join(', ') + ' y ' + nom[nom.length - 1] : nom[0];
+  return '<div class="aviso" data-av="trabajo-doble" role="status"><p>En ' + lista + ' de ' + d.anio + ' hay más de un renglón «' + RENGLON_TRABAJO + '» en Ingresos. '
+    + 'Lo que pasás desde Trabajo se reparte entre ellos: revisalos en Mes y dejá uno solo.</p></div>';
 }
 function renderTrabajo(){
   var v = document.getElementById('v-trabajo'); if(!v) return;
@@ -6650,11 +6887,7 @@ function renderTrabajo(){
             + '<div><small>Te quedó</small><b class="' + (r.vendidoSimpleMes - r.gastadoMes < 0 && !oculto ? 'neg' : '') + largo(fARS(r.vendidoSimpleMes - r.gastadoMes)) + '">' + fARS(r.vendidoSimpleMes - r.gastadoMes) + '</b></div>')
      + '</div>'
      + (!pro && r.hoyVentas ? '<div class="tj-hoy">' + lineaHoy(r) + '</div>' : '')
-     + (pro ? '' : '<div class="tj-medios">'
-         + '<div class="tj-md dig"><small>💳 Digital / Virtual</small><b class="' + largo(fARS(r.mesDig)) + '">' + fARS(r.mesDig) + '</b></div>'
-         + '<div class="tj-md efe"><small>💵 Efectivo</small><b class="' + largo(fARS(r.mesEfe)) + '">' + fARS(r.mesEfe) + '</b></div>'
-         + '<div class="tj-mt"><small>Cobrado en ' + mc + ' · total</small><b class="' + largo(fARS(r.mesDig + r.mesEfe)) + '">' + fARS(r.mesDig + r.mesEfe) + '</b></div>'
-         + '</div>')
+     + (pro ? '' : htmlCobradoMes(r, MESES[+hoyISO().slice(5,7) - 1]))
      + '<div class="final"><small>Disponible del trabajo</small><div class="final-fila"><div class="big ' + (neg ? 'mal' : 'ok') + largo(fARS(r.disponible)) + '" id="tjDisp">' + fARS(r.disponible) + '</div></div>'
      +   '<small>' + explicaDisp(r) + '</small>'
      +   (neg ? '<small class="neg">' + (r.gastado > r.cobrado
@@ -6664,11 +6897,12 @@ function renderTrabajo(){
      +   (r.aAcreditar ? '<small>Además entran ' + fARS(r.aAcreditar) + ' con fecha más adelante (echeqs diferidos, por ejemplo).</small>' : '')
      +   '<button class="tj-pasar" data-act="tjPasar">Pasar a lo personal</button>'
      + '</div></div>';
+  h += avisoTrabajoDoble(D);
   if(!pro) h += botonesProductos();
   h += '<div class="tj-acc"><button class="pri" data-act="tjNuevaFac">' + (pro ? 'Nueva factura' : 'Nueva venta') + '</button>'
      + (pro ? '<button data-act="tjNuevoCobro">Entró un pago</button>' : '') + '</div>'
      + '<button class="tj-linea" data-act="tjNuevoGasto">+ Cargar un gasto del trabajo</button>'
-     + (pro ? '' : '<button class="tj-linea" data-act="tjProds">' + (T.productos.length ? 'Cambiar mis productos rápidos' : '+ Crear un producto rápido') + '</button>');
+     + (pro || !T.productos.length ? '' : '<button class="tj-linea" data-act="tjProds">Cambiar mis productos rápidos</button>');
   if(!pro){
     var sm = [];
     if(r.vendidoSimpleMes) sm.push('vendiste ' + fARS(r.vendidoSimpleMes));
@@ -6746,6 +6980,7 @@ function renderTrabajo(){
   var tiraV = document.getElementById('tjCarps'), tiraX = tiraV ? tiraV.scrollLeft : 0;
   v.innerHTML = h;
   var tiraN = document.getElementById('tjCarps'); if(tiraN && tiraX) tiraN.scrollLeft = tiraX;
+  altoEncabezado(); marcarTiraCarps();
   contar('tjDisp', r.disponible, function(x){ return fARS(Math.round(x)); });
   marcarVencidos();
 }
@@ -6774,8 +7009,14 @@ function chipsPlazo(otro){
   }
   return h + '<button data-act="tjFxPlazo" data-v="otro" class="' + (otro ? 'on' : '') + '">Otro</button>';
 }
+// S3: una pestaña vieja (otra guardó Trabajo después de que esta lo leyó) no cambia nada, ni en memoria: avisa y no sigue
+function trabVieja(){
+  if(!obsoleta && blobAlDia(LSTRAB, T)) return false;
+  obsoleta = true; avisoOtraPestana(); return true;
+}
 function venderProducto(id, forma){
   var p = prodPorId(id); if(!p) return;
+  if(trabVieja()) return;
   var fo = forma ? formaValida(forma) : p.forma;
   if(!fo){ abrirCobroProd(id); return; }   // sin medio por defecto: siempre pregunta
   antesDeCambiar();   // Deshacer vuelve la venta y también la unidad de stock
@@ -6790,6 +7031,7 @@ function venderProducto(id, forma){
 }
 function tocarProducto(id){
   var p = prodPorId(id); if(!p) return;
+  if(trabVieja()) return;
   if(!p.forma || (p.stock !== null && p.stock <= 0)){ abrirCobroProd(id); return; }   // sin medio por defecto o agotado: se elige, no se cobra de golpe
   venderProducto(id);
 }
@@ -6807,6 +7049,14 @@ function abrirCobroProd(id){
     + '</div>'
     + '<div class="fila"><button data-act="cerrarHoja">Cancelar</button></div>');
 }
+// S3b: el "⋮" de cada producto. Abrirlo no vende, no toca el stock y no crea nada: solo ofrece editar el producto
+function abrirOpcionesProd(id){
+  var p = prodPorId(id); if(!p) return;
+  abrirHoja('<h3>' + esc(p.nombre) + '</h3>'
+    + '<div class="nota" style="padding:0 2px 12px">' + fARS(p.precio) + (p.stock === null ? '' : ' · Stock: ' + p.stock) + '. Si lo cambiás, las ventas que ya cargaste quedan como estaban.</div>'
+    + '<div class="tj-cobra"><button class="sec" data-act="tjEditDesdeGrilla" data-id="' + esc(p.id) + '">Editar producto</button></div>'
+    + '<div class="fila"><button data-act="cerrarHoja">Cancelar</button></div>');
+}
 function abrirProductos(){
   var h = '', i;
   for(i=0;i<T.productos.length;i++){
@@ -6821,9 +7071,9 @@ function abrirProductos(){
     + (h ? '<div class="tj-caja">' + h + '</div>' : '<div class="tj-vacio" style="padding:0 2px 12px">Todavía no tenés ninguno.</div>')
     + '<div class="fila"><button data-act="cerrarHoja">Listo</button><button class="pri" data-act="tjNuevoProd">Nuevo producto</button></div>');
 }
-function abrirProducto(id, aStock){
+function abrirProducto(id, aStock, volver){
   var p = id ? prodPorId(id) : null;
-  px = {id: p ? p.id : null, forma: p ? p.forma : ''};   // nuevo: sin medio por defecto hasta que elijas uno
+  px = {id: p ? p.id : null, forma: p ? p.forma : '', volver: volver === 'grilla' ? 'grilla' : ''};   // nuevo: sin medio por defecto hasta que elijas uno. volver: desde la grilla, guardar o cancelar vuelve a la grilla (no a la lista)
   var lc = carpetas(), ci, carpIni = p ? p.carpeta : '', colIni = p ? p.color : '';
   if(!p && carpSel && !carpSelGeneral) for(ci=0;ci<lc.length;ci++) if(lc[ci].k === carpSel && !lc[ci].general){ carpIni = lc[ci].nombre; colIni = lc[ci].color; }   // creás desde una carpeta: arranca en esa
   px.color = colIni || '';
@@ -6847,7 +7097,8 @@ function abrirProducto(id, aStock){
     +   '<button data-act="tjPxForma" data-v="" class="' + (px.forma ? '' : 'on') + '">Preguntar siempre</button>' + chipsForma(px.forma, 'tjPxForma') + '</div>'
     + '<div class="nota" style="padding:0 0 10px">Es el medio que se usará al tocar el botón rápido. Al vender, siempre podés cambiarlo tocando el ícono 💵/💳.</div>'
     + '<div class="nota" id="pxNota" style="padding:0 0 14px">Si ponés lo que te cuesta, la app te muestra cuánto ganás en cada venta. Es solo para saberlo: no se descuenta del disponible, para eso están los gastos.</div>'
-    + '<div class="fila">' + (p ? '<button class="mal" data-act="tjBorrarProd" data-id="' + esc(p.id) + '">Borrar</button>' : '<button data-act="tjProds">Volver</button>')
+    + '<div class="fila">' + (p ? '<button class="mal" data-act="tjBorrarProd" data-id="' + esc(p.id) + '">Borrar</button>' : '')
+    + (px.volver ? '<button data-act="cerrarHoja">Cancelar</button>' : p ? '' : '<button data-act="tjProds">Volver</button>')
     + '<button class="pri" data-act="tjGuardarProd">Guardar</button></div>');
   var fo = document.getElementById(aStock ? 'pxStock' : 'pxNombre'); fo.focus(); if(aStock && fo.select) fo.select();
 }
@@ -6864,6 +7115,7 @@ function guardarProducto(){
     stk = parseEntero(rs, true);   // puede quedar negativo si vendiste de más
     if(isNaN(stk)){ errorEn('pxNota', 'Stock: poné un número entero de unidades, o dejalo vacío si no querés controlarlo.'); document.getElementById('pxStock').focus(); return; }
   }
+  if(trabVieja()){ errorEn('pxNota', 'Hay cambios hechos en otra pestaña. Recargá antes de guardar.'); return; }
   var carp = nomCarpeta(val('pxCarp')), col = '', lc = carpetas(), ci;
   if(carp){
     for(ci=0;ci<lc.length;ci++) if(!lc[ci].general && lc[ci].k === clave(carp)){ carp = lc[ci].nombre; col = lc[ci].color; }   // misma carpeta aunque la escribas distinto
@@ -6875,15 +7127,18 @@ function guardarProducto(){
   if(viejo){ for(var k in datos) viejo[k] = datos[k]; }
   else { datos.id = tjId(); datos.creada = new Date().toISOString(); T.productos.push(datos); }
   if(carp) for(ci=0;ci<T.productos.length;ci++) if(T.productos[ci].carpeta && clave(T.productos[ci].carpeta) === clave(carp)) T.productos[ci].color = col;   // el color es de la carpeta
-  guardarTrab(true); renderTrabajo(); abrirProductos();
+  guardarTrab(true); renderTrabajo();
+  if(px.volver === 'grilla') cerrarHoja(); else abrirProductos();
   pildora(viejo ? 'Producto actualizado' : 'Producto guardado');
 }
 function borrarProducto(id){
-  var p = prodPorId(id); if(!p) return;
+  var p = prodPorId(id); if(!p || trabVieja()) return;
   confirmar('Borrar el producto', 'Se borra el botón de <b>' + esc(p.nombre) + '</b>. Las ventas que ya cargaste con él no se tocan.', 'Borrar', function(){
+    if(trabVieja()) return;
     antesDeCambiar();
     T.productos = T.productos.filter(function(x){ return x.id !== id; });
-    guardarTrab(true); renderTrabajo(); abrirProductos();
+    guardarTrab(true); renderTrabajo();
+    if(px && px.volver === 'grilla') cerrarHoja(); else abrirProductos();
     pildora('Producto borrado');
   });
 }
@@ -7423,7 +7678,9 @@ function csvTrabajo(){
   l.push(['Gastos hasta hoy', n(r.gastado)].join(';'));
   if(r.gastoFuturo) l.push(['Gastos programados', n(r.gastoFuturo)].join(';'));
   if(r.aAcreditar) l.push(['A acreditar más adelante', n(r.aAcreditar)].join(';'));
-  l.push(['Pasado a lo personal', n(r.pasado)].join(';'));
+  var pp = pasesPersonal(r);   // S2 L2: como Disponible del trabajo: lo que ya salió por un lado, lo programado (fecha futura) por otro
+  l.push(['Pasado a lo personal', n(pp.ya)].join(';'));
+  if(pp.programado) l.push(['Programado para pasar a lo personal', n(pp.programado)].join(';'));
   l.push(['Disponible del trabajo', n(r.disponible)].join(';'));
   l.push(['Por cobrar', n(r.porCobrar)].join(';'));
   l.push(['Facturado en los últimos 12 meses', n(r.facturado12)].join(';'));
@@ -7560,6 +7817,14 @@ function fechaPaseDefecto(){
 }
 function destinoPase(){ var fe = val('psFecha'); if(!esISO(fe)) fe = hoyISO(); return {fecha:fe, anio:+fe.slice(0,4), mes:+fe.slice(5,7) - 1}; }
 function anioExiste(a){ return a === D.anio || !!leerAnio(a); }
+/* S2 M1 (OWNER_DECISION_REQUIRED, aviso provisorio): en un año con modelo, un pase con fecha de un mes anterior a arrastre.desde no llega al
+   disponible (esos meses son legacy). Hasta que el dueño decida, la hoja lo avisa y pide confirmar; no se bloquea ni cambia ninguna regla. */
+function avisoPaseAntes(dest){   // '' si la fecha cae en un mes que lleva el saldo mes a mes (o en un año sin eso)
+  var y = dest.anio === D.anio ? D : leerAnio(dest.anio), ar = y && y.arrastre;
+  return ar && typeof ar === 'object' && dest.mes < num(ar.desde)
+    ? 'Esa fecha es anterior a desde cuándo llevás el saldo mes a mes: esa plata no se va a reflejar en el disponible.' : '';
+}
+var paseOk = '';   // S2 M1: la fecha que el usuario ya confirmó con «Pasar igual» (estado de la hoja, no del botón)
 function abrirPase(){
   var r = resumenTrab();
   if(r.paraPasar <= 0){
@@ -7567,6 +7832,7 @@ function abrirPase(){
       + (r.aAcreditar ? ' Lo que tiene fecha más adelante vas a poder pasarlo cuando llegue ese día.' : ' Cuando cargues una venta cobrada o un cobro, aparece acá.'));
     return;
   }
+  paseOk = '';
   abrirHoja('<h3>Pasar a lo personal</h3>'
     + '<input type="text" id="psMonto" class="grande tj-in" inputmode="decimal" placeholder="0" autocomplete="off">'
     + '<div class="chips"><button data-act="tjPaseTodo">Todo: ' + fARS(r.paraPasar) + '</button></div>'
@@ -7580,12 +7846,16 @@ function abrirPase(){
 function notaPase(){
   var e = document.getElementById('psNota'); if(!e) return;
   var d = destinoPase(), r = resumenTrab(), rq = leerMonto('psMonto'), m = Math.round(rq.v);
+  if(paseOk && paseOk !== d.fecha){   // S2 M1: otra fecha, otra confirmación: el botón vuelve a «Pasar»
+    paseOk = ''; var bp = document.querySelector('#hoja [data-act=tjGuardarPase]'); if(bp) bp.textContent = 'Pasar';
+  }
   e.className = 'nota';
   if(!rq.ok && !rq.vacio){ e.className = 'nota mal'; e.innerHTML = 'Monto: ' + rq.msg + '.'; return; }
   if(!anioExiste(d.anio)){ e.className = 'nota mal'; e.innerHTML = 'El ' + d.anio + ' no está creado en la app. Elegí una fecha de un año que tengas.'; return; }
   if(m > r.paraPasar + 0.5){ e.className = 'nota mal'; e.innerHTML = 'Es más de lo que tenés disponible (' + fARS(r.paraPasar) + ').'; return; }
   e.innerHTML = 'Se suma a Ingresos de <b>' + MESES[d.mes] + ' ' + d.anio + '</b>, en el renglón <b>' + RENGLON_TRABAJO + '</b>. Disponible: ' + fARS(r.paraPasar) + '.'
-    + (d.anio !== D.anio ? '<br><span class="neg">Ojo: tenés abierto ' + D.anio + ', así que en la pestaña Mes no lo vas a ver hasta que cambies de año.</span>' : '');
+    + (d.anio !== D.anio ? '<br><span class="neg">Ojo: tenés abierto ' + D.anio + ', así que en la pestaña Mes no lo vas a ver hasta que cambies de año.</span>' : '')
+    + (avisoPaseAntes(d) ? '<br><span class="neg">' + avisoPaseAntes(d) + '</span>' : '');
 }
 function guardarPase(){
   var rq = leerMonto('psMonto'), m = Math.round(rq.v), d = destinoPase(), r = resumenTrab();
@@ -7593,6 +7863,13 @@ function guardarPase(){
   if(!(m > 0)){ errorEn('psNota', 'Falta cuánto querés pasar.'); document.getElementById('psMonto').focus(); return; }
   if(m > r.paraPasar + 0.5){ errorEn('psNota', 'Es más de lo que tenés disponible (' + fARS(r.paraPasar) + ').'); return; }
   if(!anioExiste(d.anio)){ errorEn('psNota', 'El ' + d.anio + ' no está creado en la app. Elegí una fecha de un año que tengas.'); return; }
+  var avAntes = avisoPaseAntes(d);
+  if(avAntes && paseOk !== d.fecha){   // S2 M1: el primer toque avisa; el segundo, con la misma fecha, confirma (aunque no se encuentre el botón)
+    paseOk = d.fecha;
+    var bp = document.querySelector('#hoja [data-act=tjGuardarPase]'); if(bp) bp.textContent = 'Pasar igual';
+    errorEn('psNota', avAntes + ' Si igual querés pasarlo, tocá «Pasar igual».');
+    return;
+  }
   var p = {id:tjId(), fecha:d.fecha, monto:m, anio:d.anio, mes:d.mes, creada:new Date().toISOString()};
   if(aplicarPase(p, 1, sumarPaseT(p)) !== true){ errorEn('psNota', obsoleta ? 'Hay cambios hechos en otra pestaña. Recargá antes de pasar.' : 'No pude sumarlo al mes. Probá de nuevo.'); return; }
   tjAntes = null;
@@ -7653,11 +7930,14 @@ function accionTj(a, b){
   if(a === 'tjVtPeriodo'){ marcarChips('fxPeriodo', b); cambiarPeriodo(v); return; }
   if(a === 'tjVender'){ tocarProducto(id); return; }
   if(a === 'tjMedio'){ abrirCobroProd(id); return; }
+  if(a === 'tjOpcProd'){ abrirOpcionesProd(id); return; }
+  if(a === 'tjEditDesdeGrilla'){ abrirProducto(id, false, 'grilla'); return; }
   if(a === 'tjVista'){ try{ localStorage.setItem(LSVISTA, vistaProd() === 'compacta' ? 'completa' : 'compacta'); }catch(e){} renderTrabajo(); return; }
   if(a === 'tjCobrar'){ cerrarHoja(); venderProducto(id, v); return; }
   if(a === 'tjReponer'){ abrirProducto(id, true); return; }
   if(a === 'tjProds'){ abrirProductos(); return; }
   if(a === 'tjNuevoProd'){ abrirProducto(null); return; }
+  if(a === 'tjNuevoProdGrilla'){ abrirProducto(null, false, 'grilla'); return; }   // S3c: desde la barra; arranca en la carpeta elegida
   if(a === 'tjEditProd'){ abrirProducto(id); return; }
   if(a === 'tjGuardarProd'){ guardarProducto(); return; }
   if(a === 'tjBorrarProd'){ borrarProducto(id); return; }
@@ -7725,6 +8005,7 @@ function accionTj(a, b){
    que había, por las dudas. No convierte ni reescribe nada: los años siguen
    exactamente como estaban, y los campos nuevos se leen con valor por defecto. */
 var LSESQ = 'kibo.esquema', LSPRE130 = 'kibo.respaldo.pre130', ESQUEMA = '1.30';
+var LSVERVISTA = 'kibo.versionVista';   // L9: la última APPVER que arrancó en este teléfono; del teléfono como kibo.esquema: no es clave propia, no viaja en la copia
 // claves de esta app (la copia y la restauración solo tocan estas; otra app del mismo sitio puede usar "kibo.algo"): kibo.datos.AAAA + estas
 var LSR4 = 'kibo.modeloSaldos', LSPRER4 = 'kibo.respaldo.pre-r4';   // marca "este teléfono ya empezó el modelo de saldos" y la copia de lo que había justo antes (como pre130)
 var LSCUAR = 'kibo.cuarentena.';   // N4 I-3: texto tal cual de un blob que no se pudo leer (kibo.cuarentena.AAAA, kibo.cuarentena.trabajo); es del teléfono, nunca se borra
@@ -7774,13 +8055,14 @@ function volverAntesDe130(){
     'Se restaura todo tal cual estaba el ' + r.fecha.slice(8,10) + '/' + r.fecha.slice(5,7) + ', antes de actualizar la app. <b>Lo que cargaste desde entonces se pierde</b>, incluido lo de la pestaña Trabajo. Hacé una copia de seguridad antes, si no la tenés.',
     'Restaurar', function(){
       try{
-        var i, k, borrar = [];
+        var i, k, borrar = [], empezo = false;
         for(i=0;i<localStorage.length;i++){ k = localStorage.key(i); if(claveMia(k) || k === LSESQ) borrar.push(k); }   // LSESQ también: así el arranque vuelve a anotar el esquema
         if(!cuarentenaAntesDeBorrar(borrar)){ pildora('No pude apartar los datos que no se pueden leer, así que no cambié nada. Hacé una copia de seguridad y probá de nuevo.', true); return; }
+        empezo = true;   // L8: desde acá lo guardado cambia; el respaldo se borra último, así una vuelta atrás cortada se puede repetir igual
         for(i=0;i<borrar.length;i++) localStorage.removeItem(borrar[i]);
         for(k in r.datos) if(r.datos.hasOwnProperty(k) && claveMia(k)) localStorage.setItem(k, r.datos[k]);   // un respaldo viejo puede traer claves ajenas: no se escriben
         localStorage.removeItem(LSPRE130);
-      }catch(e){ pildora('No se pudo restaurar. No cambié nada: probá de nuevo.', true); return; }
+      }catch(e){ pildora(empezo ? 'No se pudo terminar de restaurar. El respaldo sigue guardado: tocá de nuevo esta opción para terminarlo.' : 'No se pudo restaurar. No cambié nada: probá de nuevo.', true); return; }
       location.reload();
     });
 }
@@ -7790,6 +8072,9 @@ function volverAntesDe130(){
 function asegurarSnapshotR4(){   // true si ya hay marca o se pudo guardar el respaldo; false si no se pudo (no hay que escribir el modelo)
   try{
     if(localStorage.getItem(LSR4)) return true;
+    // L8: sin marca pero con respaldo = una vuelta atrás que se cortó en el medio (borra la marca antes que el respaldo). Ese respaldo es lo de
+    // antes del modelo y lo que hay ahora está a medias: se conserva, nunca se pisa; solo vuelve la marca
+    if(localStorage.getItem(LSPRER4)){ localStorage.setItem(LSR4, new Date().toISOString()); return true; }
     var datos = {}, hay = false, i, k, ahora = new Date().toISOString();
     for(i=0;i<localStorage.length;i++){
       k = localStorage.key(i);
@@ -7819,13 +8104,14 @@ function volverAntesDeR4(){
     'Se restaura todo tal cual estaba el ' + r.fecha.slice(8,10) + '/' + r.fecha.slice(5,7) + ', antes de que la app llevara tu saldo de un mes al otro. <b>Lo que cargaste desde entonces se pierde</b>, incluido lo de la pestaña Trabajo. Hacé una copia de seguridad antes, si no la tenés.',
     'Restaurar', function(){
       try{
-        var i, k, borrar = [];
+        var i, k, borrar = [], empezo = false;
         for(i=0;i<localStorage.length;i++){ k = localStorage.key(i); if(claveMia(k)) borrar.push(k); }   // incluye la marca: así la app vuelve a quedar como antes del modelo
         if(!cuarentenaAntesDeBorrar(borrar)){ pildora('No pude apartar los datos que no se pueden leer, así que no cambié nada. Hacé una copia de seguridad y probá de nuevo.', true); return; }
+        empezo = true;   // L8: desde acá lo guardado cambia; el respaldo se borra último, así una vuelta atrás cortada se puede repetir igual
         for(i=0;i<borrar.length;i++) localStorage.removeItem(borrar[i]);
         for(k in r.datos) if(r.datos.hasOwnProperty(k) && claveMia(k)) localStorage.setItem(k, r.datos[k]);   // solo claves propias, venga lo que venga en el respaldo
         localStorage.removeItem(LSPRER4);
-      }catch(e){ pildora('No se pudo restaurar. No cambié nada: probá de nuevo.', true); return; }
+      }catch(e){ pildora(empezo ? 'No se pudo terminar de restaurar. El respaldo sigue guardado: tocá de nuevo esta opción para terminarlo.' : 'No se pudo restaurar. No cambié nada: probá de nuevo.', true); return; }
       location.reload();
     });
 }
@@ -8022,6 +8308,14 @@ function activarSaldos(declarado){
   if(sucio){ delete D.arrastre; return false; }   // no se pudo guardar (otra pestaña guardó antes o el navegador no deja): en memoria tampoco queda
   return true;
 }
+// L9: true UNA vez por versión nueva, solo en la app servida por su service worker (lo que se actualiza) que ya se usaba con otra versión.
+// La 1.32 y anteriores no anotaban la versión: sin anotación, es una actualización si ya había años guardados (una instalación nueva no avisa).
+function versionNueva(){
+  var v;
+  try{ v = localStorage.getItem(LSVERVISTA); if(v === APPVER) return false; localStorage.setItem(LSVERVISTA, APPVER); }catch(e){ return false; }
+  if(!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) return false;   // una pestaña sin service worker o el archivo para PC: nada se actualizó
+  return v !== null || aniosGuardados().length > 0;
+}
 function avisoActualizado(){
   var e = document.getElementById('avisos'); if(!e) return;   // reemplaza al recordatorio de copia: este ya lo incluye
   // L1 (hallazgo 15): la versión real (APPVER) y en pocas líneas, para no empujar "Tenés hoy" fuera de la pantalla
@@ -8044,7 +8338,8 @@ if(respaldoPrevio() && diasDelRespaldo() > 30){ try{ localStorage.removeItem(LSP
 vencerRespaldoR4();
 aplicarModo();
 if(abonosNuevos) setTimeout(function(){ toast((abonosNuevos === 1 ? 'Se generó 1 abono' : 'Se generaron ' + abonosNuevos + ' abonos') + ' en Trabajo'); }, 900);
-if(actualizado130) setTimeout(avisoActualizado, 500);
+var nuevaVersion = versionNueva();   // se anota siempre; avisa una sola vez
+if(actualizado130 || nuevaVersion) setTimeout(avisoActualizado, 500);
 aplicarTema();
 aplicarOculto();
 render();

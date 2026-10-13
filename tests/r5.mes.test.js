@@ -12,7 +12,7 @@ var M = la.loadMotor();
 var SRC = la.SRC_FOR_TESTS;
 function existe(n){ return new RegExp('^function ' + n + '\\s*\\(', 'm').test(SRC); }
 var FUNCS = ['seccion', 'abierta', 'fARS', 'grupos', 'esc', 'filaTope', 'textoDeuda', 'cuotaAdelantada', 'repartoTrabajo', 'esProgramado', 'gastadoVista', 'datosRealizados',
-  'htmlTorta', 'pasadas', 'textoTopes', 'puedeAlternar', 'fPct', 'faltaSeccion', 'textoFalta', 'textoDelTrabajo'].filter(existe);
+  'htmlTorta', 'pasadas', 'textoTopes', 'puedeAlternar', 'fPct', 'faltaSeccion', 'textoFalta', 'textoDelTrabajo', 'filasVer'].filter(existe);
 var VARS = ['ICOSEC', 'MARCABLE', 'TOPEABLE', 'MESES', 'oculto', 'PUNTOS', 'TORTA_MAX', 'SECS', 'verFilas'].filter(function(v){ return new RegExp('^var ' + v + '\\s*=', 'm').test(SRC); });
 
 // the month screen of `d` with Trabajo store T; j = the month shown

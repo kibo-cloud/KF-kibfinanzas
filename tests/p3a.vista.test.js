@@ -12,7 +12,7 @@ var SRC = la.SRC_FOR_TESTS;
 function existe(n){ return new RegExp('^function ' + n + '\\s*\\(', 'm').test(SRC); }
 var FUNCS = ['estadoHero', 'claseHero', 'subHero', 'chipT', 'chipsHero', 'etiquetaHero', 'htmlHero', 'barra', 'fPct', 'botonOjo', 'fARS', 'grupos', 'esc',
   'lineasSaldo', 'seccion', 'abierta', 'filaTope', 'textoDeuda', 'cuotaAdelantada', 'esProgramado', 'gastadoVista', 'datosRealizados', 'cobroTxt',
-  'faltaSeccion', 'textoFalta', 'textoDelTrabajo', 'secAhorro', 'notaCompra', 'notaRetiro', 'fUSD'].filter(existe);
+  'faltaSeccion', 'textoFalta', 'textoDelTrabajo', 'filasVer', 'secAhorro', 'notaCompra', 'notaRetiro', 'fUSD'].filter(existe);
 var VARS = ['MESES', 'oculto', 'PUNTOS', 'ICOSEC', 'MARCABLE', 'TOPEABLE', 'SECS', 'verFilas', 'SUB_APAGADO'];
 
 function appMes(d, T, j, today){
@@ -164,6 +164,21 @@ test('a year with nothing loaded shows each section as one sentence and one butt
   assert.match(sec(app, 'gastosFijos'), /input class="monto"/);
   var con = appMes(C.seccion2(false, false), null, 9);
   assert.doesNotMatch(sec(con, 'gastosFijos'), /nota vacia/, 'a year with data: rows as always');
+});
+
+test('U2 "Cargar …" opens the rows of that year only: another empty year, a restored copy or a new year show the sentence again', function(){
+  var app = appMes(C.vacio(2026), null, 9);
+  app.D.meses[9].gastosFijos = [C.it('Alquiler', 0, false)];
+  assert.match(sec(app, 'gastosFijos'), /nota vacia/);
+  app.verFilas.gastosFijos = true;   // the "Cargar gastos fijos" tap
+  assert.match(sec(app, 'gastosFijos'), /input class="monto"/, 'precondition: the rows of 2026 are open');
+  var otro = appMes(C.vacio(2027), null, 9).D; otro.meses[9].gastosFijos = [C.it('Alquiler', 0, false)];
+  app.D = otro;   // cambiarAnio / cargar() replaces D
+  assert.match(sec(app, 'gastosFijos'), /nota vacia/, 'another empty year: the one-sentence empty state again');
+  app.verFilas.gastosFijos = true;
+  assert.match(sec(app, 'gastosFijos'), /input class="monto"/);
+  app.D = JSON.parse(JSON.stringify(app.D));   // the same year read again (restore, reload from storage)
+  assert.match(sec(app, 'gastosFijos'), /nota vacia/, 'the same year read again: the empty state again');
 });
 
 test('the simple calculation under the first-use question is gray and says why; the question card is the hero', function(){

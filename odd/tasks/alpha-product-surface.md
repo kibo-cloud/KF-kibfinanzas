@@ -103,8 +103,8 @@ Must stay (technical compatibility), each with its reason:
   same data).
 - Internal identifiers: CSS class `.kf`, local variables named `kf`, the `window.__kf` test hook, package.json `name`, the
   `KF-kibfinanzas` repository/URL in LEEME (P11 decides the remote). None of them is shown in the app.
-- Follow-up for P11 (outside P2's edit surface): `.gitignore` ignores `kibfinanzas-*.json`; personal exports are now
-  `tugasto-*.json` / `.csv` / `.html` and need the same rule before publishing.
+- Follow-up for P11 (outside P2's edit surface), done in 2e68947: `.gitignore` now ignores `tugasto-*.json`, `tugasto-*.html` and
+  `*.csv` next to the old `kibfinanzas-*` patterns.
 
 Tests:
 - New tests/p2.marca.test.js (9): old-brand scan of index.html, privacidad.html, manifest.webmanifest and sw.js with an
@@ -519,6 +519,128 @@ Route: inline in the single writer. RED first: tests/l56.revision.test.js 0/8 be
 
 Results (after L7 and the L5/L6 fixes): `npm test` 762 (761 pass, 1 todo L-03d); `npm run test:e2e` 467/467; motor goldens
 byte-identical to 956c4aa.
+### L7 review fixes
+
+Route: inline in the single writer (index.html + tests). No money rule change; motor goldens byte-identical.
+
+1. 595a198 `fix: contrast of destructive buttons and chips`. Dark-theme red sheet button was white on #f0655b (3.1:1): now dark text
+   (`--on-neg`, 5.9:1). Neutral chip `--txt2` on `--fill` was 4.3/4.4:1 at 12 px: now `--on-fill` (4.95 light, 5.56 dark). The
+   contrast test covers both pairs.
+2. cdf9847 `fix: per-payment amounts add up to the monthly amount`. Each collection date gets round(total / n) and the last one the
+   remainder (100.000 on the 1st, 10th and 20th → 33.333 + 33.333 + 33.334).
+3. 4678b2e `fix: "Qué vence" counts only uncovered collection dates for "Del trabajo"`. Pases cover the earliest dates first (as the
+   engine allocates them), so covered dates are no longer listed as overdue.
+4. b0bc8fc `fix: focus returns to the opener after a sheet re-renders the view`. `cerrarHoja` remembers the opener by id or data-*
+   attributes and focuses the re-drawn button, else the view heading or the selected tab, never the page body.
+5. 2504559 `fix: keyboard order of the tab bar matches what you see`. Document order Mes, Año, Gasto, Patrimonio, Trabajo, Ajustes
+   (no CSS `order`); the tablist owns the five tabs with `aria-owns`, Gasto stays outside. The L7 markup unit test
+   (tests/l7.accesibilidad.test.js) was updated in that same commit; nothing stale remained.
+
+### L8 — Atomic writes and CSP (done)
+
+Route: inline in the single writer (resumed after an interrupted writer; its commits f4407e5 and bdef326 reviewed and kept).
+Commits: f4407e5, bdef326, 1e2dec3.
+
+- Journal (f4407e5). A pase writes two blobs (the year of the row, then Trabajo). `escribirJuntos` first stores in `kibo.diario`
+  the FULL new text of every blob plus the revision each one has now, then writes the blobs, then deletes the journal. At start-up,
+  before anything is read or saved, `recuperarDiario`: a blob already equal to its journal text is skipped; a missing one is written
+  only if the stored blob still has the journaled prior revision; then the journal is deleted. Never applied twice (whole texts, not
+  a delta). Crash semantics: crash after the journal → the next start writes both; between the writes → it finishes Trabajo; after
+  both → it only deletes the journal; another tab changed a blob in between (stale revision) → nothing is written and the journal
+  goes to quarantine with a notice; an unreadable journal or one naming a non-data key → quarantined, never written; the journal
+  does not fit → the pase is refused, nothing written; the Trabajo write fails while the tab lives → the year is rolled back; if
+  that rollback fails too → the journal stays and the tab stops saving until a reload finishes it. `kibo.diario` is a device key
+  (not in `CLAVES_PROPIAS`): no backup carries it, no rollback deletes it. Tests: tests/l8.diario.test.js (11, a fakeStorage that
+  throws on a chosen setItem, then a fresh start).
+- Other multi-blob writers, reviewed:
+  - `duplicar`: one money blob (the new year). The pre-R4 snapshot and marker are written before it and only describe the state
+    before; `recordarAnio` is a preference. A crash in between leaves the old year untouched and at most a new year not yet
+    opened: no journal needed.
+  - Restore (`restaurarTexto` / `escribirAnios`): a user-confirmed REPLACE from a file the user still holds; it is already
+    per-year (it reports which years did not fit) and idempotent, so repeating it reaches the same state. A journal would hold a
+    second full copy of every restored year exactly when storage is fullest and would refuse restores that fit today. Accepted
+    residual risk: a crash mid-restore can leave some years from the copy and the old Trabajo until the restore is repeated.
+  - `volverAntesDe130` / `volverAntesDeR4`: the snapshot itself is the journal (complete target state, removed last, the rollback
+    is idempotent). Gap found and fixed (1e2dec3): the R4 rollback deletes the marker before the snapshot, so a model write in a
+    half-rolled-back state retook the snapshot from half data. `asegurarSnapshotR4` now keeps an existing snapshot and only sets
+    the marker back; a rollback that fails after it started deleting says "No se pudo terminar de restaurar. El respaldo sigue
+    guardado…" instead of "No cambié nada". RED observed (the new test in tests/r4.migracion.test.js failed without the fix),
+    GREEN after. The pre-1.30 snapshot was already never overwritten (`seguroActualizacion` writes it only when absent).
+- CSP (bdef326). `script-src 'self'` + the sha256 of the two inline scripts (engine and app); no `'unsafe-inline'` for scripts, no
+  `'unsafe-eval'`, `object-src 'none'`, `base-uri 'none'`, `form-action 'none'`, everything else `'self'`. The JSON data block is
+  not executable, so "Versión para PC" (only that block replaced) carries a matching CSP. tests/l8.csp.test.js fails on a stale
+  hash and prints the script-src to paste (it also proves one changed character changes the hash and CRLF = LF); the E2E runs the
+  UNMODIFIED build and its PC file via file:// with no violation and proves an injected inline script is blocked. Regenerating:
+  recompute the hashes as that test does and paste them into the meta of index.html and privacidad.html (S-4 keeps both metas
+  equal). Remaining allowance: `style-src 'self' 'unsafe-inline'`, because the app renders `style="…"` attributes (bars, colors,
+  widths); hashes do not cover attributes and removing them is a larger refactor. Styles cannot run script.
+
+### L9 — Release 1.33.0 (done)
+
+Route: inline in the single writer. Commit d58d815.
+
+- APPVER 1.33.0; service-worker cache `kibfinanzas-offline-v46` (prefix kept, only `kibfinanzas-offline-*` caches are deleted);
+  precache list unchanged and complete (tests/release.test.js checks every local file referenced by the page and the manifest);
+  LEEME changelog "TuGasto 1.33: nueva cara…" (Spanish); CSP hashes regenerated.
+- Update notice once per version: until now it only fired when coming from before 1.30 (`kibo.esquema`), so a 1.32 install would
+  not see "versión 1.33.0". New device key `kibo.versionVista` (like `kibo.esquema`: not own, not in backups, not touched by
+  rollbacks) is noted at every start; `versionNueva` announces only when the page is served by its service worker (the installed
+  app) and an older version was noted, or none was noted and years are already saved (a 1.32 phone). A fresh install, a plain tab
+  or the PC file never announce. Unit tests in tests/release.test.js (3).
+- PWA E2E (+6): a copy of the release relabeled 1.32.0 / v45 (only the copy also registers the worker on http://127.0.0.1, a
+  secure context) is installed and served from its cache; v46 is published and `registration.update()` runs: only the v46 cache is
+  left; the reopened app serves 1.33.0, shows "versión 1.33.0" once with the data intact, the next start shows none; with the
+  server stopped the installed app reloads offline and draws the month; no CSP violation and no page error on any of those loads.
+  The PC file via file:// is covered by the L8 E2E on the real 1.33.0 build.
+
+Results: `npm test` 784 (783 pass, 1 todo L-03d); `npm run test:e2e` 480/480; motor goldens byte-identical to bdef326.
+
+### Native review follow-ups (U1-U9)
+
+Route: one delegated writer (index.html + tests, several files). Every item was checked against 5af3628 first; all still applied
+except where noted. No money rule changed; motor goldens byte-identical to 5af3628; APPVER 1.33.0 / sw v46 kept; CSP hashes
+regenerated in index.html and privacidad.html on every script change.
+
+- U2 `verFilas` (WARNING) — fixed in 143ed6b. "Cargar …" was remembered per section for the whole tab; it is now tied to the open
+  year object (`filasVer`), so another empty year, a restored copy or the same year read again show the one-sentence empty state.
+  Unit test (RED first).
+- U6 quick-expense row by index (WARNING) — fixed in 95aa2db. The question keeps the row's name, month and year; the answer
+  (`gastoEsPago` / `marcarPago` / `gastoAparte`) refuses with "<row> cambió mientras respondías: no anoté nada…" when that index
+  holds another row, the row was ticked or deleted, or the month changed. Unit tests (RED first).
+- U7 `irVence` silent miss (WARNING) — fixed in b4b7e3b. A row is looked up by its place AND its name in the data; a section showing
+  the empty-year sentence is opened first; a stale card is redrawn with a message instead of returning silently. `irVence` no longer
+  reads an amount input, so it left the money inventory (tests/inventario.data.js). E2E (stale row, scroll into view).
+- U7 category sum (WARNING) — claim verified, test added in c866ba6. Pagado (`totalGastos`) is ticked fijos + variables in both the
+  model (`flujosMes.gastosReal`) and legacy (`calc`); paid installments are `totalDeudas` and "Del trabajo" is income, so the
+  categories do add up to Pagado. No label change; pinned with installments, Del trabajo and an unpaid row, model and legacy.
+- U8 hidden-amounts observer (WARNING) — fixed in a27fa65. Mutations are batched to one requestAnimationFrame, only changed subtrees
+  are walked (the whole page on the first pass after hiding), the observer is disconnected while labeling. E2E: 20 nodes added in
+  20 callbacks are all labeled with one walk (RED on the old code: 21 walks).
+- U9 journal 'amedias' (WARNING) — test added in 7e9789b (the path already worked): Trabajo write and the year rollback both fail →
+  journal kept, `obsoleta`, `avisoDiario('pendiente')`; the next start finishes the pase once.
+- U9 vencimientos divisor (SUGGESTION) — fixed in 4995ffe. `cuantosPagos` now counts `diasCobro` dates, so `cobroTxt` and "Qué
+  vence" divide by the same number. They only differed on a repeated day (old data), not on weekly rows (same count before and
+  after, asserted). Unit test (RED first).
+- U5 L2 confirmar scanner (WARNING, test bug) — fixed in 6c134ba: no 600-char window, whole strings skipped (quotes, template,
+  escapes), nesting tracked; synthetic long-string test.
+- U5 SUGGESTIONs — e35d909: the L2 E2E seed has pre-1.30 and pre-R4 snapshots and checks both "Volver a como estaba…" rows are
+  drawn; unit test for every `diagCompartir` branch.
+- U3 SUGGESTIONs — 3559c22: `generar-l1-numeros.js` refuses unless HEAD is the recorded base (or `TUGASTO_L1_OTRA_BASE=1`), tested;
+  the extractor keeps the parentheses of "($X)". Baseline regenerated ON ec9db4a (worktree) with `TUGASTO_GOLDEN_RAZON`; diff report:
+  20 cases, 24 signed amounts added, 19 unsigned removed, tables unchanged, 0 other differences.
+- U1/U6/U4b/U8 test robustness — a0ffeaa: Trabajo CSV captured by file name; the exact-ms timestamp checks first prove the page
+  clock is pinned (DATE_PIN already froze it); L1 Gasto/update-notice steps wait on conditions; `L7_GRABAR=1` records and skips the
+  comparison (reported as a failing check).
+- U2 SUGGESTIONs — 2dbe1b0: E2E for the "Te falta cobrar" and "Atrasado" chips. Gasto hide/show on scroll: obsolete (L1 moved Gasto
+  into the tab bar; no code adds `.fab.fuera` any more, only the dead CSS rule remains).
+- U1 SUGGESTION — stale P2 note about the `.gitignore` tugasto patterns updated (done in 2e68947).
+- U4a independent review: fixed in 16ffb71. In a model year the "A hoy" row's "Pagados a" and the "Este año compraste…" paragraph
+  summed purchases over all 12 months (a future-month compra leaked into a hoy). They now count only realized months
+  (`costoDolaresHoy`, via `esProgramado`); a scheduled purchase shows the year average on "Con lo programado" and in its own
+  "Con lo programado, en el año: …" line. Legacy years unchanged. tests/u4a.dolares.test.js (RED first; mutation re-checked).
+
+Results: `npm test` 793 (792 pass, 1 todo L-03d); `npm run test:e2e` 487/487; motor goldens byte-identical to 5af3628.
+
 ## Improvement loop (owner: "ejecutá todo lo que creas necesario para mejorarla en formato loop", 2026-10-07)
 
 Ordered backlog (each item: test-first, suites green, docs, small commits; native review consent batched per slice):
@@ -531,6 +653,32 @@ Ordered backlog (each item: test-first, suites green, docs, small commits; nativ
 - [x] L5 "Qué vence esta semana" (pending with dates, installments, Trabajo invoices) on opening.
 - [x] L6 R6 analysis: month vs previous and vs average, category trends, "más que lo normal" (from the validated model).
 - [x] L7 Desktop two-column layout + accessibility (contrast, labels, focus, screen reader).
-- [ ] L8 Atomic writes (year + Trabajo) and strict CSP if feasible without breaking the PC file; else documented debt.
-- [ ] L9 Version 1.33.0 + SW, PWA update path, offline, PC/file:// verification.
+- [x] L8 Atomic writes (year + Trabajo) and strict CSP if feasible without breaking the PC file; else documented debt.
+- [x] L9 Version 1.33.0 + SW, PWA update path, offline, PC/file:// verification.
 - [ ] L10 Native review slices, final verification, GitHub (destination must be given by the owner), ALPHA verdict.
+
+## L10 — Native review and Alpha verdict (2026-10-12)
+
+Native gentle-ai review, owner consent per slice, reliability lens, every slice APPROVED with no correction and acknowledged
+(authority burned): U1 review-3382a9f2426dd01c (6ff871d..2e68947), U2 review-f64d58e00ea4f7f1 (..ec9db4a), U3
+review-dadec48e50b95f07 (..240e9ed), U4b review-4c7a85fb71def0c1 (5786c97..58bd02d), U5 review-f79a3b50493153dd (..ae166a3), U6
+review-c98f4bf9f72e5a50 (..2f702bb), U7 review-015ff96329fb993f (..956c4aa), U8 review-1b6bf84b79338039 (..611a53c), U9
+review-aa2f0ed02d40bbf3 (..5af3628), V1 review-77553780d7658f7f (5af3628..b6549b1).
+- U4a (240e9ed..5786c97, single commit) exceeds the native lens context budget even alone (two regenerated layout fixtures with long
+  lines); covered instead by an independent read-only review: no money/XSS/deep-link defect, legacy money identical to the ec9db4a
+  baseline; one LOW finding (future dollar purchases in the "A hoy" cost) fixed in 16ffb71 and reviewed in V1.
+- Advisories: all U1-U9 items fixed, already fixed, or obsolete (see "Native review follow-ups (U1-U9)"). V1: R3-001 (weekly default
+  in cuantosPagos) NOT a defect — `diasCobro` applies the Friday default; R3-002 (l1 test needs git metadata), R3-003 (`conProg`
+  compares USD only), R3-004 (stale irVence opens an empty section) accepted as LOW follow-ups.
+
+Final state (parent-verified at b6549b1): `npm test` 797 (796 pass, 0 fail, 1 todo L-03d), `npm run test:e2e` 487/487, motor goldens
+byte-identical, APPVER 1.33.0, SW `kibfinanzas-offline-v46`, CSP without script 'unsafe-inline', tree clean, no AI trailers.
+
+GitHub: owner decided "No publicar todavía" (2026-10-12). Repository prepared (.gitignore, secret/PII scan clean; commit author email
+visible if published). No remote configured; push pending owner decision.
+
+Verdict: `ALPHA_READY` (product, technical and repository criteria met; publication deliberately deferred by the owner).
+Open OWNER_DECISION_REQUIRED (none blocking): N1-B, N2-B (MEDIUM, L-03d legacy two-row "Del trabajo"), N3a-A/B, N3b-A/B, N4-A/B,
+L3 partial payment + "(otro gasto)" vs topes, L5 optional due day for expenses/installments, GitHub destination/visibility.
+Residual risks: MEDIUM N2-B; LOW restore without journal (repeatable), style-src 'unsafe-inline', V1 LOW advisories, quarantine copies
+accumulate (N4-B), undo info lost when a new backup is restored into an older app version.

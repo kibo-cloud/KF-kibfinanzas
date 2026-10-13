@@ -259,7 +259,7 @@ test('N1-3 summary card, model year (L-01 + legacy September income 400.000): ca
 });
 test('N1-3 summary card, model year (section 2, November ticked): a future month is never in the averages', function(){
   var app = V.appAnio(C.seccion2(false, true)), r = txt(resumen(app.anio())), f = app.fARS;
-  assert.ok(r.indexOf('Por mes entran ' + f(1000000) + ' y se van ' + f(500000) + '.') >= 0, r);
+  assert.ok(r.indexOf('Por mes entran ' + f(1000000) + ' y se van ' + f(500000) + ', más ' + f(50000) + ' de cuotas. Te quedan ' + f(450000) + '.') >= 0, r);   // S2 L1: the §1 Resultado (September's paid installment)
   assert.ok(r.indexOf('Promedio de 2 meses ya transcurridos de 2026') >= 0, r);
   assert.equal(r.indexOf('Noviembre'), -1, r);
 });

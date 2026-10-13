@@ -44,6 +44,35 @@ test('L2 privacidad.html shows no jargon and no English UI words either', functi
   assert.deepEqual(t, []);
 });
 
+// U5 review: the text of a call's second argument (from just after its first top-level comma, at most 600 characters), scanning from
+// `desde` (just after the opening parenthesis). Strings ('', "", ``, with escapes) are skipped whole however long they are: the scan
+// is not limited to a window, so a closing quote far away is found instead of restarting the scan (which looped). '' when the call
+// ends before a second argument or the source ends inside a string.
+function segundoArgumento(src, desde){
+  var dep = 0, i, c, q;
+  for(i = desde; i < src.length; i++){
+    c = src[i];
+    if(c === "'" || c === '"' || c === '`'){
+      for(q = i + 1; q < src.length && src[q] !== c; q++) if(src[q] === '\\') q++;
+      if(q >= src.length) return '';
+      i = q; continue;
+    }
+    if(c === '(' || c === '[' || c === '{') dep++;
+    else if(c === ')' || c === ']' || c === '}'){ if(dep === 0) return ''; dep--; }
+    else if(c === ',' && dep === 0) return src.slice(i + 1, i + 601).trim();
+  }
+  return '';
+}
+
+test('U5 the confirmation scanner skips long strings, escapes and nesting, and never loops on a quote it cannot close', function(){
+  var largo = 'x'.repeat(700);
+  assert.equal(segundoArgumento("confirmar('" + largo + "', 'Se borra todo', 'Borrar', f)", 10).slice(0, 15), "'Se borra todo'", 'a first argument longer than 600 characters');
+  assert.equal(segundoArgumento("confirmar('It\\'s, ok' + g(a, b), \"cuerpo\", 'x')", 10).slice(0, 8), '"cuerpo"', 'escaped quote, comma inside a string and inside a call');
+  assert.equal(segundoArgumento('confirmar(`a, ${b}`, [1, 2], 3)', 10).slice(0, 6), '[1, 2]');
+  assert.equal(segundoArgumento("confirmar('sin cerrar", 10), '', 'an unterminated string ends the scan');
+  assert.equal(segundoArgumento('confirmar(solo)', 10), '', 'no second argument');
+});
+
 test('L2 every destructive confirmation states its consequence (a non-empty body after the title)', function(){
   var re = /confirmar\(/g, m, n = 0, vacias = [];
   while((m = re.exec(SRC))){
@@ -51,15 +80,7 @@ test('L2 every destructive confirmation states its consequence (a non-empty body
     if(/^\s*[a-z]+\s*,\s*[a-z]+\s*,/i.test(resto) && SRC.slice(m.index - 9, m.index) === 'function ') continue;   // the definition
     if(/^\s*\)/.test(resto) || SRC.slice(m.index - 1, m.index) === '"' || SRC.slice(m.index - 1, m.index) === '=') continue;
     n++;
-    // the second argument starts after the first top-level comma
-    var dep = 0, i, seg = -1;
-    for(i = 0; i < resto.length; i++){
-      var c = resto[i];
-      if(c === "'" ){ i = resto.indexOf("'", i + 1); continue; }
-      if(c === '(' ) dep++; else if(c === ')') dep--;
-      else if(c === ',' && dep === 0){ seg = i; break; }
-    }
-    var cuerpo = seg < 0 ? '' : resto.slice(seg + 1).trim();
+    var cuerpo = segundoArgumento(SRC, desde);
     if(!cuerpo || /^''/.test(cuerpo)) vacias.push(SRC.slice(m.index, m.index + 60));
   }
   assert.ok(n >= 9, 'found ' + n + ' confirmations');

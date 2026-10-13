@@ -115,3 +115,29 @@ test('L6 legacy year: its own numbers (calc/serie), marked "Cálculo simple"; De
   assert.match(h, /Cálculo simple/);
   assert.ok(a.htmlTendencias(r.an).indexOf('&lt;b&gt;x&lt;/b&gt;') > 0, 'category names are escaped');
 });
+
+// U7 review: Pagado (totalGastos, the "Pagado" tile) is the ticked fijos + variables; installments are their own figure (totalDeudas,
+// "Cuotas") and "Del trabajo" is income. So the categories (fijos + variables) add up to Pagado also with paid installments and
+// Trabajo pases in the month, and no installment ever shows up as a category.
+test('U7 with paid installments and "Del trabajo": the categories still add up to Pagado; installments stay out of both', function(){
+  var d = modelo();
+  d.planDeudas = {'Préstamo': {total: 600000, recargo: 0, cuotas: 6, pagadasAntes: 0}};
+  [6, 7, 8, 9].forEach(function(j){
+    d.meses[j].gastosFijos = [it('Alquiler', 400000, true), it('Luz', 20000, j !== 9)];
+    d.meses[j].deudas = [it('Préstamo', 100000, true)];
+    d.meses[j].ingresos.push(it('Del trabajo', 250000, true));
+  });
+  var a = app(d), r = a.analisis(), an = a.plain(r.an);
+  an.meses.forEach(function(j){
+    var t = 0; an.categorias.forEach(function(c){ t += c.porMes[j]; });
+    assert.equal(t, r.s[j].totalGastos, 'month ' + j + ': categories = Pagado');
+    assert.ok(r.s[j].totalDeudas >= 100000, 'month ' + j + ': the paid installment is counted, apart (non-vacuous)');
+  });
+  assert.equal(r.s[9].totalGastos, 400000 + 300000 + 62000 + 10000, 'October Pagado: Alquiler + the ticked variables, no installment, no unpaid Luz');
+  assert.deepEqual(an.categorias.filter(function(c){ return c.nombre === 'Préstamo' || c.nombre === 'Del trabajo'; }), [], 'no installment and no income as a category');
+  var leg = app(H.sinModelo(C.copy(d))), rl = leg.analisis(), al = leg.plain(rl.an);
+  al.meses.forEach(function(j){
+    var t = 0; al.categorias.forEach(function(c){ t += c.porMes[j]; });
+    assert.equal(t, rl.s[j].totalGastos, 'legacy month ' + j + ': categories = Pagado');
+  });
+});

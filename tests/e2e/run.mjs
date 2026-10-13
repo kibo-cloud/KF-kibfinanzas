@@ -377,6 +377,9 @@ try{
   check('reload: no empty notice', await ev(`!!document.querySelector('#avisos [data-av=vacia]')`), false);
   // L4: never backed up -> no reminder on the first day with data; the first day is recorded on this phone
   check('L4 reload: no backup reminder on the first day with data (never backed up)', await ev(`!!document.querySelector('#avisos [data-av=copia]')`), false);
+  // U4b review: the timestamps below compare to the millisecond because the page clock is pinned (DATE_PIN); prove it is, so a change
+  // of the pin fails here with a clear name instead of as a flaky timestamp
+  check('L4 the page clock is pinned (exact timestamp comparisons below rely on it)', await ev(`[Date.now() === new Date(2026, 9, 4, 12, 0, 0).getTime(), new Date().toISOString() === new Date().toISOString()]`), [true, true]);
   check('L4 the first day with data is recorded (device key)', await ev(`localStorage.getItem('kibo.datosDesde') === new Date().toISOString()`), true);
   const avisoCopia = () => ev(`(function(){ var a = document.querySelectorAll('#avisos .aviso'), c = document.querySelector('#avisos [data-av=copia]');
     return c ? [a.length, c.querySelector('p').textContent, Array.prototype.map.call(c.querySelectorAll('button'), function(b){ return b.textContent; })] : null; })()`);
@@ -508,6 +511,60 @@ try{
   await ev(`localStorage.clear(); true`);
   await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: cspId });
   await nav(URL_APP);
+
+  // ── L9: the INSTALLED app moves from the previous release to this one: only the new cache is left, the new APPVER is served, the update
+  //    notice says the new version once, a reload without network opens it, and no CSP violation on any of those loads ──
+  {
+    const PREV = { appver: '1.32.0', sw: 45 };   // the release this one replaces (moves with tests/release.test.js)
+    const swSrc = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8'), swN = +/kibfinanzas-offline-v(\d+)'/.exec(swSrc)[1];
+    // the app registers its worker on https only; this test origin is http://127.0.0.1 (a secure context), so only the COPY also allows it
+    const conSW = (html) => { const n = html.replace("location.protocol === 'https:'", "(location.protocol === 'https:' || location.hostname === '127.0.0.1')"); if(n === html) throw new Error('service worker registration guard not found'); return conHashes(n); };
+    const pwaDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tugasto-e2e-pwa-')); tmpDirs.push(pwaDir);
+    const publicar = (html, sw) => {
+      for(const f of fs.readdirSync(ROOT)) if(/\.(png|webmanifest)$/.test(f) || f === 'privacidad.html') fs.copyFileSync(path.join(ROOT, f), path.join(pwaDir, f));
+      fs.writeFileSync(path.join(pwaDir, 'index.html'), html); fs.writeFileSync(path.join(pwaDir, 'sw.js'), sw);
+    };
+    const realIdx = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+    publicar(conSW(realIdx.replace(/(var APPVER\s*=\s*)'[^']+'/, `$1'${PREV.appver}'`)), swSrc.replace(`kibfinanzas-offline-v${swN}'`, `kibfinanzas-offline-v${PREV.sw}'`));
+    const srvPwa = await serve(pwaDir), U = `http://127.0.0.1:${srvPwa.address().port}/index.html`, viol = [];
+    const cspPwa = (await send('Page.addScriptToEvaluateOnNewDocument', { source: 'window.__cspV = []; document.addEventListener("securitypolicyviolation", function(e){ window.__cspV.push(e.violatedDirective); });' })).result.identifier;
+    const errsPwa = pageErrs.length;
+    const servida = `(function(){ var m = null; [].forEach.call(document.scripts, function(s){ m = m || /var APPVER\\s*=\\s*'([^']+)'/.exec(s.text); }); return m && m[1]; })()`;
+    const cachesYa = `caches.keys().then(function(k){ return k.filter(function(x){ return x.indexOf('kibfinanzas-offline-') === 0; }).sort(); })`;
+    const ir = async (ms = 900) => { await nav(U); await sleep(ms); viol.push(...await ev('window.__cspV.slice()')); };
+    try{
+      await nav(U);
+      await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); localStorage.setItem('kibo.ultimaCopia', new Date().toISOString()); localStorage.setItem('kibo.esquema', '1.30');
+        localStorage.setItem('kibo.anio','2026'); localStorage.setItem('kibo.datos.2026', ${JSON.stringify(JSON.stringify(legacy))}); true`);
+      await ir();
+      await waitFor(`!!navigator.serviceWorker.controller`, true, 8000);
+      await waitFor(cachesYa, [`kibfinanzas-offline-v${PREV.sw}`], 8000);
+      await ir();
+      check(`L9 PWA: installed on v${PREV.sw} (${PREV.appver}), served by its worker from its cache`,
+        [await ev(servida), await ev(`!!navigator.serviceWorker.controller`), await ev(cachesYa)], [PREV.appver, true, [`kibfinanzas-offline-v${PREV.sw}`]]);
+      // the new release is published; the installed worker finds the new sw.js (as on the next visit with signal)
+      publicar(conSW(realIdx), swSrc);
+      await ev(`navigator.serviceWorker.getRegistration().then(function(r){ return r.update(); }).then(function(){ return true; })`);
+      check(`L9 PWA: v${swN} installs and activates, the v${PREV.sw} cache is deleted`, await waitFor(cachesYa, [`kibfinanzas-offline-v${swN}`], 10000), [`kibfinanzas-offline-v${swN}`]);
+      await ev(`localStorage.removeItem('kibo.versionVista'); true`);   // a real ${PREV.appver} phone never wrote it
+      await ir();
+      check(`L9 PWA: the reopened app is ${APPVER_EXPECTED} and says "versión ${APPVER_EXPECTED}" once, with the data as it was`,
+        [await ev(servida), await waitFor(`!!document.getElementById('avisoVersion') && document.getElementById('avisoVersion').textContent.indexOf('versión ${APPVER_EXPECTED}.') >= 0`, true),
+         await ev(`localStorage.getItem('kibo.versionVista')`), await ev(`JSON.parse(localStorage.getItem('kibo.datos.2026')).meses[0].ingresos[0].monto`)],
+        [APPVER_EXPECTED, true, APPVER_EXPECTED, 100000]);
+      await ir();
+      check('L9 PWA: the next start shows no update notice (once per version)', await ev(`!!document.getElementById('avisoVersion')`), false);
+      await new Promise(r => { srvPwa.close(r); srvPwa.closeAllConnections?.(); });   // no network from here on
+      await ir();
+      check(`L9 PWA: without network the installed ${APPVER_EXPECTED} opens from its cache and draws the month`,
+        [await ev(servida), await ev(`!!document.querySelector('#v-mes .sec')`), await ev(`!!navigator.serviceWorker.controller`)], [APPVER_EXPECTED, true, true]);
+      check('L9 PWA: no CSP violation and no uncaught page error on any of those loads', [viol, pageErrs.slice(errsPwa)], [[], []]);
+    } finally {
+      try{ await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: cspPwa }); }catch{}
+      if(srvPwa.listening) await new Promise(r => { srvPwa.close(r); srvPwa.closeAllConnections?.(); });
+    }
+    await nav(URL_APP);
+  }
 
   // ── R4.3: several tabs, model fields on reload, backup -> restore, back to pre-R4 ──
   const oct = (sueldo) => { const ms = []; for(let i=0;i<12;i++) ms.push(mes([], [], [], []));
@@ -984,16 +1041,19 @@ try{
     await ev(`(function(){ var h = document.querySelector('#hoja [data-act=cerrar]'); if(h) h.click(); return true; })()`); await sleep(300);
     check('P2 brand: the Ajustes footer starts with "TuGasto v"', await ev(`document.querySelector('#v-ajustes .pie').textContent.indexOf('TuGasto v' + APPVER) === 0`), true);
     // exported file names, through the real actions (Web Share disabled so the backup takes the download path)
-    const nombres = await ev(`(async function(){ var n = [], o = HTMLAnchorElement.prototype.click, ou = URL.createObjectURL, csvT = null;
+    // U1 review: each blob is matched to its download by its object URL (the anchor's href), so the Trabajo CSV is picked by its file
+    // name, not by the order of the downloads
+    const nombres = await ev(`(async function(){ var n = [], o = HTMLAnchorElement.prototype.click, ou = URL.createObjectURL, blobs = {}, porNombre = {}, csvT = null, k;
       Object.defineProperty(navigator, 'share', {value: undefined, configurable: true});
-      HTMLAnchorElement.prototype.click = function(){ if(this.download) n.push(this.download); };
-      URL.createObjectURL = function(b){ if(n.length === 3) csvT = b; return ou.call(URL, b); };
+      HTMLAnchorElement.prototype.click = function(){ if(this.download){ n.push(this.download); porNombre[this.download] = blobs[this.href] || null; } };
+      URL.createObjectURL = function(b){ var u = ou.call(URL, b); blobs[u] = b; return u; };
       var dar = function(a){ var b = document.createElement('button'); b.setAttribute('data-act', a); document.body.appendChild(b); b.click(); document.body.removeChild(b); };
       try{
         dar('copia'); dar('expcsv'); dar('verpc');
         for(var i = 0; i < 80 && n.length < 3; i++) await new Promise(function(r){ setTimeout(r, 100); });
         dar('tjCSV');
       } finally { HTMLAnchorElement.prototype.click = o; URL.createObjectURL = ou; delete navigator.share; }
+      for(k in porNombre) if(/^tugasto-trabajo-.*\\.csv$/.test(k)) csvT = porNombre[k];
       var primera = csvT ? (await csvT.text()).replace(/^\\ufeff/, '').split('\\r\\n')[0] : null;
       return {nombres: n.map(function(x){ return x.replace(/\\d{4}-\\d{2}-\\d{2}/, 'FECHA'); }), primera: primera && primera.replace(/exportado el .*$/, 'exportado el …')}; })()`);
     check('P2 brand: exported file names start with "tugasto-"', nombres.nombres, ['tugasto-copia-FECHA.json', 'tugasto-2026.csv', 'tugasto-2026.html', 'tugasto-trabajo-FECHA.csv']);
@@ -1038,6 +1098,15 @@ try{
     check('P3a no hero buttons that repeat the tab bar', await ev(`[!!document.querySelector('#v-mes [data-act=tab]'), document.getElementById('hero').textContent.indexOf('El año') < 0]`), [false, true]);
     await ev(`document.querySelector('#heroChips [data-v=pagar]').click(); true`); await sleep(1000);
     check('P3a the "Te falta pagar" chip takes you to the first section with something unpaid', await ev(`(function(){ var t = document.querySelector('.sec[data-sec=gastosFijos]').getBoundingClientRect().top; return t >= 0 && t < 160; })()`), true);
+    // U2 review: the other two chips. From the top of the page (where the target is further down), each one brings its target near the top
+    const chipLleva = async (v, sel) => {
+      await ev(`window.scrollTo(0, 0); true`); await waitFor(`Math.round(window.scrollY)`, 0);
+      const antes = await ev(`Math.round(document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect().top)`);
+      await ev(`document.querySelector('#heroChips [data-v=${v}]').click(); true`);
+      return [antes >= 160, await waitFor(`(function(){ var t = document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect().top; return t >= 0 && t < 160; })()`, true)];
+    };
+    check('U2 the "Te falta cobrar" chip takes you to Ingresos', await chipLleva('cobrar', '.sec[data-sec=ingresos]'), [true, true]);
+    check('U2 the "Atrasado" chip takes you to the overdue line of the balance block', await chipLleva('atrasado', '#sdoAtrasado'), [true, true]);
     check('P3a section header: total and "falta $X"', [await texto('#sub-ingresos'), await texto('#falta-ingresos'), await texto('#falta-gastosFijos')],
       [await F(1520000), 'falta ' + await F(220000), 'falta ' + await F(22000)]);
     check('P3a row states: pending rows say "Falta", paid rows have the solid check', [await textos('#v-mes .sec[data-sec=gastosFijos] .item .est'), await ev(`document.querySelectorAll('#v-mes .sec[data-sec=gastosFijos] .item.pago .chk.on').length`)], [['Falta'], 1]);
@@ -1197,27 +1266,28 @@ try{
       check(`L1 Gasto at ${w} px: inside the tab bar, over no amount at load`, await ev(solapa), []);
     }
     await tamano(390);
-    await irTab('anio'); await ev(`document.getElementById('fab').click(); true`); await sleep(700);
-    check('L1 Gasto from another tab: goes to the month and opens the sheet', [await ev(`document.querySelector('#nav button.on').getAttribute('data-t')`), await ev(`!!document.getElementById('grMonto')`)], ['mes', true]);
+    // U1 review: condition waits instead of fixed sleeps in this block
+    await irTab('anio'); await ev(`document.getElementById('fab').click(); true`);
+    check('L1 Gasto from another tab: goes to the month and opens the sheet', await waitFor(`[document.querySelector('#nav button.on').getAttribute('data-t'), !!document.getElementById('grMonto')]`, ['mes', true]), ['mes', true]);
     // 5 · expense sheet polish
     check('L1 expense sheet: the amount carries "$", a placeholder, and the button says "Sumar gasto"',
       [await texto('#hoja .gr-monto span'), await ev(`document.getElementById('grMonto').placeholder`), await texto('#hoja [data-act=confirmarGasto]'),
        await ev(`(function(){ var s = document.querySelector('#hoja .gr-monto span').getBoundingClientRect(), i = document.getElementById('grMonto').getBoundingClientRect(); return s.left > i.left && s.right < i.left + 48; })()`)],
       ['$', '0', 'Sumar gasto', true]);
-    await ev(`(function(){ var b = document.querySelector('#hoja [data-act=cerrarHoja]'); if(b) b.click(); return true; })()`); await sleep(400);
-    await nav(URL_APP + '?gasto=1'); await sleep(1000);
-    check('L1 the PWA shortcut ?gasto=1 still opens the expense sheet', await ev(`!!document.getElementById('grMonto')`), true);
-    await nav(URL_APP); await sleep(800);
+    await ev(`(function(){ var b = document.querySelector('#hoja [data-act=cerrarHoja]'); if(b) b.click(); return true; })()`); await waitFor(`document.getElementById('velo').classList.contains('on')`, false);
+    await nav(URL_APP + '?gasto=1');
+    check('L1 the PWA shortcut ?gasto=1 still opens the expense sheet', await waitFor(`!!document.getElementById('grMonto')`, true), true);
+    await nav(URL_APP); await waitFor(`!!document.getElementById('bigFinal') && !document.getElementById('velo').classList.contains('on')`, true);
 
     // 4 · the update notice: the real version, one notice at a time, "Tenés hoy" still on the first screen at 390
-    await seed(y, tj, true); await sleep(400);
+    await seed(y, tj, true); await waitFor(`!!document.getElementById('avisoVersion') && !!document.getElementById('bigFinal')`, true);
     check('L1 update notice: says the real APPVER, alone, and "Tenés hoy" stays above the tab bar at 390 x 844',
       [await ev(`document.getElementById('avisoVersion').textContent.indexOf('versión ' + APPVER + '.') >= 0`), await ev(`document.getElementById('avisoVersion').textContent.indexOf('1.30') < 0`),
        await ev(`Array.prototype.filter.call(document.querySelectorAll('.aviso'), function(a){ return a.offsetHeight > 0; }).length`),
        await ev(`document.getElementById('bigFinal').getBoundingClientRect().bottom <= document.getElementById('nav').getBoundingClientRect().top`)],
       [true, true, 1, true]);
     const ySinConfirmar = JSON.parse(JSON.stringify(y)); delete ySinConfirmar.meses[8].cierreReal;
-    await seed(ySinConfirmar, tj, true); await sleep(400);
+    await seed(ySinConfirmar, tj, true); await waitFor(`!!document.getElementById('avisoCierre') && document.getElementById('avisoCierre').offsetHeight > 0`, true);
     check('L1 update notice: waits while the start-of-month question is open (one notice at a time)',
       [await ev(`!!document.getElementById('avisoCierre') && document.getElementById('avisoCierre').offsetHeight > 0`), await ev(`!!document.getElementById('avisoVersion') && document.getElementById('avisoVersion').offsetHeight === 0`)], [true, true]);
 
@@ -1278,7 +1348,11 @@ try{
       pases: [{id: 'p1', fecha: '2026-10-02', monto: 300000, anio: 2026, mes: 9}, {id: 'p2', fecha: '2026-11-05', monto: 200000, anio: 2026, mes: 10}]};
     await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
     await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); localStorage.setItem('kibo.ultimaCopia', new Date().toISOString()); localStorage.setItem('kibo.esquema', '1.30'); localStorage.setItem('kibo.anio','2026');
-      localStorage.setItem('kibo.datos.2026', ${JSON.stringify(JSON.stringify(y))}); localStorage.setItem('kibo.trabajo', ${JSON.stringify(JSON.stringify(tj))}); true`);
+      localStorage.setItem('kibo.datos.2026', ${JSON.stringify(JSON.stringify(y))}); localStorage.setItem('kibo.trabajo', ${JSON.stringify(JSON.stringify(tj))});
+      // U5 review: a pre-1.30 and a pre-R4 restore point, so Ajustes draws both "Volver a como estaba…" rows and the word walk reads them
+      var viejo = {'kibo.datos.2026': ${JSON.stringify(JSON.stringify(y))}};
+      localStorage.setItem('kibo.respaldo.pre130', JSON.stringify({version: 'anterior', fecha: new Date().toISOString(), datos: viejo}));
+      localStorage.setItem('kibo.respaldo.pre-r4', JSON.stringify({version: 'anterior a los saldos', fecha: new Date().toISOString(), datos: viejo})); true`);
     await nav(URL_APP); await sleep(1300);
     const fuentes = (l) => '[' + l.map((r) => r.toString()).join(',') + ']';
     // words: every text node of the page (shown or folded) plus title / aria-label / placeholder / alt; icon-only: visible buttons
@@ -1310,6 +1384,8 @@ try{
     for(const v of ['datos', 'ayuda', 'privacidad']){ await irTab('ajustes'); await tocar(`[data-act=ajVista][data-v=${v}]`); await sleep(800); await revisar(`Ajustes · ${v}`); }
     await irTab('ajustes');
     check('L2 Ajustes: restore points and data rows use plain words (no internal versions)', await ev(`(function(){ var t = document.getElementById('v-ajustes').textContent; return [/1\\.30|saldos\\b/.test(t), t.indexOf('el sistema') >= 0]; })()`), [false, false]);
+    check('U5 L2 Ajustes: both restore-point rows are on screen (pre-1.30 and pre-R4 seeded), so the checks above read them', await ev(`[['volver130', 'Volver a como estaba antes de actualizar'], ['volverR4', 'Volver a como estaba antes del saldo mes a mes']].map(function(x){ var b = document.querySelector('#v-ajustes [data-act=' + x[0] + ']'); return !!b && b.textContent.indexOf(x[1]) >= 0; })`),
+      [true, true]);
     await irTab('mes');
     const hojas = [
       ['the quick expense sheet', () => tocar('[data-act=gastoRapido]')],
@@ -1449,6 +1525,14 @@ try{
     // ticking a listed row takes it off the card
     await ev(`document.querySelector('#v-mes .sec[data-sec=ingresos] [data-act=pagar][data-i="0"]').click(); true`); await sleep(500);
     check('L5 a ticked row leaves the card', (await filasL5()).map(r => r[1]), ['Luz', 'Ana · Factura 12', 'Changas', 'Caro · Factura 14']);
+    // U7: a row tapped while the card is stale (the row changed after the card was drawn) never fails silently: the card is redrawn and
+    // a message says so; nothing else is marked. A row far down the page is scrolled into view
+    await ev(`(function(){ D.meses[9].ingresos[1].nombre = 'Changas de octubre'; document.querySelectorAll('#vence .vence-f')[2].click(); return true; })()`); await sleep(300);
+    check('U7 a stale row: message, card redrawn with the current name, no other row marked', [await toastTxt(), await ev(`!!document.querySelector('#v-mes .item.resalta')`), (await filasL5()).map(r => r[1])],
+      ['Ese renglón cambió desde que se armó la lista: la actualicé.', false, ['Luz', 'Ana · Factura 12', 'Changas de octubre', 'Caro · Factura 14']]);
+    await ev(`window.scrollTo(0, 0); document.querySelectorAll('#vence .vence-f')[2].click(); true`);
+    check('U7 the tapped row is marked and brought into view', await waitFor(`(function(){ var r = document.querySelector('#v-mes .item.resalta'); if(!r) return null; var b = r.getBoundingClientRect();
+      return [r.querySelector('input.nombre').value, b.top >= 0 && b.bottom <= innerHeight]; })()`, ['Changas de octubre', true]), ['Changas de octubre', true]);
     // nothing due: no card at all (no empty message)
     const ms2 = []; for(let i=0;i<12;i++) ms2.push(mes([], [], [], []));
     ms2[9] = mes([it('Sueldo', 900000, true)], [it('Expensas', 70000, false)], [], []);
@@ -1541,12 +1625,18 @@ try{
     const movil = {};
     for(const t of ['mes', 'anio', 'usd', 'trabajo']){ await tab7(t); movil[t] = await cajas(t); }
     const FIX = path.join(ROOT, 'tests', 'fixtures', 'l7-movil-390.json');
-    if(process.env.L7_GRABAR === '1') fs.writeFileSync(FIX, '{\n' + Object.keys(movil).map(t => ' ' + JSON.stringify(t) + ': {\n'
-      + Object.keys(movil[t]).map(k => '  ' + JSON.stringify(k) + ': ' + JSON.stringify(movil[t][k])).join(',\n') + '\n }').join(',\n') + '\n}\n');
-    const antes = JSON.parse(fs.readFileSync(FIX, 'utf8'));
-    for(const t of Object.keys(antes)){
-      const dif = Object.keys(antes[t]).filter(k => !movil[t][k] || antes[t][k].some((v, i) => Math.abs(v - movil[t][k][i]) > 1));
-      check(`L7 390 px ${t}: every key box where it was before L7 (${Object.keys(antes[t]).length} boxes)`, dif.map(k => [k, antes[t][k], movil[t][k] || null]), []);
+    // U8 review: a recording run never compares (it would compare the boxes with themselves and always pass): it writes the fixture and
+    // reports one failing check, so a recording can never be mistaken for a green run. Run again without L7_GRABAR to compare
+    if(process.env.L7_GRABAR === '1'){
+      fs.writeFileSync(FIX, '{\n' + Object.keys(movil).map(t => ' ' + JSON.stringify(t) + ': {\n'
+        + Object.keys(movil[t]).map(k => '  ' + JSON.stringify(k) + ': ' + JSON.stringify(movil[t][k])).join(',\n') + '\n }').join(',\n') + '\n}\n');
+      check('L7 390 px: L7_GRABAR=1 recorded the fixture; the layout comparison is skipped in a recording run', 'recorded, not compared', 'compared');
+    } else {
+      const antes = JSON.parse(fs.readFileSync(FIX, 'utf8'));
+      for(const t of Object.keys(antes)){
+        const dif = Object.keys(antes[t]).filter(k => !movil[t][k] || antes[t][k].some((v, i) => Math.abs(v - movil[t][k][i]) > 1));
+        check(`L7 390 px ${t}: every key box where it was before L7 (${Object.keys(antes[t]).length} boxes)`, dif.map(k => [k, antes[t][k], movil[t][k] || null]), []);
+      }
     }
     await tab7('mes');
 
@@ -1629,6 +1719,17 @@ try{
     check('L7 hidden amounts: every hidden amount of the month is read as "oculto"', await ev(`(function(){ var o = document.querySelectorAll('#v-mes .oc[role=img][aria-label=oculto]').length, sueltos = 0, w = document.createTreeWalker(document.getElementById('v-mes'), 4, null), n;
       while((n = w.nextNode())) if(n.nodeValue.indexOf('\\u2022\\u2022\\u2022\\u2022') >= 0 && !n.parentNode.classList.contains('oc')) sueltos++;
       return [o > 3, sueltos]; })()`), [true, 0]);
+    // U8: the labeling batches the mutations of a frame and walks only what changed: 20 nodes added in 20 separate mutation callbacks
+    // are all labeled, by ONE walk over the part that changed (before, every callback walked the whole document)
+    check('U8 hidden amounts: new nodes are labeled, with one walk per frame batch', await ev(`new Promise(async function(res){
+      var d = document.createElement('div'), tw = document.createTreeWalker, walks = 0, i, p;
+      document.createTreeWalker = function(r){ if(r && r.contains && r.contains(d)) walks++; return tw.apply(document, arguments); };
+      document.getElementById('v-mes').appendChild(d);
+      for(i = 0; i < 20; i++){ p = document.createElement('p'); p.textContent = 'Monto \\u2022\\u2022\\u2022\\u2022'; d.appendChild(p); await Promise.resolve(); }
+      await new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(r); }); });
+      await new Promise(function(r){ setTimeout(r, 100); });
+      document.createTreeWalker = tw;
+      var ok = d.querySelectorAll('.oc[role=img][aria-label=oculto]').length; d.remove(); res([ok, walks]); })`), [20, 1]);
     await ev(`document.querySelector('[data-act=ojo]').click(); true`); await sleep(400);
 
     // reduced motion: no animations or transitions when the system asks for it
@@ -1637,6 +1738,187 @@ try{
     check('L7 reduced motion: the views and the rows do not animate', await ev(`(function(){ var v = getComputedStyle(document.getElementById('v-mes')), c = document.querySelector('#v-mes .chk');
       return [v.animationName, c ? getComputedStyle(c).transitionDuration.split(',').every(function(x){ return parseFloat(x) === 0; }) : null]; })()`), ['none', true]);
     await send('Emulation.setEmulatedMedia', { features: [] });
+    await send('Emulation.clearDeviceMetricsOverride');
+  }
+
+  // ── S3 quick sales ("productos rápidos" in Trabajo, Simple mode; hoy = 2026-10-04): 25 products in 3 folders, sales by tapping ──
+  {
+    const carps = [['Bebidas', 'azul'], ['Panadería', 'naranja'], ['Kiosco y golosinas', 'violeta']];
+    const prods = [];
+    for(let i = 0; i < 25; i++){
+      const c = carps[i % 3];
+      prods.push({id: 'p' + i, nombre: (['Café', 'Medialuna', 'Alfajor', 'Agua', 'Factura', 'Chicle', 'Jugo', 'Pan', 'Turrón'][i % 9]) + ' ' + (i + 1), precio: 500 + i * 250,
+        costo: i % 4 ? 0 : 200, forma: i % 5 === 4 ? '' : (i % 2 ? 'transferencia' : 'efectivo'), stock: i % 3 === 1 ? null : 10, carpeta: c[0], color: c[1], creada: ''});
+    }
+    const ventaS3 = (id, concepto, monto, forma, fecha) => ({id, tipo: 'simple', concepto, cantidad: 1, precio: monto, monto, costo: 0, contado: true, fecha, forma, creada: fecha + 'T10:00:00.000Z'});
+    const trS3 = {version: 1, activo: true, modo: 'simple', productos: prods, cobros: [], pases: [], gastos: [], tope: 0, rev: 2,
+      facturas: [ventaS3('v1', 'Café 1', 3000, 'efectivo', '2026-10-01'), ventaS3('v2', 'Torta (a mano)', 9000, 'transferencia', '2026-10-02'),
+        ventaS3('v3', 'Echeq', 1000, 'echeq', '2026-10-03'), ventaS3('v4', 'Futura', 50000, 'efectivo', '2026-10-20'), ventaS3('v5', 'Septiembre', 7000, 'efectivo', '2026-09-30'),
+        {id: 'f1', tipo: 'factura', cliente: 'Ana', numero: '1', concepto: 'Plazo', monto: 80000, cantidad: 1, precio: 80000, fecha: '2026-10-02', contado: false, plazo: 30, forma: 'transferencia', creada: ''}]};
+    const seedS3 = async (t) => { await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); localStorage.setItem('kibo.ultimaCopia', new Date().toISOString()); localStorage.setItem('kibo.esquema', '1.30');
+      localStorage.setItem('kibo.trabajo', ${JSON.stringify(JSON.stringify(t || trS3))}); true`); await nav(URL_APP); await sleep(900);
+      await ev(`document.querySelector('[data-act=tab][data-t=trabajo]').click(); window.scrollTo(0, 0); true`); await sleep(900); };
+    const tamS3 = async (w, h) => { await send('Emulation.setDeviceMetricsOverride', { width: w, height: h || (w < 800 ? 800 : 900), deviceScaleFactor: w < 800 ? 2 : 1, mobile: w < 800 }); await sleep(400); };
+    const guardadoS3 = () => ev(`(function(){ var t = JSON.parse(localStorage.getItem('kibo.trabajo')); return {n: t.facturas.length, stock: t.productos.map(function(p){ return p.stock; })}; })()`);
+    await tamS3(390); await seedS3();
+    check('S3 quick sales: the 25 products render in their 3 folders', await ev(`[document.querySelectorAll('#v-trabajo .tj-pw').length, document.querySelectorAll('#v-trabajo .tj-carp').length]`), [25, 3]);
+    // S3a: "Cobrado en Octubre, hasta hoy" = resumenTrab mesEfe 3.000 + mesDig 10.000 (transferencia 9.000 + echeq 1.000); the future sale,
+    // September and the pending invoice are out
+    const $S3 = (n) => ev(`fARS(${n})`);
+    check('S3a donut: title with the period, total, both sides with % and money', await ev(`(function(){ var c = document.getElementById('tjCobrado'); if(!c) return null;
+      return [c.querySelector('.tj-cob-hd small').textContent, c.querySelector('.tj-cob-hd b').textContent, c.querySelectorAll('.tj-cob-torta circle').length,
+        Array.prototype.map.call(c.querySelectorAll('.tj-cob-f'), function(f){ return [f.querySelector('.n').textContent, f.querySelector('.p').textContent, f.querySelector('b').textContent]; })]; })()`),
+      ['Cobrado en Octubre, hasta hoy', await $S3(13000), 2, [['Efectivo', '23%', await $S3(3000)], ['Digital / Virtual', '77%', await $S3(10000)]]]);
+    check('S3a donut: the drawing is hidden from screen readers and a visually hidden table says the same numbers', await ev(`(function(){ var c = document.getElementById('tjCobrado'), t = c.querySelector('.tj-sr table'), r = c.querySelector('.tj-sr').getBoundingClientRect();
+      return [c.querySelector('svg').getAttribute('aria-hidden'), c.querySelector('.tj-cob-cu').getAttribute('aria-hidden'), t.querySelector('caption').textContent, r.width <= 1 && r.height <= 1,
+        Array.prototype.map.call(t.querySelectorAll('tr'), function(tr){ return tr.textContent; })]; })()`),
+      ['true', 'true', 'Cobrado en Octubre, hasta hoy', true, ['MedioParteMonto', 'Efectivo23%' + await $S3(3000), 'Digital / Virtual77%' + await $S3(10000), 'Total100%' + await $S3(13000)]]);
+    const cabeS3 = `(function(){ var W = document.documentElement.clientWidth, c = document.getElementById('tjCobrado').getBoundingClientRect(), malos = [];
+      if(document.documentElement.scrollWidth > W) malos.push('page');
+      if(c.left < 0 || c.right > W + 0.5) malos.push('card');
+      document.querySelectorAll('#tjCobrado .tj-cob-f, #tjCobrado .tj-cob-f > *').forEach(function(e){ var r = e.getBoundingClientRect(); if(r.right > c.right + 0.5) malos.push(e.className || e.tagName); });
+      document.querySelectorAll('#tjCobrado .tj-cob-f .n, #tjCobrado .tj-cob-hd b').forEach(function(e){ if(e.scrollWidth > e.clientWidth + 1) malos.push('cut ' + e.textContent); });
+      return malos; })()`;
+    for(const w of [360, 390, 1280]){ await tamS3(w); await sleep(200); check(`S3a donut ${w} px: fits, nothing cut or wider than the window`, await ev(cabeS3), []); }
+    await tamS3(390);
+    await seedS3(Object.assign({}, trS3, {facturas: [trS3.facturas[3], trS3.facturas[4], trS3.facturas[5]]}));
+    check('S3a donut: nothing collected this month (only a future sale, September and a pending invoice): one sentence, no chart', await ev(`(function(){ var c = document.getElementById('tjCobrado');
+      return [c.classList.contains('vacio'), !!c.querySelector('svg, table'), c.querySelector('small').textContent, /todavía no cobraste nada/i.test(c.textContent)]; })()`),
+      [true, false, 'Cobrado en Octubre, hasta hoy', true]);
+    await seedS3();
+    await ev(`document.querySelector('#v-trabajo .tj-prod[data-id=p0]').click(); true`); await sleep(300);
+    let gS3 = await guardadoS3();
+    check('S3 quick sales: one tap on a product with a default payment sells it: one more sale, one unit less of stock, saved', [gS3.n, gS3.stock[0]], [7, 9]);
+    check('S3 quick sales: the toast names the product and offers Deshacer', await ev(`[document.getElementById('toast').textContent.indexOf('Café 1') === 0, !!document.querySelector('#toast [data-act=tjDeshacer]')]`), [true, true]);
+    await ev(`document.querySelector('#toast [data-act=tjDeshacer]').click(); true`); await sleep(300);
+    gS3 = await guardadoS3();
+    check('S3 quick sales: Deshacer takes the sale back and returns the unit of stock', [gS3.n, gS3.stock[0]], [6, 10]);
+    await ev(`document.querySelector('#v-trabajo .tj-prod[data-id=p4]').click(); true`); await sleep(400);
+    check('S3 quick sales: "Preguntar siempre" opens the payment sheet and sells nothing yet', [await ev(`!!document.querySelector('.hoja [data-act=tjCobrar][data-id=p4]')`), (await guardadoS3()).n], [true, 6]);
+    await ev(`document.querySelector('.hoja [data-act=tjCobrar][data-id=p4][data-v=efectivo]').click(); true`); await sleep(400);
+    check('S3 quick sales: the sheet sale stores the chosen payment', await ev(`(function(){ var t = JSON.parse(localStorage.getItem('kibo.trabajo')), f = t.facturas[t.facturas.length - 1]; return [f.concepto, f.forma, f.monto]; })()`), ['Factura 5', 'efectivo', 1500]);
+    // ── S3b: "⋮" on each card → "Editar producto": never sells, never touches stock, closes back to the grid ──
+    // geometry of every card: the ⋮ is outside .tj-prod, at least 44x44, inside its card, and covers no text of the name, the price or the stock line
+    const opcS3 = `(function(){ var malos = [], n = 0;
+      // the painted text: its range rects clipped to the content box of the line and of the card (an ellipsized line paints nothing past its box)
+      function caja(e){ var b = e.getBoundingClientRect(), cs = getComputedStyle(e); return {left: b.left + parseFloat(cs.borderLeftWidth) + parseFloat(cs.paddingLeft), right: b.right - parseFloat(cs.borderRightWidth) - parseFloat(cs.paddingRight), top: b.top, bottom: b.bottom}; }
+      function rectsTexto(e){ var r = document.createRange(), out = [], k1 = caja(e), k2 = caja(e.closest('.tj-prod')); r.selectNodeContents(e);
+        Array.prototype.forEach.call(r.getClientRects(), function(x){ var c = {left: Math.max(x.left, k1.left, k2.left), right: Math.min(x.right, k1.right, k2.right), top: x.top, bottom: x.bottom}; if(c.right > c.left && x.height) out.push(c); }); return out; }
+      function corta(a, b){ return a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5; }
+      document.querySelectorAll('#v-trabajo .tj-pw').forEach(function(w){ if(w.offsetParent === null) return; n++;
+        var o = w.querySelector(':scope > .tj-opc'), p = w.querySelector(':scope > .tj-prod'); if(!o){ malos.push('no ⋮ ' + w.getAttribute('data-id')); return; }
+        var r = o.getBoundingClientRect(), c = w.getBoundingClientRect();
+        if(p.contains(o)) malos.push('inside');
+        if(r.width < 44 || r.height < 44) malos.push('small ' + r.width + 'x' + r.height);
+        if(r.left < c.left - 0.5 || r.right > c.right + 0.5 || r.top < c.top - 0.5 || r.bottom > c.bottom + 0.5) malos.push('outside its card');
+        p.querySelectorAll('.nom, .vp, .vc, .vg').forEach(function(t){ rectsTexto(t).forEach(function(x){ if(corta(x, r)) malos.push('covers ' + t.className + ' of ' + w.getAttribute('data-id')); }); });
+        var m = w.querySelector(':scope > .tj-medio'); if(m && corta(m.getBoundingClientRect(), r)) malos.push('covers the payment icon');
+        if(o.getAttribute('aria-label') !== 'Opciones de ' + p.querySelector('.nom').textContent) malos.push('label');
+      }); return [n, malos.slice(0, 6)]; })()`;
+    await seedS3();
+    for(const w of [360, 390, 430]){ await tamS3(w); await sleep(200); check(`S3b ⋮ ${w} px full view: on every card, 44 px, covering no name, price, stock or payment icon`, await ev(opcS3), [25, []]); }
+    await ev(`document.querySelector('[data-act=tjVista]').click(); true`); await sleep(400);
+    for(const w of [360, 390, 430]){ await tamS3(w); await sleep(200); check(`S3b ⋮ ${w} px compact grid: on every card, 44 px, covering no name or price`, await ev(opcS3), [25, []]); }
+    await ev(`document.querySelector('[data-act=tjVista]').click(); true`); await sleep(400);
+    await tamS3(390);
+    const antesB = await guardadoS3();
+    // a real touch: press on the ⋮ of p0 for 700 ms (longer than the 500 ms long-press of the card) and release
+    const centro = await ev(`(function(){ var b = document.querySelector('.tj-pw[data-id=p0] .tj-opc'); b.scrollIntoView({block: 'center'}); var r = b.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()`);
+    await sleep(300);
+    await send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: centro[0], y: centro[1] }] }); await sleep(700);
+    await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await sleep(500);
+    check('S3b ⋮ long press: never opens the payment sheet, never sells', [await ev(`!!document.querySelector('#hoja [data-act=tjCobrar]')`), await guardadoS3()], [false, antesB]);
+    if(await ev(`document.getElementById('velo').classList.contains('on')`)){ await ev(`document.querySelector('#hoja [data-act=cerrarHoja]').click(); true`); await sleep(500); }
+    await ev(`document.querySelector('.tj-pw[data-id=p0] .tj-opc').click(); true`); await sleep(400);
+    check('S3b ⋮ tap: a sheet with the product name, Editar producto and Cancelar; nothing sold, stock untouched', [await ev(`(function(){ var h = document.getElementById('hoja');
+      return [h.querySelector('h3').textContent, Array.prototype.map.call(h.querySelectorAll('button[data-act]'), function(b){ return b.textContent; })]; })()`), await guardadoS3()],
+      [['Café 1', ['Editar producto', 'Cancelar']], antesB]);
+    await ev(`document.querySelector('#hoja [data-act=cerrarHoja]').click(); true`); await sleep(500);
+    check('S3b ⋮ Cancelar: back to the grid, nothing changed', [await ev(`document.getElementById('velo').classList.contains('on')`), await guardadoS3()], [false, antesB]);
+    await ev(`document.querySelector('.tj-pw[data-id=p0] .tj-opc').click(); true`); await sleep(400);
+    await ev(`document.querySelector('#hoja [data-act=tjEditDesdeGrilla]').click(); true`); await sleep(500);
+    check('S3b Editar producto: the editor of that product, with Borrar, Cancelar and Guardar', await ev(`(function(){ var h = document.getElementById('hoja');
+      return [h.querySelector('h3').textContent, document.getElementById('pxNombre').value, Array.prototype.map.call(h.querySelectorAll('.fila button'), function(b){ return b.textContent; })]; })()`),
+      ['Editar producto', 'Café 1', ['Borrar', 'Cancelar', 'Guardar']]);
+    await ev(`(function(){ var x = document.getElementById('pxPrecio'); x.value = '0'; x.dispatchEvent(new Event('input', {bubbles: true})); document.querySelector('#hoja [data-act=tjGuardarProd]').click(); return true; })()`); await sleep(300);
+    check('S3b Editar producto: a wrong price is said on the sheet and nothing is saved', [await ev(`document.getElementById('pxNota').textContent`), await ev(`document.getElementById('velo').classList.contains('on')`), await guardadoS3()],
+      ['El precio tiene que ser mayor que cero.', true, antesB]);
+    await ev(`(function(){ var x = document.getElementById('pxPrecio'); x.value = '777'; x.dispatchEvent(new Event('input', {bubbles: true})); document.querySelector('#hoja [data-act=tjGuardarProd]').click(); return true; })()`); await sleep(600);
+    check('S3b Editar producto → Guardar: closes back to the grid (not the list), the card shows the new price, no sale, past sales keep their copy', await ev(`(function(){
+      var t = JSON.parse(localStorage.getItem('kibo.trabajo')), v1 = t.facturas.filter(function(f){ return f.id === 'v1'; })[0];
+      return [document.getElementById('velo').classList.contains('on'), t.productos[0].precio, t.facturas.length, [v1.concepto, v1.monto], document.querySelector('.tj-pw[data-id=p0] .vp').textContent]; })()`),
+      [false, 777, antesB.n, ['Café 1', 3000], await $S3(777)]);
+    await ev(`document.querySelector('.tj-pw[data-id=p0] .tj-medio').click(); true`); await sleep(400);
+    check('S3b the payment corner icon still opens the payment sheet', await ev(`!!document.querySelector('#hoja [data-act=tjCobrar][data-id=p0]')`), true);
+    await ev(`document.querySelector('#hoja [data-act=cerrarHoja]').click(); true`); await sleep(400);
+    await ev(`document.querySelector('[data-act=tjProds]').click(); true`); await sleep(400);
+    await ev(`document.querySelector('#hoja [data-act=tjEditProd][data-id=p1]').click(); true`); await sleep(400);
+    await ev(`document.querySelector('#hoja [data-act=tjGuardarProd]').click(); true`); await sleep(500);
+    check('S3b the list path keeps its behavior: saving from the product list goes back to the list', await ev(`[document.getElementById('velo').classList.contains('on'), document.querySelector('#hoja h3').textContent]`), [true, 'Productos rápidos']);
+    await ev(`document.querySelector('#hoja [data-act=cerrarHoja]').click(); true`); await sleep(400);
+    // ── S3c: "+ Producto" stays at hand while the 25 products scroll; the folder strip scrolls sideways with a visible edge ──
+    // the toolbar: inside the window between the header and the tab bar, really on top at its center, and covering no product text that is meant to be read
+    const barraS3 = (fase) => ev(`(function(){
+      var b = document.querySelector('#tjBarra [data-act=tjNuevoProdGrilla]'), r = b.getBoundingClientRect(), barra = document.getElementById('tjBarra').getBoundingClientRect();
+      var hd = document.querySelector('header').getBoundingClientRect().bottom, nav = document.getElementById('nav').getBoundingClientRect().top, malos = [];
+      if(r.top < hd - 0.5 || r.bottom > nav + 0.5 || r.left < 0 || r.right > document.documentElement.clientWidth + 0.5) malos.push('out of view ' + [r.top, r.bottom, hd, nav].map(Math.round));
+      var e = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); if(!e || !e.closest('[data-act=tjNuevoProdGrilla]')) malos.push('covered by ' + (e && e.className));
+      if(r.width < 44 || r.height < 44) malos.push('small');
+      if(document.documentElement.scrollWidth > document.documentElement.clientWidth) malos.push('page wider than the window');
+      function corta(a, c){ return a.left < c.right - 0.5 && c.left < a.right - 0.5 && a.top < c.bottom - 0.5 && c.top < a.bottom - 0.5; }
+      var cards = Array.prototype.filter.call(document.querySelectorAll('#v-trabajo .tj-pw'), function(w){ return w.offsetParent !== null; });
+      // at load the toolbar sits above the grid; at the bottom the last row of cards is fully readable (not under the toolbar or the tab bar)
+      var mirar = '${fase}' === 'carga' ? cards : cards.slice(-2);
+      mirar.forEach(function(w){ w.querySelectorAll('.nom, .vp').forEach(function(t){ var x = t.getBoundingClientRect(); if(corta(x, barra)) malos.push('covers ' + t.textContent); if('${fase}' !== 'carga' && (x.bottom > nav + 0.5 || x.top < barra.bottom - 0.5)) malos.push('hidden ' + t.textContent); }); });
+      return malos; })()`);
+    const alFondo = `(function(){ var l = Array.prototype.filter.call(document.querySelectorAll('#v-trabajo .tj-pw'), function(w){ return w.offsetParent !== null; }).pop();
+      var nav = document.getElementById('nav').getBoundingClientRect().top; window.scrollTo(0, l.getBoundingClientRect().bottom + scrollY - nav + 12); return Math.round(scrollY) > 0; })()`;
+    for(const w of [360, 390, 430, 1280]){
+      await tamS3(w, w < 800 ? 800 : 900); await seedS3();
+      check(`S3c ${w} px at load: "+ Producto" is in view, on top, covering no product`, await barraS3('carga'), []);
+      await ev(alFondo); await sleep(400);
+      check(`S3c ${w} px scrolled to the last product: "+ Producto" still in view under the header, the last row readable`, await barraS3('fondo'), []);
+      check(`S3c ${w} px scrolled: the toolbar is stuck under the header`, await ev(`Math.abs(document.getElementById('tjBarra').getBoundingClientRect().top - document.querySelector('header').getBoundingClientRect().bottom) <= 1`), true);
+    }
+    await tamS3(390); await seedS3();
+    check('S3c "+ Producto" is a real button with an accessible name the screen reader says, reachable with the keyboard', await ev(`(function(){ var b = document.querySelector('#tjBarra [data-act=tjNuevoProdGrilla]'); b.focus();
+      return [b.tagName, b.getAttribute('aria-label'), b.textContent, document.activeElement === b, b.tabIndex, document.getElementById('tjBuscar').getAttribute('aria-label')]; })()`),
+      ['BUTTON', 'Agregar producto', '+ Producto', true, 0, 'Buscar producto']);
+    check('S3c one add button on the screen; the bottom link is the list entry', await ev(`[document.querySelectorAll('[data-act=tjNuevoProdGrilla]').length, Array.prototype.map.call(document.querySelectorAll('#v-trabajo [data-act=tjProds]'), function(b){ return b.textContent; })]`),
+      [1, ['Cambiar mis productos rápidos']]);
+    // the folder strip: three folders do not fit at 390 px: it scrolls sideways, and a fading edge shows on the side where there is more
+    check('S3c the folder strip scrolls sideways and fades on the right while there is more', await ev(`(function(){ var t = document.getElementById('tjCarps');
+      return [getComputedStyle(t).overflowX, t.scrollWidth > t.clientWidth, t.classList.contains('mas-der'), t.classList.contains('mas-izq'), getComputedStyle(t).maskImage !== 'none' || getComputedStyle(t).webkitMaskImage !== 'none']; })()`),
+      ['auto', true, true, false, true]);
+    await ev(`(function(){ var t = document.getElementById('tjCarps'); t.scrollLeft = t.scrollWidth; return true; })()`); await sleep(300);
+    check('S3c at the end of the strip the fade moves to the left and the last folder is whole', await ev(`(function(){ var t = document.getElementById('tjCarps'), r = t.getBoundingClientRect(), u = t.lastElementChild.getBoundingClientRect();
+      return [t.classList.contains('mas-der'), t.classList.contains('mas-izq'), u.right <= r.right + 0.5]; })()`), [false, true, true]);
+    // folder selected -> "+ Producto" -> the editor starts in that folder; saving adds the product there and closes back to the grid, no sale
+    await ev(`document.querySelector('#tjCarps [data-act=tjCarp][data-v="panaderia"]').click(); true`); await sleep(400);
+    const antesC = await guardadoS3();
+    await ev(`document.querySelector('#tjBarra [data-act=tjNuevoProdGrilla]').click(); true`); await sleep(500);
+    check('S3c "+ Producto" opens a new product in the folder you are looking at, with Cancelar and Guardar', await ev(`(function(){ var h = document.getElementById('hoja');
+      return [h.querySelector('h3').textContent, document.getElementById('pxCarp').value, Array.prototype.map.call(h.querySelectorAll('.fila button'), function(b){ return b.textContent; })]; })()`),
+      ['Nuevo producto', 'Panadería', ['Cancelar', 'Guardar']]);
+    await ev(`(function(){ document.getElementById('pxNombre').value = 'Budín'; var p = document.getElementById('pxPrecio'); p.value = '4200'; p.dispatchEvent(new Event('input', {bubbles: true}));
+      document.querySelector('#hoja [data-act=tjGuardarProd]').click(); return true; })()`); await sleep(600);
+    check('S3c saved: back to the grid of that folder with the new card; no sale was made', await ev(`(function(){ var t = JSON.parse(localStorage.getItem('kibo.trabajo')), n = t.productos[t.productos.length - 1];
+      return [document.getElementById('velo').classList.contains('on'), n.nombre, n.carpeta, n.precio, t.facturas.length, !!Array.prototype.filter.call(document.querySelectorAll('#v-trabajo .tj-pw .nom'), function(e){ return e.textContent === 'Budín'; }).length]; })()`),
+      [false, 'Budín', 'Panadería', 4200, antesC.n, true]);
+    // no products yet: the call to action is the add button (and no duplicate link at the bottom)
+    await seedS3(Object.assign({}, trS3, {productos: []}));
+    check('S3c no products: one primary "+ Agregar producto", no search box, no duplicate bottom link', await ev(`[Array.prototype.map.call(document.querySelectorAll('#v-trabajo [data-act=tjNuevoProdGrilla]'), function(b){ return b.textContent; }),
+      !!document.getElementById('tjBuscar'), document.querySelectorAll('#v-trabajo [data-act=tjProds]').length]`), [['+ Agregar producto'], false, 0]);
+    await ev(`document.querySelector('#v-trabajo [data-act=tjNuevoProdGrilla]').click(); true`); await sleep(400);
+    check('S3c no products: the call to action opens the new product editor', await ev(`document.querySelector('#hoja h3').textContent`), 'Nuevo producto');
+    await ev(`document.querySelector('#hoja [data-act=cerrarHoja]').click(); true`); await sleep(400);
+    // ── S3d: the payment icon of each card and each folder title are 44 px touch targets; the icon stays inside its card ──
+    await seedS3(); await tamS3(390);
+    check('S3d 390 px: every payment icon and folder title is at least 44x44 and the icon stays inside its card', await ev(`(function(){ var malos = [], n = 0;
+      document.querySelectorAll('#v-trabajo .tj-pw > .tj-medio, #v-trabajo .tj-carp-hd').forEach(function(b){ if(b.offsetParent === null) return; n++;
+        var r = b.getBoundingClientRect(); if(r.width < 44 || r.height < 44) malos.push(b.className + ' ' + r.width + 'x' + r.height);
+        var w = b.closest('.tj-pw'); if(w){ var c = w.getBoundingClientRect(); if(r.left < c.left - 0.5 || r.right > c.right + 0.5 || r.top < c.top - 0.5) malos.push('outside'); } });
+      return [n > 20, malos.slice(0, 4)]; })()`), [true, []]);
     await send('Emulation.clearDeviceMetricsOverride');
   }
 

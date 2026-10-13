@@ -212,7 +212,7 @@ test('L-05 duplicar through the REAL save path: the new year is written with its
 });
 
 var PASE_FUNCS = ['renglonTrabajo', 'blobAlDia', 'aplicarPase', 'quitarPase', 'reponerPase', 'guardarPase', 'resumenTrab', 'hoyISO', 'esISO', 'utcDe', 'sumarDias', 'diasEntre', 'ganancia',
-  'saldoFac', 'venceFac', 'sinAsignar', 'paseAlModelo', 'mesDelModelo', 'pasesDelMes'];
+  'saldoFac', 'venceFac', 'sinAsignar', 'paseAlModelo', 'mesDelModelo', 'pasesDelMes', 'avisoPaseAntes'];
 function appPase(ls, hechos){
   return H.appAlmacen(ls, '2026-10-15', {
     leerMonto: function(){ return {ok: true, v: hechos.monto}; },
@@ -295,13 +295,13 @@ test('L-07c a pase into ANOTHER year from a tab that missed the storage event (T
 
 test('L-08 deshacerTj keeps the revision of what is stored now, so the undo saves; a newer save of another tab still wins', function(){
   var ls = H.fakeStorage({'kibo.trabajo': JSON.stringify(Object.assign(H.trab([]), {tope: 10, rev: 5}))});
-  var app = H.appAlmacen(ls, '2026-10-15', {tjAntes: null, tab: 'mes'}, ['deshacerTj', 'antesDeCambiar']);
+  var app = H.appAlmacen(ls, '2026-10-15', {tjAntes: null, tab: 'mes'}, ['deshacerTj', 'antesDeCambiar', 'trabVieja']);
   app.T = app.leerTrab();
   app.antesDeCambiar(); app.T.tope = 99; assert.equal(app.guardarTrab(true), true);
   app.deshacerTj();
   var t = JSON.parse(ls.d['kibo.trabajo']);
   assert.deepEqual([t.tope, t.rev], [10, 7]);
-  var otra = H.appAlmacen(ls, '2026-10-15', {tjAntes: null, tab: 'mes'}, ['deshacerTj', 'antesDeCambiar']);
+  var otra = H.appAlmacen(ls, '2026-10-15', {tjAntes: null, tab: 'mes'}, ['deshacerTj', 'antesDeCambiar', 'trabVieja']);
   otra.T = otra.leerTrab();
   app.antesDeCambiar(); app.T.tope = 50; app.guardarTrab(true);   // rev 8
   otra.T.tope = 1; otra.antesDeCambiar(); otra.deshacerTj();   // otra loaded rev 7: its undo must not overwrite rev 8

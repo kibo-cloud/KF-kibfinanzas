@@ -87,7 +87,7 @@ test('Trabajo CSV: user text cells are neutralized, numeric cells are not', func
     gastos: [{fecha: '2026-06-03', cat: 'otros', concepto: '-cmd|calc', monto: 70, moneda: 'ARS', usd: 0, cotiz: 0}],
     pases: [], productos: []
   };
-  var app = loadApp({funcs: ['csvTrabajo', 'csvTexto'], globals: {
+  var app = loadApp({funcs: ['csvTrabajo', 'csvTexto', 'pasesPersonal'], globals: {
     T: T, MESES: ['Enero'], hoyISO: function(){ return '2026-06-15'; }, fDiaLargo: function(x){ return x; },
     resumenTrab: function(){ return {cobrado: -5, gastado: 70, gastoFuturo: 0, aAcreditar: 0, pasado: 0, disponible: -20, porCobrar: 50, facturado12: 100}; },
     nombreForma: function(){ return 'Transferencia'; }, nombrePeriodo: function(){ return ''; }, largoPeriodo: function(){ return 6; },

@@ -9,7 +9,7 @@ var H = require('./fixtures/r45-harness');
 var C = require('./fixtures/r4-casos');
 
 var PASE_FUNCS = ['renglonTrabajo', 'blobAlDia', 'aplicarPase', 'quitarPase', 'reponerPase', 'guardarPase', 'resumenTrab', 'hoyISO', 'esISO', 'utcDe', 'sumarDias', 'diasEntre', 'ganancia',
-  'saldoFac', 'venceFac', 'sinAsignar', 'paseAlModelo', 'mesDelModelo', 'pasesDelMes'];
+  'saldoFac', 'venceFac', 'sinAsignar', 'paseAlModelo', 'mesDelModelo', 'pasesDelMes', 'avisoPaseAntes'];
 var Y = 'kibo.datos.2026', TR = 'kibo.trabajo', DI = 'kibo.diario';
 
 function inicial(){
@@ -150,4 +150,22 @@ test('L8 start-up order: the journal is recovered before anything is read or sav
   });
   assert.ok(src.indexOf("if(diario === 'apartado' || diario === 'pendiente') avisoDiario(diario);") > src.indexOf('\ncargar();'));
   assert.match(src, /if\(diario === 'pendiente'\) obsoleta = true;/);
+});
+
+// U9: the 'amedias' path. The Trabajo write fails AND putting the year back fails too: the year already holds the pase and Trabajo
+// does not, so the journal must stay (the next start finishes it), this tab stops saving (obsoleta) and says so (avisoDiario 'pendiente').
+test('U9 the Trabajo write fails and the year rollback fails too: journal kept, tab stops saving, notice; the next start finishes it once', function(){
+  var init = inicial(), escriturasY = 0;
+  var ls = H.fakeStorage(init, function(k){ if(k === Y) return ++escriturasY > 1; return k === TR; }), a = abrir(app(ls), ls);
+  a.guardarPase();
+  assert.equal(escriturasY, 2, 'precondition: the year was written, then its rollback was refused');
+  assert.deepEqual([JSON.parse(ls.d[Y]).meses[9].ingresos[0].monto, ls.d[TR], DI in ls.d], [100000, init[TR], true], 'half written: the year has the pase, Trabajo not, the journal stays');
+  assert.equal(a.obsoleta, true, 'this tab no longer matches what is stored: it saves nothing until reloaded');
+  assert.match(a.g.avisos.innerHTML, /data-av="diario"/);
+  assert.match(a.g.avisos.innerHTML, /quedó a medio guardar/);
+  assert.match(a.g.avisos.innerHTML, /data-act="recargarPag"/);
+  assert.deepEqual([a.T.pases.length, a.D.meses[9].ingresos.length], [0, 0], 'memory as before the pase');
+  var vivo = H.fakeStorage(ls.d), b = app(vivo);
+  assert.equal(b.recuperarDiario(), 'completado');
+  assert.deepEqual(estado(vivo), {fila: 100000, pases: 1, revY: 5, revT: 3, diario: false}, 'the next start finishes the pase exactly once');
 });
