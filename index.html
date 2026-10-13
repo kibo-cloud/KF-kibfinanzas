@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-m0FsNrKE73h2m1lGiYUqZD6t4bAlfJSonNC+5xnK/pA=' 'sha256-RG+7WcIEC5Udn2boi+tTeYzyal3rYQrxZvLMjlssFyQ='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-m0FsNrKE73h2m1lGiYUqZD6t4bAlfJSonNC+5xnK/pA=' 'sha256-nSptpNBvBkmEwCni2j6ihMmitfDRjIF0NwkP5dCh4Zk='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -7839,14 +7839,17 @@ function fechaPaseDefecto(){
 }
 function destinoPase(){ var fe = val('psFecha'); if(!esISO(fe)) fe = hoyISO(); return {fecha:fe, anio:+fe.slice(0,4), mes:+fe.slice(5,7) - 1}; }
 function anioExiste(a){ return a === D.anio || !!leerAnio(a); }
-/* S2 M1 (OWNER_DECISION_REQUIRED, aviso provisorio): en un año con modelo, un pase con fecha de un mes anterior a arrastre.desde no llega al
-   disponible (esos meses son legacy). Hasta que el dueño decida, la hoja lo avisa y pide confirmar; no se bloquea ni cambia ninguna regla. */
-function avisoPaseAntes(dest){   // '' si la fecha cae en un mes que lleva el saldo mes a mes (o en un año sin eso)
-  var y = dest.anio === D.anio ? D : leerAnio(dest.anio), ar = y && y.arrastre;
-  return ar && typeof ar === 'object' && dest.mes < num(ar.desde)
-    ? 'Esa fecha es anterior a desde cuándo llevás el saldo mes a mes: esa plata no se va a reflejar en el disponible.' : '';
+/* S2 M1: en un año con modelo, un pase con fecha de un mes anterior a arrastre.desde haría aparecer o desaparecer plata: sale de Trabajo pero
+   esos meses no llegan al disponible (el saldo de arranque ya cuenta lo que tenías). Antes que cambiar el saldo, se bloquea (preferencia del
+   dueño): la hoja no guarda esa fecha y dice desde cuándo elegir. Un pase viejo así no se toca, y tampoco se deja borrar (quitarPase). */
+function desdeDelSaldo(anio, mes){   // el mes desde el que ese año lleva el saldo mes a mes, si (anio, mes) es anterior; si no, -1
+  var y = anio === D.anio ? D : leerAnio(anio), ar = y && y.arrastre;
+  return ar && typeof ar === 'object' && mes < num(ar.desde) ? num(ar.desde) : -1;
 }
-var paseOk = '';   // S2 M1: la fecha que el usuario ya confirmó con «Pasar igual» (estado de la hoja, no del botón)
+function avisoPaseAntes(dest){   // '' si la fecha cae en un mes que lleva el saldo mes a mes (o en un año sin eso)
+  var k = desdeDelSaldo(dest.anio, dest.mes), md = k < 0 ? '' : MESES[k] + ' ' + dest.anio;
+  return k < 0 ? '' : 'Esa fecha (' + fDiaLargo(dest.fecha) + ') es anterior a ' + md + ', desde cuando llevás el saldo mes a mes: pasarlo con esa fecha haría aparecer o desaparecer plata. Elegí una fecha desde ' + md + '.';
+}
 function abrirPase(){
   var r = resumenTrab();
   if(r.paraPasar <= 0){
@@ -7854,7 +7857,6 @@ function abrirPase(){
       + (r.aAcreditar ? ' Lo que tiene fecha más adelante vas a poder pasarlo cuando llegue ese día.' : ' Cuando cargues una venta cobrada o un cobro, aparece acá.'));
     return;
   }
-  paseOk = '';
   abrirHoja('<h3>Pasar a lo personal</h3>'
     + '<input type="text" id="psMonto" class="grande tj-in" inputmode="decimal" placeholder="0" autocomplete="off">'
     + '<div class="chips"><button data-act="tjPaseTodo">Todo: ' + fARS(r.paraPasar) + '</button></div>'
@@ -7868,16 +7870,13 @@ function abrirPase(){
 function notaPase(){
   var e = document.getElementById('psNota'); if(!e) return;
   var d = destinoPase(), r = resumenTrab(), rq = leerMonto('psMonto'), m = Math.round(rq.v);
-  if(paseOk && paseOk !== d.fecha){   // S2 M1: otra fecha, otra confirmación: el botón vuelve a «Pasar»
-    paseOk = ''; var bp = document.querySelector('#hoja [data-act=tjGuardarPase]'); if(bp) bp.textContent = 'Pasar';
-  }
   e.className = 'nota';
   if(!rq.ok && !rq.vacio){ e.className = 'nota mal'; e.innerHTML = 'Monto: ' + rq.msg + '.'; return; }
   if(!anioExiste(d.anio)){ e.className = 'nota mal'; e.innerHTML = 'El ' + d.anio + ' no está creado en la app. Elegí una fecha de un año que tengas.'; return; }
   if(m > r.paraPasar + 0.5){ e.className = 'nota mal'; e.innerHTML = 'Es más de lo que tenés disponible (' + fARS(r.paraPasar) + ').'; return; }
+  if(avisoPaseAntes(d)){ e.className = 'nota mal'; e.innerHTML = avisoPaseAntes(d); return; }   // S2 M1: bloqueado, no se guarda
   e.innerHTML = 'Se suma a Ingresos de <b>' + MESES[d.mes] + ' ' + d.anio + '</b>, en el renglón <b>' + RENGLON_TRABAJO + '</b>. Disponible: ' + fARS(r.paraPasar) + '.'
-    + (d.anio !== D.anio ? '<br><span class="neg">Ojo: tenés abierto ' + D.anio + ', así que en la pestaña Mes no lo vas a ver hasta que cambies de año.</span>' : '')
-    + (avisoPaseAntes(d) ? '<br><span class="neg">' + avisoPaseAntes(d) + '</span>' : '');
+    + (d.anio !== D.anio ? '<br><span class="neg">Ojo: tenés abierto ' + D.anio + ', así que en la pestaña Mes no lo vas a ver hasta que cambies de año.</span>' : '');
 }
 function guardarPase(){
   var rq = leerMonto('psMonto'), m = Math.round(rq.v), d = destinoPase(), r = resumenTrab();
@@ -7886,12 +7885,7 @@ function guardarPase(){
   if(m > r.paraPasar + 0.5){ errorEn('psNota', 'Es más de lo que tenés disponible (' + fARS(r.paraPasar) + ').'); return; }
   if(!anioExiste(d.anio)){ errorEn('psNota', 'El ' + d.anio + ' no está creado en la app. Elegí una fecha de un año que tengas.'); return; }
   var avAntes = avisoPaseAntes(d);
-  if(avAntes && paseOk !== d.fecha){   // S2 M1: el primer toque avisa; el segundo, con la misma fecha, confirma (aunque no se encuentre el botón)
-    paseOk = d.fecha;
-    var bp = document.querySelector('#hoja [data-act=tjGuardarPase]'); if(bp) bp.textContent = 'Pasar igual';
-    errorEn('psNota', avAntes + ' Si igual querés pasarlo, tocá «Pasar igual».');
-    return;
-  }
+  if(avAntes){ errorEn('psNota', avAntes); return; }   // S2 M1: antes del saldo mes a mes no se pasa (sin «Pasar igual»)
   var p = {id:tjId(), fecha:d.fecha, monto:m, anio:d.anio, mes:d.mes, creada:new Date().toISOString()};
   if(aplicarPase(p, 1, sumarPaseT(p)) !== true){ errorEn('psNota', obsoleta ? 'Hay cambios hechos en otra pestaña. Recargá antes de pasar.' : 'No pude sumarlo al mes. Probá de nuevo.'); return; }
   tjAntes = null;
@@ -7903,6 +7897,12 @@ function quitarPase(id, avisar){
   var p = null, i;
   for(i=0;i<T.pases.length;i++) if(T.pases[i].id === id) p = T.pases[i];
   if(!p) return;
+  var k = desdeDelSaldo(p.anio, p.mes);
+  if(k >= 0){   // S2 M1: el saldo que declaró ya cuenta esa plata; borrarlo la haría aparecer en Trabajo. No se toca nada
+    alerta('No se puede borrar', 'Lo que pasaste el ' + fDiaLargo(p.fecha) + ' es anterior a ' + MESES[k] + ' ' + p.anio
+      + ', desde cuando llevás el saldo mes a mes: el saldo con el que arrancaste ya la tiene en cuenta, así que borrarlo haría aparecer plata en Trabajo. No cambié nada.');
+    return;
+  }
   var sacar = sacarPaseT(id), r = aplicarPase(p, -1, sacar), ok = r === true;
   if(r === false) return;   // otra pestaña guardó en el medio o no se pudo guardar: no se escribió nada, no se borra nada
   if(!ok){ sacar(); guardarTrab(true); }   // sin renglón: solo se escribe Trabajo (un blob, no hace falta el diario)

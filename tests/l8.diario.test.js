@@ -9,7 +9,7 @@ var H = require('./fixtures/r45-harness');
 var C = require('./fixtures/r4-casos');
 
 var PASE_FUNCS = ['renglonTrabajo', 'blobAlDia', 'aplicarPase', 'quitarPase', 'reponerPase', 'guardarPase', 'resumenTrab', 'hoyISO', 'esISO', 'utcDe', 'sumarDias', 'diasEntre', 'ganancia',
-  'saldoFac', 'venceFac', 'sinAsignar', 'paseAlModelo', 'mesDelModelo', 'pasesDelMes', 'avisoPaseAntes'];
+  'saldoFac', 'venceFac', 'sinAsignar', 'paseAlModelo', 'mesDelModelo', 'pasesDelMes', 'avisoPaseAntes', 'desdeDelSaldo', 'fDiaLargo'];
 var Y = 'kibo.datos.2026', TR = 'kibo.trabajo', DI = 'kibo.diario';
 
 function inicial(){

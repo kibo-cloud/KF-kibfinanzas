@@ -129,7 +129,7 @@ None of these has an owner answer recorded; the built defaults stay and nothing 
 | N3b-B (LOW) | `normalizar` stores cotización 1499 when none; the composition shows "cotización sin cargar". | (a) keep (built); (b) exclude USD/crypto from the net until loaded (motor/golden change). | Net worth includes USD at 1499 until loaded. | (a) + make the "sin cargar" label prominent. |
 | N4-A (LOW) | Unreadable Trabajo blob: copied to quarantine, next save writes Trabajo. | (a) keep (built); (b) block Trabajo writes until a restore; (c) warning with "Descargar el texto". | Raw text always kept. | (a) + (c) (download action is presentation). |
 | H1 (HIGH, from S2) | `duplicar` copies December's ahorroAcumulado, usdAcumulado, aReponer and each plan's pagadasAntes into the new year as a snapshot; a later edit of December (late savings, retiro, installment ticked) does not reach the new year (S2 H1). | (a) live carry: the new year reads savings / USD / aReponer and pagadasAntes from the stored previous year, like the Disponible already does (D6, `cierreAnioAnterior`); (b) keep the snapshot + drift notice + a "Volver a tomar de diciembre" (re-sync) action; (c) keep the snapshot silently. | (a) the new year always matches December; (b) correct after the user acts; (c) silent mismatch. | **Resolved** by (a) under contract I4 + R4.3 (`30840d5` + H1 completion; see "H1 — Cross-year integrity"): live carry in model years, user-edited fields kept with the notice; legacy years keep the snapshot + notice. Remaining OWNER_DECISION: installments loaded twice by older versions (named, never removed). |
-| M1 (MEDIUM, from S2) | A pase dated in a month before `arrastre.desde` of a model year leaves Trabajo but never reaches the Disponible (those months are legacy for the chain) (S2 M1). | (a) block such dates with a message; (b) warn and let the user confirm; (c) count it into the first model month. | (a) no lost money, one more refusal; (b) the user may still lose track; (c) new allocation rule (motor/golden change). | (a) block with a message. Interim (b) built (`8653da0`). OWNER_DECISION_REQUIRED |
+| M1 (MEDIUM, from S2) | A pase dated in a month before `arrastre.desde` of a model year leaves Trabajo but never reaches the Disponible (those months are legacy for the chain) (S2 M1). | (a) block such dates with a message; (b) warn and let the user confirm; (c) count it into the first model month. | (a) no lost money, one more refusal; (b) the user may still lose track; (c) new allocation rule (motor/golden change). | **Resolved** by (a), owner's stated preference "bloquear antes que alterar el saldo / conservar datos y bloquear" (brief 2026-10-13): the date is refused, deleting an old pase before desde is refused, the two-tap confirmation removed (see "M1"). |
 | M3 (MEDIUM, from S2) | Restore writes Trabajo only when the backup has it, so "Del trabajo" rows of restored years and the device's Trabajo can disagree (S2 M3). | (a) keep the device Trabajo (today); (b) require a complete backup (years with "Del trabajo" pases + Trabajo); (c) repair the rows from the Trabajo pases after restore. | (a) possible mismatch; (b) some old backups refused; (c) rewrites stored rows (against D14). | Warn (built, `4717c65`) and offer to also restore Trabajo when the backup has it. OWNER_DECISION_REQUIRED |
 | N4-B (LOW) | Quarantine copies are kept forever and travel in backups. | (a) keep (built); (b) Ajustes row to download and delete each; (c) auto-delete when readable (against "never delete"). | Storage only. | (b), owner to confirm deletion UX. |
 
@@ -213,3 +213,20 @@ Numbers (probes `scratchpad/s2/p1-carry.js`, `p3-cuotas.js`; tests `tests/h1.cru
   de más (cargadas en …). No borré nada: revisalas antes de pagarlas."); the user decides.
 - Mutation check: replacing `max(pagadasAntes, real paid)` with `pagadasAntes` in `cuotasDeMas` fails `H1 migration v1.32: installments
   loaded in both years…` and `H1-R a real December change…`.
+
+### M1 — Pases dated before the month-to-month balance (2026-10-13)
+
+Owner's preference (brief 2026-10-13): "bloquear antes que alterar el saldo". Probe `scratchpad/s2/p2-backpase.js` (test `M1 probe
+p2-backpase`): with a declared opening in October, a pase dated 30/09 moves Trabajo −300.000 and the Disponible 0 (bruto −300.000); one
+dated 10/10 leaves the total unchanged. Deleting such an old pase gives the 300.000 back to Trabajo while the opening already holds them.
+
+- The pase sheet refuses a date in a month before `arrastre.desde` of a model year (`desdeDelSaldo`, `avisoPaseAntes`): the note turns
+  red as soon as the date is typed and «Pasar» does nothing: "Esa fecha (10/03/2026) es anterior a Septiembre 2026, desde cuando llevás
+  el saldo mes a mes: pasarlo con esa fecha haría aparecer o desaparecer plata. Elegí una fecha desde Septiembre 2026." (the brief's
+  wording with "ese pase" replaced by "pasarlo": L2 forbids the word "pase" in UI copy).
+- The two-tap «Pasar igual» confirmation (`paseOk`, interim `8653da0`) is removed: there is no sheet state left; a valid date saves at
+  once. Test gap W4 ("reopening the sheet clears an earlier confirmation"): no confirmation exists any more; the test
+  `M1 test gap (W4)` pins that `paseOk` is gone and that the date alone unblocks.
+- Deleting a pase that went to a month before `desde` is refused (`quitarPase`, alert "No se puede borrar … No cambié nada."), nothing
+  written. Existing pases before `desde` are not modified. Legacy years (no model) take any date as before.
+- RED: 5 of 8 new `M1` tests failed before the change (refusal, unblock, test gap, delete refusal, delete harness).

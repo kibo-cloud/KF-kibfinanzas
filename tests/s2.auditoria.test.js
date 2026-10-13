@@ -209,61 +209,104 @@ test('H1: December changed after creating a LEGACY year: a visible notice, the c
   assert.match(h, /Diciembre 2026 cambió después de crear 2027: el ahorro y las cuotas que pasaron al año nuevo pueden no coincidir\./);
 });
 
-// ── M1 (OWNER_DECISION_REQUIRED, interim warning only): a pase dated before the month the model starts (arrastre.desde) does not reach
-// the Disponible; the pase sheet says so before saving and asks to confirm (it does not block) ──
-function appPase(fecha, sinBoton){
+/// ── M1 (owner's preference, 2026-10-13 brief: block the ambiguous operation rather than alter the balance): a pase dated in a month
+// before arrastre.desde of a model year would make money appear or disappear (scratchpad/s2/p2-backpase.js); the sheet refuses it and
+// says which date to pick. No confirmation: changing the date to a valid one is enough. Existing pases before desde are not modified,
+// and deleting one is refused too (it would bring back to Trabajo money the declared balance already holds) ──
+function appPase(fecha){
   var d = C.vacio(2026); C.arrastre(d, 8, 100000, 'declarado');
-  var g = {campos: {psFecha: fecha, psMonto: '1000'}, notas: [], aplicados: [], boton: {textContent: 'Pasar', at: {}, getAttribute: function(k){ return this.at[k] || null; }, setAttribute: function(k, v){ this.at[k] = v; }}};
-  var a = H.appVista(d, H.trab([], 500000), null, '2026-10-15', {funcs: ['guardarPase', 'notaPase', 'destinoPase', 'anioExiste', 'avisoPaseAntes', 'tjId', 'sumarPaseT'], vars: ['MESES', 'paseOk'],
-    globals: {val: function(id){ return g.campos[id] || ''; }, leerMonto: function(id){ return {ok: true, v: Number(g.campos[id])}; },
-      errorEn: function(id, t){ g.notas.push(t); }, aplicarPase: function(p){ g.aplicados.push(p); return true; },
-      cerrarHoja: function(){}, renderTrabajo: function(){}, toast: function(){}, fARS: function(n){ return '$' + n; }, tjAntes: null, obsoleta: false, RENGLON_TRABAJO: 'Del trabajo',
-      document: {getElementById: function(){ return {focus: function(){}}; }, querySelector: function(){ return sinBoton ? null : g.boton; }}}});
+  var g = {campos: {psFecha: fecha, psMonto: '1000'}, notas: [], aplicados: [], alertas: [], toasts: [], escritos: 0, boton: {textContent: 'Pasar'},
+    nota: {className: '', innerHTML: ''}};
+  var a = H.appVista(d, H.trab([], 500000), null, '2026-10-15', {funcs: ['guardarPase', 'notaPase', 'destinoPase', 'anioExiste', 'avisoPaseAntes', 'desdeDelSaldo', 'quitarPase', 'sacarPaseT', 'tjId', 'sumarPaseT', 'fDiaLargo'], vars: ['MESES'],
+    globals: {val: function(id){ return g.campos[id] || ''; }, leerMonto: function(id){ var v = Number(g.campos[id]); return {ok: true, v: v, vacio: !g.campos[id]}; },
+      errorEn: function(id, t){ g.notas.push(t); }, aplicarPase: function(p, signo, cambiarT){ g.aplicados.push(p); cambiarT(); return true; }, alerta: function(t, c){ g.alertas.push([t, c]); },
+      guardarTrab: function(){ g.escritos++; }, paseQuitado: null,
+      cerrarHoja: function(){}, renderTrabajo: function(){}, toast: function(t){ g.toasts.push(t); }, fARS: function(n){ return '$' + n; }, tjAntes: null, obsoleta: false, RENGLON_TRABAJO: 'Del trabajo',
+      document: {getElementById: function(id){ return id === 'psNota' ? g.nota : {focus: function(){}}; }, querySelector: function(){ return g.boton; }}}});
   a.resumenTrab = function(){ return {paraPasar: 500000}; };
   a.g = g; return a;
 }
-test('M1: a pase dated before the model months warns, asks to confirm, and only then is saved', function(){
+var NO_ANTES = 'Esa fecha (10/03/2026) es anterior a Septiembre 2026, desde cuando llevás el saldo mes a mes: pasarlo con esa fecha haría aparecer o desaparecer plata. Elegí una fecha desde Septiembre 2026.';
+test('M1: a pase dated before the month-to-month balance starts is refused with the date, the period and the consequence', function(){
   var a = appPase('2026-03-10');
-  assert.notEqual(a.avisoPaseAntes(a.destinoPase()), '');
+  assert.equal(a.avisoPaseAntes(a.destinoPase()), NO_ANTES);
   a.guardarPase();
-  assert.equal(a.g.aplicados.length, 0, 'not saved on the first tap');
-  assert.match(a.g.notas[0], /Esa fecha es anterior a desde cuándo llevás el saldo mes a mes: esa plata no se va a reflejar en el disponible/);
-  assert.equal(a.g.boton.textContent, 'Pasar igual');
+  assert.equal(a.g.aplicados.length, 0, 'not saved');
+  assert.deepEqual(a.g.notas, [NO_ANTES]);
   a.guardarPase();
-  assert.equal(a.g.aplicados.length, 1, 'saved after confirming');
+  assert.equal(a.g.aplicados.length, 0, 'a second tap does not save either: there is no confirmation');
+  assert.equal(a.g.boton.textContent, 'Pasar', 'the button never becomes «Pasar igual»');
+  a.notaPase();
+  assert.equal(a.g.nota.className, 'nota mal', 'the sheet shows the refusal before tapping');
+  assert.ok(a.g.nota.innerHTML.indexOf(NO_ANTES) >= 0);
 });
-// review advisory (W2): the confirmation lives in the sheet's state, not only on the button found by querySelector
-test('M1-R without a found button: the first tap warns, the second (same date) saves; it never stays unsaveable', function(){
-  var a = appPase('2026-03-10', true);
-  a.guardarPase();
-  assert.equal(a.g.aplicados.length, 0, 'not saved on the first tap');
-  assert.equal(a.g.notas.length, 1);
-  a.guardarPase();
-  assert.equal(a.g.aplicados.length, 1, 'saved after confirming, even with no button to mark');
+test('M1: a pase dated from the first month-to-month month is saved at once, with no notice', function(){
+  ['2026-09-01', '2026-10-10'].forEach(function(f){
+    var a = appPase(f);
+    assert.equal(a.avisoPaseAntes(a.destinoPase()), '');
+    a.guardarPase();
+    assert.equal(a.g.aplicados.length, 1, f);
+    assert.equal(a.g.notas.length, 0, f);
+  });
 });
-test('M1-R changing the date resets the confirmation and the button label', function(){
+test('M1: changing the date to a valid one unblocks the sheet (no leftover state); an early date is refused again', function(){
   var a = appPase('2026-03-10');
   a.guardarPase();
-  assert.equal(a.g.boton.textContent, 'Pasar igual');
-  a.g.campos.psFecha = '2026-02-10'; a.notaPase();   // the date input fires notaPase
-  assert.equal(a.g.boton.textContent, 'Pasar', 'label back to Pasar');
+  assert.equal(a.g.aplicados.length, 0);
+  a.g.campos.psFecha = '2026-09-15'; a.notaPase();
+  assert.equal(a.g.nota.className, 'nota', 'the refusal is gone from the sheet');
   a.guardarPase();
-  assert.equal(a.g.aplicados.length, 0, 'the new early date asks again');
-  assert.equal(a.g.boton.textContent, 'Pasar igual');
-  a.g.campos.psFecha = '2026-09-10'; a.notaPase();
-  a.g.campos.psFecha = '2026-02-10'; a.notaPase();   // back to the confirmed date after leaving it
-  a.guardarPase();
-  assert.equal(a.g.aplicados.length, 0, 'leaving the date drops the confirmation');
-  a.guardarPase();
-  assert.equal(a.g.aplicados.length, 1, 'saved after confirming again');
-  assert.equal(a.plain(a.g.aplicados[0]).fecha, '2026-02-10');
+  assert.equal(a.g.aplicados.length, 1, 'saved with the valid date');
+  assert.equal(a.plain(a.g.aplicados[0]).fecha, '2026-09-15');
+  a.g.campos.psFecha = '2026-08-31'; a.guardarPase();
+  assert.equal(a.g.aplicados.length, 1, 'the last day before desde is refused');
 });
-test('M1: a pase dated inside the model months is saved on the first tap, with no warning', function(){
-  var a = appPase('2026-09-10');
+test('M1 test gap (W4): reopening the sheet starts unblocked: no confirmation exists after M1, only the date decides', function(){
+  assert.equal(/\bpaseOk\b/.test(la.SRC_FOR_TESTS), false, 'the two-tap confirmation state was removed');
+  var a = appPase('2026-03-10');
+  a.guardarPase(); a.guardarPase();
+  a.g.campos.psFecha = '2026-10-01';   // the sheet reopened with the default date
+  a.guardarPase();
+  assert.equal(a.g.aplicados.length, 1);
+});
+test('M1: a year without the month-to-month balance (legacy) takes any date as before', function(){
+  var a = appPase('2026-03-10');
+  delete a.D.arrastre;
   assert.equal(a.avisoPaseAntes(a.destinoPase()), '');
   a.guardarPase();
   assert.equal(a.g.aplicados.length, 1);
-  assert.equal(a.g.notas.length, 0);
+});
+test('M1: deleting a pase that went to a month before desde is refused with an explanation; nothing is written or changed', function(){
+  var a = appPase('2026-10-10'), viejo = {id: 'p1', fecha: '2026-03-10', monto: 300000, anio: 2026, mes: 2, creada: '2026-03-10T00:00:00.000Z'};
+  a.T.pases = [viejo];
+  var antes = JSON.stringify(a.T);
+  a.quitarPase('p1', true);
+  assert.equal(JSON.stringify(a.T), antes, 'Trabajo untouched');
+  assert.equal(a.g.aplicados.length, 0, 'no row changed');
+  assert.equal(a.g.escritos, 0, 'nothing written');
+  assert.equal(a.g.alertas.length, 1);
+  assert.equal(a.g.alertas[0][0], 'No se puede borrar');
+  assert.equal(a.g.alertas[0][1], 'Lo que pasaste el 10/03/2026 es anterior a Septiembre 2026, desde cuando llevás el saldo mes a mes: el saldo con el que arrancaste ya la tiene en cuenta, así que borrarlo haría aparecer plata en Trabajo. No cambié nada.');
+});
+test('M1: deleting a pase from the month-to-month months still works', function(){
+  var a = appPase('2026-10-10'), p = {id: 'p2', fecha: '2026-09-10', monto: 1000, anio: 2026, mes: 8, creada: '2026-09-10T00:00:00.000Z'};
+  a.T.pases = [p];
+  a.quitarPase('p2', false);
+  assert.equal(a.g.aplicados.length, 1);
+  assert.equal(a.T.pases.length, 0);
+  assert.equal(a.g.alertas.length, 0);
+});
+// the M1 audit probe as numbers: with desde = Oct (declared), a Sep-30 pase leaves Trabajo and never reaches the Disponible (-300.000);
+// deleting it later gives the 300.000 back to Trabajo while the declared Disponible already holds them (+300.000)
+test('M1 probe p2-backpase: a pase into a month before desde moves the total; one from desde does not', function(){
+  var d = C.vacio(2026); C.arrastre(d, 9, 100000, 'declarado');
+  function pat(T, sepTrab){
+    var x = C.copy(d); if(sepTrab) x.meses[8].ingresos = [{nombre: 'Del trabajo', monto: sepTrab, pagado: true}];
+    var a = H.appVista(x, T, null, '2026-10-15'), p = a.plain(a.patrimonioPantalla(a.D, a.hoy).modelo); return p.bruto;
+  }
+  var sin = pat(H.trab([], 1000000));
+  assert.equal(pat(H.trab([{fecha: '2026-09-30', monto: 300000}], 1000000), 300000) - sin, -300000, 'why it is refused');
+  assert.equal(pat(H.trab([{fecha: '2026-10-10', monto: 300000}], 1000000)) - sin, 0);
 });
 
 // ── M3 (OWNER_DECISION_REQUIRED, interim notice only): the restore confirmation says when the backup brings no Trabajo, or a Trabajo whose
