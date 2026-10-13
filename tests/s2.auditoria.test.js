@@ -348,3 +348,39 @@ test('H2-R with 2027 open (today in 2026) the dollars table and its subtitle are
   assert.match(comp, /Sale de 2026/);
   assert.ok(comp.indexOf(de26) >= 0, 'the composition keeps 2026\'s dollars a hoy');
 });
+
+// ── review fix (H1): the December notice compares the previous year against what duplicar COPIED (a snapshot kept in the new year),
+// not against the editable starting fields: editing them on purpose is not "December changed" ──
+function anioCreado2(cambiar26, cambiar27){
+  var M = la.loadMotor(), HOY = C.hoy('2026-12-10');
+  var y26 = M.normalizar(C.copy(C.seccion2(true, true)), HOY);
+  var ls = H.fakeStorage({'kibo.datos.2026': JSON.stringify(y26)}), app = H.appAlmacen(ls, '2026-12-10');
+  H.cargarEn(app, ls, 2026); app.duplicar();
+  var raw26 = JSON.parse(ls.d['kibo.datos.2026']), raw27 = JSON.parse(ls.d['kibo.datos.2027']);
+  if(cambiar26) cambiar26(raw26);
+  if(cambiar27) cambiar27(raw27);
+  return H.appVista(raw27, null, {'kibo.datos.2026': JSON.stringify(raw26)}, '2027-01-10', {funcs: ['derivaAnioPrevio', 'avisoDerivaPrevio', 'esc']});
+}
+function aMano(d){ d.ahorroAnioAnterior = 1; d.usdAnioAnterior = 5000; d.aReponerAnterior = 7; d.planDeudas['Préstamo'].pagadasAntes = 0; }
+test('H1-R editing the starting savings, dollars, a reponer or paid installments on purpose shows no notice', function(){
+  var a = anioCreado2(null, aMano);
+  assert.deepEqual(a.plain(a.derivaAnioPrevio(a.D, a.hoy)), []);
+  assert.equal(a.avisoDerivaPrevio(a.D, a.hoy), '');
+});
+test('H1-R a real December change still shows the notice, even after editing the starting fields', function(){
+  var a = anioCreado2(function(d){ d.meses[11].ahorroMesARS = 99000; d.meses[11].compraUSD = 50; d.meses[11].deudas = [{nombre: 'Préstamo', monto: 100000, pagado: true}]; }, aMano);
+  assert.deepEqual(a.plain(a.derivaAnioPrevio(a.D, a.hoy)), ['ahorro', 'dolares', 'cuotas']);
+  assert.match(a.avisoDerivaPrevio(a.D, a.hoy), /Diciembre 2026 cambió después de crear 2027/);
+});
+test('H1-R the copied snapshot survives normalizar; a year without it (created before) shows no notice', function(){
+  var a = anioCreado2();
+  var n = a.normalizar(C.copy(a.D), a.hoy);
+  assert.deepEqual(a.plain(n.copiaDiciembre), a.plain(a.D.copiaDiciembre));
+  assert.equal(typeof n.copiaDiciembre.usd, 'number');
+  var viejo = anioCreado2(function(d){ d.meses[11].ahorroMesARS = 99000; }, function(d){ delete d.copiaDiciembre; });
+  assert.deepEqual(viejo.plain(viejo.derivaAnioPrevio(viejo.D, viejo.hoy)), []);
+  var raro = a.normalizar({anio: 2027, copiaDiciembre: {ahorro: 'x', usd: 3, cuotas: {'constructor': 2, 'A': -1, 'B': 1.5}}}, a.hoy);
+  assert.deepEqual(a.plain(raro.copiaDiciembre), {ahorro: 0, aReponer: 0, usd: 3, cuotas: {'constructor': 2, A: 0, B: 2}});
+  assert.equal('copiaDiciembre' in a.normalizar({anio: 2027}, a.hoy), false, 'never invented');
+  assert.equal('copiaDiciembre' in a.normalizar({anio: 2027, copiaDiciembre: 'x'}, a.hoy), false, 'junk is dropped, not kept');
+});
