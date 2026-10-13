@@ -27,21 +27,51 @@ Owner brief: "TuGasto — LOOP DE ESTABILIZACIÓN, AUDITORÍA FINANCIERA Y UX DE
 
 ## Checklist
 
-- [ ] S0 Map the quick-sales module (data model, sale flow, persistence, undo, edit capabilities, add-product placement, existing
-      charts). Route: delegated read-only explorer.
+- [x] S0 Map the quick-sales module (data model, sale flow, persistence, undo, edit capabilities, add-product placement, existing
+      charts). Route: delegated read-only explorer. Done (map used by S3a-d).
 - [ ] S1 Pending decisions review (N1-B, N2-B, N3a-A/B, N3b-A/B, N4-A/B, L3 partial payment + "(otro gasto)" vs topes, L5 due day):
       context, alternatives, effects, recommendation; apply only what is already approved.
 - [ ] S2 End-to-end financial flow audit (entry → display → persistence → export → restore), findings with repro/impact/cause/test.
       Route: delegated read-only auditor; fixes by a writer, RED first.
-- [ ] S3a Quick-sales pie chart (data-backed metrics, period explicit, text alternative).
-- [ ] S3b "⋮ → Editar producto" from the product screen (no sale on edit; history preserved).
-- [ ] S3c Persistent "Agregar producto" access.
-- [ ] S3d Local visual consistency of the quick-sales screen.
+- [x] S3a Quick-sales pie chart (data-backed metrics, period explicit, text alternative).
+- [x] S3b "⋮ → Editar producto" from the product screen (no sale on edit; history preserved).
+- [x] S3c Persistent "Agregar producto" access.
+- [x] S3d Local visual consistency of the quick-sales screen.
 - [ ] S4 Independent reviews of money/persistence changes; native review per slice with owner consent.
 - [ ] S5 Security / performance (large product lists) / offline / desktop regression.
 - [ ] S6 Final verification and delivery report.
 
 ## Progress / evidence
+
+### S3 — Quick sales (done)
+
+Commits: `290fc6b` (stale tab refuses sales/product edits before changing anything), `f7af54f` (tests), `1226b9d` (S3a pie),
+`4e23c77` (S3b ⋮ Editar producto), `7a09777` (S3c persistent + Producto), `9051c2f` (S3d tidy).
+
+- **S3a pie "Cobrado en <Mes>, hasta hoy".** Metrics come only from `resumenTrab` (`mesEfe` / `mesDig`): sales paid on the spot and
+  payments received, dated this month and not after today. Excluded on purpose: a-plazo invoices not yet collected and sales/echeqs
+  dated later (not money in hand; the Disponible card already says "Además entran … con fecha más adelante"). Efectivo vs
+  Digital / Virtual (transferencia, echeq and otra count as digital, as the existing monthly totals did). Why: it answers the seller's
+  end-of-day/month question (how much came in cash, how much by transfer) and matches the cash-box split; no new money rule. Period in
+  the title; percentages always sum to 100 (a side that exists never shows 0 % or 100 %); an empty month shows a sentence instead of an
+  empty chart; a screen-reader table (`.tj-sr`) is the text alternative.
+- **S3b edit rule: sales keep their copy.** Each sale stores its own concepto / precio / monto / costo / forma at the moment of the sale
+  (the model already worked this way). "⋮ → Editar producto" changes only the product for future taps: it never sells, never moves
+  stock, never rewrites past sales or totals. The ⋮ sits outside the sell button (44x44, bottom-right; a right strip in the compact
+  grid), so a tap or long press on it can never register a sale.
+- **S3c add-button placement.** "+ Producto" lives in the search toolbar above the grid, which stays sticky while scrolling the
+  products, so adding is one tap away anywhere in a long list; it opens the new product in the folder being viewed. With no products the
+  screen shows a single primary "+ Agregar producto" (no search box, no duplicate link at the bottom). Why: the old access was a text
+  link below "Nueva venta", out of sight with many products.
+- **S3d.** Local only, existing tokens: the payment icon of each card and the folder titles are 44 px touch targets (visual size
+  unchanged), cards lay out as a column, help text updated (pie, + Producto, Editar producto). No global redesign.
+- **Tests.** `tests/s3.ventas.test.js` (35 unit tests: pie data and percentages, sale copy unaffected by product edits, stale-tab
+  refusal, add/edit paths); e2e S3a-S3d checks in `tests/e2e/run.mjs` (pie values and text table, ⋮ geometry at 360/390/430 px in both
+  views, long press on ⋮ never sells, + Producto in the viewed folder, empty state, S3d 44 px targets — RED observed at 32x32 / 36 px
+  before `9051c2f`).
+- **Screenshots** (light and dark, 390 and 1280 px; top, grid, bottom): `scratchpad/s0/s3-{390,1280}-{top,grid,bottom}[-dark].png`;
+  before: `s3-before-*.png`. Reviewed: no clipped text besides the intended ellipsis on long secondary lines, no overlap of ⋮ and the
+  payment icon, contrast unchanged (existing tokens).
 
 ### S1 — Pending decisions (review 2026-10-12)
 
