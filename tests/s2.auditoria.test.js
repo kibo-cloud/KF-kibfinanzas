@@ -138,3 +138,37 @@ test('L3: the "Hoy" line separates the a-plazo part from what was collected toda
   r = {hoyVentas: 1, hoyVendido: 30000, hoyForma: {efectivo: 30000}, hayCosto: false, hoyGanancia: 0};
   assert.equal(a.lineaHoy(r), 'Hoy: 1 venta · efectivo $30000');
 });
+
+// ── L5: a debt plan with no rows in any month still counts as a liability and had no way out; "Quitar plan" removes it (with a confirmation) ──
+function appPlan(d){
+  var g = {conf: [], toasts: [], renders: 0};
+  var a = H.appVista(d, null, null, '2026-10-15', {funcs: ['quitarPlanSuelto', 'planSinRenglones', 'htmlPatrimonio', 'filasPatrimonio', 'esc'],
+    globals: {fARS: function(n){ return '$' + Math.round(n); }, fUSD: function(n){ return 'US$' + n; }, hARS: function(n){ return '$' + Math.round(n); }, fechaCorta: function(x){ return x; },
+      confirmar: function(t, c, e, fn){ g.conf.push([t, c, e]); fn(); }, tocar: function(){}, render: function(){ g.renders++; }, toast: function(t){ g.toasts.push(t); }}});
+  a.g = g; return a;
+}
+test('L5: a plan without rows shows "Quitar plan"; removing it (after confirming) removes only that liability', function(){
+  var d = C.vacio(2026);
+  d.planDeudas = {'Préstamo': {total: 600000, recargo: 0, cuotas: 6, pagadasAntes: 2}, 'Tarjeta': {total: 120000, recargo: 0, cuotas: 4, pagadasAntes: 0}};
+  C.mes(d, 9, {deudas: [C.it('Tarjeta', 30000, false)]});
+  var a = appPlan(d), antes = a.plain(a.pasivos(a.D, a.hoy));
+  var p = a.plain(a.patrimonioPantalla(a.D, a.hoy));
+  if(p.modelo){ var html = a.htmlPatrimonio(p); assert.match(html, /data-act="quitarPlanSuelto" data-n="Préstamo"/); assert.doesNotMatch(html, /data-n="Tarjeta"/); }
+  assert.equal(a.planSinRenglones(a.D, 'Préstamo'), true);
+  assert.equal(a.planSinRenglones(a.D, 'Tarjeta'), false);
+  a.quitarPlanSuelto('Tarjeta');   // has rows: nothing happens
+  assert.equal(a.g.conf.length, 0);
+  a.quitarPlanSuelto('Préstamo');
+  assert.equal(a.g.conf.length, 1);
+  assert.match(a.g.conf[0][1], /sigue contando como deuda/);
+  var despues = a.plain(a.pasivos(a.D, a.hoy));
+  assert.deepEqual(Object.keys(a.D.planDeudas), ['Tarjeta']);
+  assert.deepEqual(despues.detalle, antes.detalle.filter(function(x){ return x.nombre !== 'Préstamo'; }));
+});
+test('L5: the composition of a model year offers "Quitar plan" for a plan without rows', function(){
+  var d = C.vacio(2026); C.arrastre(d, 8, 0, 'declarado');
+  d.planDeudas = {'Préstamo': {total: 600000, recargo: 0, cuotas: 6, pagadasAntes: 2}};
+  var a = appPlan(d), p = a.plain(a.patrimonioPantalla(a.D, a.hoy));
+  assert.ok(p.modelo);
+  assert.match(a.htmlPatrimonio(p), /<button[^>]*data-act="quitarPlanSuelto" data-n="Préstamo"[^>]*>Quitar plan<\/button>/);
+});

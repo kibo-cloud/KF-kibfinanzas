@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1+qBvcl2GMAluCUYw4i+OJGBaH+KeJmbqI2Oz/29mJk=' 'sha256-4XsHtLHBvQ3J/3mXghosrfOZDbrRg83P+6+MgniTl/o='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1+qBvcl2GMAluCUYw4i+OJGBaH+KeJmbqI2Oz/29mJk=' 'sha256-8Xu1gzMgkVDi98NoLVC/u5L/yQJfC0Ilgsa5bUyZm/g='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -4180,8 +4180,11 @@ function htmlPatrimonio(p){
   h += '<div class="fila-in" data-pat="bruto"><label><b>Patrimonio bruto</b></label><span>' + hARS(f.bruto) + '</span></div>';
   h += '<div class="fila-in" data-pat="deudas"><label>Deudas (lo que te falta pagar)</label><span class="mudo">' + hARS(-f.deudas) + '</span></div>';
   for(i=0;i<f.detalleDeudas.length;i++){
-    h += '<div class="fila-in" data-pat="deuda"><label class="mudo" style="font-size:14px;padding-left:12px">' + esc(f.detalleDeudas[i].nombre) + '</label>'
-       + '<span class="mudo" style="font-size:14px">' + fARS(f.detalleDeudas[i].saldo) + '</span></div>';
+    var dd = f.detalleDeudas[i], suelto = dd.conPlan && D && (!p.anio || p.anio === D.anio) && planSinRenglones(D, dd.nombre);   // S2 L5
+    h += '<div class="fila-in" data-pat="deuda"><label class="mudo" style="font-size:14px;padding-left:12px">' + esc(dd.nombre)
+       + (suelto ? ' <small>(sin cuotas cargadas en ningún mes)</small>' : '') + '</label>'
+       + '<span class="mudo" style="font-size:14px">' + fARS(dd.saldo) + '</span></div>'
+       + (suelto ? '<div class="fila-in" data-pat="deuda-suelta"><label></label><button class="mini" style="min-height:var(--tap)" data-act="quitarPlanSuelto" data-n="' + esc(dd.nombre) + '">Quitar plan</button></div>' : '');
   }
   h += '<div class="fila-in" data-pat="neto"><label><b>Patrimonio neto</b></label><span><b>' + hARS(f.neto) + '</b></span></div>';
   h += '<div class="nota">' + (f.sinCotizacion
@@ -5651,6 +5654,23 @@ function guardarPlan(quitar){
   cerrarHoja(); tocar(); renderMes();
   if(!quitar) ofrecerCarga(n, mes);
 }
+// S2 L5: un plan de deuda sin ningún renglón en el año seguía contando como deuda y no había cómo sacarlo (el plan se abre desde un renglón).
+// Quitarlo es una acción del usuario, con confirmación: solo se borra el plan; ningún mes ni gasto cambia.
+function planSinRenglones(d, nombre){
+  var n = String(nombre || '').trim(), j, q;
+  for(j=0;j<12;j++) for(q=0;q<d.meses[j].deudas.length;q++) if(String(d.meses[j].deudas[q].nombre || '').trim() === n) return false;
+  return true;
+}
+function quitarPlanSuelto(nombre){
+  var n = String(nombre || '').trim(), k = null;
+  Object.keys(D.planDeudas || {}).forEach(function(x){ if(String(x).trim() === n) k = x; });
+  if(k === null || !planSinRenglones(D, n)) return;
+  confirmar('¿Quitar el plan de ' + esc(n) + '?', 'No tiene cuotas cargadas en ningún mes de ' + D.anio + ', pero sigue contando como deuda en tu patrimonio. '
+    + 'Si lo quitás, deja de restar. No se borra ningún mes ni ningún gasto.', 'Quitar plan', function(){
+    delete D.planDeudas[k];
+    tocar(); render(); toast('Quité el plan de ' + n);
+  });
+}
 function ofrecerCarga(nombre, desde){
   var p = planDe(D, nombre); if(!p || !p.cuotas || !p.total) return;
   var pc = planDeCarga(D, nombre, desde);
@@ -5814,6 +5834,7 @@ document.addEventListener('click', function(ev){
   if(a === 'quitarCobroIng'){ guardarComoCobras(true); return; }
   if(a === 'guardarPlan'){ guardarPlan(false); return; }
   if(a === 'quitarPlan'){ guardarPlan(true); return; }
+  if(a === 'quitarPlanSuelto'){ quitarPlanSuelto(b.getAttribute('data-n')); return; }
   if(a === 'colAyuda'){ var ka = b.getAttribute('data-k'); ayudaAbierta[ka] = !ayudaAbierta[ka]; plegarAnim(b.parentNode, !ayudaAbierta[ka]); return; }
   if(a === 'gastoRapido' || a === 'rapido'){ gastoRapido(); return; }   // el FAB (P3a: único botón "Gasto"; 'rapido' queda para el atajo)
   if(a === 'chip'){
