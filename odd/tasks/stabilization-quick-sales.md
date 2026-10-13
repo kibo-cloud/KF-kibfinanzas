@@ -29,7 +29,7 @@ Owner brief: "TuGasto — LOOP DE ESTABILIZACIÓN, AUDITORÍA FINANCIERA Y UX DE
 
 - [x] S0 Map the quick-sales module (data model, sale flow, persistence, undo, edit capabilities, add-product placement, existing
       charts). Route: delegated read-only explorer. Done (map used by S3a-d).
-- [ ] S1 Pending decisions review (N1-B, N2-B, N3a-A/B, N3b-A/B, N4-A/B, L3 partial payment + "(otro gasto)" vs topes, L5 due day):
+- [x] S1 Pending decisions review (N1-B, N2-B, N3a-A/B, N3b-A/B, N4-A/B, L3 partial payment + "(otro gasto)" vs topes, L5 due day):
       context, alternatives, effects, recommendation; apply only what is already approved.
 - [x] S2 End-to-end financial flow audit (entry → display → persistence → export → restore), findings with repro/impact/cause/test.
       Route: delegated read-only auditor; fixes by a writer, RED first.
@@ -37,9 +37,9 @@ Owner brief: "TuGasto — LOOP DE ESTABILIZACIÓN, AUDITORÍA FINANCIERA Y UX DE
 - [x] S3b "⋮ → Editar producto" from the product screen (no sale on edit; history preserved).
 - [x] S3c Persistent "Agregar producto" access.
 - [x] S3d Local visual consistency of the quick-sales screen.
-- [ ] S4 Independent reviews of money/persistence changes; native review per slice with owner consent.
-- [ ] S5 Security / performance (large product lists) / offline / desktop regression.
-- [ ] S6 Final verification and delivery report.
+- [x] S4 Independent reviews of money/persistence changes; native review per slice with owner consent.
+- [x] S5 Security / performance (large product lists) / offline / desktop regression.
+- [x] S6 Final verification and delivery report.
 
 ## Progress / evidence
 
@@ -158,3 +158,21 @@ action. Everything else waits for the owner.
   - W3: the quick-expense undo refusal branch (`exacto = -2`) had no tests: a new same-named row, another row renamed to that name, and
     a stored `fo` without `fn` (older shape: the fo-th same-named row; out of range refuses) are now covered (`d1ea18a`,
     characterization, no behavior change).
+
+### W4 and stage closure (2026-10-13)
+
+- W4 (63fcbd5..c197158, 4 files, 112 lines, medium): reliability lens APPROVED, no correction, acknowledged
+  (review-56cb305a54722b76). Advisory SUGGESTION: no test covers `abrirPase` clearing `paseOk` (reopen the sheet after an
+  unconfirmed early date) — LOW follow-up, behavior present.
+- Every code commit of this stage (b6549b1..c197158) is covered by an acknowledged native review (W1-W4) plus independent
+  read-only reviews of the quick-sales and money changes.
+- Final state (parent-verified at c197158 + this note): `npm test` 860 (859 pass, 0 fail, 1 todo L-03d = N2-B), `npm run test:e2e`
+  534/534, motor goldens byte-identical to a264d6a, APPVER 1.33.0, SW v46, tree clean, no AI trailers, no remote (owner: do not
+  publish yet).
+- Owner decisions still open (isolated, recommendations in the S1 table; interim notices built where safe): H1 (year carry live vs
+  snapshot; notice built), M1 (pases before desde; two-tap warning built), M3 (restore without Trabajo; notice built), N2-B (legacy
+  two-row "Del trabajo"; notice built), L3 partial payment, "(otro gasto)" vs topes, L5 optional due day, N1-B, N3a-A/B, N3b-A/B,
+  N4-A/B, GitHub publication.
+- Residual risks: MEDIUM N2-B over-count on legacy two-row data until decided; H1 drift between years until decided; LOW restore
+  without journal, style-src 'unsafe-inline', quarantine copies accumulate, render cost with hundreds of products not measured in a
+  browser, W4 test gap.
