@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1+qBvcl2GMAluCUYw4i+OJGBaH+KeJmbqI2Oz/29mJk=' 'sha256-UWlSO2Xk7lucHreUUdR7DR7bJkKyrsyEco4BBr12rF8='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1+qBvcl2GMAluCUYw4i+OJGBaH+KeJmbqI2Oz/29mJk=' 'sha256-bAfv3H9O63cRRqlDcqasW3UcajJfSDWKo32ikFMcyiA='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -6831,6 +6831,19 @@ function htmlCobradoMes(r, nomMes){
     + '<tr><th scope="row">Total</th><td>100%</td><td>' + fARS(d.total) + '</td></tr></table></div>'
     + '</div>';
 }
+/* S2 N2-B (a) (aviso provisorio, sin cambiar datos): datos viejos pueden tener dos renglones "Del trabajo" en un mes (el buscador anterior aceptaba
+   variantes); lo que pasás se reparte entre ellos en orden y puede contar un monto sin tildar. Se listan esos meses para revisarlos y juntarlos. */
+function mesesTrabajoDoble(d){
+  var out = [], j, q, n;
+  for(j=0;j<12;j++){ n = 0; for(q=0;q<d.meses[j].ingresos.length;q++) if(esRenglonTrabajo(d.meses[j].ingresos[q].nombre)) n++; if(n > 1) out.push(j); }
+  return out;
+}
+function avisoTrabajoDoble(d){
+  var m = d ? mesesTrabajoDoble(d) : []; if(!m.length) return '';
+  var nom = m.map(function(j){ return MESES[j]; }), lista = nom.length > 1 ? nom.slice(0, -1).join(', ') + ' y ' + nom[nom.length - 1] : nom[0];
+  return '<div class="aviso" data-av="trabajo-doble" role="status"><p>En ' + lista + ' de ' + d.anio + ' hay más de un renglón «' + RENGLON_TRABAJO + '» en Ingresos. '
+    + 'Lo que pasás desde Trabajo se reparte entre ellos: revisalos en Mes y dejá uno solo.</p></div>';
+}
 function renderTrabajo(){
   var v = document.getElementById('v-trabajo'); if(!v) return;
   var r = resumenTrab(), pro = T.modo === 'pro', h = '', i;
@@ -6857,6 +6870,7 @@ function renderTrabajo(){
      +   (r.aAcreditar ? '<small>Además entran ' + fARS(r.aAcreditar) + ' con fecha más adelante (echeqs diferidos, por ejemplo).</small>' : '')
      +   '<button class="tj-pasar" data-act="tjPasar">Pasar a lo personal</button>'
      + '</div></div>';
+  h += avisoTrabajoDoble(D);
   if(!pro) h += botonesProductos();
   h += '<div class="tj-acc"><button class="pri" data-act="tjNuevaFac">' + (pro ? 'Nueva factura' : 'Nueva venta') + '</button>'
      + (pro ? '<button data-act="tjNuevoCobro">Entró un pago</button>' : '') + '</div>'

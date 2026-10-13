@@ -250,3 +250,19 @@ test('M3: a backup whose Trabajo passed money to a year it does not bring says w
   var tr2 = H.trab([{fecha: '2026-03-01', monto: 2000}], 5000);
   assert.doesNotMatch(hojaRestaurar({app: 'kibFinanzas', version: 1, anios: {2026: C.vacio(2026)}, trabajo: tr2}, true), /no trae/);
 });
+
+// ── N2-B (a) (interim, no data change): months of the open year with more than one "Del trabajo" row (legacy data from the old matcher) are
+// listed so the user can review and merge them ──
+test('N2-B: a notice lists the months with more than one "Del trabajo" row; none when every month has at most one', function(){
+  var d = C.vacio(2026);
+  C.mes(d, 2, {ingresos: [C.it('Dél trabajo', 1000, false), C.it('Del trabajo', 2000, true)]});
+  C.mes(d, 5, {ingresos: [C.it('Del trabajo', 2000, true), C.it('Sueldo', 5000, true)]});
+  C.mes(d, 7, {ingresos: [C.it('del trabajo ', 1000, true), C.it('DEL TRABAJO', 2000, true)]});
+  var a = H.appVista(d, null, null, '2026-10-15', {funcs: ['mesesTrabajoDoble', 'avisoTrabajoDoble', 'esc'], vars: ['MESES']});
+  assert.deepEqual(a.plain(a.mesesTrabajoDoble(a.D)), [2, 7]);
+  var h = a.avisoTrabajoDoble(a.D);
+  assert.match(h, /En Marzo y Agosto de 2026 hay más de un renglón «Del trabajo»/);
+  assert.deepEqual(a.plain(a.D.meses[2].ingresos.map(function(x){ return x.nombre; })), ['Dél trabajo', 'Del trabajo'], 'no data change');
+  var b = H.appVista(C.vacio(2026), null, null, '2026-10-15', {funcs: ['mesesTrabajoDoble', 'avisoTrabajoDoble', 'esc'], vars: ['MESES']});
+  assert.equal(b.avisoTrabajoDoble(b.D), '');
+});
