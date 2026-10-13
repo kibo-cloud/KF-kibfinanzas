@@ -1797,6 +1797,65 @@ try{
     check('S3 quick sales: "Preguntar siempre" opens the payment sheet and sells nothing yet', [await ev(`!!document.querySelector('.hoja [data-act=tjCobrar][data-id=p4]')`), (await guardadoS3()).n], [true, 6]);
     await ev(`document.querySelector('.hoja [data-act=tjCobrar][data-id=p4][data-v=efectivo]').click(); true`); await sleep(400);
     check('S3 quick sales: the sheet sale stores the chosen payment', await ev(`(function(){ var t = JSON.parse(localStorage.getItem('kibo.trabajo')), f = t.facturas[t.facturas.length - 1]; return [f.concepto, f.forma, f.monto]; })()`), ['Factura 5', 'efectivo', 1500]);
+    // ── S3b: "⋮" on each card → "Editar producto": never sells, never touches stock, closes back to the grid ──
+    // geometry of every card: the ⋮ is outside .tj-prod, at least 44x44, inside its card, and covers no text of the name, the price or the stock line
+    const opcS3 = `(function(){ var malos = [], n = 0;
+      // the painted text: its range rects clipped to the content box of the line and of the card (an ellipsized line paints nothing past its box)
+      function caja(e){ var b = e.getBoundingClientRect(), cs = getComputedStyle(e); return {left: b.left + parseFloat(cs.borderLeftWidth) + parseFloat(cs.paddingLeft), right: b.right - parseFloat(cs.borderRightWidth) - parseFloat(cs.paddingRight), top: b.top, bottom: b.bottom}; }
+      function rectsTexto(e){ var r = document.createRange(), out = [], k1 = caja(e), k2 = caja(e.closest('.tj-prod')); r.selectNodeContents(e);
+        Array.prototype.forEach.call(r.getClientRects(), function(x){ var c = {left: Math.max(x.left, k1.left, k2.left), right: Math.min(x.right, k1.right, k2.right), top: x.top, bottom: x.bottom}; if(c.right > c.left && x.height) out.push(c); }); return out; }
+      function corta(a, b){ return a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5; }
+      document.querySelectorAll('#v-trabajo .tj-pw').forEach(function(w){ if(w.offsetParent === null) return; n++;
+        var o = w.querySelector(':scope > .tj-opc'), p = w.querySelector(':scope > .tj-prod'); if(!o){ malos.push('no ⋮ ' + w.getAttribute('data-id')); return; }
+        var r = o.getBoundingClientRect(), c = w.getBoundingClientRect();
+        if(p.contains(o)) malos.push('inside');
+        if(r.width < 44 || r.height < 44) malos.push('small ' + r.width + 'x' + r.height);
+        if(r.left < c.left - 0.5 || r.right > c.right + 0.5 || r.top < c.top - 0.5 || r.bottom > c.bottom + 0.5) malos.push('outside its card');
+        p.querySelectorAll('.nom, .vp, .vc, .vg').forEach(function(t){ rectsTexto(t).forEach(function(x){ if(corta(x, r)) malos.push('covers ' + t.className + ' of ' + w.getAttribute('data-id')); }); });
+        var m = w.querySelector(':scope > .tj-medio'); if(m && corta(m.getBoundingClientRect(), r)) malos.push('covers the payment icon');
+        if(o.getAttribute('aria-label') !== 'Opciones de ' + p.querySelector('.nom').textContent) malos.push('label');
+      }); return [n, malos.slice(0, 6)]; })()`;
+    await seedS3();
+    for(const w of [360, 390, 430]){ await tamS3(w); await sleep(200); check(`S3b ⋮ ${w} px full view: on every card, 44 px, covering no name, price, stock or payment icon`, await ev(opcS3), [25, []]); }
+    await ev(`document.querySelector('[data-act=tjVista]').click(); true`); await sleep(400);
+    for(const w of [360, 390, 430]){ await tamS3(w); await sleep(200); check(`S3b ⋮ ${w} px compact grid: on every card, 44 px, covering no name or price`, await ev(opcS3), [25, []]); }
+    await ev(`document.querySelector('[data-act=tjVista]').click(); true`); await sleep(400);
+    await tamS3(390);
+    const antesB = await guardadoS3();
+    // a real touch: press on the ⋮ of p0 for 700 ms (longer than the 500 ms long-press of the card) and release
+    const centro = await ev(`(function(){ var b = document.querySelector('.tj-pw[data-id=p0] .tj-opc'); b.scrollIntoView({block: 'center'}); var r = b.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()`);
+    await sleep(300);
+    await send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: centro[0], y: centro[1] }] }); await sleep(700);
+    await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await sleep(500);
+    check('S3b ⋮ long press: never opens the payment sheet, never sells', [await ev(`!!document.querySelector('#hoja [data-act=tjCobrar]')`), await guardadoS3()], [false, antesB]);
+    if(await ev(`document.getElementById('velo').classList.contains('on')`)){ await ev(`document.querySelector('#hoja [data-act=cerrarHoja]').click(); true`); await sleep(500); }
+    await ev(`document.querySelector('.tj-pw[data-id=p0] .tj-opc').click(); true`); await sleep(400);
+    check('S3b ⋮ tap: a sheet with the product name, Editar producto and Cancelar; nothing sold, stock untouched', [await ev(`(function(){ var h = document.getElementById('hoja');
+      return [h.querySelector('h3').textContent, Array.prototype.map.call(h.querySelectorAll('button[data-act]'), function(b){ return b.textContent; })]; })()`), await guardadoS3()],
+      [['Café 1', ['Editar producto', 'Cancelar']], antesB]);
+    await ev(`document.querySelector('#hoja [data-act=cerrarHoja]').click(); true`); await sleep(500);
+    check('S3b ⋮ Cancelar: back to the grid, nothing changed', [await ev(`document.getElementById('velo').classList.contains('on')`), await guardadoS3()], [false, antesB]);
+    await ev(`document.querySelector('.tj-pw[data-id=p0] .tj-opc').click(); true`); await sleep(400);
+    await ev(`document.querySelector('#hoja [data-act=tjEditDesdeGrilla]').click(); true`); await sleep(500);
+    check('S3b Editar producto: the editor of that product, with Borrar, Cancelar and Guardar', await ev(`(function(){ var h = document.getElementById('hoja');
+      return [h.querySelector('h3').textContent, document.getElementById('pxNombre').value, Array.prototype.map.call(h.querySelectorAll('.fila button'), function(b){ return b.textContent; })]; })()`),
+      ['Editar producto', 'Café 1', ['Borrar', 'Cancelar', 'Guardar']]);
+    await ev(`(function(){ var x = document.getElementById('pxPrecio'); x.value = '0'; x.dispatchEvent(new Event('input', {bubbles: true})); document.querySelector('#hoja [data-act=tjGuardarProd]').click(); return true; })()`); await sleep(300);
+    check('S3b Editar producto: a wrong price is said on the sheet and nothing is saved', [await ev(`document.getElementById('pxNota').textContent`), await ev(`document.getElementById('velo').classList.contains('on')`), await guardadoS3()],
+      ['El precio tiene que ser mayor que cero.', true, antesB]);
+    await ev(`(function(){ var x = document.getElementById('pxPrecio'); x.value = '777'; x.dispatchEvent(new Event('input', {bubbles: true})); document.querySelector('#hoja [data-act=tjGuardarProd]').click(); return true; })()`); await sleep(600);
+    check('S3b Editar producto → Guardar: closes back to the grid (not the list), the card shows the new price, no sale, past sales keep their copy', await ev(`(function(){
+      var t = JSON.parse(localStorage.getItem('kibo.trabajo')), v1 = t.facturas.filter(function(f){ return f.id === 'v1'; })[0];
+      return [document.getElementById('velo').classList.contains('on'), t.productos[0].precio, t.facturas.length, [v1.concepto, v1.monto], document.querySelector('.tj-pw[data-id=p0] .vp').textContent]; })()`),
+      [false, 777, antesB.n, ['Café 1', 3000], await $S3(777)]);
+    await ev(`document.querySelector('.tj-pw[data-id=p0] .tj-medio').click(); true`); await sleep(400);
+    check('S3b the payment corner icon still opens the payment sheet', await ev(`!!document.querySelector('#hoja [data-act=tjCobrar][data-id=p0]')`), true);
+    await ev(`document.querySelector('#hoja [data-act=cerrarHoja]').click(); true`); await sleep(400);
+    await ev(`document.querySelector('[data-act=tjProds]').click(); true`); await sleep(400);
+    await ev(`document.querySelector('#hoja [data-act=tjEditProd][data-id=p1]').click(); true`); await sleep(400);
+    await ev(`document.querySelector('#hoja [data-act=tjGuardarProd]').click(); true`); await sleep(500);
+    check('S3b the list path keeps its behavior: saving from the product list goes back to the list', await ev(`[document.getElementById('velo').classList.contains('on'), document.querySelector('#hoja h3').textContent]`), [true, 'Productos rápidos']);
+    await ev(`document.querySelector('#hoja [data-act=cerrarHoja]').click(); true`); await sleep(400);
     await send('Emulation.clearDeviceMetricsOverride');
   }
 

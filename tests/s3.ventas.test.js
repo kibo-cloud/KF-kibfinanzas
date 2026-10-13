@@ -26,11 +26,12 @@ function app(ls, today, extra){
   g.abrirCobroProd = function(id){ g.cobros.push(id); };
   g.abrirProductos = function(){ g.listas++; };
   g.cerrarHoja = function(){ g.hojasCerradas++; };
+  g.hojas = []; g.abrirHoja = function(h){ g.hojas.push(h); };
   g.fARS = function(n){ return '$' + Math.round(n); };
   g.confirmar = function(t, c, e, fn){ g.confirmados++; fn(); };
   Object.keys(extra || {}).forEach(function(k){ g[k] = extra[k]; });
   var a = H.appAlmacen(ls, today || '2026-10-15', g, FUNCS.concat(extra && extra.funcs || []));
-  a.campos = campos; a.avisosEl = avisos; a.notas = notas;
+  a.campos = campos; a.avisosEl = avisos; a.notas = notas; a.g = g;   // the counters of THIS test's stubs (the harness copies g into its own object)
   return a;
 }
 function storeCon(productos, facturas, rev){
@@ -261,4 +262,83 @@ test('S3a text alternative: the drawing is hidden from screen readers and a tabl
   var tabla = /<div class="tj-sr"><table>([\s\S]*)<\/table><\/div>/.exec(h);
   assert.ok(tabla, 'visually hidden table');
   ['Efectivo', 'Digital / Virtual', '25%', '75%', '$1000', '$3000', 'Total', '$4000', 'Cobrado en Octubre, hasta hoy'].forEach(function(x){ assert.ok(tabla[1].indexOf(x) >= 0, x); });
+});
+
+// ── task 3 (S3b): "⋮" on each product card → "Editar producto", without selling ──
+var FUNCS_B = ['tarjetaProd', 'abrirOpcionesProd', 'abrirProducto', 'campoTj', 'chipsForma', 'esc', 'hexColor', 'textoForma', 'iconoForma'];
+function conGrilla(productos, facturas){
+  return cargada(productos, facturas, {funcs: FUNCS_B, attrMonto: function(n){ return ' value="' + (n || '') + '"'; }, FORMAS: [['transferencia', 'Transferencia'], ['echeq', 'Echeq'], ['efectivo', 'Efectivo'], ['otra', 'Otra']]});
+}
+// the top-level buttons of one card: [class, data-act, aria-label], in order (a card is <div class="tj-pw">: the sale button and its siblings)
+function botones(html){
+  var out = [], re = /<button(?: class="([^"]*)")?[^>]*?data-act="([^"]*)"[^>]*>/g, m;
+  while((m = re.exec(html))){ var al = /aria-label="([^"]*)"/.exec(m[0]); out.push([(m[1] || '').split(' ')[0], m[2], al ? al[1] : null]); }
+  return out;
+}
+
+test('S3b every card, full and compact, has a "⋮" button next to (not inside) the sale button, named for the product', function(){
+  var c = conGrilla([CAFE, Object.assign({}, MEDIA, {nombre: 'Pan <b>&"'})]);
+  [false, true].forEach(function(comp){
+    var h = c.a.tarjetaProd(c.a.T.productos[0], comp, true), b = botones(h);
+    assert.ok(b.some(function(x){ return x[0] === 'tj-opc' && x[1] === 'tjOpcProd' && x[2] === 'Opciones de Café'; }), JSON.stringify(b));
+    var venta = h.indexOf('data-act="tjVender"'), cierre = h.indexOf('</button>', venta), opc = h.indexOf('class="tj-opc"');
+    assert.ok(venta > 0 && cierre > venta && /^<div class="tj-pw"[^>]*><button class="tj-prod/.test(h), 'the card opens with the sale button');
+    assert.ok(opc > cierre, 'the ⋮ is a sibling after the sale button closes, so a tap or long-press on it never reaches .tj-prod');
+    assert.match(h, /class="tj-opc"[^>]*data-id="p1"/);
+    assert.equal(/data-act="tjMedio"/.test(h), !comp, 'the payment corner icon stays in the full view');
+  });
+  var raro = c.a.tarjetaProd(c.a.T.productos[1], false, true);
+  assert.match(raro, /aria-label="Opciones de Pan &lt;b&gt;&amp;&quot;"/, 'the name is escaped');
+});
+
+test('S3b the "⋮" sheet offers Editar producto and Cancelar, and changes nothing', function(){
+  var c = conGrilla([CAFE]);
+  var antes = JSON.stringify(c.a.T);
+  c.a.abrirOpcionesProd('p1');
+  var h = c.a.g.hojas[c.a.g.hojas.length - 1];
+  assert.match(h, /<h3>Café<\/h3>/);
+  assert.deepEqual(botones(h).map(function(x){ return x[1]; }), ['tjEditDesdeGrilla', 'cerrarHoja']);
+  assert.match(h, /data-act="tjEditDesdeGrilla" data-id="p1">Editar producto</);
+  assert.match(h, />Cancelar</);
+  assert.equal(JSON.stringify(c.a.T), antes);
+  assert.equal(c.a.tjAntes, null);
+});
+
+test('S3b from the grid: the editor saves and closes back to the grid (no list); it has a Cancelar; past sales keep their copy', function(){
+  var c = conGrilla([CAFE]);
+  c.a.venderProducto('p1');
+  var ventas = JSON.stringify(c.a.T.facturas);
+  c.a.abrirProducto('p1', false, 'grilla');
+  var h = c.a.g.hojas[c.a.g.hojas.length - 1];
+  assert.match(h, /<h3>Editar producto<\/h3>/);
+  assert.deepEqual(botones(h).filter(function(x){ return /tjBorrarProd|cerrarHoja|tjGuardarProd/.test(x[1]); }).map(function(x){ return x[1]; }), ['tjBorrarProd', 'cerrarHoja', 'tjGuardarProd']);
+  Object.assign(c.a.campos, {pxNombre: 'Café doble', pxPrecio: '2500', pxCosto: '', pxStock: '7', pxCarp: 'Bebidas'});
+  var cerr = c.a.g.hojasCerradas;
+  c.a.guardarProducto();
+  assert.deepEqual([c.a.prodPorId('p1').nombre, c.a.prodPorId('p1').precio, c.a.prodPorId('p1').stock], ['Café doble', 2500, 7]);
+  assert.deepEqual([c.a.g.listas, c.a.g.hojasCerradas], [0, cerr + 1], 'closes to the grid, not to the list');
+  assert.equal(JSON.stringify(c.a.T.facturas), ventas, 'the sale made before keeps "Café" at $1500');
+  assert.equal(c.a.T.facturas.length, 1, 'editing never creates a sale');
+});
+
+test('S3b the list path keeps its behavior: save reopens the list; delete from the grid closes back to the grid', function(){
+  var c = conGrilla([CAFE, MEDIA]);
+  c.a.abrirProducto('p2');
+  assert.doesNotMatch(c.a.g.hojas[c.a.g.hojas.length - 1], /data-act="cerrarHoja"/, 'list path editor: Borrar + Guardar, as before');
+  Object.assign(c.a.campos, {pxNombre: 'Medialuna', pxPrecio: '900'});
+  c.a.guardarProducto();
+  assert.equal(c.a.g.listas, 1);
+  c.a.abrirProducto('p1', false, 'grilla');
+  var cerr = c.a.g.hojasCerradas;
+  c.a.borrarProducto('p1');
+  assert.deepEqual([c.a.T.productos.length, c.a.g.listas, c.a.g.hojasCerradas], [1, 1, cerr + 1]);
+});
+
+test('S3b a stale tab refuses the edit from the grid too', function(){
+  var c = conGrilla([CAFE]);
+  c.a.abrirProducto('p1', false, 'grilla');
+  otraPestanaGuarda(c.ls);
+  Object.assign(c.a.campos, {pxNombre: 'Otro', pxPrecio: '1'});
+  c.a.guardarProducto();
+  assert.equal(c.a.prodPorId('p1').nombre, 'Café');
 });

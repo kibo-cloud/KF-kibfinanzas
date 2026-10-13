@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-13IJeOyEKqFZVOOFHo7ITxTuXUuIFB+El4nbN4kXJNQ=' 'sha256-4jnUUitEYYpvIZXB/492LBE51S+PwvY1BpngWAOb8k0='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-13IJeOyEKqFZVOOFHo7ITxTuXUuIFB+El4nbN4kXJNQ=' 'sha256-pH/rfApU2r3YxKbzhWsA9+c5vd3HXKikRiGbHtZSewU='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -470,7 +470,7 @@ button.tj-f:active{background:var(--fill)}
 .tj-cols.apagado{opacity:.35;pointer-events:none}
 .tj-sinres{font-size:13px;color:var(--txt2);text-align:center;padding:14px 0 4px}
 .tj-prods.compacta{gap:6px}
-@media (min-width:380px){.tj-prods.compacta{grid-template-columns:1fr 1fr 1fr}.tj-prods.compacta .tj-prod .vp{font-size:17px!important}.tj-prods.compacta .tj-prod .vp.l{font-size:14px!important;letter-spacing:-.01em}}
+@media (min-width:430px){.tj-prods.compacta{grid-template-columns:1fr 1fr 1fr}.tj-prods.compacta .tj-prod .vp{font-size:17px!important}.tj-prods.compacta .tj-prod .vp.l{font-size:14px!important;letter-spacing:-.01em}}
 .tj-prods.compacta .tj-prod{min-height:0;padding:7px 9px;border-radius:12px}
 .tj-prods.compacta .tj-pw .nom{font-size:13px;line-height:1.2;padding-right:0}
 .tj-prods.compacta{row-gap:12px;padding-top:4px}
@@ -491,6 +491,15 @@ button.tj-f:active{background:var(--fill)}
 .tj-pw .nom{padding-right:28px}
 .tj-medio{position:absolute;top:5px;right:5px;width:32px;height:32px;min-height:0;padding:0;border-radius:10px;background:var(--fill);font-size:16px;line-height:32px;text-align:center}
 .tj-medio:active{background:var(--acc-soft)}
+/* S3b: el "⋮" de cada producto, fuera del botón que vende: abajo a la derecha (vista completa) o una franja a la derecha (grilla compacta); 44 px */
+.tj-opc{position:absolute;right:0;bottom:0;z-index:1;width:var(--tap);height:var(--tap);min-height:0;padding:0;border-radius:12px 0 14px 0;background:none;color:var(--txt2);display:flex;align-items:center;justify-content:center}
+.tj-opc svg{width:18px;height:18px;fill:currentColor}
+.tj-opc:active{background:var(--acc-soft)}
+.tj-prods:not(.compacta) .tj-prod{min-height:98px}
+.tj-prods:not(.compacta) .tj-prod .vg,.tj-prods:not(.compacta) .tj-prod .vc{padding-right:34px}
+.tj-prods.compacta .tj-opc{top:0;height:auto;border-radius:0 12px 12px 0}
+.tj-prods.compacta .tj-pw>.tj-prod{padding-right:var(--tap);min-height:var(--tap)}
+.tj-prods.compacta .sb{pointer-events:none}
 .tj-pw.agot>.tj-prod{opacity:.5;box-shadow:none}
 .tj-prod .vc .ag{color:var(--neg);font-weight:600}
 .tj-cobra{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
@@ -6623,13 +6632,15 @@ var carpSelGeneral = false;   // General no tiene nombre propio: se elige con es
 function tarjetaProd(p, comp, ve){
   var gp = p.costo > 0 ? p.precio - p.costo : 0, ag = p.stock !== null && p.stock <= 0;
   var cc = p.carpeta ? ' style="--cc:' + hexColor(p.color) + '"' : '', ccl = p.carpeta ? ' cc' : '';
+  var opc = '<button class="tj-opc" data-act="tjOpcProd" data-id="' + esc(p.id) + '" aria-label="Opciones de ' + esc(p.nombre) + '">'
+          + '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></button>';
   var abre = '<div class="tj-pw' + (ag ? ' agot' : '') + '" data-id="' + esc(p.id) + '"' + (ve ? '' : ' style="display:none"') + '>'
            + '<button class="tj-prod' + ccl + '"' + cc + ' data-act="tjVender" data-id="' + esc(p.id) + '">'
            + '<b class="nom">' + esc(p.nombre) + '</b>';
   if(comp){
     return abre
       + '<span class="vp' + (fARS(p.precio).length >= 8 ? ' l' : '') + '">' + fARS(p.precio) + '</span>'
-      + '</button>'
+      + '</button>' + opc
       + (p.stock === null ? '' : '<span class="sb">S: ' + p.stock + '</span>')
       + '</div>';
   }
@@ -6639,7 +6650,7 @@ function tarjetaProd(p, comp, ve){
     + (gp ? '<span class="vg">' + fARS(gp) + ' de ganancia</span>' : '')
     + '<span class="vc">' + st + (p.costo ? 'Te cuesta ' + fARS(p.costo) + ' · ' : '') + textoForma(p.forma) + '</span>'
     + '</button>'
-    + '<button class="tj-medio" data-act="tjMedio" data-id="' + esc(p.id) + '" aria-label="Elegir cómo te pagan">' + iconoForma(p.forma) + '</button>'
+    + '<button class="tj-medio" data-act="tjMedio" data-id="' + esc(p.id) + '" aria-label="Elegir cómo te pagan">' + iconoForma(p.forma) + '</button>' + opc
     + '</div>';
 }
 function grillaProds(lista, comp, q){
@@ -6900,6 +6911,14 @@ function abrirCobroProd(id){
     + '</div>'
     + '<div class="fila"><button data-act="cerrarHoja">Cancelar</button></div>');
 }
+// S3b: el "⋮" de cada producto. Abrirlo no vende, no toca el stock y no crea nada: solo ofrece editar el producto
+function abrirOpcionesProd(id){
+  var p = prodPorId(id); if(!p) return;
+  abrirHoja('<h3>' + esc(p.nombre) + '</h3>'
+    + '<div class="nota" style="padding:0 2px 12px">' + fARS(p.precio) + (p.stock === null ? '' : ' · Stock: ' + p.stock) + '. Si lo cambiás, las ventas que ya cargaste quedan como estaban.</div>'
+    + '<div class="tj-cobra"><button class="sec" data-act="tjEditDesdeGrilla" data-id="' + esc(p.id) + '">Editar producto</button></div>'
+    + '<div class="fila"><button data-act="cerrarHoja">Cancelar</button></div>');
+}
 function abrirProductos(){
   var h = '', i;
   for(i=0;i<T.productos.length;i++){
@@ -6914,9 +6933,9 @@ function abrirProductos(){
     + (h ? '<div class="tj-caja">' + h + '</div>' : '<div class="tj-vacio" style="padding:0 2px 12px">Todavía no tenés ninguno.</div>')
     + '<div class="fila"><button data-act="cerrarHoja">Listo</button><button class="pri" data-act="tjNuevoProd">Nuevo producto</button></div>');
 }
-function abrirProducto(id, aStock){
+function abrirProducto(id, aStock, volver){
   var p = id ? prodPorId(id) : null;
-  px = {id: p ? p.id : null, forma: p ? p.forma : ''};   // nuevo: sin medio por defecto hasta que elijas uno
+  px = {id: p ? p.id : null, forma: p ? p.forma : '', volver: volver === 'grilla' ? 'grilla' : ''};   // nuevo: sin medio por defecto hasta que elijas uno. volver: desde la grilla, guardar o cancelar vuelve a la grilla (no a la lista)
   var lc = carpetas(), ci, carpIni = p ? p.carpeta : '', colIni = p ? p.color : '';
   if(!p && carpSel && !carpSelGeneral) for(ci=0;ci<lc.length;ci++) if(lc[ci].k === carpSel && !lc[ci].general){ carpIni = lc[ci].nombre; colIni = lc[ci].color; }   // creás desde una carpeta: arranca en esa
   px.color = colIni || '';
@@ -6940,7 +6959,8 @@ function abrirProducto(id, aStock){
     +   '<button data-act="tjPxForma" data-v="" class="' + (px.forma ? '' : 'on') + '">Preguntar siempre</button>' + chipsForma(px.forma, 'tjPxForma') + '</div>'
     + '<div class="nota" style="padding:0 0 10px">Es el medio que se usará al tocar el botón rápido. Al vender, siempre podés cambiarlo tocando el ícono 💵/💳.</div>'
     + '<div class="nota" id="pxNota" style="padding:0 0 14px">Si ponés lo que te cuesta, la app te muestra cuánto ganás en cada venta. Es solo para saberlo: no se descuenta del disponible, para eso están los gastos.</div>'
-    + '<div class="fila">' + (p ? '<button class="mal" data-act="tjBorrarProd" data-id="' + esc(p.id) + '">Borrar</button>' : '<button data-act="tjProds">Volver</button>')
+    + '<div class="fila">' + (p ? '<button class="mal" data-act="tjBorrarProd" data-id="' + esc(p.id) + '">Borrar</button>' : '')
+    + (px.volver ? '<button data-act="cerrarHoja">Cancelar</button>' : p ? '' : '<button data-act="tjProds">Volver</button>')
     + '<button class="pri" data-act="tjGuardarProd">Guardar</button></div>');
   var fo = document.getElementById(aStock ? 'pxStock' : 'pxNombre'); fo.focus(); if(aStock && fo.select) fo.select();
 }
@@ -6969,7 +6989,8 @@ function guardarProducto(){
   if(viejo){ for(var k in datos) viejo[k] = datos[k]; }
   else { datos.id = tjId(); datos.creada = new Date().toISOString(); T.productos.push(datos); }
   if(carp) for(ci=0;ci<T.productos.length;ci++) if(T.productos[ci].carpeta && clave(T.productos[ci].carpeta) === clave(carp)) T.productos[ci].color = col;   // el color es de la carpeta
-  guardarTrab(true); renderTrabajo(); abrirProductos();
+  guardarTrab(true); renderTrabajo();
+  if(px.volver === 'grilla') cerrarHoja(); else abrirProductos();
   pildora(viejo ? 'Producto actualizado' : 'Producto guardado');
 }
 function borrarProducto(id){
@@ -6978,7 +6999,8 @@ function borrarProducto(id){
     if(trabVieja()) return;
     antesDeCambiar();
     T.productos = T.productos.filter(function(x){ return x.id !== id; });
-    guardarTrab(true); renderTrabajo(); abrirProductos();
+    guardarTrab(true); renderTrabajo();
+    if(px && px.volver === 'grilla') cerrarHoja(); else abrirProductos();
     pildora('Producto borrado');
   });
 }
@@ -7748,6 +7770,8 @@ function accionTj(a, b){
   if(a === 'tjVtPeriodo'){ marcarChips('fxPeriodo', b); cambiarPeriodo(v); return; }
   if(a === 'tjVender'){ tocarProducto(id); return; }
   if(a === 'tjMedio'){ abrirCobroProd(id); return; }
+  if(a === 'tjOpcProd'){ abrirOpcionesProd(id); return; }
+  if(a === 'tjEditDesdeGrilla'){ abrirProducto(id, false, 'grilla'); return; }
   if(a === 'tjVista'){ try{ localStorage.setItem(LSVISTA, vistaProd() === 'compacta' ? 'completa' : 'compacta'); }catch(e){} renderTrabajo(); return; }
   if(a === 'tjCobrar'){ cerrarHoja(); venderProducto(id, v); return; }
   if(a === 'tjReponer'){ abrirProducto(id, true); return; }
