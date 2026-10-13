@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-m0FsNrKE73h2m1lGiYUqZD6t4bAlfJSonNC+5xnK/pA=' 'sha256-usS3EB1dU68Ww1UXVQyilNkuLUt2GuFnbkaSvOOD6A4='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-m0FsNrKE73h2m1lGiYUqZD6t4bAlfJSonNC+5xnK/pA=' 'sha256-zbwm/kBe4tTqAPrC6T1pd2ZBoEsb+4FxGtlSN4DsLDE='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -5790,9 +5790,17 @@ function quitarPlanSuelto(nombre){
     tocar(); render(); toast('Quité el plan de ' + n);
   });
 }
+/* Final audit 3: como duplicar, en un año que sigue a diciembre en vivo las cuotas que el año anterior todavía tiene cargadas sin pagar ya
+   tienen su mes: el cálculo de qué cargar las cuenta (pagadasAntes se corre solo mientras dura fn y vuelve a decir lo PAGADO) */
+function conCuotasDeDiciembre(d, nombre, fn){
+  var prev = previoEnVivo(d), p = planDe(d, nombre), antes;
+  if(!prev || !p) return fn();
+  antes = p.pagadasAntes; p.pagadasAntes = antes + cuotasProgramadas(prev, nombre);
+  try{ return fn(); }finally{ p.pagadasAntes = antes; }
+}
 function ofrecerCarga(nombre, desde){
   var p = planDe(D, nombre); if(!p || !p.cuotas || !p.total) return;
-  var pc = planDeCarga(D, nombre, desde);
+  var pc = conCuotasDeDiciembre(D, nombre, function(){ return planDeCarga(D, nombre, desde); });
   if(pc.poner <= 0){
     if(pc.sobran > 0) alerta('No entran en ' + D.anio,
       'Faltan ' + pc.sobran + ' cuotas de <b>' + esc(nombre) + '</b>, pero ya no quedan meses en ' + D.anio
@@ -5806,7 +5814,7 @@ function ofrecerCarga(nombre, desde){
     + '. Lo que ya tengas cargado en esos meses en esta deuda se reemplaza.';
   if(pc.sobran > 0) cuerpo += '<br><br>Quedan ' + pc.sobran + ' para después: se cargan solas cuando crees el año ' + (D.anio+1) + '.';
   preguntar('Cargar las cuotas', cuerpo, 'Cargar', function(){
-    var r = cargarCuotas(D, nombre, desde, hoyApp());
+    var r = conCuotasDeDiciembre(D, nombre, function(){ return cargarCuotas(D, nombre, desde, hoyApp()); });
     tocar(); renderMes();
     toast('Cargué ' + r.poner + (r.poner === 1 ? ' cuota' : ' cuotas') + ' de ' + fARS(r.valor));
   });

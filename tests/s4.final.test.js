@@ -110,3 +110,32 @@ test('2: restores without that conflict are still offered (the year comes in the
     assert.match(r.hoja, /Va a <b>reemplazar<\/b>/);
   });
 });
+
+// ── 3 (MEDIUM): re-saving the plan sheet in 2027 offers to load installments without the shift duplicar applies (the ones December 2026
+// still schedules unpaid already have their month): «poner 3», then cuotasDeMas flagged 2 extra ──
+function anioConPlan(){
+  var ls = creado(C.seccion2(false, false), '2026-10-15'), g = {preguntas: [], alertas: [], toasts: []};
+  var a = H.appVista(null, null, ls.d, '2026-10-20', {funcs: ['ofrecerCarga', 'conCuotasDeDiciembre', 'cuotasDeMas', 'esc'], vars: ['MESES'],
+    globals: {preguntar: function(t, c, b, fn){ g.preguntas.push(c); fn(); }, alerta: function(t, c){ g.alertas.push([t, c]); }, tocar: function(){}, renderMes: function(){},
+      toast: function(t){ g.toasts.push(t); }, fARS: function(n){ return '$' + Math.round(n); }}});
+  a.D = a.leerAnio(2027); a.g = g;
+  return a;
+}
+function filasPrestamo(d){ return d.meses.filter(function(m){ return m.deudas.some(function(r){ return r.nombre === 'Préstamo' && r.monto > 0; }); }).length; }
+test('3: loading installments from the plan sheet counts what December still schedules: one more, none extra', function(){
+  var a = anioConPlan();
+  assert.equal(a.cuotasProgramadas(a.leerAnio(2026), 'Préstamo'), 2, 'December 2026 still schedules 2 unpaid');
+  a.ofrecerCarga('Préstamo', 0);
+  assert.equal(a.g.toasts.length, 1);
+  assert.match(a.g.toasts[0], /^Cargué 1 cuota de /);
+  assert.equal(filasPrestamo(a.D), 1);
+  assert.deepEqual(a.plain(a.cuotasDeMas(a.D)), []);
+  assert.equal(a.D.planDeudas['Préstamo'].pagadasAntes, 3, 'pagadasAntes keeps saying what was PAID');
+});
+test('3: a year that does not follow December live loads as before (no shift)', function(){
+  var a = anioConPlan();
+  delete a.D.arrastre;   // legacy year
+  a.ofrecerCarga('Préstamo', 0);
+  assert.match(a.g.toasts[0], /^Cargué 3 cuotas de /);
+  assert.equal(a.D.planDeudas['Préstamo'].pagadasAntes, 3);
+});
