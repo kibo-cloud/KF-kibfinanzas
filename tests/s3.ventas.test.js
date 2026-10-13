@@ -217,3 +217,48 @@ test('S3-1 month totals: Efectivo vs Digital (transferencia, echeq, otra), reali
   r = c.a.resumenTrab();
   assert.deepEqual([r.mesEfe, r.mesDig], [2500, 3840], 'each quick sale lands on its payment side');
 });
+
+// ── task 2 (S3a): "Cobrado en <Mes>, hasta hoy" donut, built only from resumenTrab's mesEfe / mesDig ──
+function torta(r){ var a = app(H.fakeStorage({}), '2026-10-15', {funcs: ['cobradoMes', 'htmlCobradoMes', 'esc', 'largo']}); return {a: a, d: a.plain(a.cobradoMes(r)), h: a.htmlCobradoMes(r, 'Octubre')}; }
+
+test('S3a the donut slices are exactly mesEfe and mesDig, their sum is the shown total, percentages add up to 100', function(){
+  var t = torta({mesEfe: 1000, mesDig: 2340});
+  assert.deepEqual(t.d, {total: 3340, partes: [{k: 'efectivo', n: 'Efectivo', v: 1000, p: 30}, {k: 'digital', n: 'Digital / Virtual', v: 2340, p: 70}]});
+  [[1, 2], [1, 1], [333, 667], [1, 999999], [5, 3]].forEach(function(x){
+    var d = torta({mesEfe: x[0], mesDig: x[1]}).d;
+    assert.equal(d.partes.reduce(function(s, p){ return s + p.p; }, 0), 100, JSON.stringify(x));
+    assert.equal(d.partes.reduce(function(s, p){ return s + p.v; }, 0), d.total);
+  });
+  assert.match(t.h, /Cobrado en Octubre, hasta hoy/);
+  assert.match(t.h, /\$3340/);
+});
+
+test('S3a the donut from a real month: the same numbers resumenTrab gives the month cards (pending invoices and future sales out)', function(){
+  var c = cargada([CAFE], [venta('a', 'A', 1000, 'efectivo', '2026-10-02'), venta('b', 'B', 2000, 'transferencia', '2026-10-15'), venta('e', 'E', 5000, 'efectivo', '2026-10-20'),
+    {id: 'g', tipo: 'factura', cliente: 'X', concepto: 'Plazo', monto: 9000, fecha: '2026-10-03', contado: false, plazo: 30, forma: 'efectivo'}], {funcs: ['cobradoMes']});
+  var r = c.a.resumenTrab(), d = c.a.plain(c.a.cobradoMes(r));
+  assert.deepEqual([d.total, d.partes[0].v, d.partes[1].v], [r.mesEfe + r.mesDig, r.mesEfe, r.mesDig]);
+  assert.equal(d.total, 3000);
+});
+
+test('S3a nothing collected: one sentence, no chart, no table', function(){
+  var t = torta({mesEfe: 0, mesDig: 0});
+  assert.deepEqual(t.d, {total: 0, partes: []});
+  assert.doesNotMatch(t.h, /<svg|<table/);
+  assert.match(t.h, /todavía no cobraste nada/i);
+});
+
+test('S3a a zero side is left out: one full slice at 100%', function(){
+  var t = torta({mesEfe: 0, mesDig: 4500});
+  assert.deepEqual(t.d.partes, [{k: 'digital', n: 'Digital / Virtual', v: 4500, p: 100}]);
+  assert.equal((t.h.match(/<circle/g) || []).length, 1);
+  assert.doesNotMatch(t.h, /Efectivo/);
+});
+
+test('S3a text alternative: the drawing is hidden from screen readers and a table repeats every number', function(){
+  var h = torta({mesEfe: 1000, mesDig: 3000}).h;
+  assert.match(h, /<svg[^>]*aria-hidden="true"/);
+  var tabla = /<div class="tj-sr"><table>([\s\S]*)<\/table><\/div>/.exec(h);
+  assert.ok(tabla, 'visually hidden table');
+  ['Efectivo', 'Digital / Virtual', '25%', '75%', '$1000', '$3000', 'Total', '$4000', 'Cobrado en Octubre, hasta hoy'].forEach(function(x){ assert.ok(tabla[1].indexOf(x) >= 0, x); });
+});

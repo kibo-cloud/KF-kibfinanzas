@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-13IJeOyEKqFZVOOFHo7ITxTuXUuIFB+El4nbN4kXJNQ=' 'sha256-8Gyt3zYXRQBON86/X4CKMfy2Bb3mI6gNGNew931oTas='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-13IJeOyEKqFZVOOFHo7ITxTuXUuIFB+El4nbN4kXJNQ=' 'sha256-4jnUUitEYYpvIZXB/492LBE51S+PwvY1BpngWAOb8k0='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -494,19 +494,23 @@ button.tj-f:active{background:var(--fill)}
 .tj-pw.agot>.tj-prod{opacity:.5;box-shadow:none}
 .tj-prod .vc .ag{color:var(--neg);font-weight:600}
 .tj-cobra{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
-.tj-medios{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin:12px 0 14px;position:relative}
-.tj-md{min-width:0;padding:10px 12px;border-radius:14px;display:flex;flex-direction:column;justify-content:space-between}
-.tj-md.dig{background:var(--dig-soft)} .tj-md.efe{background:var(--acc-soft)}
-.tj-md small{display:block;font-size:12px;font-weight:600;line-height:1.25;margin-bottom:3px}
-.tj-md.dig small{color:var(--dig)} .tj-md.efe small{color:var(--acc)}
-.tj-md b,.tj-mt b{display:block;color:var(--txt);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tj-md b{font-size:18px;font-weight:700;letter-spacing:-.02em;line-height:1.2}
-.tj-md b.largo{font-size:15px}
-.tj-mt{grid-column:1 / -1;min-width:0;padding:12px 14px;border-radius:14px;background:var(--card2);border:1px solid var(--sep)}
-.tj-mt small{display:block;font-size:12px;color:var(--txt2)}
-.tj-mt b{font-size:28px;font-weight:700;letter-spacing:-.03em;line-height:1.15;margin-top:1px}
-.tj-mt b.largo{font-size:23px}
-@media (max-width:370px){.tj-md b{font-size:16px}.tj-md b.largo{font-size:14px}}
+/* S3a: cobrado en el mes, efectivo contra digital (torta + leyenda; la tabla oculta repite los números para el lector de pantalla) */
+.tj-cob{margin:12px 0 14px;padding:12px 14px;border-radius:14px;background:var(--card2);border:1px solid var(--sep);min-width:0}
+.tj-cob small{display:block;font-size:12px;color:var(--txt2)}
+.tj-cob-hd b{display:block;font-size:28px;font-weight:700;letter-spacing:-.03em;line-height:1.15;margin-top:1px;color:var(--txt);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tj-cob-hd b.largo{font-size:23px}
+.tj-cob-cu{display:flex;align-items:center;gap:14px;margin-top:8px;min-width:0}
+.tj-cob-torta{flex:0 0 84px;width:84px;height:84px;display:block}
+.tj-cob-ley{flex:1;min-width:0;max-width:380px}
+.tj-cob-f{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:14px;min-width:0}
+.tj-cob-f+.tj-cob-f{border-top:1px solid var(--sep)}
+.tj-cob-f i{flex:0 0 10px;width:10px;height:10px;border-radius:3px;background:var(--dig)}
+.tj-cob-f.efectivo i{background:var(--acc)}
+.tj-cob-f .n{flex:1;min-width:0;line-height:1.25;overflow-wrap:break-word}
+.tj-cob-f .p{flex:0 0 auto;font-size:13px;color:var(--txt2);font-variant-numeric:tabular-nums}
+.tj-cob-f b{flex:0 0 auto;font-weight:600;font-variant-numeric:tabular-nums}
+.tj-cob.vacio p{margin:4px 0 0;font-size:14px;color:var(--txt2);line-height:1.4}
+.tj-sr{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .tj-cobra button{min-height:56px;border-radius:14px;font-size:17px;font-weight:600;background:var(--acc);color:var(--on-acc)}
 .tj-cobra button.sec{background:var(--fill);color:var(--txt)}
 .tj-cobra button:active{transform:scale(.975);transition-duration:var(--toque)}
@@ -6689,6 +6693,37 @@ function botonesProductos(){
   h += '</div>';
   return h + '<div class="tj-sinres" id="tjSinRes"' + (vis ? ' style="display:none"' : '') + '>' + esc(textoSinRes()) + '</div>';
 }
+/* S3a: cómo te pagaron este mes. Sale SOLO de resumenTrab (mesEfe / mesDig): lo cobrado hasta hoy en el mes, ventas al contado y cobros;
+   nunca facturas a plazo pendientes ni ventas con fecha futura. Un lado en cero no se dibuja; los porcentajes suman 100. */
+function cobradoMes(r){
+  var efe = Math.max(0, Math.round(num(r.mesEfe))), dig = Math.max(0, Math.round(num(r.mesDig))), total = efe + dig, pe;
+  if(!total) return {total:0, partes:[]};
+  pe = Math.round(efe * 100 / total);
+  if(efe && dig) pe = Math.min(99, Math.max(1, pe));   // un lado que existe nunca dice 0% ni 100%
+  var out = [];
+  if(efe) out.push({k:'efectivo', n:'Efectivo', v:efe, p:pe});
+  if(dig) out.push({k:'digital', n:'Digital / Virtual', v:dig, p:100 - pe});
+  return {total:total, partes:out};
+}
+function htmlCobradoMes(r, nomMes){
+  var d = cobradoMes(r), tit = 'Cobrado en ' + nomMes + ', hasta hoy', i;
+  if(!d.total) return '<div class="tj-cob vacio" id="tjCobrado"><small>' + esc(tit) + '</small><p>Todavía no cobraste nada este mes. Cuando vendas, acá vas a ver cuánto entró en efectivo y cuánto en digital.</p></div>';
+  var rr = 54, cir = 2 * Math.PI * rr, acum = 0, svg = '', ley = '', filas = '';
+  for(i=0;i<d.partes.length;i++){
+    var p = d.partes[i], arco = cir * p.v / d.total, col = p.k === 'efectivo' ? 'var(--acc)' : 'var(--dig)';
+    svg += '<circle cx="70" cy="70" r="' + rr + '" fill="none" stroke="' + col + '" stroke-width="24" stroke-dasharray="' + arco.toFixed(2) + ' ' + (cir - arco).toFixed(2) + '"'
+         + ' stroke-dashoffset="' + (-acum).toFixed(2) + '" transform="rotate(-90 70 70)"></circle>';
+    acum += arco;
+    ley += '<div class="tj-cob-f ' + p.k + '"><i></i><span class="n">' + p.n + '</span><span class="p">' + p.p + '%</span><b>' + fARS(p.v) + '</b></div>';
+    filas += '<tr><th scope="row">' + p.n + '</th><td>' + p.p + '%</td><td>' + fARS(p.v) + '</td></tr>';
+  }
+  return '<div class="tj-cob" id="tjCobrado">'
+    + '<div class="tj-cob-hd" aria-hidden="true"><small>' + esc(tit) + '</small><b class="' + largo(fARS(d.total)) + '">' + fARS(d.total) + '</b></div>'
+    + '<div class="tj-cob-cu" aria-hidden="true"><svg viewBox="0 0 140 140" class="tj-cob-torta" aria-hidden="true" focusable="false">' + svg + '</svg><div class="tj-cob-ley">' + ley + '</div></div>'
+    + '<div class="tj-sr"><table><caption>' + esc(tit) + '</caption><tr><th scope="col">Medio</th><th scope="col">Parte</th><th scope="col">Monto</th></tr>' + filas
+    + '<tr><th scope="row">Total</th><td>100%</td><td>' + fARS(d.total) + '</td></tr></table></div>'
+    + '</div>';
+}
 function renderTrabajo(){
   var v = document.getElementById('v-trabajo'); if(!v) return;
   var r = resumenTrab(), pro = T.modo === 'pro', h = '', i;
@@ -6705,11 +6740,7 @@ function renderTrabajo(){
             + '<div><small>Te quedó</small><b class="' + (r.vendidoSimpleMes - r.gastadoMes < 0 && !oculto ? 'neg' : '') + largo(fARS(r.vendidoSimpleMes - r.gastadoMes)) + '">' + fARS(r.vendidoSimpleMes - r.gastadoMes) + '</b></div>')
      + '</div>'
      + (!pro && r.hoyVentas ? '<div class="tj-hoy">' + lineaHoy(r) + '</div>' : '')
-     + (pro ? '' : '<div class="tj-medios">'
-         + '<div class="tj-md dig"><small>💳 Digital / Virtual</small><b class="' + largo(fARS(r.mesDig)) + '">' + fARS(r.mesDig) + '</b></div>'
-         + '<div class="tj-md efe"><small>💵 Efectivo</small><b class="' + largo(fARS(r.mesEfe)) + '">' + fARS(r.mesEfe) + '</b></div>'
-         + '<div class="tj-mt"><small>Cobrado en ' + mc + ' · total</small><b class="' + largo(fARS(r.mesDig + r.mesEfe)) + '">' + fARS(r.mesDig + r.mesEfe) + '</b></div>'
-         + '</div>')
+     + (pro ? '' : htmlCobradoMes(r, MESES[+hoyISO().slice(5,7) - 1]))
      + '<div class="final"><small>Disponible del trabajo</small><div class="final-fila"><div class="big ' + (neg ? 'mal' : 'ok') + largo(fARS(r.disponible)) + '" id="tjDisp">' + fARS(r.disponible) + '</div></div>'
      +   '<small>' + explicaDisp(r) + '</small>'
      +   (neg ? '<small class="neg">' + (r.gastado > r.cobrado

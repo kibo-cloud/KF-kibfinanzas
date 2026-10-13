@@ -1762,6 +1762,30 @@ try{
     const guardadoS3 = () => ev(`(function(){ var t = JSON.parse(localStorage.getItem('kibo.trabajo')); return {n: t.facturas.length, stock: t.productos.map(function(p){ return p.stock; })}; })()`);
     await tamS3(390); await seedS3();
     check('S3 quick sales: the 25 products render in their 3 folders', await ev(`[document.querySelectorAll('#v-trabajo .tj-pw').length, document.querySelectorAll('#v-trabajo .tj-carp').length]`), [25, 3]);
+    // S3a: "Cobrado en Octubre, hasta hoy" = resumenTrab mesEfe 3.000 + mesDig 10.000 (transferencia 9.000 + echeq 1.000); the future sale,
+    // September and the pending invoice are out
+    const $S3 = (n) => ev(`fARS(${n})`);
+    check('S3a donut: title with the period, total, both sides with % and money', await ev(`(function(){ var c = document.getElementById('tjCobrado'); if(!c) return null;
+      return [c.querySelector('.tj-cob-hd small').textContent, c.querySelector('.tj-cob-hd b').textContent, c.querySelectorAll('.tj-cob-torta circle').length,
+        Array.prototype.map.call(c.querySelectorAll('.tj-cob-f'), function(f){ return [f.querySelector('.n').textContent, f.querySelector('.p').textContent, f.querySelector('b').textContent]; })]; })()`),
+      ['Cobrado en Octubre, hasta hoy', await $S3(13000), 2, [['Efectivo', '23%', await $S3(3000)], ['Digital / Virtual', '77%', await $S3(10000)]]]);
+    check('S3a donut: the drawing is hidden from screen readers and a visually hidden table says the same numbers', await ev(`(function(){ var c = document.getElementById('tjCobrado'), t = c.querySelector('.tj-sr table'), r = c.querySelector('.tj-sr').getBoundingClientRect();
+      return [c.querySelector('svg').getAttribute('aria-hidden'), c.querySelector('.tj-cob-cu').getAttribute('aria-hidden'), t.querySelector('caption').textContent, r.width <= 1 && r.height <= 1,
+        Array.prototype.map.call(t.querySelectorAll('tr'), function(tr){ return tr.textContent; })]; })()`),
+      ['true', 'true', 'Cobrado en Octubre, hasta hoy', true, ['MedioParteMonto', 'Efectivo23%' + await $S3(3000), 'Digital / Virtual77%' + await $S3(10000), 'Total100%' + await $S3(13000)]]);
+    const cabeS3 = `(function(){ var W = document.documentElement.clientWidth, c = document.getElementById('tjCobrado').getBoundingClientRect(), malos = [];
+      if(document.documentElement.scrollWidth > W) malos.push('page');
+      if(c.left < 0 || c.right > W + 0.5) malos.push('card');
+      document.querySelectorAll('#tjCobrado .tj-cob-f, #tjCobrado .tj-cob-f > *').forEach(function(e){ var r = e.getBoundingClientRect(); if(r.right > c.right + 0.5) malos.push(e.className || e.tagName); });
+      document.querySelectorAll('#tjCobrado .tj-cob-f .n, #tjCobrado .tj-cob-hd b').forEach(function(e){ if(e.scrollWidth > e.clientWidth + 1) malos.push('cut ' + e.textContent); });
+      return malos; })()`;
+    for(const w of [360, 390, 1280]){ await tamS3(w); await sleep(200); check(`S3a donut ${w} px: fits, nothing cut or wider than the window`, await ev(cabeS3), []); }
+    await tamS3(390);
+    await seedS3(Object.assign({}, trS3, {facturas: [trS3.facturas[3], trS3.facturas[4], trS3.facturas[5]]}));
+    check('S3a donut: nothing collected this month (only a future sale, September and a pending invoice): one sentence, no chart', await ev(`(function(){ var c = document.getElementById('tjCobrado');
+      return [c.classList.contains('vacio'), !!c.querySelector('svg, table'), c.querySelector('small').textContent, /todavía no cobraste nada/i.test(c.textContent)]; })()`),
+      [true, false, 'Cobrado en Octubre, hasta hoy', true]);
+    await seedS3();
     await ev(`document.querySelector('#v-trabajo .tj-prod[data-id=p0]').click(); true`); await sleep(300);
     let gS3 = await guardadoS3();
     check('S3 quick sales: one tap on a product with a default payment sells it: one more sale, one unit less of stock, saved', [gS3.n, gS3.stock[0]], [7, 9]);
