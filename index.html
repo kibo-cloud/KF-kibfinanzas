@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-m0FsNrKE73h2m1lGiYUqZD6t4bAlfJSonNC+5xnK/pA=' 'sha256-iQSvZ0Q5S6GMcMdFHWKjBteXXaKzbhOhl7+Pj4BkGXE='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-m0FsNrKE73h2m1lGiYUqZD6t4bAlfJSonNC+5xnK/pA=' 'sha256-Y4e6DodK+mihbOYSC8KjdiYtdrJ/er3lnkZO2s0eXI8='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -6997,8 +6997,9 @@ function leerReparo(anio){   // la copia de los meses antes de ordenar, o null
 function copiaJSON(x){ return JSON.parse(JSON.stringify(x)); }
 function ordenarTrabajo(){
   if(obsoleta || !blobAlDia(PREF + D.anio, D)){ obsoleta = true; avisoOtraPestana(); return false; }   // pestaña vieja: no se escribe nada
-  var plan = planOrdenTrabajo(D).filter(function(p){ return p.ordenar; }), rep = leerReparo(D.anio) || {anio:D.anio, meses:{}}, viejos = {};
+  var plan = planOrdenTrabajo(D).filter(function(p){ return p.ordenar; }), rep = leerReparo(D.anio) || {anio:D.anio, meses:{}}, viejos = {}, previo = null;
   if(!plan.length) return false;
+  try{ previo = localStorage.getItem(LSREPARO + D.anio); }catch(e){}   // final audit 5: si el año no se guarda, la copia vuelve a ser exactamente esta
   plan.forEach(function(p){
     var ls = D.meses[p.mes].ingresos, ya = rep.meses[p.mes];
     rep.meses[p.mes] = {antes: ya ? ya.antes : copiaJSON(ls), despues: copiaJSON(conOrdenTrabajo(ls, p))};   // si ya se había ordenado, se guarda el primer «antes»
@@ -7007,9 +7008,9 @@ function ordenarTrabajo(){
   try{ localStorage.setItem(LSREPARO + D.anio, JSON.stringify(rep)); }
   catch(e){ alerta('No ordené nada', 'No pude guardar cómo estaban esos meses, así que no cambié nada.'); return false; }
   plan.forEach(function(p){ viejos[p.mes] = D.meses[p.mes].ingresos; D.meses[p.mes].ingresos = conOrdenTrabajo(D.meses[p.mes].ingresos, p); });
-  if(guardar() !== true){   // no quedó escrito: los meses vuelven a como estaban y la copia no hace falta
+  if(guardar() !== true){   // no quedó escrito: los meses vuelven a como estaban y la copia, a la de antes (o a ninguna)
     Object.keys(viejos).forEach(function(j){ D.meses[j].ingresos = viejos[j]; });
-    if(Object.keys(rep.meses).length === plan.length) try{ localStorage.removeItem(LSREPARO + D.anio); }catch(e){}
+    try{ if(previo === null) localStorage.removeItem(LSREPARO + D.anio); else localStorage.setItem(LSREPARO + D.anio, previo); }catch(e){}
     return false;
   }
   renderTrabajo();

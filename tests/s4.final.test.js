@@ -183,3 +183,48 @@ test('4: still allowed: a date from where the balance starts, and any date when 
   assert.equal(b.avisoPaseAntes(b.destinoPase()), '');
   b.guardarPase(); assert.equal(b.g.aplicados.length, 1);
 });
+
+// ── 5 (MEDIUM, X1 review R3-001) and 6 (LOW): the "Del trabajo" repair (N2-B) and its undo record (kibo.reparoTrabajo.AAAA) ──
+var Y26 = 'kibo.datos.2026', REP26 = 'kibo.reparoTrabajo.2026';
+function datosRep(){
+  var d = C.vacio(2026); C.arrastre(d, 9, 0, 'declarado');
+  C.mes(d, 2, {ingresos: [C.it('Dél trabajo', 1000, false), C.it('Sueldo', 5000, true), C.it('Del trabajo', 2000, true)]});
+  C.mes(d, 9, {ingresos: [C.it('Dél trabajo', 100000, false), C.it('Del trabajo', 300000, true)]});
+  return d;
+}
+var FUNCS_REP = ['mesesTrabajoDoble', 'exactoTrabajo', 'planOrdenTrabajo', 'conOrdenTrabajo', 'ordenarTrabajo', 'leerReparo', 'deshacerOrdenTrabajo',
+  'guardar', 'copiaDelSiguiente', 'escribirConRev', 'revGuardada', 'blobAlDia', 'esc', 'listaY', 'copiaJSON'];
+function appRep(){
+  var g = {toasts: [], alertas: [], falla: false};
+  var ls = H.fakeStorage({}, function(k){ return g.falla && k === Y26; });
+  ls.d[Y26] = JSON.stringify(Object.assign(M.normalizar(C.copy(datosRep()), C.hoy('2026-10-15')), {rev: 1}));
+  var a = H.appVista(JSON.parse(ls.d[Y26]), H.trab([{fecha: '2026-10-05', monto: 300000}]), null, '2026-10-15', {funcs: FUNCS_REP, vars: ['MESES', 'LSREPARO', 'LSCUAR', 'LSTRAB', 'LSDIARIO'],
+    globals: {localStorage: ls, arrancado: true, tGuardar: null, obsoleta: false, sucio: false, hayLS: true, ultPild: 0,
+      estado: function(){}, quitarAvisoVacia: function(){}, pildora: function(){}, avisoCuarentena: function(){}, avisoOtraPestana: function(){},
+      toast: function(t){ g.toasts.push(t); }, alerta: function(t, c){ g.alertas.push([t, c]); }, renderTrabajo: function(){},
+      document: {getElementById: function(){ return null; }}}});
+  a.D.rev = 1; a.g = g; a.ls = ls;
+  return a;
+}
+function filasRep(d, j){ return plain(d.meses[j].ingresos).map(function(x){ return [x.nombre, x.monto, x.pagado]; }); }
+test('5: a second repair whose year cannot be saved leaves the undo record exactly as it was (earlier repair of other months kept)', function(){
+  var a = appRep();
+  assert.equal(a.ordenarTrabajo(), true);                     // repair 1: March and October
+  var oct = a.D.meses[9].ingresos;
+  oct.reverse(); oct[1].monto = 120000;                        // the user puts October back in the old order and changes the variant
+  a.sucio = true; assert.equal(a.guardar(), true);
+  var rec = a.ls.d[REP26], anio = a.ls.d[Y26], mem = JSON.stringify(a.D.meses);
+  a.g.falla = true;
+  assert.equal(a.ordenarTrabajo(), false);
+  assert.equal(a.ls.d[REP26], rec, 'the undo record is byte-identical to the one before this repair');
+  assert.equal(a.ls.d[Y26], anio, 'the year is as it was');
+  assert.equal(JSON.stringify(a.D.meses), mem, 'the open year too');
+  a.g.falla = false;
+  assert.equal(a.deshacerOrdenTrabajo(), false, 'October changed after repair 1: the undo is refused, nothing lost');
+});
+test('5: a first repair whose year cannot be saved leaves no undo record', function(){
+  var a = appRep();
+  a.g.falla = true;
+  assert.equal(a.ordenarTrabajo(), false);
+  assert.equal(a.ls.d[REP26], undefined);
+});
