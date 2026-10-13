@@ -241,3 +241,30 @@ test('6: a second repair after later edits, then «Deshacer»: the later edits a
   assert.deepEqual(filasRep(a.D, 9), antes2, 'October as right before repair 2: the added Sueldo and the renames are still there');
   assert.deepEqual(filasRep(a.D, 2).map(function(r){ return r[0]; }), mar0.map(function(r){ return r[0]; }), 'March (untouched since repair 1) goes back to its original order');
 });
+
+// ── 7 (MEDIUM, security): a backup edited by hand can carry a year or a month as an ARRAY. normalizar took them as objects and the
+// stored JSON of an array drops its named fields: every later save silently lost that month (sec2 probe 6) ──
+test('7: a month stored as an array is read as an empty month (an object), so what the user types there is saved', function(){
+  var raw = C.vacio(2026); raw.meses[0] = [];
+  var d = M.normalizar(raw, C.hoy('2026-10-15'));
+  assert.equal(Array.isArray(d.meses[0]), false);
+  d.meses[0].gastosVariables.push({nombre: 'Pan', monto: 50, pagado: true});
+  var back = JSON.parse(JSON.stringify(d));
+  assert.deepEqual(back.meses[0].gastosVariables.slice(-1), [{nombre: 'Pan', monto: 50, pagado: true}]);
+  assert.equal(M.normalizar([], C.hoy('2026-10-15')).meses.length, 12, 'an array year is read as an empty year, never as an array');
+  assert.equal(Array.isArray(M.normalizar([], C.hoy('2026-10-15'))), false);
+});
+test('7: a restore with a year that is an array does not store it: skipped and reported; the year on the phone stays', function(){
+  var y25 = JSON.stringify(Object.assign(C.vacio(2025), {rev: 3}));
+  var ls = H.fakeStorage({'kibo.datos.2025': y25}), a = H.appAlmacen(ls, '2026-10-15', {}, ['descTrabajo', 'fARS', 'esc']);
+  a.D = a.normalizar(C.vacio(2026), a.hoy);
+  var meses = []; for(var i = 0; i < 12; i++) meses.push([]);
+  a.restaurarTexto(JSON.stringify({app: 'TuGasto', version: 1, anios: {'2025': [], '2026': {anio: 2026, meses: meses}}}));
+  a.pendiente();
+  assert.equal(ls.d['kibo.datos.2025'], y25, '2025 untouched');
+  var y26 = JSON.parse(ls.d['kibo.datos.2026']);
+  assert.equal(y26.meses.length, 12);
+  assert.equal(y26.meses.every(function(m){ return !Array.isArray(m) && Array.isArray(m.ingresos); }), true, 'array months stored as months');
+  assert.equal(a.g.alertas.length, 1);
+  assert.match(a.g.alertas[0][1], /Salteé lo que no es un año válido: <b>2025<\/b>/);
+});

@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-m0FsNrKE73h2m1lGiYUqZD6t4bAlfJSonNC+5xnK/pA=' 'sha256-gY1m4D7Z9Zur7tpIgBk5FpccHb7NBBJQvDrofrOvNbE='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-pzNjKDvkerBEKJeZ6FNa6CWIE6xVibfNiPbn5gJQpe8=' 'sha256-1SOD1O9kMAxKdSwzysnhM9lFVfikq5sRV5WfOAFeZMQ='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -2051,7 +2051,7 @@ function mesVacio(){
   };
 }
 function normalizar(d, hoy){
-  d = d && typeof d === 'object' ? d : {};
+  d = d && typeof d === 'object' && !Array.isArray(d) ? d : {};   // final audit 7: un array guardado pierde sus campos con nombre
   d.version = 1;
   d.anio = num(d.anio) || 2026;   // respaldo fijo a propósito (I-7): quien llama siempre pone el año de la clave; uno que dependa de hoy cambiaría la salida del motor
   d.actualizado = typeof d.actualizado === 'string' ? d.actualizado : '';   // N5 S-3: solo texto (una copia editada a mano puede traer cualquier cosa)
@@ -2075,7 +2075,7 @@ function normalizar(d, hoy){
     if(rm >= 0 && rm <= 11 && (ra < hoy.anio || (ra === hoy.anio && rm <= hoy.mes))) refPago = {anio:ra, mes:rm, dia:1, iso:ma[1] + '-' + ma[2] + '-01'};   // fecha ilegible o futura: sigue valiendo hoy
   }
   for(var i=0;i<12;i++){
-    var m = d.meses[i] && typeof d.meses[i]==='object' ? d.meses[i] : mesVacio();
+    var m = d.meses[i] && typeof d.meses[i]==='object' && !Array.isArray(d.meses[i]) ? d.meses[i] : mesVacio();   // final audit 7: un mes array no se guardaría
     for(var s=0;s<SECS.length;s++){
       var k = SECS[s].k;
       if(!Array.isArray(m[k])) m[k] = [];
@@ -4961,6 +4961,7 @@ function escribirAnios(anios, claves){
   var ultimo = 0, fallaron = [], saltados = [], lista = [], modelo = false, i, d, st;
   for(i=0;i<claves.length;i++){
     if(!anioValido(claves[i]) || !claveMia(PREF + (+claves[i]))){ saltados.push(String(claves[i])); continue; }   // nunca se escribe una clave que no es de esta app
+    if(Array.isArray(anios[claves[i]])){ saltados.push(String(claves[i])); continue; }   // final audit 7: un año que es un array no es un año (no se pisa el de acá)
     if(anios[claves[i]] && typeof anios[claves[i]] === 'object') anios[claves[i]].anio = +claves[i];   // la migración usa el año de la clave
     d = normalizar(anios[claves[i]], hoyApp()); d.anio = +claves[i];
     if(d.arrastre || d.meses.some(function(m){ return !!m.cierreReal; })) modelo = true;
