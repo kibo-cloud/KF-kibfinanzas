@@ -116,9 +116,13 @@ changes, motor goldens byte-identical, APPVER 1.33.0 / sw v46 kept, CSP hashes r
 None of these has an owner answer recorded; the built defaults stay and nothing is marked resolved. Each keeps
 `OWNER_DECISION_REQUIRED` with the recommendation below. Only presentation that adds no money rule may be done without the owner.
 
+Update 2026-10-13 (repair sprint, owner brief: "bloquear antes que alterar el saldo / conservar datos y bloquear"): H1 resolved under
+contracts I4/R4.3, M1 and M3 resolved by blocking, N2-B repair tool built (data untouched unless the user repairs). See the sections
+"H1", "M1", "M3" and "N2-B repair" below; the other rows still wait for the owner.
+
 | Id | Context (where recorded) | Alternatives | Money effect | Recommendation |
 |---|---|---|---|---|
-| N2-B (MEDIUM) | Legacy data saved by the old matcher can hold `[variant "Dél trabajo" unticked, exact "Del trabajo" ticked]` in one month; `flujosMes` allocates pases to rows in order, so the variant absorbs the pase and the user's unticked amount counts as realized (repair-sprint-1.md ~285, L-03d todo). | (a) keep data, show a visible notice listing affected months so the user can merge or rename; (b) engine allocates pases to the ticked exact row first (motor + goldens change, report first); (c) one-time merge migration (rewrites stored rows, against D14). | (a) none until the user acts; (b) fixes the over-count automatically for all users; (c) same as b but destructive. | (a) now (detection notice is presentation, no money rule — can be built); (b) as the real fix once the owner approves a golden diff. |
+| N2-B (MEDIUM) | Legacy data saved by the old matcher can hold `[variant "Dél trabajo" unticked, exact "Del trabajo" ticked]` in one month; `flujosMes` allocates pases to rows in order, so the variant absorbs the pase and the user's unticked amount counts as realized (repair-sprint-1.md ~285, L-03d todo). | (a) keep data, show a visible notice listing affected months so the user can merge or rename; (b) engine allocates pases to the ticked exact row first (motor + goldens change, report first); (c) one-time merge migration (rewrites stored rows, against D14). | (a) none until the user acts; (b) fixes the over-count automatically for all users; (c) same as b but destructive. | (a) built (`46f33df`) plus a user-initiated, reversible repair (see "N2-B repair"): preview, copy first, reorder only (exact row first), «Deshacer». The tool is built; stored data is untouched unless the user repairs. (b) engine change not made (L-03d stays todo for unrepaired data). |
 | L3 partial payment | Quick expense "Sí" with a typed amount smaller than the pending row: today "Dejar" ticks the whole row, "Cambiar a" sets the row to the typed amount (alpha-product-surface.md L3). | (a) keep the two answers; (b) split: tick the typed part as a paid row, keep the rest pending. | (b) keeps the remaining obligation visible; (a) may hide it. | (b), needs the owner (it creates a new row-splitting rule). |
 | "(otro gasto)" vs topes | Separate quick expenses are rows "<x> (otro gasto)"; topes are per row name. | (a) they count only on their own row; (b) they count toward the original row's tope. | Budget alerts only, no balance change. | (b) (the spend is in the same category), owner to confirm. |
 | L5 due day | Only incomes (`frec`/`dias`) and invoices have dates; expenses/installments do not (alpha-product-surface.md L5). | (a) keep (undated rows appear in the last week as "Fin de mes"); (b) optional "vence el día N" field on rows/plans. | None (display). | (b) as a small additive field, owner to confirm (new stored field). |
@@ -246,3 +250,25 @@ confirmation sheet; on a conflict it shows "No restauré la copia" with the year
 
 - Cancel path: the sheet writes nothing until «Reemplazar» (test). Pase years come from `fecha` (as the interim notice did).
 - RED: the 4 new `M3` tests failed before the change (no refusal; old wording). The interim tests of `4717c65` were replaced by these.
+
+### N2-B repair — months with two "Del trabajo" rows (2026-10-13)
+
+User-initiated and reversible; the engine is unchanged (goldens byte-identical) and no stored data changes unless the user repairs.
+
+- The Trabajo notice (`avisoTrabajoDoble`) offers «Revisar y ordenar» when some month can be ordered. `planOrdenTrabajo` lists every
+  month with more than one "Del trabajo" row; a month is ordered only when exactly one row has the exact name (the `renglonTrabajo`
+  criterion: the row a pase creates) and it is not already first. Months with two exact rows (or none) are listed in the preview
+  ("hay más de un renglón llamado exactamente «Del trabajo»: no lo ordeno, revisalo en Mes.") and never touched.
+- Preview (`abrirOrdenTrabajo`): per month, each row's name, amount and tick, and the cobrado / sin cobrar before → after from
+  `flujosMes` (`efectoOrdenTrabajo`); a month before the month-to-month balance says "No cambia ningún total de ese mes."
+- «Ordenar» (`ordenarTrabajo`): refused in a stale tab (nothing written); writes the months' rows as they were to the device-only key
+  `kibo.reparoTrabajo.<año>` FIRST, then moves the exact row to where the first "Del trabajo" row was (no name, amount or tick change;
+  other rows keep their order) and saves the year. Example (test fixture): October [«Dél trabajo» 100.000 sin cobrar, «Del trabajo»
+  300.000 cobrado] with a 300.000 pase: cobrado 400.000 → 300.000, sin cobrar 0 → 100.000 (`flujosMes` [ingresosReal, trabajoRealizado,
+  ingresosPend] [100.000, 300.000, 0] → [0, 300.000, 100.000]).
+- «Deshacer» (toast and a notice that stays until «Listo»): puts back the saved rows, months byte-identical; refused in a stale tab or
+  when a repaired month changed afterwards ("Cambiaste Octubre después de ordenar: deshacerlo ahora borraría ese cambio. No cambié
+  nada."). «Listo» forgets the copy.
+- L-03d (`tests/r4.cobertura.test.js`) stays `todo`: it reads unrepaired data, and the engine allocation order did not change.
+- RED: the 6 tests in `tests/n2b.reparo.test.js` failed before the change (functions missing); mutation (exact row put back at its own
+  index) fails 3 of them.

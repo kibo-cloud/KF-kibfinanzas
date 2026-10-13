@@ -173,7 +173,7 @@ test('L-03c the row lookup is the engine matcher: an exact "Del trabajo" row win
 // variant row (unticked) BEFORE the exact ticked "Del trabajo" row that received the pase; the engine allocates the pase to the rows in
 // order, so the variant absorbs it and the user's unticked amount reads as realized. Fixing it needs a rule (engine allocation order ->
 // golden diff report, or a data merge). This test is `todo` on purpose: when it starts passing, the risk was fixed.
-test('L-03d legacy two-row data: a variant unticked row before the exact ticked "Del trabajo" row must stay pending', {todo: 'OWNER_DECISION_REQUIRED N2-B: engine allocates pases to "Del trabajo" rows in order; legacy two-row data is not rewritten'}, function(){
+test('L-03d legacy two-row data: a variant unticked row before the exact ticked "Del trabajo" row must stay pending', {todo: 'N2-B: the engine still allocates pases to "Del trabajo" rows in order (unchanged on purpose); unrepaired legacy two-row data keeps the over-count until the user runs the reversible repair (tests/n2b.reparo.test.js)'}, function(){
   var d = C.vacio(2026); C.arrastre(d, 9, 0, 'declarado');
   C.mes(d, 9, {ingresos: [C.it('Dél trabajo', 100000, false), C.it('Del trabajo', 300000, true)]});
   var app = H.appVista(d, H.trab([{fecha: '2026-10-05', monto: 300000}])), vm = app.vistaModelo(app.D, app.hoy);

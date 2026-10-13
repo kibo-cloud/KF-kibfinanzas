@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-m0FsNrKE73h2m1lGiYUqZD6t4bAlfJSonNC+5xnK/pA=' 'sha256-KxMhdpKtSeqFf+p7U5dqfPAuDa1cZWdwBbl4DZAHAmA='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-m0FsNrKE73h2m1lGiYUqZD6t4bAlfJSonNC+5xnK/pA=' 'sha256-NuMK/m7m7xCBt58CDUuJ2+Ma/gq4gAy1fnhi4/ZiPkQ='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -6905,12 +6905,109 @@ function mesesTrabajoDoble(d){
   for(j=0;j<12;j++){ n = 0; for(q=0;q<d.meses[j].ingresos.length;q++) if(esRenglonTrabajo(d.meses[j].ingresos[q].nombre)) n++; if(n > 1) out.push(j); }
   return out;
 }
+function listaY(xs){ return xs.length > 1 ? xs.slice(0, -1).join(', ') + ' y ' + xs[xs.length - 1] : xs[0] || ''; }
 function avisoTrabajoDoble(d){
-  var m = d ? mesesTrabajoDoble(d) : []; if(!m.length) return '';
-  var nom = m.map(function(j){ return MESES[j]; }), lista = nom.length > 1 ? nom.slice(0, -1).join(', ') + ' y ' + nom[nom.length - 1] : nom[0];
-  return '<div class="aviso" data-av="trabajo-doble" role="status"><p>En ' + lista + ' de ' + d.anio + ' hay más de un renglón «' + RENGLON_TRABAJO + '» en Ingresos. '
-    + 'Lo que pasás desde Trabajo se reparte entre ellos: revisalos en Mes y dejá uno solo.</p></div>';
+  if(!d) return '';
+  var m = mesesTrabajoDoble(d), rep = leerReparo(d.anio), h = '';
+  if(m.length){
+    var puede = planOrdenTrabajo(d).some(function(p){ return p.ordenar; });
+    h += '<div class="aviso" data-av="trabajo-doble" role="status"><p>En ' + listaY(m.map(function(j){ return MESES[j]; })) + ' de ' + d.anio + ' hay más de un renglón «' + RENGLON_TRABAJO + '» en Ingresos. '
+      + 'Lo que pasás desde Trabajo se reparte entre ellos: revisalos en Mes y dejá uno solo.</p>'
+      + (puede ? '<div class="fila"><button class="mini on" data-act="tjDobleVer">Revisar y ordenar</button></div>' : '') + '</div>';
+  }
+  if(rep) h += '<div class="aviso" data-av="trabajo-orden" role="status"><p>Ordené los renglones «' + RENGLON_TRABAJO + '» de '
+    + listaY(Object.keys(rep.meses).map(function(j){ return MESES[+j]; })) + ' de ' + d.anio + '. Si algo no te cierra, podés volver a como estaban.</p>'
+    + '<div class="fila"><button class="mini" data-act="tjDobleListo">Listo</button><button class="mini on" data-act="tjDobleDeshacer">Deshacer</button></div></div>';
+  return h;
 }
+/* S2 N2-B (reparación que elige el usuario, reversible): datos viejos pueden tener en un mes [variante «Dél trabajo» sin tildar, «Del trabajo»
+   exacto tildado]; el motor reparte los pases entre esos renglones EN ORDEN, así que la variante se queda con el pase y lo que el usuario no
+   tildó cuenta como cobrado. La reparación solo cambia el ORDEN (el exacto primero, donde estaba el primero de esos renglones): ningún
+   nombre, monto ni tilde cambia, y el motor no se toca. Solo un mes con un único renglón exacto y los demás variantes; si hay dos exactos
+   (o ninguno) el mes se nombra y no se toca. Antes de escribir se guarda cómo estaban esos meses (LSREPARO, del teléfono: no viaja en la
+   copia), para «Deshacer». */
+var LSREPARO = 'kibo.reparoTrabajo.';
+function exactoTrabajo(n){ return String(n || '').trim().toLowerCase() === RENGLON_TRABAJO.toLowerCase(); }   // el mismo criterio que renglonTrabajo
+function planOrdenTrabajo(d){   // [{mes, filas (índices de los renglones «Del trabajo»), exacto, ordenar, ambiguo}] de los meses con más de uno
+  return mesesTrabajoDoble(d).map(function(j){
+    var fil = [], ex = [];
+    d.meses[j].ingresos.forEach(function(it, i){ if(esRenglonTrabajo(it.nombre)){ fil.push(i); if(exactoTrabajo(it.nombre)) ex.push(i); } });
+    return {mes:j, filas:fil, exacto: ex.length === 1 ? ex[0] : -1, ordenar: ex.length === 1 && fil[0] !== ex[0], ambiguo: ex.length !== 1};
+  });
+}
+function conOrdenTrabajo(ls, p){   // los mismos renglones con el exacto en el lugar del primero de «Del trabajo»; el resto, en su orden
+  var out = ls.slice(), it = out.splice(p.exacto, 1)[0];
+  out.splice(p.filas[0], 0, it);
+  return out;
+}
+function efectoOrdenTrabajo(d, p, hoy){   // cobrado / sin cobrar del mes antes y después de ordenar; null si el mes no lleva el saldo mes a mes
+  if(!mesDelModelo(d, p.mes)) return null;
+  var ctx = ctxModelo(d, hoy), d2 = {}, k;
+  for(k in d) if(Object.prototype.hasOwnProperty.call(d, k)) d2[k] = d[k];
+  d2.meses = d.meses.slice(); d2.meses[p.mes] = {}; for(k in d.meses[p.mes]) if(Object.prototype.hasOwnProperty.call(d.meses[p.mes], k)) d2.meses[p.mes][k] = d.meses[p.mes][k];
+  d2.meses[p.mes].ingresos = conOrdenTrabajo(d.meses[p.mes].ingresos, p);
+  function t(x){ var f = flujosMes(x, p.mes, hoy, ctx); return {cobrado: f.realizado ? f.ingresosReal + f.trabajoRealizado : f.ingresosProg + f.trabajoProgramado, pendiente: f.ingresosPend}; }
+  return {antes: t(d), despues: t(d2)};
+}
+function abrirOrdenTrabajo(){
+  var hoy = hoyApp(), h = '';
+  planOrdenTrabajo(D).forEach(function(p){
+    var ls = D.meses[p.mes].ingresos, nom = MESES[p.mes], e;
+    if(p.ambiguo){ h += '<p>' + nom + ': hay más de un renglón llamado exactamente «' + RENGLON_TRABAJO + '»: no lo ordeno, revisalo en Mes.</p>'; return; }
+    if(!p.ordenar) return;
+    e = efectoOrdenTrabajo(D, p, hoy);
+    h += '<p>' + nom + ': ' + p.filas.map(function(i){ var it = ls[i]; return '«' + esc(String(it.nombre).trim()) + '» ' + fARS(num(it.monto)) + (it.pagado ? ' (cobrado)' : ' (sin cobrar)'); }).join(', ')
+      + '. Queda primero «' + RENGLON_TRABAJO + '». '
+      + (e ? 'Cobrado: ' + fARS(e.antes.cobrado) + ' → ' + fARS(e.despues.cobrado) + '. Sin cobrar: ' + fARS(e.antes.pendiente) + ' → ' + fARS(e.despues.pendiente) + '.' : 'No cambia ningún total de ese mes.')
+      + '</p>';
+  });
+  abrirHoja('<h3>Ordenar «' + RENGLON_TRABAJO + '»</h3><div class="texto" style="margin-bottom:16px">' + h
+    + '<p>Lo que pasás desde Trabajo va primero al renglón «' + RENGLON_TRABAJO + '»; el otro queda con su propio tilde. No cambio nombres, montos ni tildes, y guardo cómo estaba para que puedas deshacerlo.</p></div>'
+    + '<div class="fila"><button data-act="cerrarHoja">Cancelar</button><button class="pri" data-act="tjDobleOrdenar">Ordenar</button></div>');
+}
+function leerReparo(anio){   // la copia de los meses antes de ordenar, o null
+  try{ var o = JSON.parse(localStorage.getItem(LSREPARO + anio)); return o && typeof o === 'object' && o.meses && typeof o.meses === 'object' ? o : null; }catch(e){ return null; }
+}
+function copiaJSON(x){ return JSON.parse(JSON.stringify(x)); }
+function ordenarTrabajo(){
+  if(obsoleta || !blobAlDia(PREF + D.anio, D)){ obsoleta = true; avisoOtraPestana(); return false; }   // pestaña vieja: no se escribe nada
+  var plan = planOrdenTrabajo(D).filter(function(p){ return p.ordenar; }), rep = leerReparo(D.anio) || {anio:D.anio, meses:{}}, viejos = {};
+  if(!plan.length) return false;
+  plan.forEach(function(p){
+    var ls = D.meses[p.mes].ingresos, ya = rep.meses[p.mes];
+    rep.meses[p.mes] = {antes: ya ? ya.antes : copiaJSON(ls), despues: copiaJSON(conOrdenTrabajo(ls, p))};   // si ya se había ordenado, se guarda el primer «antes»
+  });
+  rep.creado = new Date().toISOString();
+  try{ localStorage.setItem(LSREPARO + D.anio, JSON.stringify(rep)); }
+  catch(e){ alerta('No ordené nada', 'No pude guardar cómo estaban esos meses, así que no cambié nada.'); return false; }
+  plan.forEach(function(p){ viejos[p.mes] = D.meses[p.mes].ingresos; D.meses[p.mes].ingresos = conOrdenTrabajo(D.meses[p.mes].ingresos, p); });
+  if(guardar() !== true){   // no quedó escrito: los meses vuelven a como estaban y la copia no hace falta
+    Object.keys(viejos).forEach(function(j){ D.meses[j].ingresos = viejos[j]; });
+    if(Object.keys(rep.meses).length === plan.length) try{ localStorage.removeItem(LSREPARO + D.anio); }catch(e){}
+    return false;
+  }
+  renderTrabajo();
+  toast('Ordené los renglones «' + RENGLON_TRABAJO + '» de ' + listaY(plan.map(function(p){ return MESES[p.mes]; })), 'Deshacer', 'tjDobleDeshacer');
+  return true;
+}
+function deshacerOrdenTrabajo(){
+  var rep = leerReparo(D.anio), viejos = {}, ks, cambio;
+  if(!rep) return false;
+  if(obsoleta || !blobAlDia(PREF + D.anio, D)){ obsoleta = true; avisoOtraPestana(); return false; }
+  ks = Object.keys(rep.meses);
+  cambio = ks.filter(function(j){ return !D.meses[+j] || JSON.stringify(D.meses[+j].ingresos) !== JSON.stringify(rep.meses[j].despues); });
+  if(cambio.length){
+    alerta('No deshice el orden', 'Cambiaste ' + listaY(cambio.map(function(j){ return MESES[+j]; })) + ' después de ordenar: deshacerlo ahora borraría ese cambio. No cambié nada.');
+    return false;
+  }
+  ks.forEach(function(j){ viejos[j] = D.meses[+j].ingresos; D.meses[+j].ingresos = copiaJSON(rep.meses[j].antes); });
+  if(guardar() !== true){ ks.forEach(function(j){ D.meses[+j].ingresos = viejos[j]; }); return false; }
+  try{ localStorage.removeItem(LSREPARO + D.anio); }catch(e){}
+  renderTrabajo();
+  toast('Listo, quedó como antes');
+  return true;
+}
+function olvidarOrdenTrabajo(){ try{ localStorage.removeItem(LSREPARO + D.anio); }catch(e){} renderTrabajo(); }
 function renderTrabajo(){
   var v = document.getElementById('v-trabajo'); if(!v) return;
   var r = resumenTrab(), pro = T.modo === 'pro', h = '', i;
@@ -8013,6 +8110,10 @@ function accionTj(a, b){
   }
   if(a === 'tjGuardarPase'){ guardarPase(); return; }
   if(a === 'tjDeshacerPase'){ quitarPase(id, false); return; }
+  if(a === 'tjDobleVer'){ abrirOrdenTrabajo(); return; }   // S2 N2-B
+  if(a === 'tjDobleOrdenar'){ cerrarHoja(); ordenarTrabajo(); return; }
+  if(a === 'tjDobleDeshacer'){ deshacerOrdenTrabajo(); return; }
+  if(a === 'tjDobleListo'){ olvidarOrdenTrabajo(); return; }
   if(a === 'tjVerPase'){ verPase(id); return; }
   if(a === 'tjBorrarPase'){
     var pp = null; for(var q=0;q<T.pases.length;q++) if(T.pases[q].id === id) pp = T.pases[q];
