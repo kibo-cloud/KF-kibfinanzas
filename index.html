@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1+qBvcl2GMAluCUYw4i+OJGBaH+KeJmbqI2Oz/29mJk=' 'sha256-TpkXUFN/bshqHc2Bzvy9sMw86bOYrjlH8uCljbPkvBM='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1+qBvcl2GMAluCUYw4i+OJGBaH+KeJmbqI2Oz/29mJk=' 'sha256-JNvNNKNR/xT2ZeAzTIm/yYkea0Dwtdhkq9uDbtP6MdE='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -3850,7 +3850,7 @@ function resumenAnio(d, s, vm){   // d: el año de s y vm
   var sumG = 0, sumI = 0, sumA = 0, sumD = 0, peor = act[0], mejor = act[0], rojos = [];
   for(i=0;i<n;i++){
     var c = s[act[i]];
-    sumG += c.totalGastos; sumI += c.totalIngresos; sumA += c.ahorroMesARS; sumD += num(c.totalDeudas);
+    sumG += c.totalGastos; sumI += c.totalIngresos; sumA += c.ahorroMesARS; if(vm) sumD += num(c.totalDeudas);   // S2 L1: solo en un año con modelo (un año sin modelo queda idéntico, D4)
     if(c.totalGastos > s[peor].totalGastos) peor = act[i];
     if(c.totalGastos < s[mejor].totalGastos) mejor = act[i];
     if(mesEnRojo(d, s, act[i], vm)) rojos.push(MESES[act[i]]);
