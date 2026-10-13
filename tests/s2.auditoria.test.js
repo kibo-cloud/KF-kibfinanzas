@@ -309,27 +309,59 @@ test('M1 probe p2-backpase: a pase into a month before desde moves the total; on
   assert.equal(pat(H.trab([{fecha: '2026-10-10', monto: 300000}], 1000000)) - sin, 0);
 });
 
-// ── M3 (OWNER_DECISION_REQUIRED, interim notice only): the restore confirmation says when the backup brings no Trabajo, or a Trabajo whose
-// pases go to years the backup does not bring (those "Del trabajo" rows stay as they are on this phone) ──
-function hojaRestaurar(copia, conTrab){
-  var ls = H.fakeStorage({}), a = H.appAlmacen(ls, '2026-10-15', {tieneTrab: function(){ return !!conTrab; }}, ['avisoCopiaTrabajo', 'descTrabajo', 'fARS', 'esc']);
+// ── M3 (owner's preference, 2026-10-13 brief: keep the data and block): a restore that would leave the "Del trabajo" rows of a year and
+// the Trabajo ledger from two different sources is refused before anything is written, naming the years and what to do. Every other
+// restore proceeds as before (with the notice when the backup brings no Trabajo) ──
+function hojaRestaurar(copia, pasesTel, aniosTel){
+  var guardados = {};
+  (aniosTel || []).forEach(function(y){ guardados['kibo.datos.' + y] = JSON.stringify(C.vacio(y)); });
+  var ls = H.fakeStorage(guardados), a = H.appAlmacen(ls, '2026-10-15', {tieneTrab: function(){ return !!pasesTel; }}, ['avisoCopiaTrabajo', 'mezclaTrabajo', 'aniosDePases', 'descTrabajo', 'fARS', 'esc']);
   a.D = a.normalizar(C.vacio(2026), a.hoy);
+  if(pasesTel) a.T.pases = pasesTel.map(function(f, i){ return {id: 'p' + i, fecha: f, monto: 1000, anio: +f.slice(0, 4), mes: +f.slice(5, 7) - 1, creada: f + 'T00:00:00.000Z'}; });
+  var antes = JSON.stringify(ls.d), tAntes = JSON.stringify(a.T);
+  a.pendiente = null;
   a.restaurarTexto(JSON.stringify(copia));
-  return a.g.hojas[a.g.hojas.length - 1] || '';
+  return {hoja: a.g.hojas[a.g.hojas.length - 1] || '', alertas: a.g.alertas, a: a, ls: ls, intacto: JSON.stringify(ls.d) === antes && JSON.stringify(a.T) === tAntes};
 }
-test('M3: a backup without Trabajo says the Trabajo of this phone is kept', function(){
-  var h = hojaRestaurar({app: 'kibFinanzas', version: 1, anios: {2026: C.vacio(2026)}}, true);
-  assert.match(h, /La copia no trae Trabajo: se mantiene el Trabajo de este teléfono/);
-  assert.doesNotMatch(hojaRestaurar({app: 'kibFinanzas', version: 1, anios: {2026: C.vacio(2026)}}, false), /no trae Trabajo/);
+function copia(anios, tr){ var o = {app: 'kibFinanzas', version: 1, anios: {}}; anios.forEach(function(y){ o.anios[y] = C.vacio(y); }); if(tr) o.trabajo = tr; return o; }
+test('M3: a backup without Trabajo, restoring a year this phone\'s Trabajo passed money to, is refused; nothing written', function(){
+  var r = hojaRestaurar(copia([2026]), ['2026-03-01', '2025-11-01'], [2025, 2026]);
+  assert.equal(r.hoja, '', 'no confirmation sheet');
+  assert.equal(r.a.pendiente, null, 'nothing to confirm');
+  assert.equal(r.intacto, true, 'storage and Trabajo untouched');
+  assert.deepEqual(r.alertas, [['No restauré la copia', 'La copia no trae Trabajo, y el Trabajo de este teléfono pasó plata a lo personal en 2026, que la copia reemplaza: los renglones «Del trabajo» y Trabajo dejarían de coincidir. Restaurá una copia completa (con Trabajo), o hacé primero una copia de seguridad de lo que tenés en este teléfono. No cambié nada.']]);
 });
-test('M3: a backup whose Trabajo passed money to a year it does not bring says which year', function(){
+test('M3: a backup whose Trabajo passed money to a year it does not bring, while this phone has that year, is refused', function(){
   var tr = H.trab([{fecha: '2025-12-20', monto: 1000}, {fecha: '2026-03-01', monto: 2000}], 5000);
-  var h = hojaRestaurar({app: 'kibFinanzas', version: 1, anios: {2026: C.vacio(2026)}, trabajo: tr}, true);
-  assert.match(h, /no trae 2025/);
-  var tr2 = H.trab([{fecha: '2026-03-01', monto: 2000}], 5000);
-  assert.doesNotMatch(hojaRestaurar({app: 'kibFinanzas', version: 1, anios: {2026: C.vacio(2026)}, trabajo: tr2}, true), /no trae/);
+  var r = hojaRestaurar(copia([2026], tr), null, [2025, 2026]);
+  assert.equal(r.hoja, '');
+  assert.equal(r.intacto, true);
+  assert.deepEqual(r.alertas, [['No restauré la copia', 'El Trabajo de la copia pasó plata a lo personal en 2025, pero la copia no trae 2025 y este teléfono sí lo tiene: los renglones «Del trabajo» y Trabajo dejarían de coincidir. Restaurá una copia completa (con todos esos años), o hacé primero una copia de seguridad de lo que tenés en este teléfono. No cambié nada.']]);
 });
-
+test('M3: no conflict -> the restore is offered as before (Trabajo kept notice; old backup on a phone without Trabajo; complete backup)', function(){
+  var r = hojaRestaurar(copia([2026]), ['2025-11-01'], [2025, 2026]);   // this phone's pases go to a year the backup does not replace
+  assert.match(r.hoja, /La copia no trae Trabajo: se mantiene el Trabajo de este teléfono/);
+  assert.equal(r.alertas.length, 0);
+  r = hojaRestaurar(copia([2026]), null, [2026]);   // an old backup, a phone without Trabajo
+  assert.match(r.hoja, /Va a <b>reemplazar<\/b>/);
+  assert.doesNotMatch(r.hoja, /Trabajo/);
+  assert.equal(r.alertas.length, 0);
+  var tr = H.trab([{fecha: '2025-12-20', monto: 1000}, {fecha: '2026-03-01', monto: 2000}], 5000);
+  r = hojaRestaurar(copia([2025, 2026], tr), ['2026-01-05'], [2025, 2026]);   // complete
+  assert.match(r.hoja, /También trae tus datos de trabajo/);
+  assert.doesNotMatch(r.hoja, /no trae/);
+  assert.equal(r.alertas.length, 0);
+  r = hojaRestaurar(copia([2026], tr), null, [2026]);   // the backup's Trabajo goes to 2025, which neither the backup nor this phone has
+  assert.match(r.hoja, /Ese Trabajo pasó plata a lo personal en 2025, pero ni la copia ni este teléfono tienen 2025/);
+  assert.equal(r.alertas.length, 0);
+});
+test('M3: the confirmation sheet writes nothing until «Reemplazar» (Cancelar leaves storage as it was)', function(){
+  var r = hojaRestaurar(copia([2026]), null, [2026]);
+  assert.equal(typeof r.a.pendiente, 'function', 'waiting for the user');
+  assert.equal(r.intacto, true, 'nothing written while the sheet is open');
+  r.a.pendiente = null;   // cerrarHoja (Cancelar) drops it
+  assert.equal(r.intacto, true);
+});
 // ── N2-B (a) (interim, no data change): months of the open year with more than one "Del trabajo" row (legacy data from the old matcher) are
 // listed so the user can review and merge them ──
 test('N2-B: a notice lists the months with more than one "Del trabajo" row; none when every month has at most one', function(){

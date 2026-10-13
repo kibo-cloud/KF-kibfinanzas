@@ -130,7 +130,7 @@ None of these has an owner answer recorded; the built defaults stay and nothing 
 | N4-A (LOW) | Unreadable Trabajo blob: copied to quarantine, next save writes Trabajo. | (a) keep (built); (b) block Trabajo writes until a restore; (c) warning with "Descargar el texto". | Raw text always kept. | (a) + (c) (download action is presentation). |
 | H1 (HIGH, from S2) | `duplicar` copies December's ahorroAcumulado, usdAcumulado, aReponer and each plan's pagadasAntes into the new year as a snapshot; a later edit of December (late savings, retiro, installment ticked) does not reach the new year (S2 H1). | (a) live carry: the new year reads savings / USD / aReponer and pagadasAntes from the stored previous year, like the Disponible already does (D6, `cierreAnioAnterior`); (b) keep the snapshot + drift notice + a "Volver a tomar de diciembre" (re-sync) action; (c) keep the snapshot silently. | (a) the new year always matches December; (b) correct after the user acts; (c) silent mismatch. | **Resolved** by (a) under contract I4 + R4.3 (`30840d5` + H1 completion; see "H1 — Cross-year integrity"): live carry in model years, user-edited fields kept with the notice; legacy years keep the snapshot + notice. Remaining OWNER_DECISION: installments loaded twice by older versions (named, never removed). |
 | M1 (MEDIUM, from S2) | A pase dated in a month before `arrastre.desde` of a model year leaves Trabajo but never reaches the Disponible (those months are legacy for the chain) (S2 M1). | (a) block such dates with a message; (b) warn and let the user confirm; (c) count it into the first model month. | (a) no lost money, one more refusal; (b) the user may still lose track; (c) new allocation rule (motor/golden change). | **Resolved** by (a), owner's stated preference "bloquear antes que alterar el saldo / conservar datos y bloquear" (brief 2026-10-13): the date is refused, deleting an old pase before desde is refused, the two-tap confirmation removed (see "M1"). |
-| M3 (MEDIUM, from S2) | Restore writes Trabajo only when the backup has it, so "Del trabajo" rows of restored years and the device's Trabajo can disagree (S2 M3). | (a) keep the device Trabajo (today); (b) require a complete backup (years with "Del trabajo" pases + Trabajo); (c) repair the rows from the Trabajo pases after restore. | (a) possible mismatch; (b) some old backups refused; (c) rewrites stored rows (against D14). | Warn (built, `4717c65`) and offer to also restore Trabajo when the backup has it. OWNER_DECISION_REQUIRED |
+| M3 (MEDIUM, from S2) | Restore writes Trabajo only when the backup has it, so "Del trabajo" rows of restored years and the device's Trabajo can disagree (S2 M3). | (a) keep the device Trabajo (today); (b) require a complete backup (years with "Del trabajo" pases + Trabajo); (c) repair the rows from the Trabajo pases after restore. | (a) possible mismatch; (b) some old backups refused; (c) rewrites stored rows (against D14). | **Resolved** by (b), owner's stated preference "bloquear antes que alterar el saldo / conservar datos y bloquear" (brief 2026-10-13): a restore that would mix Trabajo from two sources is refused, nothing written; every other restore proceeds as before (see "M3"). |
 | N4-B (LOW) | Quarantine copies are kept forever and travel in backups. | (a) keep (built); (b) Ajustes row to download and delete each; (c) auto-delete when readable (against "never delete"). | Storage only. | (b), owner to confirm deletion UX. |
 
 Safe to build without the owner (presentation only): N2-B (a) detection notice (built `46f33df`); H1 / M1 / M3 interim notices (built `b55dade`, `8653da0`, `4717c65`); N3b-B prominent "sin cargar" label; N4-A (c) download
@@ -230,3 +230,19 @@ dated 10/10 leaves the total unchanged. Deleting such an old pase gives the 300.
 - Deleting a pase that went to a month before `desde` is refused (`quitarPase`, alert "No se puede borrar … No cambié nada."), nothing
   written. Existing pases before `desde` are not modified. Legacy years (no model) take any date as before.
 - RED: 5 of 8 new `M1` tests failed before the change (refusal, unblock, test gap, delete refusal, delete harness).
+
+### M3 — Restores that would mix Trabajo from two sources (2026-10-13)
+
+Owner's preference (brief 2026-10-13): "conservar datos y bloquear". `restaurarTexto` calls `mezclaTrabajo` before opening the
+confirmation sheet; on a conflict it shows "No restauré la copia" with the years and what to do, sets nothing pending and writes nothing.
+
+| Case | Behavior |
+|---|---|
+| backup without `trabajo`, this phone's Trabajo passed money to a year the backup restores | refused: "La copia no trae Trabajo, y el Trabajo de este teléfono pasó plata a lo personal en 2026, que la copia reemplaza: … Restaurá una copia completa (con Trabajo), o hacé primero una copia de seguridad … No cambié nada." |
+| backup `trabajo` passed money to a year the backup does not bring and this phone has | refused, naming the years ("… con todos esos años …") |
+| backup without `trabajo`, phone Trabajo only in other years | offered as before: "La copia no trae Trabajo: se mantiene el Trabajo de este teléfono." |
+| old backup without Trabajo on a phone without Trabajo; complete backup | offered as before |
+| backup `trabajo` into a year neither the backup nor the phone has | offered, notice "… pero ni la copia ni este teléfono tienen <año>." |
+
+- Cancel path: the sheet writes nothing until «Reemplazar» (test). Pase years come from `fecha` (as the interim notice did).
+- RED: the 4 new `M3` tests failed before the change (no refusal; old wording). The interim tests of `4717c65` were replaced by these.
