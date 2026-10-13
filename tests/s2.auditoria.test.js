@@ -432,7 +432,7 @@ function anioCreado2(cambiar26, cambiar27){
   var raw26 = JSON.parse(ls.d['kibo.datos.2026']), raw27 = JSON.parse(ls.d['kibo.datos.2027']);
   if(cambiar26) cambiar26(raw26);
   if(cambiar27) cambiar27(raw27);
-  return H.appVista(raw27, null, {'kibo.datos.2026': JSON.stringify(raw26)}, '2027-01-10', {funcs: ['derivaAnioPrevio', 'avisoDerivaPrevio', 'cuotasDeMas', 'esc']});
+  return H.appVista(raw27, null, {'kibo.datos.2026': JSON.stringify(raw26)}, '2027-01-10', {funcs: ['derivaAnioPrevio', 'avisoDerivaPrevio', 'cuotasDeMas', 'esc'], vars: ['MESES']});
 }
 function aMano(d){ d.ahorroAnioAnterior = 1; d.usdAnioAnterior = 5000; d.aReponerAnterior = 7; d.planDeudas['Préstamo'].pagadasAntes = 0; }
 test('H1-R editing the starting savings, dollars, a reponer or paid installments on purpose shows no notice', function(){
@@ -443,6 +443,7 @@ test('H1-R editing the starting savings, dollars, a reponer or paid installments
 test('H1-R a real December change still shows the notice, even after editing the starting fields', function(){
   var a = anioCreado2(function(d){ d.meses[11].ahorroMesARS = 99000; d.meses[11].compraUSD = 50; d.meses[11].deudas = [{nombre: 'Préstamo', monto: 100000, pagado: true}]; }, aMano);
   assert.deepEqual(a.plain(a.derivaAnioPrevio(a.D, a.hoy)), ['ahorro', 'dolares', 'cuotas']);
+  assert.deepEqual(a.plain(a.cuotasDeMas(a.D)), [{nombre: 'Préstamo', sobran: 1, meses: [0]}], 'December paid the installment 2027 loaded for January: named, not removed');
   assert.match(a.avisoDerivaPrevio(a.D, a.hoy), /Diciembre 2026 cambió después de crear 2027/);
 });
 test('H1-R the copied snapshot survives normalizar; a year without it (created before) shows no notice', function(){

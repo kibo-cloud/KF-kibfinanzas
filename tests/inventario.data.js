@@ -65,7 +65,7 @@ module.exports = {
     derivaAnioPrevio:   [O, 'S2 H1 notice: compares what duplicar copied (copiaDiciembre) with serie()/estadoDeuda of the stored previous year; in a model year that follows December live (arrastreVivo) only the fields the user changed, in a legacy year every field; display only, writes nothing'],
     carryDiciembre:     [Z, 'S2 H1 (I4, R4.3): what December of the stored previous year leaves today: serie() ahorroAcumulado / aReponer / usdAcumulado and estadoDeuda pagadas per plan (the same values duplicar copies); read by arrastreVivo through leerAnio'],
     cuotasProgramadas:  [M, 'S2 H1: count of months whose installment row of a plan is loaded (monto > 0) and not paid (estaPagado): the slot of a real installment; duplicar (model year) skips them when loading the new year, cuotasDeMas compares against them'],
-    cuotasDeMas:        [O, 'S2 H1 notice: rows of a plan loaded in a model year beyond what remains after the live December (cuotas - pagadasAntes - cuotasProgramadas of the previous year); display only, rows never removed (D14)'],
+    cuotasDeMas:        [O, 'S2 H1 notice: rows of a plan loaded in a model year beyond what remains after the live December (cuotas - max(pagadasAntes, estadoDeuda pagadas of the previous year) - its cuotasProgramadas); display only, rows never removed (D14)'],
     refrescar:          [M, 'live refresh: card from tilesMes (R4.4, same rule as renderMes) plus suma() section subtotals'],
     gastadoVista:       [Z, 'R5 (N1-A): what a capped row consumed on the month screen: gastadoTope (ticked only), and 0 in a future model month (programado, esProgramado)'],
     hayDatos:           [R, 'E1 (fixed in R2): any item with monto > 0 (paid or not), any month flow field, or Trabajo data'],

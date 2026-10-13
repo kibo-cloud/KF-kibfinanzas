@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-m0FsNrKE73h2m1lGiYUqZD6t4bAlfJSonNC+5xnK/pA=' 'sha256-X2YgZNaVI9VqwY8MQ3j/6shQaNELG/LJOxT0LuY68f4='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-m0FsNrKE73h2m1lGiYUqZD6t4bAlfJSonNC+5xnK/pA=' 'sha256-RG+7WcIEC5Udn2boi+tTeYzyal3rYQrxZvLMjlssFyQ='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -8208,7 +8208,8 @@ function cuotasDeMas(d){
     var p = d.planDeudas[k], meses = [];
     if(!p || !p.cuotas || !own.call(prev.planDeudas, k)) return;
     d.meses.forEach(function(m, j){ if(m.deudas.some(function(it){ return String(it.nombre || '').trim() === k && num(it.monto) > 0; })) meses.push(j); });
-    var quedan = Math.max(0, p.cuotas - p.pagadasAntes - cuotasProgramadas(prev, k));
+    var e = estadoDeuda(prev, k, 11, hoyApp()), pagadas = Math.max(p.pagadasAntes, e ? e.pagadas : 0);   // lo pagado de verdad en el año viejo, o lo que dice el usuario si es más
+    var quedan = Math.max(0, p.cuotas - pagadas - cuotasProgramadas(prev, k));
     if(meses.length > quedan) out.push({nombre:k, sobran:meses.length - quedan, meses:meses});
   });
   return out;

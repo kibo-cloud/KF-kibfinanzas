@@ -128,7 +128,7 @@ None of these has an owner answer recorded; the built defaults stay and nothing 
 | N3b-A (LOW) | Ticking ahead in future model months is blocked; a row already ticked ahead can only be unticked. | (a) keep (built); (b) allow ticking ahead as a marker; (c) clear ticks ahead (rewrites data). | None while future. | (a). |
 | N3b-B (LOW) | `normalizar` stores cotización 1499 when none; the composition shows "cotización sin cargar". | (a) keep (built); (b) exclude USD/crypto from the net until loaded (motor/golden change). | Net worth includes USD at 1499 until loaded. | (a) + make the "sin cargar" label prominent. |
 | N4-A (LOW) | Unreadable Trabajo blob: copied to quarantine, next save writes Trabajo. | (a) keep (built); (b) block Trabajo writes until a restore; (c) warning with "Descargar el texto". | Raw text always kept. | (a) + (c) (download action is presentation). |
-| H1 (HIGH, from S2) | `duplicar` copies December's ahorroAcumulado, usdAcumulado, aReponer and each plan's pagadasAntes into the new year as a snapshot; a later edit of December (late savings, retiro, installment ticked) does not reach the new year (S2 H1). | (a) live carry: the new year reads savings / USD / aReponer and pagadasAntes from the stored previous year, like the Disponible already does (D6, `cierreAnioAnterior`); (b) keep the snapshot + drift notice + a "Volver a tomar de diciembre" (re-sync) action; (c) keep the snapshot silently. | (a) the new year always matches December; (b) correct after the user acts; (c) silent mismatch. | (a), consistent with D6 / the live Disponible carry. Interim notice built (`b55dade`). OWNER_DECISION_REQUIRED |
+| H1 (HIGH, from S2) | `duplicar` copies December's ahorroAcumulado, usdAcumulado, aReponer and each plan's pagadasAntes into the new year as a snapshot; a later edit of December (late savings, retiro, installment ticked) does not reach the new year (S2 H1). | (a) live carry: the new year reads savings / USD / aReponer and pagadasAntes from the stored previous year, like the Disponible already does (D6, `cierreAnioAnterior`); (b) keep the snapshot + drift notice + a "Volver a tomar de diciembre" (re-sync) action; (c) keep the snapshot silently. | (a) the new year always matches December; (b) correct after the user acts; (c) silent mismatch. | **Resolved** by (a) under contract I4 + R4.3 (`30840d5` + H1 completion; see "H1 — Cross-year integrity"): live carry in model years, user-edited fields kept with the notice; legacy years keep the snapshot + notice. Remaining OWNER_DECISION: installments loaded twice by older versions (named, never removed). |
 | M1 (MEDIUM, from S2) | A pase dated in a month before `arrastre.desde` of a model year leaves Trabajo but never reaches the Disponible (those months are legacy for the chain) (S2 M1). | (a) block such dates with a message; (b) warn and let the user confirm; (c) count it into the first model month. | (a) no lost money, one more refusal; (b) the user may still lose track; (c) new allocation rule (motor/golden change). | (a) block with a message. Interim (b) built (`8653da0`). OWNER_DECISION_REQUIRED |
 | M3 (MEDIUM, from S2) | Restore writes Trabajo only when the backup has it, so "Del trabajo" rows of restored years and the device's Trabajo can disagree (S2 M3). | (a) keep the device Trabajo (today); (b) require a complete backup (years with "Del trabajo" pases + Trabajo); (c) repair the rows from the Trabajo pases after restore. | (a) possible mismatch; (b) some old backups refused; (c) rewrites stored rows (against D14). | Warn (built, `4717c65`) and offer to also restore Trabajo when the backup has it. OWNER_DECISION_REQUIRED |
 | N4-B (LOW) | Quarantine copies are kept forever and travel in backups. | (a) keep (built); (b) Ajustes row to download and delete each; (c) auto-delete when readable (against "never delete"). | Storage only. | (b), owner to confirm deletion UX. |
@@ -176,3 +176,40 @@ action. Everything else waits for the owner.
 - Residual risks: MEDIUM N2-B over-count on legacy two-row data until decided; H1 drift between years until decided; LOW restore
   without journal, style-src 'unsafe-inline', quarantine copies accumulate, render cost with hundreds of products not measured in a
   browser, W4 test gap.
+
+### H1 — Cross-year integrity (2026-10-13)
+
+Contract basis: I4 of `odd/tasks/repair-sprint-1-r4-design.md` §1 ("Month change: across pockets Σ stocks(m+1 opening) = Σ stocks(m
+closing). No peso appears or disappears", December → January included) and R4.3 (a chained year starts from the LIVE closing of the
+previous year, already true for the Disponible). No new money rule: the other carried pockets now follow the same live rule.
+
+| What the new year holds from December | Kind | Behavior now |
+|---|---|---|
+| Disponible opening (`arrastre.inicial`) | live (R4.3, unchanged) | `cierreAnioAnterior` |
+| `ahorroAnioAnterior`, `aReponerAnterior`, `usdAnioAnterior`, each plan's `pagadasAntes` | copied by `duplicar`, now **live** in a model year (`previoEnVivo`: `desde 0`, origin `arrastre`, previous year with a model) | `arrastreVivo` (called by `leerAnio` and on a storage event when nothing is being edited) re-reads `carryDiciembre` of the stored previous year while the field still equals `copiaDiciembre`; field and snapshot move together |
+| a carried field the user changed in the new year | user data (D14) | kept; the "Diciembre cambió" notice names it |
+| legacy year (no model) or a year starting mid-year | copied snapshot | unchanged; any December change shows the notice |
+| v1.32/v1.33 model year without `copiaDiciembre` | opening of an older version | December of today is adopted as the snapshot in memory only (no number changes, nothing written); a field that differs from December is ambiguous and is kept as stored |
+| installment rows of a plan | loaded once (historical rows untouched) | `duplicar` (model year) no longer loads installments the previous year still schedules (`cuotasProgramadas`); rows loaded twice by older versions are named by `cuotasDeMas` (estimates paid with max(pagadasAntes, real paid in the previous year)) and never removed |
+| retroactive edits of past months | historical | not changed by this fix |
+
+Numbers (probes `scratchpad/s2/p1-carry.js`, `p3-cuotas.js`; tests `tests/h1.cruce.test.js`):
+
+| Case | Before | After |
+|---|---|---|
+| late December savings transfer 100.000 | 2027 Disponible 1.180.000, Ahorro 800.000, bruto 3.480.000 (100.000 vanished) | 1.180.000 / 900.000 / 3.580.000 (bruto unchanged) |
+| late December retiro 50.000 | bruto +50.000 | bruto 0 (Disponible +50.000, Ahorro −50.000) |
+| late December USD 100 | USD 1.000, bruto +0 (dollars never arrived) | USD +100, bruto +150.000 (cotización 1.500) |
+| 2027 created in October, Oct/Nov paid later | 3 rows (Jan-Mar), Pasivos 300.000 | 1 row (Jan), pagadasAntes 5, Pasivos 100.000 |
+
+- Property test: 60 seeds `20261013 + s·7919` (s = 1..60), mulberry32, random late December edits in random order; I4 asserted for
+  Disponible, Ahorro, a reponer, USD and each plan's saldo/restantes, plus Patrimonio, CSV and "El año" agree.
+- Migration: a 7f7ad40-era two-year dataset reads byte-equal to `normalizar` of the stored blob (no model: nothing follows, no notice);
+  a legacy-created year keeps its copied values and legacy installment loading; v1.32 years: unchanged numbers, snapshot adopted in
+  memory, later December changes followed once saved.
+- Isolated, not fixed (**OWNER_DECISION_REQUIRED**): a v1.32 year read for the first time after December changed keeps the stored
+  `pagadasAntes` (ambiguous: drift or the user's number), so Pasivos can count installments that 2026 already paid, and installment
+  rows loaded twice by older versions stay (D14: no row deletion). Both are named by the notice ("<plan>: en <año> hay N cuotas cargadas
+  de más (cargadas en …). No borré nada: revisalas antes de pagarlas."); the user decides.
+- Mutation check: replacing `max(pagadasAntes, real paid)` with `pagadasAntes` in `cuotasDeMas` fails `H1 migration v1.32: installments
+  loaded in both years…` and `H1-R a real December change…`.

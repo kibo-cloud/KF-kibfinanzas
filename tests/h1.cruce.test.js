@@ -180,3 +180,89 @@ test('H1 a chained third year follows the live closing of the second, which foll
   assert.equal(a.D.ahorroAnioAnterior, a.serie(y27)[11].ahorroAcumulado);
   assert.equal(a.D.ahorroAnioAnterior, 870000, '800.000 + the late 70.000, through 2027');
 });
+
+// ── legacy years (no arrastre): nothing follows December; leerAnio returns exactly normalizar of the stored blob ──
+function sinCopia(d){ var o = plain(d); delete o.copiaDiciembre; return o; }
+function viejo7f7ad40(anio){   // blob as the 7f7ad40-era app saved it (same shape as tests/r4.migracion.test.js)
+  var meses = [], i;
+  for(i = 0; i < 12; i++) meses.push({ingresos: [{nombre: 'Sueldo', monto: i < 6 ? '1000' : 0}], gastosFijos: [{nombre: 'Alquiler', monto: 300}], gastosVariables: [], deudas: [{nombre: 'Préstamo', monto: 50}],
+    ahorroMesARS: 20, movimientos: [{id: 'm' + i, fecha: '2026-01-0' + (i % 9 + 1), sec: 'gastosVariables', nombre: 'Super', monto: 10}]});
+  return {anio: anio, version: 1, actualizado: '2026-07-20T10:00:00.000Z', cotizacionUSD: 1400, meses: meses, planDeudas: {'Préstamo': {total: 600, recargo: 0, cuotas: 12, pagadasAntes: 1}}};
+}
+test('H1 migration: a 7f7ad40-era two-year dataset reads exactly as before (no model: nothing follows, nothing is added)', function(){
+  var store = {'kibo.datos.2025': JSON.stringify(viejo7f7ad40(2025)), 'kibo.datos.2026': JSON.stringify(viejo7f7ad40(2026))};
+  var a = vista(store, null, '2026-10-15', 2026), raw = viejo7f7ad40(2026);
+  assert.deepEqual(plain(a.D), plain(a.normalizar(C.copy(raw), a.hoy)));
+  assert.equal('copiaDiciembre' in a.D, false);
+  assert.deepEqual(a.plain(a.derivaAnioPrevio(a.D, a.hoy)), []);
+  assert.equal(a.avisoDerivaPrevio(a.D, a.hoy), '');
+});
+test('H1 legacy: a year created from a legacy December keeps the copied values; duplicar loads installments as before', function(){
+  var store = crear(H.sinModelo(C.seccion2(false, false)), '2026-10-15'), n = JSON.parse(store['kibo.datos.2027']);
+  // byte-identical legacy loading: pendientesDesde = 6 - 3 paid = 3 rows (Jan-Mar), whatever 2026 still schedules
+  assert.deepEqual(n.meses.slice(0, 4).map(function(m){ return (m.deudas[0] || {}).monto || 0; }), [100000, 100000, 100000, 0]);
+  var d26 = JSON.parse(store['kibo.datos.2026']); d26.meses[11].ahorroMesARS = 99000; d26.meses[9].deudas[0].pagado = true;
+  store['kibo.datos.2026'] = JSON.stringify(d26);
+  var a = vista(store);
+  assert.deepEqual(plain(a.D), plain(a.normalizar(C.copy(n), a.hoy)), 'leerAnio = normalizar: nothing follows December');
+  assert.deepEqual(a.plain(a.derivaAnioPrevio(a.D, a.hoy)), ['ahorro', 'cuotas'], 'the interim notice stays for legacy years');
+  assert.deepEqual(a.plain(a.cuotasDeMas(a.D)), []);
+});
+
+// ── v1.32 / v1.33 model years: created by duplicar before copiaDiciembre existed ──
+function v132(cambiar26, filasViejas){   // 2027 as v1.32/v1.33 stored it: no copiaDiciembre (and, if asked, the old installment loading)
+  var store = crear(C.seccion2(false, false), '2026-10-15'), n = JSON.parse(store['kibo.datos.2027']);
+  delete n.copiaDiciembre;
+  if(filasViejas) [1, 2].forEach(function(j){ n.meses[j].deudas = [{nombre: 'Préstamo', monto: 100000, pagado: false}]; });   // Jan-Mar, as v1.32 loaded them
+  store['kibo.datos.2027'] = JSON.stringify(n);
+  if(cambiar26){ var d26 = JSON.parse(store['kibo.datos.2026']); cambiar26(d26); store['kibo.datos.2026'] = JSON.stringify(d26); }
+  return store;
+}
+test('H1 migration v1.32: December unchanged since creation: same numbers; December adopted as the snapshot (in memory)', function(){
+  var store = v132(), a = vista(store), raw = JSON.parse(store['kibo.datos.2027']);
+  assert.deepEqual(sinCopia(a.D), plain(a.normalizar(C.copy(raw), a.hoy)), 'no number changes');
+  assert.deepEqual(plain(a.D.copiaDiciembre), {ahorro: 800000, aReponer: 50000, usd: 1000, cuotas: {'Préstamo': 3}});
+  assert.equal(JSON.parse(store['kibo.datos.2027']).copiaDiciembre, undefined, 'reading writes nothing');
+  assert.deepEqual(a.plain(a.derivaAnioPrevio(a.D, a.hoy)), []);
+});
+test('H1 migration v1.32: December changed after creation (ambiguous: drift or the user\'s number): kept as stored, no notice', function(){
+  var store = v132(function(d){ d.meses[11].ahorroMesARS = 99000; d.meses[9].deudas[0].pagado = true; }), a = vista(store);
+  var raw = JSON.parse(store['kibo.datos.2027']);
+  assert.deepEqual(sinCopia(a.D), plain(a.normalizar(C.copy(raw), a.hoy)), 'no number changes');
+  assert.deepEqual([a.D.ahorroAnioAnterior, a.D.planDeudas['Préstamo'].pagadasAntes], [800000, 3]);
+  assert.deepEqual(a.plain(a.derivaAnioPrevio(a.D, a.hoy)), []);
+});
+test('H1 migration v1.32: once the year is saved with the adopted snapshot, a later December change follows', function(){
+  var store = v132(), a = vista(store);
+  store['kibo.datos.2027'] = JSON.stringify(a.D);   // any save of 2027
+  var d26 = JSON.parse(store['kibo.datos.2026']); d26.meses[11].ahorroMesARS = 99000; d26.meses[9].deudas[0].pagado = true;
+  store['kibo.datos.2026'] = JSON.stringify(d26);
+  invariantes(store, null, 'v1.32 after adoption');
+  var b = vista(store);
+  assert.deepEqual([b.D.ahorroAnioAnterior, b.D.planDeudas['Préstamo'].pagadasAntes], [899000, 4]);
+});
+test('H1 migration v1.32: installments loaded in both years by the old duplicar are named, never removed', function(){
+  var store = v132(function(d){ d.meses[9].deudas[0].pagado = true; d.meses[10].deudas[0].pagado = true; }, true), a = vista(store);
+  store['kibo.datos.2027'] = JSON.stringify(a.D);   // saved with the adopted snapshot (December as first read: 5 paid)
+  a = vista(store);
+  assert.deepEqual(a.D.meses.slice(0, 4).map(function(m){ return (m.deudas[0] || {}).monto || 0; }), [100000, 100000, 100000, 0], 'rows kept');
+  // first read with this version after both payments: 3 != the live 5, ambiguous -> kept (Pasivos keep counting 3 left: OWNER_DECISION)
+  assert.equal(a.D.planDeudas['Préstamo'].pagadasAntes, 3);
+  // the rows are judged against what 2026 really leaves: 6 - 5 paid - 0 still scheduled = 1, and 3 are loaded
+  assert.deepEqual(a.plain(a.cuotasDeMas(a.D)), [{nombre: 'Préstamo', sobran: 2, meses: [0, 1, 2]}]);
+  assert.ok(a.avisoDerivaPrevio(a.D, a.hoy).indexOf('Préstamo: en 2027 hay 2 cuotas cargadas de más (cargadas en enero, febrero, marzo)') >= 0);
+});
+
+// ── multi-tab: another tab saves the previous year while the model year is open ──
+test('H1 storage event: the previous year saved in another tab refreshes what the open model year carries; never while editing', function(){
+  var base = crear(C.seccion2(true, true), '2026-12-10'), funcs = ['previoEnVivo', 'carryDiciembre', 'arrastreVivo', 'cuotasProgramadas'];
+  [false, true].forEach(function(editando){
+    var ls = H.fakeStorage(plain(base)), B = H.appAlmacen(ls, '2027-01-10', null, funcs);
+    B.D = B.leerAnio(2027); B.sucio = editando;
+    var d26 = JSON.parse(ls.d['kibo.datos.2026']); d26.meses[11].ahorroMesARS = 10000; ls.d['kibo.datos.2026'] = JSON.stringify(d26);
+    B.alCambiarOtraPestana({key: 'kibo.datos.2026', storageArea: ls});
+    assert.equal(B.D.ahorroAnioAnterior, editando ? 800000 : 810000, 'editing ' + editando);
+    assert.equal(B.g.renders, editando ? 0 : 1);
+    assert.equal(B.obsoleta, false, 'the previous year is not this tab\'s blob: never stale');
+  });
+});
