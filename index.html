@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1+qBvcl2GMAluCUYw4i+OJGBaH+KeJmbqI2Oz/29mJk=' 'sha256-8Xu1gzMgkVDi98NoLVC/u5L/yQJfC0Ilgsa5bUyZm/g='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1+qBvcl2GMAluCUYw4i+OJGBaH+KeJmbqI2Oz/29mJk=' 'sha256-9l9OjXgp69KFik24e12cIFr2lofwKlIfOsSv2tFwks0='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -4271,9 +4271,33 @@ function htmlDatosPatri(d){
      +   '<input class="monto usd" inputmode="decimal" data-campo="usdAnioAnterior" value="' + fUSD(d.usdAnioAnterior) + '"></div>';
   return h;
 }
+/* S2 H1 (OWNER_DECISION_REQUIRED, aviso provisorio): al crear un año, duplicar() copia el ahorro, los dólares, lo que falta reponer y las cuotas
+   ya pagadas de diciembre. Si el año anterior cambia después, esos valores copiados no se actualizan solos: solo se avisa (no se cambia nada). */
+function derivaAnioPrevio(d, hoy){
+  var prev = leerAnio(d.anio - 1), out = [];
+  if(!prev) return out;
+  var s = serie(prev)[11], dif = function(a, b){ return Math.abs(num(a) - num(b)) > 0.5; };
+  if(dif(d.ahorroAnioAnterior, s.ahorroAcumulado) || dif(d.aReponerAnterior, s.aReponer)) out.push('ahorro');
+  if(dif(d.usdAnioAnterior, s.usdAcumulado)) out.push('dolares');
+  var cuotas = false;
+  Object.keys(d.planDeudas || {}).forEach(function(k){
+    if(!prev.planDeudas || !Object.prototype.hasOwnProperty.call(prev.planDeudas, k)) return;
+    var e = estadoDeuda(prev, k, 11, hoy); if(e && e.pagadas !== num(d.planDeudas[k].pagadasAntes)) cuotas = true;
+  });
+  if(cuotas) out.push('cuotas');
+  return out;
+}
+function avisoDerivaPrevio(d, hoy){
+  var q = derivaAnioPrevio(d, hoy); if(!q.length) return '';
+  var nom = {ahorro:'el ahorro', dolares:'los dólares', cuotas:'las cuotas'}, p = q.map(function(k){ return nom[k]; });
+  var lista = p.length > 1 ? p.slice(0, -1).join(', ') + ' y ' + p[p.length - 1] : p[0];
+  return '<div class="aviso" data-av="deriva" role="status"><p>Diciembre ' + (d.anio - 1) + ' cambió después de crear ' + d.anio + ': ' + lista
+    + ' que pasaron al año nuevo pueden no coincidir.</p></div>';
+}
 function renderUSD(){
   var hoy = hoyApp(), s = serie(D), p = patrimonioPantalla(D, hoy), h = '';
   h += htmlHeroPatri(p);
+  h += avisoDerivaPrevio(D, hoy);
   // la composición: año con modelo, la auditable de R5 (patrimonioNeto); año sin modelo, las tres filas de siempre
   h += plegable('usdPatri', 'De qué se compone', fARS(p.patrimonioARS),
         p.modelo ? htmlPatrimonio(p)

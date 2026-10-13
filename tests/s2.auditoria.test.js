@@ -172,3 +172,29 @@ test('L5: the composition of a model year offers "Quitar plan" for a plan withou
   assert.ok(p.modelo);
   assert.match(a.htmlPatrimonio(p), /<button[^>]*data-act="quitarPlanSuelto" data-n="Préstamo"[^>]*>Quitar plan<\/button>/);
 });
+
+// ── H1 (OWNER_DECISION_REQUIRED, interim notice only): the new year keeps a SNAPSHOT of December's savings / dollars / a reponer /
+// installments; when the previous year changes later, the Patrimonio tab says so (no automatic re-sync) ──
+function anioCreado(cambiar){
+  var M = la.loadMotor(), HOY = C.hoy('2026-12-10');
+  var y26 = M.normalizar(C.copy(C.seccion2(true, true)), HOY);
+  var ls = H.fakeStorage({'kibo.datos.2026': JSON.stringify(y26)}), app = H.appAlmacen(ls, '2026-12-10');
+  H.cargarEn(app, ls, 2026); app.duplicar();
+  var raw26 = JSON.parse(ls.d['kibo.datos.2026']);
+  if(cambiar) cambiar(raw26);
+  var a = H.appVista(JSON.parse(ls.d['kibo.datos.2027']), null, {'kibo.datos.2026': JSON.stringify(raw26)}, '2027-01-10', {funcs: ['derivaAnioPrevio', 'avisoDerivaPrevio', 'esc']});
+  return a;
+}
+test('H1: no notice while December still gives what the new year copied', function(){
+  var a = anioCreado();
+  assert.deepEqual(a.plain(a.derivaAnioPrevio(a.D, a.hoy)), []);
+  assert.equal(a.avisoDerivaPrevio(a.D, a.hoy), '');
+});
+test('H1: December savings and installments changed after creating the year: a visible notice, the copied values untouched', function(){
+  var a = anioCreado(function(d){ d.meses[11].ahorroMesARS = 99000; d.meses[11].deudas = [{nombre: 'Préstamo', monto: 100000, pagado: true}]; });
+  var antes = [a.D.ahorroAnioAnterior, a.D.planDeudas['Préstamo'].pagadasAntes];
+  assert.deepEqual(a.plain(a.derivaAnioPrevio(a.D, a.hoy)), ['ahorro', 'cuotas']);
+  var h = a.avisoDerivaPrevio(a.D, a.hoy);
+  assert.match(h, /Diciembre 2026 cambió después de crear 2027: el ahorro y las cuotas que pasaron al año nuevo pueden no coincidir\./);
+  assert.deepEqual([a.D.ahorroAnioAnterior, a.D.planDeudas['Préstamo'].pagadasAntes], antes);
+});

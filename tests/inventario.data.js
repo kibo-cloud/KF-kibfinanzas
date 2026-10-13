@@ -62,6 +62,7 @@ module.exports = {
     armarCarrusel:      [O, 'false positive: CSS calc( string in a style'],
     renderAnio:         [M, 'year view: rows from serieVista (R4.5: serie() for a legacy year/month; the month card for a model month, Disponible total = December closing), summary resumenAnio over the realized months of serieVista (N1; red month = card Ingresos - Gastos - Deudas < 0, N2), ranking realized'],
     renderUSD:          [O, 'USD stock/valuation from serie(); Patrimonio total from patrimonioPantalla (R4.4: old patrimonio() for a legacy year, patrimonioNeto a hoy incl. Trabajo for a model year; R5: its composition rows through filasPatrimonio / htmlPatrimonio)'],
+    derivaAnioPrevio:   [O, 'S2 H1 interim notice: compares what duplicar copied (ahorroAnioAnterior, usdAnioAnterior, aReponerAnterior, pagadasAntes) with serie()/estadoDeuda of the stored previous year; display only, writes nothing'],
     refrescar:          [M, 'live refresh: card from tilesMes (R4.4, same rule as renderMes) plus suma() section subtotals'],
     gastadoVista:       [Z, 'R5 (N1-A): what a capped row consumed on the month screen: gastadoTope (ticked only), and 0 in a future model month (programado, esProgramado)'],
     hayDatos:           [R, 'E1 (fixed in R2): any item with monto > 0 (paid or not), any month flow field, or Trabajo data'],
