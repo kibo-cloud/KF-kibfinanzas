@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1+qBvcl2GMAluCUYw4i+OJGBaH+KeJmbqI2Oz/29mJk=' 'sha256-bAfv3H9O63cRRqlDcqasW3UcajJfSDWKo32ikFMcyiA='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1+qBvcl2GMAluCUYw4i+OJGBaH+KeJmbqI2Oz/29mJk=' 'sha256-vF03YvhEa3JubLiqrf9GAC4MuJ83f2dkSpXx5uyLhXw='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -6271,7 +6271,7 @@ function guardarTrab(silencio){
 function tieneTrab(){ return !!(T && (T.facturas.length || T.cobros.length || T.pases.length || T.gastos.length || T.productos.length || T.tope)); }
 function antesDeCambiar(){ tjAntes = JSON.stringify(T); }
 function deshacerTj(){
-  if(!tjAntes) return;
+  if(!tjAntes || trabVieja()) return;   // S3: una pestaña vieja no deshace: el guardado se negaría y la pantalla mentiría
   var modo = T.modo, activo = T.activo, col = T.ui.col, rev = T.rev;
   T = normTrab(JSON.parse(tjAntes)); tjAntes = null;
   T.modo = modo; T.activo = activo; T.ui.col = col;   // se deshace lo que cargaste, no cómo estás mirando la pestaña

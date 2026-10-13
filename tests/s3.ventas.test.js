@@ -382,3 +382,19 @@ test('S3c a new product from the toolbar starts in the folder you are looking at
   var nuevo = c.a.T.productos[2];
   assert.deepEqual([nuevo.nombre, nuevo.carpeta, nuevo.color, c.a.T.facturas.length, c.a.g.listas, c.a.g.hojasCerradas], ['Té', 'Bebidas', 'azul', 0, 0, cerr + 1]);
 });
+
+// ── review fix: undo of a quick sale in a stale tab ──
+test('S3-R1 undoing a quick sale after another tab saved is refused: memory, storage and toasts unchanged, other-tab notice', function(){
+  var c = cargada([CAFE]);
+  c.a.venderProducto('p1');
+  otraPestanaGuarda(c.ls);
+  var guardado = c.ls.d['kibo.trabajo'], toasts = c.a.g.toasts.slice(), mem = JSON.stringify(c.a.T);
+  c.a.deshacerTj();
+  assert.equal(JSON.stringify(c.a.T), mem, 'the sale and the stock stay in memory');
+  assert.equal(c.a.T.facturas.length, 1);
+  assert.equal(c.a.T.productos[0].stock, 2);
+  assert.equal(c.ls.d['kibo.trabajo'], guardado, 'storage untouched');
+  assert.deepEqual(c.a.g.toasts, toasts, 'no "Listo, quedó como antes"');
+  assert.equal(c.a.obsoleta, true);
+  assert.match(c.a.avisosEl.innerHTML, /otra pestaña/);
+});
