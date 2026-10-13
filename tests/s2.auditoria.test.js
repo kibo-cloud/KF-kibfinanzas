@@ -266,3 +266,52 @@ test('N2-B: a notice lists the months with more than one "Del trabajo" row; none
   var b = H.appVista(C.vacio(2026), null, null, '2026-10-15', {funcs: ['mesesTrabajoDoble', 'avisoTrabajoDoble', 'esc'], vars: ['MESES']});
   assert.equal(b.avisoTrabajoDoble(b.D), '');
 });
+
+// ── review fix (M2): Deshacer finds the row by its place AMONG ROWS OF THE SAME NAME, not by its position in the list ──
+// rows [Luz, Super 0, Super 70000 ✓]: +20000 to the first Super, the user deletes Luz, Deshacer used to take 20000 from the second Super
+function appOrden(raw, orden){
+  var t = [];
+  var a = H.appVista(raw, null, null, null, {funcs: FUNCS_GASTO.concat(['aplicarOrden']), vars: ['gr'], globals: {oculto: false, PUNTOS: '..', ordenL: orden || [],
+    document: {getElementById: function(){ return null; }}, abrirHoja: function(){}, cerrarHoja: function(){}, tocar: function(){}, conScroll: function(){},
+    renderMes: function(){}, toast: function(x, ac, act, id){ t.push([x, ac, act, id]); }}});
+  a.mes = 9; a.t = t; return a;
+}
+function resumen(a){ return filas(a).map(function(r){ return [r.nombre, r.monto, r.pagado]; }); }
+test('M2-R deleting ANOTHER row before Deshacer: the same Super is reverted', function(){
+  var a = appGasto(mesCon([C.it('Luz', 1000, true), C.it('Super', 0, false), C.it('Super', 70000, true)]));
+  a.gr = {monto: 20000, cat: 1, sec: 'gastosVariables'}; a.sumarGasto(); var id = a.t[a.t.length - 1][3];
+  assert.equal(a.plain(a.D.meses[9].movimientos[0]).fo, 0, 'the first of the two Super');
+  a.D.meses[9].gastosVariables.splice(0, 1);   // the user deletes Luz
+  a.quitarMov(id);
+  assert.deepEqual(resumen(a), [['Super', 0, false], ['Super', 70000, true]]);
+  assert.equal(a.t[a.t.length - 1][0], 'Deshecho');
+  assert.equal(a.D.meses[9].movimientos.length, 0);
+});
+test('M2-R reordering the rows (Ordenar) before Deshacer: the same Super is reverted', function(){
+  var a = appOrden(mesCon([C.it('Luz', 1000, true), C.it('Super', 0, false), C.it('Super', 30000, true)]), ['Super', 'Super', 'Luz']);
+  a.gr = {monto: 20000, cat: 1, sec: 'gastosVariables'}; a.sumarGasto(); var id = a.t[a.t.length - 1][3];
+  a.D.meses[9].gastosVariables = a.aplicarOrden(a.D.meses[9].gastosVariables);   // [Super 20000, Super 30000, Luz]: place 1 is now the OTHER Super
+  a.quitarMov(id);
+  assert.deepEqual(resumen(a), [['Super', 0, false], ['Super', 30000, true], ['Luz', 1000, true]]);
+  assert.equal(a.t[a.t.length - 1][0], 'Deshecho');
+});
+test('M2-R deleting the target row itself: Deshacer changes nothing and says it did not find the row', function(){
+  var a = appGasto(mesCon([C.it('Super', 0, false), C.it('Super', 70000, true)]));
+  a.gr = {monto: 20000, cat: 0, sec: 'gastosVariables'}; a.sumarGasto(); var id = a.t[a.t.length - 1][3];
+  a.D.meses[9].gastosVariables.splice(0, 1);   // the user deletes the Super that got the 20000
+  var antes = filas(a);
+  a.quitarMov(id);
+  assert.deepEqual(filas(a), antes, 'the other Super keeps its 70000');
+  assert.equal(a.t[a.t.length - 1][0], 'No encontré el renglón para deshacer');
+  assert.equal(a.D.meses[9].movimientos.length, 1, 'the expense stays recorded');
+});
+test('M2-R the same-name place survives normalizar (non-negative integers only)', function(){
+  var a = appGasto(mesCon([C.it('Super', 30000, true), C.it('Super', 0, false)]));
+  a.gr = {monto: 20000, cat: 1, sec: 'gastosVariables'}; a.sumarGasto();
+  var n = a.normalizar(C.copy(a.D), a.hoy);
+  assert.equal(n.meses[9].movimientos[0].fo, 1);
+  var d = C.copy(a.D); d.meses[9].movimientos[0].fo = -1; d.meses[9].movimientos.push({id: 'x', nombre: 'Super', monto: 1, fo: 1.5});
+  n = a.normalizar(d, a.hoy);
+  assert.equal('fo' in n.meses[9].movimientos[0], false);
+  assert.equal('fo' in n.meses[9].movimientos[1], false);
+});

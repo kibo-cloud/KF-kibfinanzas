@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1+qBvcl2GMAluCUYw4i+OJGBaH+KeJmbqI2Oz/29mJk=' 'sha256-vF03YvhEa3JubLiqrf9GAC4MuJ83f2dkSpXx5uyLhXw='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-O98NkFGD9VZPa0Y6g7O0jGoMOfjWLZKiNEQITiVGMMY=' 'sha256-WxADXA/Elql35TVcR7pF2wyBX51zpu7MnrmibaIIvvI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -2100,6 +2100,8 @@ function normalizar(d, hoy){
       if(x.tipo === 'pago' || x.tipo === 'aparte') mo.tipo = x.tipo;   // L3: qué respondió el usuario (Deshacer)
       if(x.tipo === 'pago') mo.ma = num(x.ma);   // L3: monto que tenía el renglón antes de marcarlo pagado (Deshacer)
       if(typeof x.fi === 'number' && x.fi >= 0 && Math.floor(x.fi) === x.fi) mo.fi = x.fi;   // S2 M2: lugar del renglón que cambió (Deshacer)
+      if(typeof x.fo === 'number' && x.fo >= 0 && Math.floor(x.fo) === x.fo) mo.fo = x.fo;   // S2 M2: cuál de los renglones con ese nombre (0 = el primero)
+      if(typeof x.fn === 'number' && x.fn >= 1 && Math.floor(x.fn) === x.fn) mo.fn = x.fn;   // S2 M2: cuántos renglones tenían ese nombre
       return mo;
     });
     m.metaAhorroPct = m.metaAhorroPct==null ? 0.10 : num(m.metaAhorroPct);
@@ -5415,7 +5417,12 @@ function sumarGasto(){
 function anotarMov(it, monto, pp, extra){   // el gasto rápido queda en la lista del mes, con lo que Deshacer necesita para volver atrás
   var id = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
   var mv = {id:id, fecha:new Date().toISOString(), sec:gr.sec, nombre:it.nombre, monto:monto, pp:pp};
-  var fi = (D.meses[mes][gr.sec] || []).indexOf(it); if(fi >= 0) mv.fi = fi;   // S2 M2: QUÉ renglón cambió (lugar + nombre + sección), para que Deshacer no toque otro del mismo nombre
+  var ls = D.meses[mes][gr.sec] || [], fi = ls.indexOf(it), q;
+  if(fi >= 0){   // S2 M2: QUÉ renglón cambió, para que Deshacer no toque otro del mismo nombre
+    mv.fi = fi;   // el lugar: solo una pista (lo leen las versiones anteriores); borrar u ordenar otros renglones lo corre
+    mv.fo = 0; mv.fn = 0;   // cuál de los del mismo nombre es y cuántos había: no cambia al borrar u ordenar renglones de otro nombre
+    for(q=0;q<ls.length;q++) if(ls[q].nombre === it.nombre){ if(q < fi) mv.fo++; mv.fn++; }
+  }
   if(extra) for(var k in extra) if(extra.hasOwnProperty(k)) mv[k] = extra[k];
   D.meses[mes].movimientos.push(mv);
   return id;
@@ -5492,10 +5499,16 @@ function quitarMov(id){
   for(j=0;j<12 && k<0;j++) for(i=0;i<D.meses[j].movimientos.length;i++) if(D.meses[j].movimientos[i].id === id){ m = D.meses[j]; k = i; }
   if(k < 0){ toast('No pude deshacer: ese gasto ya no está en el año que tenés abierto.'); return; }
   var mv = m.movimientos[k], ls = m[mv.sec] || [], hallado = false;
-  // S2 M2: si el gasto guardó su renglón y en ese lugar sigue uno con el mismo nombre, se deshace ESE; si no (gastos viejos, renglón movido), el primero con ese nombre
-  var exacto = typeof mv.fi === 'number' && ls[mv.fi] && ls[mv.fi].nombre === mv.nombre ? mv.fi : -1;
+  // S2 M2: el renglón es el n.º fo entre los que se llaman igual, si siguen siendo fn (borrar u ordenar renglones de otro nombre no lo cambia);
+  // si ya no son los mismos (se borró, agregó o renombró uno de ese nombre) no se sabe cuál es: no se toca nada y se avisa.
+  // Gastos viejos sin fo: el de su lugar fi si sigue con ese nombre; si no, el primero con ese nombre
+  var exacto = -1, mismos = [];
+  if(typeof mv.fo === 'number'){
+    for(i=0;i<ls.length;i++) if(ls[i].nombre === mv.nombre) mismos.push(i);
+    exacto = (typeof mv.fn !== 'number' || mismos.length === mv.fn) && mv.fo < mismos.length ? mismos[mv.fo] : -2;
+  } else if(typeof mv.fi === 'number' && ls[mv.fi] && ls[mv.fi].nombre === mv.nombre) exacto = mv.fi;
   for(i=0;i<ls.length;i++){
-    if(exacto >= 0 ? i === exacto : ls[i].nombre === mv.nombre){
+    if(exacto >= 0 ? i === exacto : exacto === -1 && ls[i].nombre === mv.nombre){
       hallado = true;
       // L3 "Sí": se revierte SOLO ese pago (el cambio de monto que hizo y el tilde); otros gastos o ediciones posteriores del renglón quedan
       if(mv.tipo === 'pago' && typeof mv.pp === 'boolean'){ ls[i].monto = Math.max(0, num(ls[i].monto) - num(mv.monto) + num(mv.ma)); ls[i].pagado = mv.pp; break; }
