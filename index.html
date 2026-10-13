@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-m0FsNrKE73h2m1lGiYUqZD6t4bAlfJSonNC+5xnK/pA=' 'sha256-es2IxgFXx+8MuFIA/2cD2xf/Zw/h4ickKFevpeC3y5M='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-m0FsNrKE73h2m1lGiYUqZD6t4bAlfJSonNC+5xnK/pA=' 'sha256-Ze6iYaTadz6LUkhUKwQ73QmJOn3Uy/DzEJjcAL4hlSo='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -7824,6 +7824,7 @@ function avisoPaseAntes(dest){   // '' si la fecha cae en un mes que lleva el sa
   return ar && typeof ar === 'object' && dest.mes < num(ar.desde)
     ? 'Esa fecha es anterior a desde cuándo llevás el saldo mes a mes: esa plata no se va a reflejar en el disponible.' : '';
 }
+var paseOk = '';   // S2 M1: la fecha que el usuario ya confirmó con «Pasar igual» (estado de la hoja, no del botón)
 function abrirPase(){
   var r = resumenTrab();
   if(r.paraPasar <= 0){
@@ -7831,6 +7832,7 @@ function abrirPase(){
       + (r.aAcreditar ? ' Lo que tiene fecha más adelante vas a poder pasarlo cuando llegue ese día.' : ' Cuando cargues una venta cobrada o un cobro, aparece acá.'));
     return;
   }
+  paseOk = '';
   abrirHoja('<h3>Pasar a lo personal</h3>'
     + '<input type="text" id="psMonto" class="grande tj-in" inputmode="decimal" placeholder="0" autocomplete="off">'
     + '<div class="chips"><button data-act="tjPaseTodo">Todo: ' + fARS(r.paraPasar) + '</button></div>'
@@ -7844,6 +7846,9 @@ function abrirPase(){
 function notaPase(){
   var e = document.getElementById('psNota'); if(!e) return;
   var d = destinoPase(), r = resumenTrab(), rq = leerMonto('psMonto'), m = Math.round(rq.v);
+  if(paseOk && paseOk !== d.fecha){   // S2 M1: otra fecha, otra confirmación: el botón vuelve a «Pasar»
+    paseOk = ''; var bp = document.querySelector('#hoja [data-act=tjGuardarPase]'); if(bp) bp.textContent = 'Pasar';
+  }
   e.className = 'nota';
   if(!rq.ok && !rq.vacio){ e.className = 'nota mal'; e.innerHTML = 'Monto: ' + rq.msg + '.'; return; }
   if(!anioExiste(d.anio)){ e.className = 'nota mal'; e.innerHTML = 'El ' + d.anio + ' no está creado en la app. Elegí una fecha de un año que tengas.'; return; }
@@ -7858,9 +7863,10 @@ function guardarPase(){
   if(!(m > 0)){ errorEn('psNota', 'Falta cuánto querés pasar.'); document.getElementById('psMonto').focus(); return; }
   if(m > r.paraPasar + 0.5){ errorEn('psNota', 'Es más de lo que tenés disponible (' + fARS(r.paraPasar) + ').'); return; }
   if(!anioExiste(d.anio)){ errorEn('psNota', 'El ' + d.anio + ' no está creado en la app. Elegí una fecha de un año que tengas.'); return; }
-  var avAntes = avisoPaseAntes(d), bp = avAntes ? document.querySelector('#hoja [data-act=tjGuardarPase]') : null;
-  if(avAntes && !(bp && bp.getAttribute('data-ok') === d.fecha)){   // S2 M1: el primer toque avisa; el segundo, con la misma fecha, confirma
-    if(bp){ bp.setAttribute('data-ok', d.fecha); bp.textContent = 'Pasar igual'; }
+  var avAntes = avisoPaseAntes(d);
+  if(avAntes && paseOk !== d.fecha){   // S2 M1: el primer toque avisa; el segundo, con la misma fecha, confirma (aunque no se encuentre el botón)
+    paseOk = d.fecha;
+    var bp = document.querySelector('#hoja [data-act=tjGuardarPase]'); if(bp) bp.textContent = 'Pasar igual';
     errorEn('psNota', avAntes + ' Si igual querés pasarlo, tocá «Pasar igual».');
     return;
   }
