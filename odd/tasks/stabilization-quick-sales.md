@@ -43,4 +43,24 @@ Owner brief: "TuGasto — LOOP DE ESTABILIZACIÓN, AUDITORÍA FINANCIERA Y UX DE
 
 ## Progress / evidence
 
-(filled per task)
+### S1 — Pending decisions (review 2026-10-12)
+
+None of these has an owner answer recorded; the built defaults stay and nothing is marked resolved. Each keeps
+`OWNER_DECISION_REQUIRED` with the recommendation below. Only presentation that adds no money rule may be done without the owner.
+
+| Id | Context (where recorded) | Alternatives | Money effect | Recommendation |
+|---|---|---|---|---|
+| N2-B (MEDIUM) | Legacy data saved by the old matcher can hold `[variant "Dél trabajo" unticked, exact "Del trabajo" ticked]` in one month; `flujosMes` allocates pases to rows in order, so the variant absorbs the pase and the user's unticked amount counts as realized (repair-sprint-1.md ~285, L-03d todo). | (a) keep data, show a visible notice listing affected months so the user can merge or rename; (b) engine allocates pases to the ticked exact row first (motor + goldens change, report first); (c) one-time merge migration (rewrites stored rows, against D14). | (a) none until the user acts; (b) fixes the over-count automatically for all users; (c) same as b but destructive. | (a) now (detection notice is presentation, no money rule — can be built); (b) as the real fix once the owner approves a golden diff. |
+| L3 partial payment | Quick expense "Sí" with a typed amount smaller than the pending row: today "Dejar" ticks the whole row, "Cambiar a" sets the row to the typed amount (alpha-product-surface.md L3). | (a) keep the two answers; (b) split: tick the typed part as a paid row, keep the rest pending. | (b) keeps the remaining obligation visible; (a) may hide it. | (b), needs the owner (it creates a new row-splitting rule). |
+| "(otro gasto)" vs topes | Separate quick expenses are rows "<x> (otro gasto)"; topes are per row name. | (a) they count only on their own row; (b) they count toward the original row's tope. | Budget alerts only, no balance change. | (b) (the spend is in the same category), owner to confirm. |
+| L5 due day | Only incomes (`frec`/`dias`) and invoices have dates; expenses/installments do not (alpha-product-surface.md L5). | (a) keep (undated rows appear in the last week as "Fin de mes"); (b) optional "vence el día N" field on rows/plans. | None (display). | (b) as a small additive field, owner to confirm (new stored field). |
+| N1-B (LOW) | `duplicar` sets the new year's `pagadasAntes` from all 12 months, so creating next year before December counts ticked-ahead installments as paid (repair-sprint-1.md ~256). | (a) keep; (b) count only realized months; (c) derive live from the previous year. | Debt saldo of the new year. | (a) for Alpha (normally done after December); (b) later. |
+| N3a-A (LOW) | Start-of-month notice never asks in January about the previous December (other year blob). | (a) keep (Editar of the January opening reaches December); (b) ask and write the previous year with its own revision check. | None. | (a). |
+| N3a-B (LOW) | "Mantener" after a confirmed closing changed: acknowledges the drift (updates calculadoAlConfirmar). | (a) keep (built); (b) keep asking until "Confirmar de nuevo". | None (confirmed value kept). | (a). |
+| N3b-A (LOW) | Ticking ahead in future model months is blocked; a row already ticked ahead can only be unticked. | (a) keep (built); (b) allow ticking ahead as a marker; (c) clear ticks ahead (rewrites data). | None while future. | (a). |
+| N3b-B (LOW) | `normalizar` stores cotización 1499 when none; the composition shows "cotización sin cargar". | (a) keep (built); (b) exclude USD/crypto from the net until loaded (motor/golden change). | Net worth includes USD at 1499 until loaded. | (a) + make the "sin cargar" label prominent. |
+| N4-A (LOW) | Unreadable Trabajo blob: copied to quarantine, next save writes Trabajo. | (a) keep (built); (b) block Trabajo writes until a restore; (c) warning with "Descargar el texto". | Raw text always kept. | (a) + (c) (download action is presentation). |
+| N4-B (LOW) | Quarantine copies are kept forever and travel in backups. | (a) keep (built); (b) Ajustes row to download and delete each; (c) auto-delete when readable (against "never delete"). | Storage only. | (b), owner to confirm deletion UX. |
+
+Safe to build without the owner (presentation only): N2-B (a) detection notice; N3b-B prominent "sin cargar" label; N4-A (c) download
+action. Everything else waits for the owner.
