@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1+qBvcl2GMAluCUYw4i+OJGBaH+KeJmbqI2Oz/29mJk=' 'sha256-JNvNNKNR/xT2ZeAzTIm/yYkea0Dwtdhkq9uDbtP6MdE='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1+qBvcl2GMAluCUYw4i+OJGBaH+KeJmbqI2Oz/29mJk=' 'sha256-DDa+nHC6W90ystUyiWWBTO8xhKhHOe5Pdo4q4jR+sbk='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -7579,7 +7579,9 @@ function csvTrabajo(){
   l.push(['Gastos hasta hoy', n(r.gastado)].join(';'));
   if(r.gastoFuturo) l.push(['Gastos programados', n(r.gastoFuturo)].join(';'));
   if(r.aAcreditar) l.push(['A acreditar más adelante', n(r.aAcreditar)].join(';'));
-  l.push(['Pasado a lo personal', n(r.pasado)].join(';'));
+  var pp = pasesPersonal(r);   // S2 L2: como Disponible del trabajo: lo que ya salió por un lado, lo programado (fecha futura) por otro
+  l.push(['Pasado a lo personal', n(pp.ya)].join(';'));
+  if(pp.programado) l.push(['Programado para pasar a lo personal', n(pp.programado)].join(';'));
   l.push(['Disponible del trabajo', n(r.disponible)].join(';'));
   l.push(['Por cobrar', n(r.porCobrar)].join(';'));
   l.push(['Facturado en los últimos 12 meses', n(r.facturado12)].join(';'));

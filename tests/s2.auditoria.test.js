@@ -106,3 +106,26 @@ test('L1: El año "Te quedan" subtracts the installments (model year; a year wit
   assert.ok(m, 'the sentence is there');
   assert.equal(m[1], a.fARS(60000));
 });
+
+// ── L2: the Trabajo CSV summary adds up: Cobrado − Gastos − Pasado (ya) = Disponible, with the scheduled pases on their own line ──
+function csvResumen(T){
+  var salida = '';
+  var d = C.vacio(2026); C.arrastre(d, 8, 0, 'declarado');
+  var a = H.appVista(d, T, null, '2026-10-15', {funcs: ['csvTrabajo', 'csvTexto', 'pasesPersonal'], globals: {MESES: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'],
+    fDiaLargo: function(x){ return x; }, nombreForma: function(f){ return f; }, nombrePeriodo: function(){ return ''; }, largoPeriodo: function(){ return 7; },
+    nomFac: function(f){ return f.cliente; }, facPorId: function(){ return null; }, nombreCat: function(){ return 'Otros'; }, fechaArchivo: function(){ return 'x'; },
+    descargar: function(t){ salida = t; }}});
+  a.tieneTrab = function(){ return true; };
+  a.csvTrabajo();
+  var r = {};
+  salida.replace('﻿', '').split('\r\n').slice(salida.split('\r\n').indexOf('RESUMEN AL 2026-10-15')).forEach(function(l){ var p = l.split(';'); if(p.length === 2) r[p[0]] = Number(p[1].replace(',', '.')); });
+  return r;
+}
+test('L2: Trabajo CSV summary splits the scheduled pases and adds up to Disponible', function(){
+  var T = H.trab([{fecha: '2026-09-01', monto: 300000}, {fecha: '2026-11-01', monto: 200000}], 1000000);
+  var r = csvResumen(T);
+  assert.equal(r['Disponible del trabajo'], 700000);
+  assert.equal(r['Pasado a lo personal'], 300000);
+  assert.equal(r['Programado para pasar a lo personal'], 200000);
+  assert.equal(r['Cobrado hasta hoy'] - r['Gastos hasta hoy'] - r['Pasado a lo personal'], r['Disponible del trabajo']);
+});
