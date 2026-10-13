@@ -9,7 +9,7 @@ var base = require('./motor-corpus');
 
 var SRC = la.SRC_FOR_TESTS;
 var FUNCS = ['renderAnio', 'resumenAnio', 'mesesCargados', 'anillo', 'plegable', 'abiertaDef', 'hARS', 'fARS', 'hUSD', 'fUSD', 'grupos', 'esc',
-  'lineas', 'barras', 'corto', 'aniosGuardados', 'leerAnio', 'exportarCSV', 'csvTexto',
+  'lineas', 'barras', 'corto', 'aniosGuardados', 'leerAnio', 'previoEnVivo', 'carryDiciembre', 'arrastreVivo', 'cuotasProgramadas', 'exportarCSV', 'csvTexto',
   'dos', 'ctxModelo', 'cierreAnioAnterior', 'vistaModelo', 'tilesMes', 'mesDelModelo', 'serieVista', 'mesesTranscurridos', 'mesEnRojo', 'datosRealizados',
   'numerosAnio', 'htmlHeroAnio', 'filaAn', 'estadoHero', 'claseHero',
   'analisisAnio', 'variacion', 'pctTxt', 'flecha', 'fraseComp', 'barritas', 'htmlComparacion', 'htmlTendencias']

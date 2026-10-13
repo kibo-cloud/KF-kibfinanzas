@@ -173,30 +173,40 @@ test('L5: the composition of a model year offers "Quitar plan" for a plan withou
   assert.match(a.htmlPatrimonio(p), /<button[^>]*data-act="quitarPlanSuelto" data-n="Préstamo"[^>]*>Quitar plan<\/button>/);
 });
 
-// ── H1 (OWNER_DECISION_REQUIRED, interim notice only): the new year keeps a SNAPSHOT of December's savings / dollars / a reponer /
-// installments; when the previous year changes later, the Patrimonio tab says so (no automatic re-sync) ──
-function anioCreado(cambiar){
+// ── H1: the new year keeps a SNAPSHOT of what it copied from December (copiaDiciembre). A MODEL year read by the app (leerAnio) follows the
+// live December for every copied field the user did not change (I4, R4.3; tests/h1.cruce.test.js); a LEGACY year never follows: the
+// Patrimonio tab says December changed and the copied values stay as they are ──
+function anioCreado(cambiar, legacy){
   var M = la.loadMotor(), HOY = C.hoy('2026-12-10');
-  var y26 = M.normalizar(C.copy(C.seccion2(true, true)), HOY);
+  var raw = C.seccion2(true, true), y26 = M.normalizar(C.copy(legacy ? H.sinModelo(raw) : raw), HOY);
   var ls = H.fakeStorage({'kibo.datos.2026': JSON.stringify(y26)}), app = H.appAlmacen(ls, '2026-12-10');
   H.cargarEn(app, ls, 2026); app.duplicar();
-  var raw26 = JSON.parse(ls.d['kibo.datos.2026']);
+  var raw26 = JSON.parse(ls.d['kibo.datos.2026']), raw27 = ls.d['kibo.datos.2027'];
   if(cambiar) cambiar(raw26);
-  var a = H.appVista(JSON.parse(ls.d['kibo.datos.2027']), null, {'kibo.datos.2026': JSON.stringify(raw26)}, '2027-01-10', {funcs: ['derivaAnioPrevio', 'avisoDerivaPrevio', 'esc']});
+  var a = H.appVista(JSON.parse(raw27), null, {'kibo.datos.2026': JSON.stringify(raw26), 'kibo.datos.2027': raw27}, '2027-01-10', {funcs: ['derivaAnioPrevio', 'avisoDerivaPrevio', 'cuotasDeMas', 'esc'], vars: ['MESES']});
+  a.D = a.leerAnio(2027);   // as the app opens it
   return a;
 }
 test('H1: no notice while December still gives what the new year copied', function(){
-  var a = anioCreado();
-  assert.deepEqual(a.plain(a.derivaAnioPrevio(a.D, a.hoy)), []);
-  assert.equal(a.avisoDerivaPrevio(a.D, a.hoy), '');
+  [false, true].forEach(function(legacy){
+    var a = anioCreado(null, legacy);
+    assert.deepEqual(a.plain(a.derivaAnioPrevio(a.D, a.hoy)), []);
+    assert.equal(a.avisoDerivaPrevio(a.D, a.hoy), '');
+  });
 });
-test('H1: December savings and installments changed after creating the year: a visible notice, the copied values untouched', function(){
+test('H1: December savings and installments changed after creating a MODEL year: the year follows December; the January row now extra is named', function(){
   var a = anioCreado(function(d){ d.meses[11].ahorroMesARS = 99000; d.meses[11].deudas = [{nombre: 'Préstamo', monto: 100000, pagado: true}]; });
-  var antes = [a.D.ahorroAnioAnterior, a.D.planDeudas['Préstamo'].pagadasAntes];
+  assert.deepEqual([a.D.ahorroAnioAnterior, a.D.planDeudas['Préstamo'].pagadasAntes], [899000, 6]);
+  assert.deepEqual(a.plain(a.derivaAnioPrevio(a.D, a.hoy)), []);
+  // the 6th installment was paid in December 2026: the January 2027 row duplicar loaded is now one too many (kept, D14; named)
+  assert.equal(a.avisoDerivaPrevio(a.D, a.hoy), '<div class="aviso" data-av="cuotasDeMas" role="status"><p>Préstamo: en 2027 hay 1 cuota cargada de más (cargadas en enero): son más que las que le quedan al plan después de diciembre 2026. No borré nada: revisalas antes de pagarlas.</p></div>');
+});
+test('H1: December changed after creating a LEGACY year: a visible notice, the copied values untouched (byte-identical legacy)', function(){
+  var a = anioCreado(function(d){ d.meses[11].ahorroMesARS = 99000; d.meses[11].deudas = [{nombre: 'Préstamo', monto: 100000, pagado: true}]; }, true);
+  assert.deepEqual([a.D.ahorroAnioAnterior, a.D.planDeudas['Préstamo'].pagadasAntes], [800000, 5]);
   assert.deepEqual(a.plain(a.derivaAnioPrevio(a.D, a.hoy)), ['ahorro', 'cuotas']);
   var h = a.avisoDerivaPrevio(a.D, a.hoy);
   assert.match(h, /Diciembre 2026 cambió después de crear 2027: el ahorro y las cuotas que pasaron al año nuevo pueden no coincidir\./);
-  assert.deepEqual([a.D.ahorroAnioAnterior, a.D.planDeudas['Préstamo'].pagadasAntes], antes);
 });
 
 // ── M1 (OWNER_DECISION_REQUIRED, interim warning only): a pase dated before the month the model starts (arrastre.desde) does not reach
@@ -422,7 +432,7 @@ function anioCreado2(cambiar26, cambiar27){
   var raw26 = JSON.parse(ls.d['kibo.datos.2026']), raw27 = JSON.parse(ls.d['kibo.datos.2027']);
   if(cambiar26) cambiar26(raw26);
   if(cambiar27) cambiar27(raw27);
-  return H.appVista(raw27, null, {'kibo.datos.2026': JSON.stringify(raw26)}, '2027-01-10', {funcs: ['derivaAnioPrevio', 'avisoDerivaPrevio', 'esc']});
+  return H.appVista(raw27, null, {'kibo.datos.2026': JSON.stringify(raw26)}, '2027-01-10', {funcs: ['derivaAnioPrevio', 'avisoDerivaPrevio', 'cuotasDeMas', 'esc']});
 }
 function aMano(d){ d.ahorroAnioAnterior = 1; d.usdAnioAnterior = 5000; d.aReponerAnterior = 7; d.planDeudas['Préstamo'].pagadasAntes = 0; }
 test('H1-R editing the starting savings, dollars, a reponer or paid installments on purpose shows no notice', function(){

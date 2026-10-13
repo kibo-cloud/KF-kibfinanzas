@@ -9,7 +9,7 @@ var base = require('./motor-corpus');
 
 var SRC = la.SRC_FOR_TESTS;
 var FUNCS = ['renderUSD', 'plegable', 'abiertaDef', 'hARS', 'hUSD', 'fARS', 'fUSD', 'grupos', 'esc', 'crudo', 'filasPatrimonio', 'htmlPatrimonio',
-  'htmlHeroPatri', 'htmlDolaresMes', 'costoDolaresHoy', 'htmlDatosPatri', 'esProgramado', 'planSinRenglones', 'derivaAnioPrevio', 'avisoDerivaPrevio', 'leerAnio']
+  'htmlHeroPatri', 'htmlDolaresMes', 'costoDolaresHoy', 'htmlDatosPatri', 'esProgramado', 'planSinRenglones', 'derivaAnioPrevio', 'avisoDerivaPrevio', 'leerAnio', 'previoEnVivo', 'carryDiciembre', 'arrastreVivo', 'cuotasProgramadas', 'cuotasDeMas']
   .filter(function(n){ return new RegExp('^function ' + n + '\\s*\\(', 'm').test(SRC); });   // filasPatrimonio / htmlPatrimonio exist only after R5 N3b
 var VARS = ['MESES', 'ICOSEC', 'oculto', 'PUNTOS'];
 

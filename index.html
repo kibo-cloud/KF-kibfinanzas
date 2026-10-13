@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-m0FsNrKE73h2m1lGiYUqZD6t4bAlfJSonNC+5xnK/pA=' 'sha256-Ze6iYaTadz6LUkhUKwQ73QmJOn3Uy/DzEJjcAL4hlSo='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-m0FsNrKE73h2m1lGiYUqZD6t4bAlfJSonNC+5xnK/pA=' 'sha256-X2YgZNaVI9VqwY8MQ3j/6shQaNELG/LJOxT0LuY68f4='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -4279,31 +4279,41 @@ function htmlDatosPatri(d){
      +   '<input class="monto usd" inputmode="decimal" data-campo="usdAnioAnterior" value="' + fUSD(d.usdAnioAnterior) + '"></div>';
   return h;
 }
-/* S2 H1 (OWNER_DECISION_REQUIRED, aviso provisorio): al crear un año, duplicar() copia el ahorro, los dólares, lo que falta reponer y las cuotas
-   ya pagadas de diciembre. Si el año anterior cambia después, esos valores copiados no se actualizan solos: solo se avisa (no se cambia nada). */
+/* S2 H1: al crear un año, duplicar() copia el ahorro, los dólares, lo que falta reponer y las cuotas ya pagadas de diciembre (copiaDiciembre).
+   Un año con modelo que arranca del cierre de diciembre los sigue en vivo (arrastreVivo, I4): solo un campo que el usuario cambió queda fijo, y
+   si diciembre cambió después, se avisa. Un año sin modelo (legacy) no sigue nada: se avisa cualquier cambio de diciembre (no se cambia nada). */
 // Se compara diciembre de hoy contra lo que se COPIÓ (copiaDiciembre), no contra los campos de arranque: el usuario puede editarlos a propósito.
-// Un año creado antes de guardar esa copia no tiene contra qué comparar: no avisa (no se adivina qué se copió)
+// Un año legacy creado antes de guardar esa copia no tiene contra qué comparar: no avisa (no se adivina qué se copió)
 function derivaAnioPrevio(d, hoy){
   var prev = leerAnio(d.anio - 1), out = [], c = d.copiaDiciembre;
   if(!prev || !c) return out;
   var s = serie(prev)[11], dif = function(a, b){ return Math.abs(num(a) - num(b)) > 0.5; };
-  if(dif(c.ahorro, s.ahorroAcumulado) || dif(c.aReponer, s.aReponer)) out.push('ahorro');
-  if(dif(c.usd, s.usdAcumulado)) out.push('dolares');
+  var vivo = !!previoEnVivo(d), suyo = function(v, copia){ return !vivo || num(v) !== num(copia); };   // con modelo: solo lo que el usuario cambió
+  if((suyo(d.ahorroAnioAnterior, c.ahorro) && dif(c.ahorro, s.ahorroAcumulado)) || (suyo(d.aReponerAnterior, c.aReponer) && dif(c.aReponer, s.aReponer))) out.push('ahorro');
+  if(suyo(d.usdAnioAnterior, c.usd) && dif(c.usd, s.usdAcumulado)) out.push('dolares');
   var cuotas = false;
   Object.keys(d.planDeudas || {}).forEach(function(k){
     if(!prev.planDeudas || !Object.prototype.hasOwnProperty.call(prev.planDeudas, k)) return;
     if(!c.cuotas || !Object.prototype.hasOwnProperty.call(c.cuotas, k)) return;   // un plan que no se copió de diciembre
-    var e = estadoDeuda(prev, k, 11, hoy); if(e && e.pagadas !== num(c.cuotas[k])) cuotas = true;
+    var e = estadoDeuda(prev, k, 11, hoy); if(e && suyo(d.planDeudas[k].pagadasAntes, c.cuotas[k]) && e.pagadas !== num(c.cuotas[k])) cuotas = true;
   });
   if(cuotas) out.push('cuotas');
   return out;
 }
 function avisoDerivaPrevio(d, hoy){
-  var q = derivaAnioPrevio(d, hoy); if(!q.length) return '';
-  var nom = {ahorro:'el ahorro', dolares:'los dólares', cuotas:'las cuotas'}, p = q.map(function(k){ return nom[k]; });
-  var lista = p.length > 1 ? p.slice(0, -1).join(', ') + ' y ' + p[p.length - 1] : p[0];
-  return '<div class="aviso" data-av="deriva" role="status"><p>Diciembre ' + (d.anio - 1) + ' cambió después de crear ' + d.anio + ': ' + lista
-    + ' que pasaron al año nuevo pueden no coincidir.</p></div>';
+  var q = derivaAnioPrevio(d, hoy), dm = cuotasDeMas(d), h = '';
+  if(q.length){
+    var nom = {ahorro:'el ahorro', dolares:'los dólares', cuotas:'las cuotas'}, p = q.map(function(k){ return nom[k]; });
+    var lista = p.length > 1 ? p.slice(0, -1).join(', ') + ' y ' + p[p.length - 1] : p[0];
+    h += '<div class="aviso" data-av="deriva" role="status"><p>Diciembre ' + (d.anio - 1) + ' cambió después de crear ' + d.anio + ': ' + lista
+      + ' que pasaron al año nuevo pueden no coincidir.</p></div>';
+  }
+  dm.forEach(function(x){   // S2 H1: cuotas cargadas en los dos años; no se borran (D14)
+    var ms = x.meses.map(function(j){ return MESES[j].toLowerCase(); }).join(', ');
+    h += '<div class="aviso" data-av="cuotasDeMas" role="status"><p>' + esc(x.nombre) + ': en ' + d.anio + ' hay ' + x.sobran + (x.sobran > 1 ? ' cuotas cargadas de más' : ' cuota cargada de más')
+      + ' (cargadas en ' + ms + '): son más que las que le quedan al plan después de diciembre ' + (d.anio - 1) + '. No borré nada: revisalas antes de pagarlas.</p></div>';
+  });
+  return h;
 }
 function renderUSD(){
   var hoy = hoyApp(), s = serie(D), p = patrimonioPantalla(D, hoy), h = '';
@@ -4685,8 +4695,13 @@ function guardar(){
   return hayLS;   // true solo si quedó escrito (lo usan los que escriben dos blobs, como un pase)
 }
 function leerAnio(a){   // null si no hay año guardado o si lo guardado no se puede leer (N4 I-3: ese texto no se pisa, ver escribirConRev)
-  try{ var s = localStorage.getItem(PREF + a), o = s ? JSON.parse(s) : null; return o && typeof o === 'object' && !Array.isArray(o) ? normalizar(o, hoyApp()) : null; }
+  var d;
+  try{ var s = localStorage.getItem(PREF + a), o = s ? JSON.parse(s) : null; d = o && typeof o === 'object' && !Array.isArray(o) ? normalizar(o, hoyApp()) : null; }
   catch(e){ return null; }
+  // S2 H1: lo que pasa de diciembre se lee en vivo del año anterior (solo si el blob es de ese año: nunca una vuelta sin fin);
+  // si eso falla, el año se lee tal cual está guardado
+  if(d && d.anio === +a) try{ arrastreVivo(d, hoyApp()); }catch(e){}
+  return d;
 }
 /* ═══ revisión por blob: varias pestañas (R4.3, Q12) ═══
    Cada blob guardado (un año, o Trabajo) lleva `rev`, un entero que sube en cada guardado. Antes de escribir se relee el rev guardado:
@@ -4753,7 +4768,9 @@ function alCambiarOtraPestana(e){   // el evento `storage` solo llega cuando OTR
   if(!arrancado || !D || !e || e.key === null || e.key === undefined) return;
   if(e.storageArea && e.storageArea !== localStorage) return;
   var anio = e.key === PREF + D.anio, trab = e.key === LSTRAB;
-  if(!anio && !trab) return;
+  // S2 H1: otra pestaña cambió el año anterior: lo que el abierto trae de diciembre se relee (como el disponible, que ya se lee en vivo).
+  // Solo si el abierto sigue a diciembre en vivo; con algo a medio escribir no se toca nada: lo hace la próxima lectura del año
+  if(!anio && !trab){ if(e.key === PREF + (D.anio - 1) && !hayEdicion() && previoEnVivo(D)){ arrastreVivo(D, hoyApp()); render(); } return; }
   if(hayEdicion()){ obsoleta = true; avisoOtraPestana(); return; }
   recargarDesdeAlmacenamiento(anio, trab);
 }
@@ -5147,7 +5164,12 @@ function duplicar(){
   Object.keys(D.planDeudas).forEach(function(nn){
     var pp = D.planDeudas[nn];
     if(!pp.cuotas || !pp.total) return;
+    // S2 H1: en un año con modelo, las cuotas que el año viejo todavía tiene cargadas sin pagar ya tienen su mes: no se cargan otra vez acá.
+    // pagadasAntes sigue siendo lo PAGADO (se corre solo para cargar, y la numeración de las cuotas sale bien)
+    var antes = pp.pagadasAntes;
+    if(n.arrastre) pp.pagadasAntes = antes + cuotasProgramadas(previo, nn);
     cargadas += cargarCuotas(D, nn, 0, hoyApp()).poner;
+    pp.pagadasAntes = antes;
   });
   if(guardar() === false){   // N4 I-2: el año nuevo no quedó guardado: todo vuelve a como estaba (ni cambio de año, ni marca de año abierto)
     D = previo; mes = mesPrevio; obsoleta = obsPrevia; hayLS = lsPrevio; sucio = false;
@@ -8131,6 +8153,65 @@ function cierreAnioAnterior(d, hoy){   // cierre de diciembre del año anterior,
   prev = leerAnio(d.anio - 1);
   if(!prev || !prev.arrastre) return null;
   return cadena(prev, hoy, ctxModelo(prev, hoy)).meses[11].cierre;
+}
+/* S2 H1 (I4 del diseño §1, R4.3): al pasar de diciembre a enero ningún peso aparece ni desaparece. Igual que el disponible (cierreAnioAnterior),
+   lo demás que el año nuevo trae de diciembre sale EN VIVO del año anterior guardado: el ahorro, lo que falta reponer, los dólares y las cuotas
+   ya pagadas de cada plan. Solo en un año con modelo que arranca del cierre de diciembre de un año con modelo (el mismo guardia).
+   Un campo que el usuario cambió en el año nuevo (distinto de lo copiado, copiaDiciembre) es suyo y no se toca (D14): ahí queda el aviso. */
+function previoEnVivo(d){   // el año anterior guardado, si d sigue su diciembre en vivo; si no, null
+  var ar = d && d.arrastre, prev;
+  if(!ar || ar.desde !== 0 || !ar.inicial || ar.inicial.origen !== 'arrastre') return null;
+  prev = leerAnio(d.anio - 1);
+  return prev && prev.arrastre ? prev : null;
+}
+function carryDiciembre(prev, hoy){   // lo que diciembre de `prev` deja hoy: lo mismo que duplicar copia
+  var s = serie(prev)[11], c = {ahorro:s.ahorroAcumulado, aReponer:s.aReponer, usd:s.usdAcumulado, cuotas:Object.create(null)};
+  Object.keys(prev.planDeudas).forEach(function(k){ var e = estadoDeuda(prev, k, 11, hoy); if(e) c.cuotas[k] = e.pagadas; });
+  return c;
+}
+// Cambia el año en memoria (lo llama leerAnio): campo y copia se mueven juntos, así lo guardado más tarde sigue diciendo "no lo tocó el usuario".
+// Un año creado antes de guardar la copia (1.32 / 1.33) adopta diciembre de hoy como copia: ningún número cambia ahora; desde ahí, los campos
+// que coinciden con diciembre lo siguen y los que no, quedan como están (no se puede saber si los escribió el usuario)
+function arrastreVivo(d, hoy){
+  var prev = previoEnVivo(d), own = Object.prototype.hasOwnProperty, v, c;
+  if(!prev) return d;
+  v = carryDiciembre(prev, hoy); c = d.copiaDiciembre;
+  if(!c){
+    c = d.copiaDiciembre = {ahorro:v.ahorro, aReponer:v.aReponer, usd:v.usd, cuotas:Object.create(null)};
+    Object.keys(d.planDeudas).forEach(function(k){ if(own.call(v.cuotas, k)) c.cuotas[k] = v.cuotas[k]; });
+    return d;
+  }
+  [['ahorroAnioAnterior', 'ahorro'], ['aReponerAnterior', 'aReponer'], ['usdAnioAnterior', 'usd']].forEach(function(x){
+    if(num(d[x[0]]) === num(c[x[1]])){ d[x[0]] = v[x[1]]; c[x[1]] = v[x[1]]; }
+  });
+  Object.keys(c.cuotas).forEach(function(k){
+    var p = own.call(d.planDeudas, k) ? d.planDeudas[k] : null;
+    if(p && own.call(v.cuotas, k) && p.pagadasAntes === c.cuotas[k]){ p.pagadasAntes = v.cuotas[k]; c.cuotas[k] = v.cuotas[k]; }
+  });
+  return d;
+}
+// meses en que la cuota de ese plan está cargada y sin pagar (programada o vencida): el lugar de una cuota de verdad
+function cuotasProgramadas(d, nombre){
+  var n = String(nombre || '').trim(), c = 0;
+  d.meses.forEach(function(m, j){
+    var ls = m.deudas.filter(function(it){ return String(it.nombre || '').trim() === n; });
+    if(ls.some(function(it){ return num(it.monto) > 0; }) && !ls.some(function(it){ return estaPagado(j, it) && num(it.monto) > 0; })) c++;
+  });
+  return c;
+}
+// S2 H1: cuotas cargadas en el año que el año anterior todavía tiene cargadas (duplicar, antes de esta versión, cargaba también las que
+// diciembre tenía programadas). No se borran ni se cambian (D14): se avisan. [{nombre, sobran, meses}]
+function cuotasDeMas(d){
+  var prev = previoEnVivo(d), out = [], own = Object.prototype.hasOwnProperty;
+  if(!prev) return out;
+  Object.keys(d.planDeudas).forEach(function(k){
+    var p = d.planDeudas[k], meses = [];
+    if(!p || !p.cuotas || !own.call(prev.planDeudas, k)) return;
+    d.meses.forEach(function(m, j){ if(m.deudas.some(function(it){ return String(it.nombre || '').trim() === k && num(it.monto) > 0; })) meses.push(j); });
+    var quedan = Math.max(0, p.cuotas - p.pagadasAntes - cuotasProgramadas(prev, k));
+    if(meses.length > quedan) out.push({nombre:k, sobran:meses.length - quedan, meses:meses});
+  });
+  return out;
 }
 /* ═══ R5: escrituras del modelo desde la pantalla (D2, D6) ═══
    Todas pasan por guardarModelo: pestaña vieja o revisión ajena -> no escribe nada; respaldo previo antes de la primera escritura del

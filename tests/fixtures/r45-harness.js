@@ -26,7 +26,7 @@ function trab(pases, cobrado){
 var TRAB_VACIO = {facturas: [], cobros: [], pases: [], gastos: [], productos: [], tope: 0};
 
 // ── screen view model (month card, Trabajo, net worth): same function list as tests/r4.integracion.test.js ──
-var FUNCS_VISTA = ['dos', 'leerAnio', 'ctxModelo', 'cierreAnioAnterior', 'vistaModelo', 'tilesMes', 'mesDelModelo', 'tieneTilde', 'repartoTrabajo', 'pasesDelMes',
+var FUNCS_VISTA = ['dos', 'leerAnio', 'previoEnVivo', 'carryDiciembre', 'arrastreVivo', 'cuotasProgramadas', 'ctxModelo', 'cierreAnioAnterior', 'vistaModelo', 'tilesMes', 'mesDelModelo', 'tieneTilde', 'repartoTrabajo', 'pasesDelMes',
   'hoyISO', 'esISO', 'utcDe', 'sumarDias', 'diasEntre', 'ganancia', 'saldoFac', 'venceFac', 'sinAsignar', 'tieneTrab', 'resumenTrab',
   'paseAlModelo', 'trabajoDisponible', 'patrimonioPantalla'];
 function appVista(d, T, otros, today, extra){
@@ -42,7 +42,7 @@ function tiles(app, j){ return app.plain(app.tilesMes(app.D, j, app.vistaModelo(
 // ── storage layer (save, revisions, backup/restore, duplicar, activarSaldos): same stubs as tests/r4.migracion.test.js ──
 var FUNCS_ALMACEN = ['claveMia', 'dos', 'revGuardada', 'claveCuarentena', 'ponerEnCuarentena', 'cuarentenaAntesDeBorrar', 'avisoCuarentena', 'esc', 'escribirConRev', 'avisoOtraPestana', 'hayEdicion', 'alCambiarOtraPestana', 'recargarDesdeAlmacenamiento',
   'asegurarSnapshotR4', 'respaldoR4', 'diasDelRespaldoR4', 'vencerRespaldoR4', 'volverAntesDeR4', 'ctxModelo', 'cierreAnioAnterior', 'activarSaldos',
-  'guardar', 'guardarTrab', 'blobAlDia', 'leerAnio', 'aniosGuardados', 'normTrab', 'leerTrab', 'esISO', 'utcDe', 'hoyISO', 'formaValida', 'anioValido', 'escribirAnios', 'armarCopia', 'restaurarTexto', 'avisoCopiaTrabajo', 'avisoCopiaGrande', 'duplicar', 'avisarRestauro',
+  'guardar', 'guardarTrab', 'blobAlDia', 'leerAnio', 'previoEnVivo', 'carryDiciembre', 'arrastreVivo', 'cuotasProgramadas', 'aniosGuardados', 'normTrab', 'leerTrab', 'esISO', 'utcDe', 'hoyISO', 'formaValida', 'anioValido', 'escribirAnios', 'armarCopia', 'restaurarTexto', 'avisoCopiaTrabajo', 'avisoCopiaGrande', 'duplicar', 'avisarRestauro',
   'escribirJuntos', 'diarioValido', 'apartarDiario', 'recuperarDiario', 'avisoDiario', 'sinTaparCuarentena', 'sumarPaseT', 'sacarPaseT'];
 var VARS_ALMACEN = ['PREF', 'LSANIO', 'LSCOPIA', 'LSOCULTO', 'LSBIENV', 'LSHIST', 'LSTRAB', 'LSVISTA', 'LSR4', 'LSAVCIERRE', 'LSDATOSDESDE', 'LSCOPIAPOS', 'CLAVES_PROPIAS', 'sucio', 'arrancado', 'obsoleta', 'pendiente', 'FORMAS', 'MAX_COPIA', 'LSCUAR', 'LSDIARIO'];
 function appAlmacen(ls, today, extra, funcsExtra){
