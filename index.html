@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-pzNjKDvkerBEKJeZ6FNa6CWIE6xVibfNiPbn5gJQpe8=' 'sha256-gL3rpda1Bmrnj8CMatR9uYI8Blb1VURMhARJWS+dOhI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-pzNjKDvkerBEKJeZ6FNa6CWIE6xVibfNiPbn5gJQpe8=' 'sha256-Zual5tIXxsHN6dd5wLbpMNZkRtE4WXwa8EQYigl4u9w='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -2695,7 +2695,7 @@ var M1 = '/*DATOS_' + 'INICIO*/';
 var M2 = '/*DATOS_' + 'FIN*/';
 
 var APPVER   = '1.33.0';    // versión visible en Ajustes (LAB)
-var PREF     = 'kibo.datos.';        // kibo.datos.2026, kibo.datos.2027…
+var PREF     = 'kibo.datos.', memoAnios = Object.create(null);        // kibo.datos.2026, kibo.datos.2027… · memoAnios: ver leerAnio (final audit 12)
 var LSANIO   = 'kibo.anio';
 var LSCOPIA  = 'kibo.ultimaCopia';
 var LSOCULTO = 'kibo.oculto';         // '1' = montos tapados con puntos
@@ -2827,6 +2827,7 @@ function conScroll(fn){
   if(y > 0) window.scrollTo(0, y);
 }
 function render(){
+  memoAnios = Object.create(null);   // final audit 12: cada render lee de nuevo lo guardado (una vez por año)
   document.querySelector('#titulo .anio').textContent = D.anio;
   var pt = document.getElementById('printTit'); if(pt) pt.textContent = 'TuGasto · ' + D.anio + ' · impreso el ' + fechaCorta(new Date().toISOString());
   document.title = 'TuGasto · ' + D.anio;
@@ -4285,7 +4286,7 @@ function htmlDatosPatri(d){
 // Se compara diciembre de hoy contra lo que se COPIÓ (copiaDiciembre), no contra los campos de arranque: el usuario puede editarlos a propósito.
 // Un año legacy creado antes de guardar esa copia no tiene contra qué comparar: no avisa (no se adivina qué se copió)
 function derivaAnioPrevio(d, hoy){
-  var prev = leerAnio(d.anio - 1), out = [], c = d.copiaDiciembre;
+  var prev = leerAnio(d.anio - 1, true), out = [], c = d.copiaDiciembre;
   if(!prev || !c) return out;
   var s = serie(prev)[11], dif = function(a, b){ return Math.abs(num(a) - num(b)) > 0.5; };
   var vivo = !!previoEnVivo(d), suyo = function(v, copia){ return !vivo || num(v) !== num(copia); };   // con modelo: solo lo que el usuario cambió
@@ -4712,14 +4713,19 @@ function copiaDelSiguiente(anio){
   o.copiaDiciembre = sig.copiaDiciembre;
   return escribirConRev(clave, o) === 'ok';   // con la revisión que se acaba de leer: si otra pestaña lo cambió, no se pisa
 }
-function leerAnio(a){   // null si no hay año guardado o si lo guardado no se puede leer (N4 I-3: ese texto no se pisa, ver escribirConRev)
-  var d;
+/* Final audit 12: compartido = quien llama solo LEE el año (el año anterior que se sigue en vivo, el cierre de diciembre, el aviso de deriva).
+   Esas lecturas comparten un objeto por año y por día (memoAnios), que se vacía al empezar cada render, en cada escritura (escribirConRev,
+   escribirJuntos, recuperarDiario, escribirAnios) y con cada evento de otra pestaña. Sin compartido, siempre un objeto nuevo (se puede editar). */
+function leerAnio(a, compartido){   // null si no hay año guardado o si lo guardado no se puede leer (N4 I-3: ese texto no se pisa, ver escribirConRev)
+  var d, h, k;
+  if(compartido){ h = hoyApp(); k = a + '@' + h.anio + '-' + h.mes + '-' + h.dia; if(Object.prototype.hasOwnProperty.call(memoAnios, k)) return memoAnios[k]; }
   try{ var s = localStorage.getItem(PREF + a), o = s ? JSON.parse(s) : null; d = o && typeof o === 'object' && !Array.isArray(o) ? normalizar(o, hoyApp()) : null; }
-  catch(e){ return null; }
+  catch(e){ d = null; }
   // S2 H1: lo que pasa de diciembre se lee en vivo del año anterior (solo si el blob es de ese año: nunca una vuelta sin fin);
   // si eso falla, el año se lee tal cual está guardado y se marca (final audit 10: no en silencio; la marca no es enumerable, nunca se guarda)
   // para que el aviso de diciembre lo diga (avisoDerivaPrevio)
   if(d && d.anio === +a) try{ arrastreVivo(d, hoyApp()); }catch(e){ Object.defineProperty(d, 'diciembreFallo', {value: true, configurable: true}); }
+  if(compartido) memoAnios[k] = d;
   return d;
 }
 /* ═══ revisión por blob: varias pestañas (R4.3, Q12) ═══
@@ -4762,7 +4768,7 @@ function escribirConRev(clave, obj){   // 'ok' | 'conflicto' (otra pestaña guar
   }
   if(st.hay && st.rev !== mia) return 'conflicto';   // si el blob ya no existe no hay nada que pisar: se escribe
   obj.rev = mia + 1;
-  try{ localStorage.setItem(clave, JSON.stringify(obj)); return 'ok'; }
+  try{ localStorage.setItem(clave, JSON.stringify(obj)); memoAnios = Object.create(null); return 'ok'; }
   catch(e){ if(tenia === undefined) delete obj.rev; else obj.rev = tenia; return 'error'; }
 }
 function avisoOtraPestana(){
@@ -4786,6 +4792,7 @@ function recargarDesdeAlmacenamiento(anio, trab){   // sin argumentos recarga el
 function alCambiarOtraPestana(e){   // el evento `storage` solo llega cuando OTRA pestaña escribió
   if(!arrancado || !D || !e || e.key === null || e.key === undefined) return;
   if(e.storageArea && e.storageArea !== localStorage) return;
+  memoAnios = Object.create(null);   // final audit 12: otra pestaña escribió
   var anio = e.key === PREF + D.anio, trab = e.key === LSTRAB;
   // S2 H1: otra pestaña cambió el año anterior: lo que el abierto trae de diciembre se relee (como el disponible, que ya se lee en vivo).
   // Solo si el abierto sigue a diciembre en vivo; con algo a medio escribir no se toca nada: lo hace la próxima lectura del año
@@ -4982,6 +4989,7 @@ function escribirAnios(anios, claves){
     try{ localStorage.setItem(PREF + d.anio, JSON.stringify(d)); if(d.anio > ultimo) ultimo = d.anio; }
     catch(e){ fallaron.push(d.anio); }
   }
+  memoAnios = Object.create(null);   // final audit 12
   return {ultimo:ultimo, fallaron:fallaron, saltados:saltados};
 }
 function avisarRestauro(total, fallaron, trabajoFallo, saltados, cuarFuera){
@@ -7908,6 +7916,7 @@ function escribirJuntos(lista, op){   // lista [{clave, obj}] en orden; 'ok' | '
   }
   try{ localStorage.setItem(LSDIARIO, JSON.stringify({version: 1, op: op, creado: ahora, blobs: plan})); }
   catch(e){ try{ localStorage.removeItem(LSDIARIO); }catch(e2){} return 'error'; }   // el diario no entró: no se escribe nada
+  memoAnios = Object.create(null);   // final audit 12
   for(i=0;i<plan.length;i++){
     try{ previos[i] = localStorage.getItem(plan[i].clave); localStorage.setItem(plan[i].clave, plan[i].texto); }
     catch(e){
@@ -7951,6 +7960,7 @@ function recuperarDiario(){
     if(st.hay !== b.hay || st.rev !== b.rev || !!st.roto !== !!b.roto) return apartarDiario(s);   // ya no es el de antes: no se pisa
     faltan.push({b: b, st: st});
   }
+  memoAnios = Object.create(null);   // final audit 12
   for(i=0;i<faltan.length;i++){
     if(faltan[i].st.roto && !ponerEnCuarentena(faltan[i].b.clave, faltan[i].st.texto)) return 'pendiente';
     try{ localStorage.setItem(faltan[i].b.clave, faltan[i].b.texto); }catch(e){ return 'pendiente'; }
@@ -8009,7 +8019,7 @@ function anioExiste(a){ return a === D.anio || !!leerAnio(a); }
    esos meses no llegan al disponible (el saldo de arranque ya cuenta lo que tenías). Antes que cambiar el saldo, se bloquea (preferencia del
    dueño): la hoja no guarda esa fecha y dice desde cuándo elegir. Un pase viejo así no se toca, y tampoco se deja borrar (quitarPase). */
 function desdeDelSaldo(anio, mes){   // el mes desde el que ese año lleva el saldo mes a mes, si (anio, mes) es anterior; si no, -1
-  var y = anio === D.anio ? D : leerAnio(anio), ar = y && y.arrastre;
+  var y = anio === D.anio ? D : leerAnio(anio, true), ar = y && y.arrastre;
   return ar && typeof ar === 'object' && mes < num(ar.desde) ? num(ar.desde) : -1;
 }
 /* Final audit 4: un año sin el saldo mes a mes (o que no está) ANTES del primer año guardado que lo lleva: si ese año arranca de un saldo
@@ -8334,7 +8344,7 @@ function ctxModelo(d, hoy){
 function cierreAnioAnterior(d, hoy){   // cierre de diciembre del año anterior, en vivo, solo si el año arranca de ese cierre y el anterior tiene modelo; si no, manda el arrastre guardado
   var ar = d.arrastre, prev;
   if(!ar || ar.desde !== 0 || !ar.inicial || ar.inicial.origen !== 'arrastre') return null;
-  prev = leerAnio(d.anio - 1);
+  prev = leerAnio(d.anio - 1, true);
   if(!prev || !prev.arrastre) return null;
   return cadena(prev, hoy, ctxModelo(prev, hoy)).meses[11].cierre;
 }
@@ -8345,7 +8355,7 @@ function cierreAnioAnterior(d, hoy){   // cierre de diciembre del año anterior,
 function previoEnVivo(d){   // el año anterior guardado, si d sigue su diciembre en vivo; si no, null
   var ar = d && d.arrastre, prev;
   if(!ar || ar.desde !== 0 || !ar.inicial || ar.inicial.origen !== 'arrastre') return null;
-  prev = leerAnio(d.anio - 1);
+  prev = leerAnio(d.anio - 1, true);   // compartido: quien lo usa solo lo lee
   return prev && prev.arrastre ? prev : null;
 }
 function carryDiciembre(prev, hoy){   // lo que diciembre de `prev` deja hoy: lo mismo que duplicar copia

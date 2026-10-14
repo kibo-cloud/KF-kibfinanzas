@@ -361,3 +361,56 @@ test('10: when following December works there is no mark and no such notice', fu
   assert.equal(d.diciembreFallo, undefined);
   assert.doesNotMatch(a.avisoDerivaPrevio(d, a.hoy), /No pude leer diciembre/);
 });
+
+// ── 12 (LOW, perf): leerAnio follows December through arrastreVivo -> previoEnVivo -> leerAnio, and every render asks again from
+// derivaAnioPrevio, cuotasDeMas, cierreAnioAnterior...: a 4-year chain re-read and re-normalized each previous year 5-7 times per render.
+// The read-only lookups share one read per year (memoAnios), cleared by render() and by every write / storage event / restore ──
+var la12 = require('./load-app');
+function cadena4(){
+  var y26 = M.normalizar(C.copy(C.seccion2(true, true)), C.hoy('2026-12-20'));
+  var ls = H.fakeStorage({'kibo.datos.2026': JSON.stringify(y26)}), a = H.appAlmacen(ls, '2026-12-20');
+  a.D = a.leerAnio(2026); a.duplicar(); a.D = a.leerAnio(2027); a.duplicar(); a.D = a.leerAnio(2028); a.duplicar();
+  var lecturas = {}, get = ls.getItem;
+  ls.getItem = function(k){ lecturas[k] = (lecturas[k] || 0) + 1; return get.call(ls, k); };
+  return {ls: ls, lecturas: function(){ var l = lecturas; lecturas = {}; return l; }};
+}
+function app2029(ls){
+  var a = H.appAlmacen(ls, '2027-01-10', {}, ['derivaAnioPrevio', 'cuotasDeMas', 'estadoDeuda', 'desdeDelSaldo', 'avisoDerivaPrevio']);
+  a.D = a.leerAnio(2029);
+  return a;
+}
+function pantalla(a){   // what one render asks about December (the read-only lookups of the Mes / Patrimonio tabs)
+  return JSON.stringify([a.derivaAnioPrevio(a.D, a.hoy), a.cuotasDeMas(a.D), a.cierreAnioAnterior(a.D, a.hoy), a.previoEnVivo(a.D),
+    a.desdeDelSaldo(2027, 0), a.avisoDerivaPrevio(a.D, a.hoy), a.ctxModelo(a.D, a.hoy), a.D]);
+}
+var SIN_MEMO = function(){ return new Proxy({}, {set: function(){ return true; }, getOwnPropertyDescriptor: function(){ return undefined; }, has: function(){ return false; }}); };
+test('12: one render over a 4-year chain reads each previous year once; results byte-identical to reading without the memo', function(){
+  var c = cadena4(), a = app2029(c.ls);
+  assert.match(la12.SRC_FOR_TESTS, /function render\(\)\{\n  memoAnios = Object\.create\(null\);/, 'render() starts from fresh reads');
+  a.memoAnios = Object.create(null);                         // what render() does first
+  c.lecturas();
+  var conMemo = pantalla(a), l = c.lecturas();
+  ['kibo.datos.2026', 'kibo.datos.2027', 'kibo.datos.2028'].forEach(function(k){ assert.ok((l[k] || 0) <= 1, k + ' read ' + l[k] + ' times'); });
+  assert.equal(l['kibo.datos.2029'] || 0, 0, 'the open year is not re-read');
+  var b = app2029(c.ls); b.memoAnios = SIN_MEMO();
+  assert.equal(pantalla(b), conMemo, 'byte-identical to the unmemoized path');
+  var l2 = c.lecturas();
+  assert.ok(l2['kibo.datos.2026'] > 3, 'the unmemoized path is the old repeated chain (' + l2['kibo.datos.2026'] + ' reads of 2026)');
+});
+test('12: a save, a storage event from another tab and a restore all drop the memo: the chain follows the new December', function(){
+  var c = cadena4(), a = app2029(c.ls), antes = pantalla(a);
+  // own save of 2026 December (escribirConRev)
+  var d29 = a.D; a.D = a.leerAnio(2026); a.D.meses[11].ahorroMesARS = 100000; a.sucio = true;
+  assert.equal(a.guardar(), true); a.D = d29;
+  var trasGuardar = pantalla(a);
+  assert.notEqual(trasGuardar, antes);
+  var f = app2029(c.ls); f.D = d29; assert.equal(trasGuardar, pantalla(f), 'same as a fresh tab');
+  // another tab saves 2026 again
+  var y = JSON.parse(c.ls.d['kibo.datos.2026']); y.meses[11].ahorroMesARS = 200000; y.rev++; c.ls.d['kibo.datos.2026'] = JSON.stringify(y);
+  a.alCambiarOtraPestana({key: 'kibo.datos.2026', storageArea: c.ls});
+  var g = app2029(c.ls); g.D = a.D; assert.equal(pantalla(a), pantalla(g), 'after the storage event');
+  // a restore of 2026 + 2027
+  var y26 = JSON.parse(c.ls.d['kibo.datos.2026']), y27 = JSON.parse(c.ls.d['kibo.datos.2027']); y26.meses[11].ahorroMesARS = 0;
+  a.restaurarTexto(JSON.stringify({app: 'TuGasto', version: 1, anios: {'2026': y26, '2027': y27}})); a.pendiente();
+  var r = app2029(c.ls); r.D = a.D; assert.equal(pantalla(a), pantalla(r), 'after a restore');
+});
