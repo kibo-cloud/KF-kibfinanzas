@@ -1,0 +1,29 @@
+# Dependencies and tool caches
+node_modules/
+.npm/
+
+# Logs and local scratch output
+*.log
+npm-debug.log*
+*.tmp
+.p*tmp.js
+
+# Personal data that must never be committed (backups, exports)
+*.backup.json
+tugasto-*.json
+kibfinanzas-*.json
+tugasto-*.html
+kibfinanzas-*.html
+*.csv
+
+# Environment and secrets
+.env
+.env.*
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
