@@ -339,3 +339,25 @@ test('9: with the cursor still in a field the save re-reads December but does no
   assert.equal(b.g.renders, 0);
   assert.equal(JSON.stringify(b.D.meses), antes);
 });
+
+// ── 10 (LOW): leerAnio swallowed any error while following December (`catch(e){}`): the year opened as stored with no word that its
+// December values could be stale. Now the failure is marked on the year read (never saved) and the December notice says it ──
+test('10: a failure while following December opens the year as stored, nothing written, and the December notice says it', function(){
+  var ls = H.fakeStorage(creado(C.seccion2(true, true), '2026-12-20').d), antes = JSON.stringify(ls.d);
+  var a = H.appAlmacen(ls, '2027-01-10', {arrastreVivo: function(){ throw new Error('boom'); }}, ['avisoDerivaPrevio']);
+  var d = a.leerAnio(2027);
+  assert.equal(JSON.stringify(d), JSON.stringify(a.normalizar(JSON.parse(ls.d['kibo.datos.2027']), a.hoy)), 'the year exactly as stored');
+  assert.equal(d.diciembreFallo, true, 'marked');
+  assert.equal(Object.keys(d).indexOf('diciembreFallo'), -1, 'the mark is never saved (not enumerable)');
+  var h = a.avisoDerivaPrevio(d, a.hoy);
+  assert.match(h, /data-av="deriva"/);
+  assert.match(h, /No pude leer diciembre 2026 para seguirlo/);
+  assert.doesNotMatch(h, /pase/i);
+  assert.equal(JSON.stringify(ls.d), antes, 'nothing written');
+});
+test('10: when following December works there is no mark and no such notice', function(){
+  var ls = H.fakeStorage(creado(C.seccion2(true, true), '2026-12-20').d), a = H.appAlmacen(ls, '2027-01-10', {}, ['avisoDerivaPrevio', 'derivaAnioPrevio', 'cuotasDeMas', 'estadoDeuda']);
+  var d = a.leerAnio(2027);
+  assert.equal(d.diciembreFallo, undefined);
+  assert.doesNotMatch(a.avisoDerivaPrevio(d, a.hoy), /No pude leer diciembre/);
+});

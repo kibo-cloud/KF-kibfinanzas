@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-pzNjKDvkerBEKJeZ6FNa6CWIE6xVibfNiPbn5gJQpe8=' 'sha256-n9Mq5rUy65U7H9RaPNyiY/3PYkxWM1Lxu3z1bzzFaik='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-pzNjKDvkerBEKJeZ6FNa6CWIE6xVibfNiPbn5gJQpe8=' 'sha256-gL3rpda1Bmrnj8CMatR9uYI8Blb1VURMhARJWS+dOhI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -4301,6 +4301,8 @@ function derivaAnioPrevio(d, hoy){
   return out;
 }
 function avisoDerivaPrevio(d, hoy){
+  if(d && d.diciembreFallo) return '<div class="aviso" data-av="deriva" role="status"><p>No pude leer diciembre ' + (d.anio - 1) + ' para seguirlo: '   // final audit 10
+    + 'el ahorro, los dólares y las cuotas que pasaron a ' + d.anio + ' quedaron como estaban guardados y pueden no coincidir. No cambié nada.</p></div>';
   var q = derivaAnioPrevio(d, hoy), dm = cuotasDeMas(d), h = '';
   if(q.length){
     var nom = {ahorro:'el ahorro', dolares:'los dólares', cuotas:'las cuotas'}, p = q.map(function(k){ return nom[k]; });
@@ -4715,8 +4717,9 @@ function leerAnio(a){   // null si no hay año guardado o si lo guardado no se p
   try{ var s = localStorage.getItem(PREF + a), o = s ? JSON.parse(s) : null; d = o && typeof o === 'object' && !Array.isArray(o) ? normalizar(o, hoyApp()) : null; }
   catch(e){ return null; }
   // S2 H1: lo que pasa de diciembre se lee en vivo del año anterior (solo si el blob es de ese año: nunca una vuelta sin fin);
-  // si eso falla, el año se lee tal cual está guardado
-  if(d && d.anio === +a) try{ arrastreVivo(d, hoyApp()); }catch(e){}
+  // si eso falla, el año se lee tal cual está guardado y se marca (final audit 10: no en silencio; la marca no es enumerable, nunca se guarda)
+  // para que el aviso de diciembre lo diga (avisoDerivaPrevio)
+  if(d && d.anio === +a) try{ arrastreVivo(d, hoyApp()); }catch(e){ Object.defineProperty(d, 'diciembreFallo', {value: true, configurable: true}); }
   return d;
 }
 /* ═══ revisión por blob: varias pestañas (R4.3, Q12) ═══
