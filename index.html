@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-pzNjKDvkerBEKJeZ6FNa6CWIE6xVibfNiPbn5gJQpe8=' 'sha256-1SOD1O9kMAxKdSwzysnhM9lFVfikq5sRV5WfOAFeZMQ='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-pzNjKDvkerBEKJeZ6FNa6CWIE6xVibfNiPbn5gJQpe8=' 'sha256-qoMLjrZyTJ15oQYtnuyG+jnr0f0b8BdwW3+YjtkojEE='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -4977,9 +4977,10 @@ function escribirAnios(anios, claves){
   }
   return {ultimo:ultimo, fallaron:fallaron, saltados:saltados};
 }
-function avisarRestauro(total, fallaron, trabajoFallo, saltados){
-  saltados = saltados || [];   // claves de la copia que no son un año válido: solo cifras (las filtra restaurarTexto), no hace falta escaparlas
+function avisarRestauro(total, fallaron, trabajoFallo, saltados, cuarFuera){
+  saltados = saltados || []; cuarFuera = cuarFuera || [];   // claves de la copia que no son un año válido: solo cifras (las filtra restaurarTexto), no hace falta escaparlas
   var nota = saltados.length ? 'Salteé lo que no es un año válido: <b>' + saltados.join(', ') + '</b>.' : '';
+  if(cuarFuera.length) nota += (nota ? ' ' : '') + 'No traje los datos apartados (los que no se pudieron leer) de <b>' + esc(cuarFuera.join(', ')) + '</b>: son demasiado grandes.';   // final audit 8
   if(!fallaron.length && !trabajoFallo && !nota){ toast('Restauré ' + total + (total === 1 ? ' año' : ' años')); return; }
   if(!fallaron.length && !trabajoFallo){ alerta('Restauré ' + total + (total === 1 ? ' año' : ' años'), nota + ' Lo demás de la copia quedó guardado.'); return; }
   var ok = total - fallaron.length, falta = fallaron.slice();
@@ -5020,6 +5021,21 @@ function mezclaTrabajo(j, claves){
   ys = aniosDePases(T && T.pases).filter(function(a){ return claves.indexOf(a) < 0 && tel.indexOf(a) > -1; });
   return ys.length ? 'El Trabajo de este teléfono pasó plata a lo personal en ' + ys.join(', ') + ', que la copia no trae y este teléfono conserva, pero el Trabajo de la copia no tiene eso' + rompe + fin + 'con todos esos años' + cola : '';
 }
+/* N4 I-3 / N7: el texto apartado que trae la copia vuelve a kibo.cuarentena.*, cada uno una vez y sin pisar los de acá. Final audit 8: con
+   tope (2 MB cada texto, 4 MB entre todos los de la copia), para que una copia no llene el almacenamiento con algo que la app nunca borra.
+   Lo que pasa el tope no se trae y se nombra en el aviso; la cuarentena que ya hay en este teléfono no se toca. Devuelve las claves no traídas. */
+function cuarentenaDeCopia(cq){
+  var TOPE_TEXTO = 2 * 1024 * 1024, TOPE_TOTAL = 4 * 1024 * 1024, total = 0, fuera = [];
+  if(!(cq && typeof cq === 'object')) return fuera;
+  Object.keys(cq).forEach(function(k){
+    var m = /^(\d{4}|trabajo)(?:\.[1-9]\d*)?$/.exec(k), t = cq[k];
+    if(!(m && (m[1] === 'trabajo' || anioValido(m[1])) && typeof t === 'string')) return;
+    if(t.length > TOPE_TEXTO || total + t.length > TOPE_TOTAL){ fuera.push(k); return; }
+    total += t.length;
+    ponerEnCuarentena(m[1] === 'trabajo' ? LSTRAB : PREF + m[1], t);
+  });
+  return fuera;
+}
 function restaurarTexto(txt){
   (function(){
     var j;
@@ -5037,10 +5053,7 @@ function restaurarTexto(txt){
     pendiente = function(){
       obsoleta = false;   // restaurar reemplaza todo: no hay nada que "recargar" de otra pestaña
       var r = escribirAnios(anios, claves), trabajoFallo = false, stT;
-      if(j.cuarentena && typeof j.cuarentena === 'object') Object.keys(j.cuarentena).forEach(function(k){   // N4 I-3 / N7: cada texto vuelve una vez, sin pisar los de acá
-        var m = /^(\d{4}|trabajo)(?:\.[1-9]\d*)?$/.exec(k);
-        if(m && (m[1] === 'trabajo' || anioValido(m[1])) && typeof j.cuarentena[k] === 'string') ponerEnCuarentena(m[1] === 'trabajo' ? LSTRAB : PREF + m[1], j.cuarentena[k]);
-      });
+      var cuarFuera = cuarentenaDeCopia(j.cuarentena);
       if(j.trabajo && typeof j.trabajo === 'object'){
         T = normTrab(j.trabajo); stT = revGuardada(LSTRAB);
         if(stT.hay) T.rev = stT.rev;   // escribirConRev exige la revisión guardada y suma 1: queda por encima de lo que cualquier pestaña tenga cargado
@@ -5050,7 +5063,7 @@ function restaurarTexto(txt){
       var abrir = teniaDatos && claves.indexOf(String(D.anio)) > -1 ? D.anio : r.ultimo;
       if(abrir) recordarAnio(abrir);
       cargar();
-      avisarRestauro(claves.length, r.fallaron, trabajoFallo, saltados.concat(r.saltados));
+      avisarRestauro(claves.length, r.fallaron, trabajoFallo, saltados.concat(r.saltados), cuarFuera);
     };
     abrirHoja('<h3>Restaurar copia</h3><div class="texto" style="margin-bottom:16px">La copia trae ' + claves.length + (claves.length === 1 ? ' año: ' : ' años: ')
       + '<b>' + claves.join(', ') + '</b>. Va a <b>reemplazar</b> lo que tengas guardado de esos años en este teléfono.'

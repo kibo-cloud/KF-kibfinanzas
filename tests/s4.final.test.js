@@ -268,3 +268,37 @@ test('7: a restore with a year that is an array does not store it: skipped and r
   assert.equal(a.g.alertas.length, 1);
   assert.match(a.g.alertas[0][1], /Salteé lo que no es un año válido: <b>2025<\/b>/);
 });
+
+// ── 8 (MEDIUM, security): restore copied ANY string of the backup's `cuarentena` into kibo.cuarentena.*, a key the app never deletes:
+// a 4.4 MB text filled the storage and every later save failed (sec2 probe 4). Each text is capped at 2 MB and the backup's total at 4 MB ──
+function restaurarCuar(cuar, previa){
+  var ls = H.fakeStorage(previa || {}), a = H.appAlmacen(ls, '2026-10-15', {}, ['descTrabajo', 'fARS', 'esc']);
+  a.D = a.normalizar(C.vacio(2026), a.hoy);
+  a.restaurarTexto(JSON.stringify({app: 'TuGasto', version: 1, anios: {'2026': C.vacio(2026)}, cuarentena: cuar}));
+  a.pendiente();
+  return {ls: ls, a: a};
+}
+var MB = 1024 * 1024;
+function corto(t){ return typeof t === 'string' && t.length > 40 ? t.length + ' chars' : t; }   // a failing assert never prints megabytes
+test('8: a quarantine text over 2 MB is not imported and is named in the restore message; a small one still comes back', function(){
+  var r = restaurarCuar({'2026': 'Q'.repeat(2 * MB + 1), '2025': 'roto'});
+  assert.equal(corto(r.ls.d['kibo.cuarentena.2026']), undefined, 'the oversized text is not stored');
+  assert.equal(r.ls.d['kibo.cuarentena.2025'], 'roto', 'the small one is imported');
+  assert.equal(r.a.g.alertas.length, 1);
+  assert.match(r.a.g.alertas[0][1], /No traje los datos apartados \(los que no se pudieron leer\) de <b>2026<\/b>: son demasiado grandes\./);
+  assert.match(r.a.g.alertas[0][1], /Lo demás de la copia quedó guardado/);
+});
+test('8: the texts of one backup add up to 4 MB at most: the one that would pass it is not imported and named; exactly 2 MB is accepted', function(){
+  var r = restaurarCuar({'2024': 'a'.repeat(2 * MB), '2025': 'b'.repeat(1.5 * MB), 'trabajo': 'c'.repeat(MB), '2023': 'd'.repeat(0.5 * MB)});
+  assert.equal(r.ls.d['kibo.cuarentena.2024'].length, 2 * MB);
+  assert.equal(r.ls.d['kibo.cuarentena.2025'].length, 1.5 * MB);
+  assert.equal(corto(r.ls.d['kibo.cuarentena.trabajo']), undefined, '2 + 1.5 + 1 MB would pass the 4 MB total');
+  assert.equal(r.ls.d['kibo.cuarentena.2023'].length, 0.5 * MB, 'a later text that still fits the total is imported');
+  assert.match(r.a.g.alertas[0][1], /de <b>trabajo<\/b>: son demasiado grandes/);
+});
+test('8: the quarantine already on the phone is never deleted or replaced, even when the backup brings an oversized text for that key', function(){
+  var r = restaurarCuar({'2026': 'Q'.repeat(3 * MB), '2026.2': 'otro'}, {'kibo.cuarentena.2026': 'viejo'});
+  assert.equal(corto(r.ls.d['kibo.cuarentena.2026']), 'viejo');
+  assert.equal(corto(r.ls.d['kibo.cuarentena.2026.2']), 'otro', 'the small text goes next to it, as before');
+  assert.match(r.a.g.alertas[0][1], /de <b>2026<\/b>: son demasiado grandes/);
+});
