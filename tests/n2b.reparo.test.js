@@ -33,7 +33,7 @@ function app(store){
   var d = datos(), ls = H.fakeStorage(store || {}), g = {hojas: [], toasts: [], alertas: [], otra: 0, renders: 0, pild: []};
   if(!store) ls.d[Y] = JSON.stringify(Object.assign(M.normalizar(C.copy(d), C.hoy('2026-10-15')), {rev: 1}));
   var a = H.appVista(JSON.parse(ls.d[Y]), H.trab([{fecha: '2026-10-05', monto: 300000}]), null, '2026-10-15', {funcs: FUNCS, vars: ['MESES', 'LSREPARO', 'LSCUAR', 'LSTRAB', 'LSDIARIO'],
-    globals: {localStorage: ls, arrancado: true, tGuardar: null, obsoleta: false, sucio: false, hayLS: true, ultPild: 0,
+    globals: {localStorage: ls, arrancado: true, tGuardar: null, obsoleta: false, releerDic: 0, sucio: false, hayLS: true, ultPild: 0,
       estado: function(){}, quitarAvisoVacia: function(){}, pildora: function(t){ g.pild.push(t); }, avisoCuarentena: function(){},
       avisoOtraPestana: function(){ g.otra++; }, toast: function(t, l, act){ g.toasts.push([t, l || '', act || '']); }, alerta: function(t, c){ g.alertas.push([t, c]); },
       abrirHoja: function(h){ g.hojas.push(h); }, cerrarHoja: function(){}, renderTrabajo: function(){ g.renders++; },

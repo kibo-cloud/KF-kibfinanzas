@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-pzNjKDvkerBEKJeZ6FNa6CWIE6xVibfNiPbn5gJQpe8=' 'sha256-qoMLjrZyTJ15oQYtnuyG+jnr0f0b8BdwW3+YjtkojEE='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-pzNjKDvkerBEKJeZ6FNa6CWIE6xVibfNiPbn5gJQpe8=' 'sha256-n9Mq5rUy65U7H9RaPNyiY/3PYkxWM1Lxu3z1bzzFaik='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -2717,7 +2717,7 @@ var CORTOS = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV',
 var D = null, mes = new Date().getMonth(), tab = 'mes';
 var sucio = false, hayLS = true;
 var arrancado = false, tGuardar = null;
-var obsoleta = false;   // otra pestaña guardó antes que esta (R4.3, Q12): esta no escribe hasta recargar
+var obsoleta = false, releerDic = 0;   // otra pestaña guardó antes que esta (R4.3, Q12): esta no escribe hasta recargar. releerDic (final audit 9): año abierto que relee diciembre en su próximo guardado
 var gr = {monto:0, cat:null, sec:'gastosVariables'};
 
 /* ═══ 1 · datos por defecto: mesVacio y normalizar viven en el motor ═══ */
@@ -4686,6 +4686,9 @@ function guardar(){
   if(r === 'roto'){ D.actualizado = ant; avisoCuarentena(D.anio); return false; }   // N4 I-3: no se pisa un año que no se puede leer
   if(r === 'ok'){ sucio = false; hayLS = true; }   // si ahora guarda, el navegador volvió a funcionar
   else hayLS = false;
+  // final audit 9: otra pestaña cambió diciembre mientras se escribía acá: ya guardado, el año abierto lo relee (como leerAnio). Sin renderizar
+  // con el cursor en un campo: lo muestra el próximo render
+  if(r === 'ok' && releerDic === D.anio){ releerDic = 0; if(previoEnVivo(D)) try{ arrastreVivo(D, hoyApp()); if(!hayEdicion()) render(); }catch(e){} }
   if(recupero && hayLS){ var av = document.getElementById('avisos'); if(av && av.textContent.indexOf('no está guardando') > -1) av.innerHTML = ''; }
   estado(eraSucio && hayLS);
   if(hayLS) quitarAvisoVacia();
@@ -4783,7 +4786,8 @@ function alCambiarOtraPestana(e){   // el evento `storage` solo llega cuando OTR
   var anio = e.key === PREF + D.anio, trab = e.key === LSTRAB;
   // S2 H1: otra pestaña cambió el año anterior: lo que el abierto trae de diciembre se relee (como el disponible, que ya se lee en vivo).
   // Solo si el abierto sigue a diciembre en vivo; con algo a medio escribir no se toca nada: lo hace la próxima lectura del año
-  if(!anio && !trab){ if(e.key === PREF + (D.anio - 1) && !hayEdicion() && previoEnVivo(D)){ arrastreVivo(D, hoyApp()); render(); } return; }
+  // final audit 9: con algo a medio escribir se relee en el próximo guardado del año abierto (guardar), no nunca
+  if(!anio && !trab){ if(e.key === PREF + (D.anio - 1) && previoEnVivo(D)){ if(hayEdicion()) releerDic = D.anio; else { arrastreVivo(D, hoyApp()); render(); } } return; }
   if(hayEdicion()){ obsoleta = true; avisoOtraPestana(); return; }
   recargarDesdeAlmacenamiento(anio, trab);
 }

@@ -199,7 +199,7 @@ function appRep(){
   var ls = H.fakeStorage({}, function(k){ return g.falla && k === Y26; });
   ls.d[Y26] = JSON.stringify(Object.assign(M.normalizar(C.copy(datosRep()), C.hoy('2026-10-15')), {rev: 1}));
   var a = H.appVista(JSON.parse(ls.d[Y26]), H.trab([{fecha: '2026-10-05', monto: 300000}]), null, '2026-10-15', {funcs: FUNCS_REP, vars: ['MESES', 'LSREPARO', 'LSCUAR', 'LSTRAB', 'LSDIARIO'],
-    globals: {localStorage: ls, arrancado: true, tGuardar: null, obsoleta: false, sucio: false, hayLS: true, ultPild: 0,
+    globals: {localStorage: ls, arrancado: true, tGuardar: null, obsoleta: false, releerDic: 0, sucio: false, hayLS: true, ultPild: 0,
       estado: function(){}, quitarAvisoVacia: function(){}, pildora: function(){}, avisoCuarentena: function(){}, avisoOtraPestana: function(){},
       toast: function(t){ g.toasts.push(t); }, alerta: function(t, c){ g.alertas.push([t, c]); }, renderTrabajo: function(){},
       document: {getElementById: function(){ return null; }}}});
@@ -301,4 +301,41 @@ test('8: the quarantine already on the phone is never deleted or replaced, even 
   assert.equal(corto(r.ls.d['kibo.cuarentena.2026']), 'viejo');
   assert.equal(corto(r.ls.d['kibo.cuarentena.2026.2']), 'otro', 'the small text goes next to it, as before');
   assert.match(r.a.g.alertas[0][1], /de <b>2026<\/b>: son demasiado grandes/);
+});
+
+// ── 9 (MEDIUM): another tab changed December while the user was typing in the next year: the storage event skips the refresh (S2 H1:
+// nothing half-typed is touched), but nothing re-read it later: the open year kept the old December after its own save (fin p4) ──
+function tabEditando(activo){
+  var ls = H.fakeStorage(creado(C.seccion2(true, true), '2026-12-20').d), a = H.appAlmacen(ls, '2027-01-10');
+  a.D = a.leerAnio(2027);
+  a.sucio = true;                                            // the user is typing something in 2027
+  if(activo) a.g.document.activeElement = {tagName: 'INPUT'};
+  var d26 = JSON.parse(ls.d['kibo.datos.2026']); d26.meses[11].ahorroMesARS = 100000; d26.rev = (d26.rev || 0) + 1;
+  ls.d['kibo.datos.2026'] = JSON.stringify(d26);             // another tab saved a December edit
+  a.alCambiarOtraPestana({key: 'kibo.datos.2026', storageArea: ls});
+  return {ls: ls, a: a};
+}
+test('9: after the open year saves, December is re-read (as a fresh read of the year gives) and the screen renders', function(){
+  var t = tabEditando(false), a = t.a;
+  assert.equal(a.D.ahorroAnioAnterior, 800000, 'while typing nothing is touched');
+  assert.equal(a.g.renders, 0);
+  assert.equal(a.guardar(), true);
+  assert.equal(a.D.ahorroAnioAnterior, 900000, 'follows the December the other tab saved');
+  assert.equal(a.D.ahorroAnioAnterior, a.leerAnio(2027).ahorroAnioAnterior, 'same as a fresh read');
+  assert.equal(a.g.renders, 1);
+  assert.equal(a.sucio, false, 'the re-read is not a new unsaved edit');
+  a.sucio = true; assert.equal(a.guardar(), true);
+  assert.equal(a.g.renders, 1, 'only once: the next save does not re-render');
+});
+test('9: with the cursor still in a field the save re-reads December but does not re-render under the user; another year ignores it', function(){
+  var t = tabEditando(true), a = t.a;
+  assert.equal(a.guardar(), true);
+  assert.equal(a.D.ahorroAnioAnterior, 900000);
+  assert.equal(a.g.renders, 0, 'no render while a field has the focus');
+  var u = tabEditando(false), b = u.a;
+  b.D = b.leerAnio(2026); b.sucio = true;                    // the user switched to 2026 before saving
+  var antes = JSON.stringify(b.D.meses);
+  assert.equal(b.guardar(), true);
+  assert.equal(b.g.renders, 0);
+  assert.equal(JSON.stringify(b.D.meses), antes);
 });
