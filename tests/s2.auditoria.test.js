@@ -355,12 +355,33 @@ test('M3: no conflict -> the restore is offered as before (Trabajo kept notice; 
   assert.match(r.hoja, /Ese Trabajo pasó plata a lo personal en 2025, pero ni la copia ni este teléfono tienen 2025/);
   assert.equal(r.alertas.length, 0);
 });
-test('M3: the confirmation sheet writes nothing until «Reemplazar» (Cancelar leaves storage as it was)', function(){
+// the app's real click listener (the one that handles every data-act), evaluated in the app context: a tap on a sheet button runs the
+// exact code the page runs (final audit 11: the cancel test used to set pendiente = null itself)
+function clickReal(a){
+  var src = la.SRC_FOR_TESTS, ini = src.indexOf("document.addEventListener('click', function(ev){\n  var b = ev.target.closest('[data-act]');");
+  assert.ok(ini > -1, 'the data-act click listener is in index.html');
+  var fn = src.indexOf('function(ev){', ini), fin = la.matchBrace(src, src.indexOf('{', fn));
+  var oyente = require('node:vm').runInContext('(' + src.slice(fn, fin) + ')', a);
+  return function(act){
+    var b = {getAttribute: function(k){ return k === 'data-act' ? act : null; }};
+    oyente({target: {closest: function(sel){ return sel === '[data-act]' ? b : null; }}, preventDefault: function(){}, stopPropagation: function(){}});
+  };
+}
+test('M3: the confirmation sheet writes nothing until «Reemplazar» (the real «Cancelar» leaves storage as it was)', function(){
   var r = hojaRestaurar(copia([2026]), null, [2026]);
   assert.equal(typeof r.a.pendiente, 'function', 'waiting for the user');
   assert.equal(r.intacto, true, 'nothing written while the sheet is open');
-  r.a.pendiente = null;   // cerrarHoja (Cancelar) drops it
-  assert.equal(r.intacto, true);
+  var m = /<button data-act="([^"]+)">Cancelar<\/button>/.exec(r.hoja);
+  assert.ok(m, 'the sheet has a «Cancelar» button');
+  var cerradas = 0; r.a.cerrarHoja = function(){ cerradas++; };
+  var click = clickReal(r.a), antes = JSON.stringify(r.ls.d);
+  click(m[1]);                                   // the user taps «Cancelar»
+  assert.equal(cerradas, 1, 'the sheet closes');
+  assert.equal(r.a.pendiente, null, 'the restore is dropped');
+  click('confirmar');                            // a late «Reemplazar» (a second tap) has nothing to run
+  assert.equal(cerradas, 2);
+  assert.equal(JSON.stringify(r.ls.d), antes, 'storage unchanged');
+  assert.equal(r.a.g.alertas.length, 0);
 });
 // ── N2-B (a) (interim, no data change): months of the open year with more than one "Del trabajo" row (legacy data from the old matcher) are
 // listed so the user can review and merge them ──
