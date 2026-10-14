@@ -272,3 +272,29 @@ User-initiated and reversible; the engine is unchanged (goldens byte-identical) 
 - L-03d (`tests/r4.cobertura.test.js`) stays `todo`: it reads unrepaired data, and the engine allocation order did not change.
 - RED: the 6 tests in `tests/n2b.reparo.test.js` failed before the change (functions missing); mutation (exact row put back at its own
   index) fails 3 of them.
+
+### Final audit fixes (sprint closure, 2026-10-13)
+
+Twelve findings from the closing audits: the financial review (a5ad…, probes `fin/p1`–`p8`), the security audit (probes `sec2/probe4`,
+`probe6`) and the X1 native review. One fix per commit (`e9d5ff6..`), each with `npm test` green (`npm run test:e2e` on UI-behavior
+commits and the last one). No money rule changed: `tests/fixtures/motor-golden*.json` byte-identical to `e9d5ff6`. No data is deleted.
+Tests: `tests/s4.final.test.js` (items 1–10, 12) and `tests/s2.auditoria.test.js` (item 11). Each fix: RED observed first, then a
+mutation of the fix fails its tests.
+
+| # | Source · severity | Repro | Cause | Fix (commit) | Status |
+|---|---|---|---|---|---|
+| 1 | Financial review · HIGH | 2027 created by 1.32/1.33 (no stored `copiaDiciembre`), then a December 2026 edit: bruto −100.000, no notice (`fin/p1` A2) | `leerAnio` adopted the copy in memory only; after the edit the stored field looked user-edited and froze | `copiaDelSiguiente` stores the copy (from December as stored) before the previous year is saved; if it cannot be written, the year is not saved either (`cbff9bb`) | Done |
+| 2 | Financial review · HIGH | Restore a backup WITH Trabajo bringing 2026 only, while this phone's Trabajo passed money to 2025 (kept): Trabajo disponible 700.000 → 1.000.000 (`fin/p3`, `p7`) | `mezclaTrabajo` did not check this phone's pases into kept years | Refused with a message, nothing written (`cefb3d6`) | Done |
+| 3 | Financial review · MEDIUM | Re-save the plan sheet in 2027: «poner 3», then `cuotasDeMas` flags 2 extra (`fin/p5`) | `ofrecerCarga` ignored the installments December still schedules (the shift `duplicar` applies) | `conCuotasDeDiciembre` counts them during the calculation only (`968f925`) | Done |
+| 4 | Financial review · MEDIUM | 2025 legacy, 2026 balance declared from a later month: a pase dated 2025-12-20 left Trabajo and reached no Disponible (bruto −300.000) (`fin/p1`, `p1b`) | `desdeDelSaldo` returned −1 for a year without `arrastre` | `inicioDelSaldo`: such a pase (and deleting it) is refused, pointing to where the balance starts (`9005a07`) | Done |
+| 5 | X1 native review R3-001 · MEDIUM | A second «Ordenar» whose year cannot be saved removed or broke the undo record of the first | the undo record was written first and not restored on failure | the previous record text is put back exactly (or none) when the save fails (`9db0cf2`) | Done |
+| 6 | Financial review · LOW | Repair, later edits, second repair, «Deshacer»: the later edits were lost (`fin/p8`) | the undo record kept the months from the first repair | a repair records the months as they are right before it (`5ddc821`) | Done |
+| 7 | Security audit · MEDIUM | A hand-edited backup with a year or a month as an array: every later save silently lost that month (`sec2/probe6`) | `normalizar`/`escribirAnios` took arrays as objects; JSON of an array drops named fields | an array month is read as an empty month; an array year is skipped and named in the restore message (`5cccdb4`) | Done |
+| 8 | Security audit · MEDIUM | A backup with a 4.4 MB `cuarentena` text filled the storage; later saves failed (`sec2/probe4`) | restore copied any string into `kibo.cuarentena.*`, which the app never deletes | `cuarentenaDeCopia`: 2 MB per text, 4 MB per backup; over the cap → not imported, named in the restore message; existing quarantine untouched (`4d64158`) | Done |
+| 9 | Financial review · MEDIUM | Typing in 2027 while another tab saves a December 2026 edit: after its own save the open year kept the old December (`fin/p4`) | `alCambiarOtraPestana` skips the refresh while editing and nothing re-read it later | `releerDic`: the next successful save of that year re-runs `arrastreVivo` and renders (not while a field has the focus) (`16e95ac`) | Done |
+| 10 | Financial review · LOW | Any error while following December opened the year as stored with no word | `leerAnio`: `try{ arrastreVivo(...) }catch(e){}` | the year read is marked (non-enumerable, never saved) and the December notice (`data-av="deriva"`) says it; no data change (`ceed56f`) | Done |
+| 11 | X1 native review · LOW (test gap) | The M3 cancel test set `pendiente = null` itself | it never ran the app's cancel | the test evaluates the app's real `data-act` click listener and taps the sheet's «Cancelar»: sheet closed, nothing pending, storage unchanged (`1d7f42e`) | Done |
+| 12 | Financial review · LOW (perf) | A 4-year chain read each previous year 5–7 times per render | `leerAnio` → `arrastreVivo` → `previoEnVivo` → `leerAnio`, asked again by `derivaAnioPrevio`, `cuotasDeMas`, `cierreAnioAnterior`, `desdeDelSaldo` | read-only lookups use `leerAnio(a, true)`, shared per year and day in `memoAnios`, cleared at `render()` start, on every write (`escribirConRev`, `escribirJuntos`, `recuperarDiario`, `escribirAnios`) and on every storage event; results byte-identical to the unmemoized path (`4a6fc83`) | Done |
+
+Notes: item 9 does not re-render while a field has the focus (the values are already re-read; the next render shows them). Item 12's
+`escribirJuntos`/`recuperarDiario` invalidation has no dedicated test (the save, storage event and restore paths do).
