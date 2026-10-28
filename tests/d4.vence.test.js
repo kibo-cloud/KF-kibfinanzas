@@ -10,7 +10,7 @@ var C = require('./fixtures/r4-casos');
 
 var M = la.loadMotor();
 var FUNCS = ['vencimientos', 'diaVence', 'leerDiaVence', 'montosPorFecha', 'diasCobro', 'isoDe', 'dos', 'diasDelMes', 'mesDelModelo', 'diasEntre', 'utcDe', 'esISO', 'cuandoVence', 'detalleVence',
-  'htmlVence', 'fARS', 'grupos', 'esc', 'fDia', 'cuantosPagos', 'repartoTrabajo', 'ctxModelo', 'cierreAnioAnterior', 'leerAnio', 'previoEnVivo', 'carryDiciembre', 'arrastreVivo', 'cuotasProgramadas', 'hoyISO', 'sumarDias',
+  'htmlVence', 'fARS', 'grupos', 'esc', 'fDia', 'cuantosPagos', 'repartoTrabajo', 'ctxModelo', 'cierreAnioAnterior', 'leerAnio', 'previoEnVivo', 'carryDiciembre', 'cuotasRealizadas', 'esProgramado', 'mesDelModelo', 'arrastreVivo', 'cuotasProgramadas', 'hoyISO', 'sumarDias',
   'parseEntero', 'sinSigno'];
 function app(today){
   return la.loadApp({today: today, funcs: FUNCS, vars: ['MESES', 'DIAS_VENCE', 'VENCE_MAX', 'venceL', 'oculto', 'PUNTOS'], globals: {T: null}});

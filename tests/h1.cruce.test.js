@@ -16,7 +16,7 @@ var M = la.loadMotor();
 var SRC = la.SRC_FOR_TESTS;
 var FUNCS = V.FUNCS.concat(['resumenTrab', 'paseAlModelo', 'trabajoDisponible', 'patrimonioPantalla', 'tieneTrab', 'hoyISO', 'esISO', 'utcDe',
   'sumarDias', 'diasEntre', 'ganancia', 'saldoFac', 'venceFac', 'sinAsignar', 'repartoTrabajo', 'pasesDelMes', 'tieneTilde', 'modoApertura',
-  'derivaAnioPrevio', 'avisoDerivaPrevio', 'previoEnVivo', 'arrastreVivo', 'carryDiciembre', 'cuotasProgramadas', 'cuotasDeMas'])
+  'derivaAnioPrevio', 'avisoDerivaPrevio', 'previoEnVivo', 'arrastreVivo', 'carryDiciembre', 'cuotasRealizadas', 'esProgramado', 'mesDelModelo', 'cuotasProgramadas', 'cuotasDeMas'])
   .filter(function(n, i, a){ return a.indexOf(n) === i && new RegExp('^function ' + n + '\\s*\\(', 'm').test(SRC); });
 var VARS = ['PREF', 'MESES', 'CORTOS', 'oculto', 'PUNTOS', 'ICOSEC', 'MAS_QUE_LO_NORMAL', 'TOP_CATEGORIAS', 'FORMAS', 'CATS', 'COLCARP'];
 var COT = 1500;   // seccion2's cotizacionUSD: a USD bought or sold at this price moves no net worth
@@ -255,7 +255,7 @@ test('H1 migration v1.32: installments loaded in both years by the old duplicar 
 
 // ── multi-tab: another tab saves the previous year while the model year is open ──
 test('H1 storage event: the previous year saved in another tab refreshes what the open model year carries; never while editing', function(){
-  var base = crear(C.seccion2(true, true), '2026-12-10'), funcs = ['previoEnVivo', 'carryDiciembre', 'arrastreVivo', 'cuotasProgramadas'];
+  var base = crear(C.seccion2(true, true), '2026-12-10'), funcs = ['previoEnVivo', 'carryDiciembre', 'cuotasRealizadas', 'esProgramado', 'mesDelModelo', 'arrastreVivo', 'cuotasProgramadas'];
   [false, true].forEach(function(editando){
     var ls = H.fakeStorage(plain(base)), B = H.appAlmacen(ls, '2027-01-10', null, funcs);
     B.D = B.leerAnio(2027); B.sucio = editando;

@@ -84,7 +84,19 @@ money effect of each item: `odd/tasks/stabilization-quick-sales.md` "S1 — Pend
       fixture: `tests/fixtures/l7-movil-390.json` re-recorded with `L7_GRABAR=1` on purpose; the only change is the new button
       (`sec:gastosFijos` height 358 → 406 and the next 4 sections moved down 48-49 px); every other box identical. E2E +4.
       `npm test` 930/930, `npm run test:e2e` 541/541.
-- [ ] D5 N1-B (b) or resolved-by-H1 proof.
+- [x] D5 N1-B (b) or resolved-by-H1 proof. Route: inline. Finding: H1 does NOT resolve N1-B. Its live carry re-reads December of
+      the stored previous year, but `carryDiciembre` (and `duplicar`) counted every ticked installment of the 12 months
+      (`estadoDeuda(prev, k, 11)`), so a November installment ticked ahead (data from before the N3b-A block) counted as paid when
+      2027 was created in October. RED: `tests/d5.cuotas.test.js` pagadasAntes 4, expected 3. Applied (b): `cuotasRealizadas` =
+      estadoDeuda pagadas minus the months ticked ahead in a model year (`esProgramado`); legacy years count the 12 months
+      (unchanged, tested). Used by `duplicar`, `carryDiciembre`, `derivaAnioPrevio` (same rule as the copy, so no false notice)
+      and `cuotasDeMas`. Consequence found by the H1 property test (seed 20363960, "no installment scheduled in both years"): a
+      ticked-ahead month that is no longer "paid" must still be "scheduled", or `duplicar` loads it again in 2027; so
+      `cuotasProgramadas(d, k, hoy)` also counts a ticked-ahead model month (callers pass `hoyApp()`). Once the month arrives the live
+      carry counts it (pagadasAntes 3 → 4 on 2027-01-10). GREEN 3/3; H1 60 seeds green. Mutations: ticked-ahead not counted as
+      scheduled → 2 fail (D5 + H1 property); ahead months not subtracted → 2 fail. Inventory: `cuotasRealizadas` classified,
+      `carryDiciembre` / `cuotasProgramadas` / `cuotasDeMas` notes updated. Motor goldens unchanged. `npm test` 933/933,
+      `npm run test:e2e` 541/541.
 - [ ] D6 N3b-B prominent label + N4-A download action (verify whether already built).
 - [ ] D7 N4-B Ajustes quarantine rows (download / delete with confirmation).
 - [ ] D8 Version 1.34.0 + SW `kibfinanzas-offline-v47`, update path, full suites, docs (`CLAUDE.md`, S1 table rows marked resolved).
@@ -106,9 +118,10 @@ trailers. No remote configured: push/PR are owner decisions. Forecast ~900-1300 
 - D1 done (`05a0b75`): L-03d passes; 915 tests, 0 todo.
 - D2 done (`b1d71d2`): partial payment split; 921 tests, E2E 537/537.
 - D3 done (`5789200`): one-off rows count toward the tope; 925 tests, E2E 538/538.
-- D4 done: optional due day; 930 tests, E2E 541/541.
+- D4 done (`5e48300`): optional due day; 930 tests, E2E 541/541.
+- D5 done: N1-B (b) applied (H1 did not cover it); 933 tests, E2E 541/541.
 - GitHub: blocked: wrong GitHub account on this PC (owner, 2026-10-28); versions kept locally only (P11 and L10 notes updated).
 
 ## Next step
 
-D5.
+D6.

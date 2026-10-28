@@ -8,7 +8,7 @@ var la = require('./load-app');
 var C = require('./fixtures/r4-casos');
 var base = require('./fixtures/motor-corpus');
 
-var FUNCS = ['dos', 'leerAnio', 'previoEnVivo', 'carryDiciembre', 'arrastreVivo', 'cuotasProgramadas', 'ctxModelo', 'cierreAnioAnterior', 'vistaModelo', 'tilesMes', 'mesDelModelo', 'tieneTilde', 'repartoTrabajo', 'pasesDelMes',
+var FUNCS = ['dos', 'leerAnio', 'previoEnVivo', 'carryDiciembre', 'cuotasRealizadas', 'esProgramado', 'mesDelModelo', 'arrastreVivo', 'cuotasProgramadas', 'ctxModelo', 'cierreAnioAnterior', 'vistaModelo', 'tilesMes', 'mesDelModelo', 'tieneTilde', 'repartoTrabajo', 'pasesDelMes',
   'hoyISO', 'esISO', 'utcDe', 'sumarDias', 'diasEntre', 'ganancia', 'saldoFac', 'venceFac', 'sinAsignar', 'tieneTrab', 'resumenTrab',
   'paseAlModelo', 'trabajoDisponible', 'patrimonioPantalla'];
 function fakeStorage(init){

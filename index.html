@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-IVBGKFwoF0+eKig2P3g1ax1P4E3DfO0OQJqZ/GKERoc=' 'sha256-pB8WG/7Sny60cHyzac5ApSFlId+APbLXzR9Zbuz64Mc='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-IVBGKFwoF0+eKig2P3g1ax1P4E3DfO0OQJqZ/GKERoc=' 'sha256-gdx13NpPU5RWQDW9RpSXPGoQk0YwYRG2oEVk9Cae4qU='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -4384,7 +4384,7 @@ function derivaAnioPrevio(d, hoy){
   Object.keys(d.planDeudas || {}).forEach(function(k){
     if(!prev.planDeudas || !Object.prototype.hasOwnProperty.call(prev.planDeudas, k)) return;
     if(!c.cuotas || !Object.prototype.hasOwnProperty.call(c.cuotas, k)) return;   // un plan que no se copió de diciembre
-    var e = estadoDeuda(prev, k, 11, hoy); if(e && suyo(d.planDeudas[k].pagadasAntes, c.cuotas[k]) && e.pagadas !== num(c.cuotas[k])) cuotas = true;
+    var e = cuotasRealizadas(prev, k, hoy); if(e !== null && suyo(d.planDeudas[k].pagadasAntes, c.cuotas[k]) && e !== num(c.cuotas[k])) cuotas = true;   // D5: la misma cuenta que copia duplicar
   });
   if(cuotas) out.push('cuotas');
   return out;
@@ -5296,7 +5296,7 @@ function duplicar(){
   }
   n.ahorroAnioAnterior = s[11].ahorroAcumulado;
   n.copiaDiciembre = {ahorro:s[11].ahorroAcumulado, aReponer:s[11].aReponer, usd:s[11].usdAcumulado, cuotas:Object.create(null)};   // S2 H1: qué se copió (el aviso compara contra esto)
-  Object.keys(n.planDeudas).forEach(function(k){ var e = estadoDeuda(D, k, 11, hoyApp()); if(e){ n.planDeudas[k].pagadasAntes = e.pagadas; n.copiaDiciembre.cuotas[k] = e.pagadas; } });
+  Object.keys(n.planDeudas).forEach(function(k){ var e = cuotasRealizadas(D, k, hoyApp()); if(e !== null){ n.planDeudas[k].pagadasAntes = e; n.copiaDiciembre.cuotas[k] = e; } });   // D5 (N1-B b): solo los meses ya llegados
   n.usdAnioAnterior = s[11].usdAcumulado;
   n.aReponerAnterior = s[11].aReponer;
   n.actualizado = '';
@@ -5320,7 +5320,7 @@ function duplicar(){
     // S2 H1: en un año con modelo, las cuotas que el año viejo todavía tiene cargadas sin pagar ya tienen su mes: no se cargan otra vez acá.
     // pagadasAntes sigue siendo lo PAGADO (se corre solo para cargar, y la numeración de las cuotas sale bien)
     var antes = pp.pagadasAntes;
-    if(n.arrastre) pp.pagadasAntes = antes + cuotasProgramadas(previo, nn);
+    if(n.arrastre) pp.pagadasAntes = antes + cuotasProgramadas(previo, nn, hoyApp());
     cargadas += cargarCuotas(D, nn, 0, hoyApp()).poner;
     pp.pagadasAntes = antes;
   });
@@ -5948,7 +5948,7 @@ function quitarPlanSuelto(nombre){
 function conCuotasDeDiciembre(d, nombre, fn){
   var prev = previoEnVivo(d), p = planDe(d, nombre), antes;
   if(!prev || !p) return fn();
-  antes = p.pagadasAntes; p.pagadasAntes = antes + cuotasProgramadas(prev, nombre);
+  antes = p.pagadasAntes; p.pagadasAntes = antes + cuotasProgramadas(prev, nombre, hoyApp());
   try{ return fn(); }finally{ p.pagadasAntes = antes; }
 }
 function ofrecerCarga(nombre, desde){
@@ -8489,8 +8489,17 @@ function previoEnVivo(d){   // el año anterior guardado, si d sigue su diciembr
 }
 function carryDiciembre(prev, hoy){   // lo que diciembre de `prev` deja hoy: lo mismo que duplicar copia
   var s = serie(prev)[11], c = {ahorro:s.ahorroAcumulado, aReponer:s.aReponer, usd:s.usdAcumulado, cuotas:Object.create(null)};
-  Object.keys(prev.planDeudas).forEach(function(k){ var e = estadoDeuda(prev, k, 11, hoy); if(e) c.cuotas[k] = e.pagadas; });
+  Object.keys(prev.planDeudas).forEach(function(k){ var e = cuotasRealizadas(prev, k, hoy); if(e !== null) c.cuotas[k] = e; });
   return c;
+}
+/* D5 (owner-decisions-closure, N1-B opción b): las cuotas pagadas de un plan en el año, para pasarlas al siguiente. En un año del modelo
+   solo cuentan los meses que ya llegaron: una cuota tildada en un mes futuro es programada (N3b-A), como en todo el modelo, y no se toma
+   como pagada al crear el año siguiente antes de diciembre. En un año legacy cuentan los 12 meses, como siempre. null si no hay plan. */
+function cuotasRealizadas(d, nombre, hoy){
+  var e = estadoDeuda(d, nombre, 11, hoy), n = String(nombre || '').trim(), adelante = 0, j;
+  if(!e) return null;
+  for(j=0;j<12;j++) if(esProgramado(d, j, hoy) && d.meses[j].deudas.some(function(it){ return String(it.nombre || '').trim() === n && estaPagado(j, it) && num(it.monto) > 0; })) adelante++;   // la misma regla que cuotaPaga
+  return e.pagadas - adelante;
 }
 // Cambia el año en memoria (lo llama leerAnio): campo y copia se mueven juntos, así lo guardado más tarde sigue diciendo "no lo tocó el usuario".
 // Un año creado antes de guardar la copia (1.32 / 1.33) adopta diciembre de hoy como copia: ningún número cambia ahora; desde ahí, los campos
@@ -8513,12 +8522,13 @@ function arrastreVivo(d, hoy){
   });
   return d;
 }
-// meses en que la cuota de ese plan está cargada y sin pagar (programada o vencida): el lugar de una cuota de verdad
-function cuotasProgramadas(d, nombre){
+// meses en que la cuota de ese plan está cargada y sin pagar (programada o vencida): el lugar de una cuota de verdad.
+// D5: con hoy, una cuota tildada en un mes del modelo que todavía no llegó también es programada (cuotasRealizadas no la cuenta como paga)
+function cuotasProgramadas(d, nombre, hoy){
   var n = String(nombre || '').trim(), c = 0;
   d.meses.forEach(function(m, j){
     var ls = m.deudas.filter(function(it){ return String(it.nombre || '').trim() === n; });
-    if(ls.some(function(it){ return num(it.monto) > 0; }) && !ls.some(function(it){ return estaPagado(j, it) && num(it.monto) > 0; })) c++;
+    if(ls.some(function(it){ return num(it.monto) > 0; }) && (!ls.some(function(it){ return estaPagado(j, it) && num(it.monto) > 0; }) || (hoy && esProgramado(d, j, hoy)))) c++;
   });
   return c;
 }
@@ -8531,8 +8541,8 @@ function cuotasDeMas(d){
     var p = d.planDeudas[k], meses = [];
     if(!p || !p.cuotas || !own.call(prev.planDeudas, k)) return;
     d.meses.forEach(function(m, j){ if(m.deudas.some(function(it){ return String(it.nombre || '').trim() === k && num(it.monto) > 0; })) meses.push(j); });
-    var e = estadoDeuda(prev, k, 11, hoyApp()), pagadas = Math.max(p.pagadasAntes, e ? e.pagadas : 0);   // lo pagado de verdad en el año viejo, o lo que dice el usuario si es más
-    var quedan = Math.max(0, p.cuotas - pagadas - cuotasProgramadas(prev, k));
+    var e = cuotasRealizadas(prev, k, hoyApp()), pagadas = Math.max(p.pagadasAntes, e !== null ? e : 0);   // D5: lo pagado en meses ya llegados   // lo pagado de verdad en el año viejo, o lo que dice el usuario si es más
+    var quedan = Math.max(0, p.cuotas - pagadas - cuotasProgramadas(prev, k, hoyApp()));
     if(meses.length > quedan) out.push({nombre:k, sobran:meses.length - quedan, meses:meses});
   });
   return out;

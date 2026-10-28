@@ -15,7 +15,7 @@ var M = la.loadMotor(), SRC = la.SRC_FOR_TESTS;
 // only when the previous year itself has the balance: the pase left Trabajo and reached no Disponible (bruto -300.000) ──
 var FUNCS1 = V.FUNCS.concat(['resumenTrab', 'paseAlModelo', 'trabajoDisponible', 'patrimonioPantalla', 'tieneTrab', 'hoyISO', 'esISO', 'utcDe', 'sumarDias',
   'diasEntre', 'ganancia', 'saldoFac', 'venceFac', 'sinAsignar', 'repartoTrabajo', 'pasesDelMes', 'tieneTilde', 'previoEnVivo', 'arrastreVivo',
-  'carryDiciembre', 'desdeDelSaldo', 'avisoPaseAntes', 'fDiaLargo', 'inicioDelSaldo', 'aniosGuardados'])
+  'carryDiciembre', 'cuotasRealizadas', 'esProgramado', 'mesDelModelo', 'desdeDelSaldo', 'avisoPaseAntes', 'fDiaLargo', 'inicioDelSaldo', 'aniosGuardados'])
   .filter(function(n, i, a){ return a.indexOf(n) === i && new RegExp('^function ' + n + '\\s*\\(', 'm').test(SRC); });
 var VARS1 = ['PREF', 'MESES', 'CORTOS', 'oculto', 'PUNTOS', 'ICOSEC', 'MAS_QUE_LO_NORMAL', 'TOP_CATEGORIAS', 'FORMAS', 'CATS', 'COLCARP'];
 function dosD(n){ return (n < 10 ? '0' : '') + n; }
