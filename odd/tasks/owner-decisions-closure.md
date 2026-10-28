@@ -26,7 +26,7 @@ money effect of each item: `odd/tasks/stabilization-quick-sales.md` "S1 — Pend
 | N3b-B | (a) + prominent "cotización sin cargar" label | Presentation only. |
 | N4-A | (a) + (c) "Descargar el texto" action | Presentation only; raw text always kept. |
 | N4-B | (b) Ajustes row to download and delete each quarantine copy (delete only by explicit user action with confirmation) | Storage control without automatic deletion. |
-| GitHub | Not done: destination/visibility must be given by the owner | Remote rule. |
+| GitHub | Not done: blocked: wrong GitHub account on this PC (owner, 2026-10-28); versions kept locally only. No push, remote or tag. | Remote rule. |
 
 ## Constraints
 
@@ -40,8 +40,7 @@ money effect of each item: `odd/tasks/stabilization-quick-sales.md` "S1 — Pend
 ## Checklist
 
 - [x] D0 Reconcile P1-P12 in `alpha-product-surface.md` with L1-L10 evidence (docs only). Route: inline (one doc). Ticked P1, P3-P9,
-      P12 with the citing section; P10 left open (dead `.fab` CSS still present, found by rg), P11 left open (owner deferred, no
-      destination); P8 marked superseded by this feature. Docs only: no test run needed.
+      P12 with the citing section; P10 left open (dead `.fab` CSS still present, found by rg), P11 left open (blocked: wrong GitHub account on this PC (owner, 2026-10-28); versions kept locally only); P8 marked superseded by this feature. Docs only: no test run needed.
 - [x] D1 N2-B (b) engine allocation order + goldens report + L-03d green. Route: inline (one engine function + its tests, already
       mapped). `flujosMes` gives the month's pases first to the single row named exactly "Del trabajo" (the `renglonTrabajo`
       criterion, the row a pase is added to); the other "Del trabajo" rows follow in order; two exact rows or none keep the old order
@@ -76,7 +75,8 @@ trailers. No remote configured: push/PR are owner decisions. Forecast ~900-1300 
 
 - 2026-10-28: document created; decisions recorded. Engram mirror pending (memory session ambiguity).
 - D0 done (`6e52d22`, docs only).
-- D1 done (commit recorded in the next task's evidence; see `git log`): L-03d passes; 915 tests, 0 todo.
+- D1 done (`05a0b75`): L-03d passes; 915 tests, 0 todo.
+- GitHub: blocked: wrong GitHub account on this PC (owner, 2026-10-28); versions kept locally only (P11 and L10 notes updated).
 
 ## Next step
 

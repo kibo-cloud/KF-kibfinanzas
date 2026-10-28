@@ -53,8 +53,8 @@ Owner brief: "TU GASTO — PRODUCT SURFACE, UX/UI, BRANDING, GITHUB & FINAL ALPH
 - [ ] P10 Pre-Alpha cleanup (dead code/CSS, stale labels, debug logs). Partial: stale labels done in L2, no debug logs in
       `index.html`; the unused `.fab` CSS rules (the Gasto button uses `.nav-gasto` since L1, see U2) were never removed. Left open.
 - [ ] P11 GitHub: .gitignore, secret/PII scan, remote (destination must be explicit), push, verification. Partial: .gitignore and
-      the secret/PII scan done (2e68947, L10); remote and push deferred by the owner ("No publicar todavía", 2026-10-12) and no
-      destination/visibility was given. Stays open until the owner names the destination.
+      the secret/PII scan done (2e68947, L10); remote and push deferred by the owner ("No publicar todavía", 2026-10-12), then
+      blocked: wrong GitHub account on this PC (owner, 2026-10-28); versions kept locally only.
 - [x] P12 Native review per slice, final verification, ALPHA_READY / ALPHA_BLOCKED. Evidence: L10 (slices U1-U9 and V1 approved and
       acknowledged; verdict `ALPHA_READY`).
 
@@ -670,7 +670,8 @@ Ordered backlog (each item: test-first, suites green, docs, small commits; nativ
 - [x] L7 Desktop two-column layout + accessibility (contrast, labels, focus, screen reader).
 - [x] L8 Atomic writes (year + Trabajo) and strict CSP if feasible without breaking the PC file; else documented debt.
 - [x] L9 Version 1.33.0 + SW, PWA update path, offline, PC/file:// verification.
-- [ ] L10 Native review slices, final verification, GitHub (destination must be given by the owner), ALPHA verdict.
+- [ ] L10 Native review slices, final verification, GitHub (destination must be given by the owner), ALPHA verdict. GitHub:
+      blocked: wrong GitHub account on this PC (owner, 2026-10-28); versions kept locally only.
 
 ## L10 — Native review and Alpha verdict (2026-10-12)
 
@@ -695,5 +696,6 @@ visible if published). No remote configured; push pending owner decision.
 Verdict: `ALPHA_READY` (product, technical and repository criteria met; publication deliberately deferred by the owner).
 Open OWNER_DECISION_REQUIRED (none blocking): N1-B, N2-B (MEDIUM, L-03d legacy two-row "Del trabajo"), N3a-A/B, N3b-A/B, N4-A/B,
 L3 partial payment + "(otro gasto)" vs topes, L5 optional due day for expenses/installments, GitHub destination/visibility.
+Update 2026-10-28: the owner decisions are closed in `owner-decisions-closure.md`; GitHub is blocked: wrong GitHub account on this PC (owner, 2026-10-28); versions kept locally only.
 Residual risks: MEDIUM N2-B; LOW restore without journal (repeatable), style-src 'unsafe-inline', V1 LOW advisories, quarantine copies
 accumulate (N4-B), undo info lost when a new backup is restored into an older app version.
