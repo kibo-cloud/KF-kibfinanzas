@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-pzNjKDvkerBEKJeZ6FNa6CWIE6xVibfNiPbn5gJQpe8=' 'sha256-Zual5tIXxsHN6dd5wLbpMNZkRtE4WXwa8EQYigl4u9w='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-pzNjKDvkerBEKJeZ6FNa6CWIE6xVibfNiPbn5gJQpe8=' 'sha256-npiED417Jy2VmtcJ9dYNFDcqiqCwL3oidr/Mb73IvVE='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -8022,8 +8022,10 @@ function desdeDelSaldo(anio, mes){   // el mes desde el que ese año lleva el sa
   var y = anio === D.anio ? D : leerAnio(anio, true), ar = y && y.arrastre;
   return ar && typeof ar === 'object' && mes < num(ar.desde) ? num(ar.desde) : -1;
 }
-/* Final audit 4: un año sin el saldo mes a mes (o que no está) ANTES del primer año guardado que lo lleva: si ese año arranca de un saldo
-   declarado (o desde un mes que no es enero), lo pasado ahí tampoco llega a ningún disponible. {anio, mes} desde donde se lleva el saldo, o null */
+/* Final audit 4 + X2-1: un año sin el saldo mes a mes (o que no está) ANTES de un año guardado que lo lleva: lo pasado ahí no llega a ningún
+   disponible, cualquiera sea el arranque de ese año (aun desde el cierre de diciembre: solo se sigue en vivo el diciembre de un año que lleva el
+   saldo). Se puede solo en un mes que lleva el saldo, o en un año sin él cuando ningún año guardado posterior lo lleva (todo como antes).
+   {anio, mes} desde donde se lleva el saldo, o null */
 function inicioDelSaldo(anio, mes){
   var k = desdeDelSaldo(anio, mes), y = anio === D.anio ? D : leerAnio(anio), l, i, ar;
   if(k >= 0) return {anio:anio, mes:k};
@@ -8031,8 +8033,7 @@ function inicioDelSaldo(anio, mes){
   l = aniosGuardados().concat([D.anio]).filter(function(a, i, t){ return a > anio && t.indexOf(a) === i; }).sort(function(a, b){ return a - b; });
   for(i=0;i<l.length;i++){
     y = l[i] === D.anio ? D : leerAnio(l[i]); ar = y && y.arrastre;
-    if(!ar || typeof ar !== 'object') continue;
-    return num(ar.desde) > 0 || !ar.inicial || ar.inicial.origen !== 'arrastre' ? {anio:l[i], mes:num(ar.desde)} : null;
+    if(ar && typeof ar === 'object') return {anio:l[i], mes:num(ar.desde)};
   }
   return null;
 }

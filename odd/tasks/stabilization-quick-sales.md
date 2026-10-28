@@ -298,3 +298,13 @@ mutation of the fix fails its tests.
 
 Notes: item 9 does not re-render while a field has the focus (the values are already re-read; the next render shows them). Item 12's
 `escribirJuntos`/`recuperarDiario` invalidation has no dedicated test (the save, storage event and restore paths do).
+
+### X2 native review fix (2026-10-28)
+
+| # | Source · severity | Repro | Cause | Fix | Status |
+|---|---|---|---|---|---|
+| X2-1 | X2 native review (review-8f5130ab7b3ab443) · WARNING, money | Legacy year before a stored year that starts in January from `arrastre`: a pase into the legacy year was allowed, left Trabajo and reached no Disponible (bruto −300.000) | `inicioDelSaldo` let it through when the first later model year started in January from `arrastre`, but that year follows December live only when the previous year itself has the month-to-month balance | `inicioDelSaldo` refuses a pase into a year without the balance whenever any later stored year has it, whatever that year's start; pure legacy (no later year with it) unchanged. CSP script hash updated in `index.html` and `privacidad.html` | Done |
+
+Evidence: `tests/s5.x2.test.js` (case table + pure-legacy case) fails 1/2 on the pre-fix code and passes 2/2 with the fix;
+`npm test` 913 (912 pass, 0 fail, 1 todo L-03d); `npm run test:e2e` 534/534; `tests/fixtures/` unchanged (motor goldens identical).
+Route: inline (one function, already understood). No other X2 findings are recorded in the repository or Engram.
