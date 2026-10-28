@@ -42,7 +42,18 @@ money effect of each item: `odd/tasks/stabilization-quick-sales.md` "S1 — Pend
 - [x] D0 Reconcile P1-P12 in `alpha-product-surface.md` with L1-L10 evidence (docs only). Route: inline (one doc). Ticked P1, P3-P9,
       P12 with the citing section; P10 left open (dead `.fab` CSS still present, found by rg), P11 left open (owner deferred, no
       destination); P8 marked superseded by this feature. Docs only: no test run needed.
-- [ ] D1 N2-B (b) engine allocation order + goldens report + L-03d green.
+- [x] D1 N2-B (b) engine allocation order + goldens report + L-03d green. Route: inline (one engine function + its tests, already
+      mapped). `flujosMes` gives the month's pases first to the single row named exactly "Del trabajo" (the `renglonTrabajo`
+      criterion, the row a pase is added to); the other "Del trabajo" rows follow in order; two exact rows or none keep the old order
+      (same months the repair tool calls ambiguous). RED: L-03d and new L-03e failed (2/31 in r4.cobertura); GREEN 31/31. Mutations:
+      no priority → 5 fail (L-03d, L-03e, 3 repair tests); priority with two exact rows → L-03f fails. Goldens: none changed (no golden
+      case has a variant row before a single exact row), `tests/fixtures/` untouched. Repair tool: the engine now reads unrepaired
+      data like repaired data, so the preview says "No cambia ningún total de ese mes." when before = after, and the notice says the
+      money "cuenta primero en el renglón llamado exactamente «Del trabajo»" (no longer "se reparte entre ellos"); tests updated.
+      `npm test` 915/915 (0 todo), `npm run test:e2e` 534/534.
+      Rationale (tick): the decision row says "ticked exact row" because that is the L-03d case; the pase is added to the exact row
+      whatever its tick, so the tick does not change which row holds it. Requiring the tick would leave [variant ticked, exact
+      unticked] reading the pase from the variant and the repair still changing totals; L-03e pins that case.
 - [ ] D2 L3 (b) partial payment split.
 - [ ] D3 "(otro gasto)" counts toward the original row's tope.
 - [ ] D4 L5 optional due day on rows/plans + "Qué vence esta semana".
@@ -64,7 +75,9 @@ trailers. No remote configured: push/PR are owner decisions. Forecast ~900-1300 
 ## Progress / evidence
 
 - 2026-10-28: document created; decisions recorded. Engram mirror pending (memory session ambiguity).
+- D0 done (`6e52d22`, docs only).
+- D1 done (commit recorded in the next task's evidence; see `git log`): L-03d passes; 915 tests, 0 todo.
 
 ## Next step
 
-D0.
+D2.

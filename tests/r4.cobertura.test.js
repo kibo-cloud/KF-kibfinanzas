@@ -169,16 +169,31 @@ test('L-03c the row lookup is the engine matcher: an exact "Del trabajo" row win
   assert.doesNotMatch(la.extractFunction('deshacerTj'), /ingresos|renglonTrabajo/, 'deshacerTj restores the Trabajo store only, it never looks up the row');
 });
 
-// RISK MARKER (N2, OWNER_DECISION_REQUIRED, matrix F): L-03b is resolved for NEW data only. Data saved under the old matcher can hold a
-// variant row (unticked) BEFORE the exact ticked "Del trabajo" row that received the pase; the engine allocates the pase to the rows in
-// order, so the variant absorbs it and the user's unticked amount reads as realized. Fixing it needs a rule (engine allocation order ->
-// golden diff report, or a data merge). This test is `todo` on purpose: when it starts passing, the risk was fixed.
-test('L-03d legacy two-row data: a variant unticked row before the exact ticked "Del trabajo" row must stay pending', {todo: 'N2-B: the engine still allocates pases to "Del trabajo" rows in order (unchanged on purpose); unrepaired legacy two-row data keeps the over-count until the user runs the reversible repair (tests/n2b.reparo.test.js)'}, function(){
+// N2-B (owner-decisions-closure D1, option b): data saved under the old matcher can hold a variant row (unticked) BEFORE the exact
+// "Del trabajo" row that received the pase. flujosMes now gives the month's pases to the single exact-name row first (the row
+// renglonTrabajo writes them to); the other "Del trabajo" rows follow in their order. Was `todo` until D1.
+function flujoDe(ingresos, pases){
   var d = C.vacio(2026); C.arrastre(d, 9, 0, 'declarado');
-  C.mes(d, 9, {ingresos: [C.it('Dél trabajo', 100000, false), C.it('Del trabajo', 300000, true)]});
-  var app = H.appVista(d, H.trab([{fecha: '2026-10-05', monto: 300000}])), vm = app.vistaModelo(app.D, app.hoy);
+  C.mes(d, 9, {ingresos: ingresos});
+  var app = H.appVista(d, H.trab(pases || [{fecha: '2026-10-05', monto: 300000}])), vm = app.vistaModelo(app.D, app.hoy);
   var f = plain(M.flujosMes(app.D, 9, app.hoy, vm.ctx));
-  assert.deepEqual([f.ingresosReal, f.trabajoRealizado, f.ingresosPend], [0, 300000, 100000], 'observed today: [100000, 300000, 0] (the 100.000 the user did not tick counts as realized)');
+  return [f.ingresosReal, f.trabajoRealizado, f.ingresosPend];
+}
+test('L-03d legacy two-row data: a variant unticked row before the exact ticked "Del trabajo" row must stay pending', function(){
+  assert.deepEqual(flujoDe([C.it('Dél trabajo', 100000, false), C.it('Del trabajo', 300000, true)]), [0, 300000, 100000],
+    'before D1: [100000, 300000, 0] (the 100.000 the user did not tick counted as realized)');
+});
+test('L-03e N2-B allocation: the exact row takes the pase first whatever its tick; the other rows keep their own tick for the rest', function(){
+  assert.deepEqual(flujoDe([C.it('Dél trabajo', 100000, true), C.it('Del trabajo', 300000, false)]), [100000, 300000, 0],
+    'the pase sits in the exact row (renglonTrabajo); the ticked variant is its own realized income');
+  assert.deepEqual(flujoDe([C.it('Dél trabajo', 100000, false), C.it('Sueldo', 50000, true), C.it('Del trabajo', 200000, true)]), [50000, 300000, 0],
+    'a pase bigger than the exact row: the rest goes to the next "Del trabajo" row in order');
+  assert.deepEqual(flujoDe([C.it('Del trabajo', 300000, true), C.it('Dél trabajo', 100000, false)]), [0, 300000, 100000], 'exact already first: unchanged');
+});
+test('L-03f N2-B allocation: two exact rows (ambiguous) or none keep the order of the rows, as before', function(){
+  assert.deepEqual(flujoDe([C.it('Dél trabajo', 100000, false), C.it('del trabajo ', 300000, true), C.it('DEL TRABAJO', 50000, true)]), [150000, 300000, 0],
+    'two exact-name rows: in order, the variant absorbs first (same as the repair tool, which leaves such months alone)');
+  assert.deepEqual(flujoDe([C.it('Dél trabajo', 100000, false), C.it('Del Trabájo', 300000, true)]), [100000, 300000, 0], 'only variants: in order');
 });
 
 test('L-04 explicaDisp with a scheduled pase: only the pases already out are explained, and the text adds up to the big number', function(){

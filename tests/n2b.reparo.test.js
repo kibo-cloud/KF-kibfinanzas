@@ -1,9 +1,10 @@
 'use strict';
 // N2-B repair (S1, user-initiated, reversible): legacy data saved by the old matcher can hold [variant "Dél trabajo" unticked, exact
-// "Del trabajo" ticked] in one month; flujosMes allocates the month's pases to the "Del trabajo" rows IN ORDER, so the variant absorbs the
-// pase and the user's unticked amount counts as realized (L-03d, still `todo` in r4.cobertura for data the user did not repair).
-// The repair only REORDERS the rows (the exact row first, nothing renamed, no amount or tick changed), after the user saw a preview,
-// keeps a copy of the months for «Deshacer», and refuses in a stale tab. The engine is not changed (goldens byte-identical).
+// "Del trabajo" ticked] in one month; flujosMes used to allocate the month's pases to the "Del trabajo" rows IN ORDER, so the variant
+// absorbed the pase and the user's unticked amount counted as realized (L-03d). Since owner-decisions-closure D1 (N2-B option b) the
+// engine gives the pases to the single exact row first, so ordering changes no total; the repair stays to tidy the stored order. It only
+// REORDERS the rows (the exact row first, nothing renamed, no amount or tick changed), after the user saw a preview, keeps a copy of the
+// months for «Deshacer», and refuses in a stale tab.
 var test = require('node:test');
 var assert = require('node:assert/strict');
 var la = require('./load-app');
@@ -55,15 +56,19 @@ test('N2-B repair: the plan lists every month with two "Del trabajo" rows; only 
   assert.deepEqual(plain(a.conOrdenTrabajo(a.D.meses[9].ingresos, p[3])).map(function(x){ return x.nombre; }), ['Del trabajo', 'Dél trabajo']);
   assert.deepEqual(plain(a.conOrdenTrabajo(a.D.meses[2].ingresos, p[0])).map(function(x){ return x.nombre; }), ['Del trabajo', 'Dél trabajo', 'Sueldo'],
     'the exact row moves to where the first "Del trabajo" row was; the other rows keep their order');
+  assert.match(a.avisoTrabajoDoble(a.D), /Lo que pasás desde Trabajo cuenta primero en el renglón llamado exactamente «Del trabajo»: revisalos en Mes/,
+    'D1: the notice no longer says the money is split among the rows');
 });
 test('N2-B repair: the preview shows the rows, amounts, ticks and what changes in cobrado / sin cobrar; nothing is written', function(){
   var a = app(), antes = JSON.stringify(a.ls.d);
-  assert.deepEqual(plain(a.efectoOrdenTrabajo(a.D, a.planOrdenTrabajo(a.D)[3], a.hoy)), {antes: {cobrado: 400000, pendiente: 0}, despues: {cobrado: 300000, pendiente: 100000}});
+  assert.deepEqual(plain(a.efectoOrdenTrabajo(a.D, a.planOrdenTrabajo(a.D)[3], a.hoy)), {antes: {cobrado: 300000, pendiente: 100000}, despues: {cobrado: 300000, pendiente: 100000}},
+    'D1: the engine already gives the pase to the exact row, so ordering changes no total');
   assert.equal(a.efectoOrdenTrabajo(a.D, a.planOrdenTrabajo(a.D)[0], a.hoy), null, 'a month before the month-to-month balance: no total changes');
   a.abrirOrdenTrabajo();
   var h = a.g.hojas[0];
   assert.match(h, /Octubre: «Dél trabajo» \$100000 \(sin cobrar\), «Del trabajo» \$300000 \(cobrado\)/);
-  assert.match(h, /Queda primero «Del trabajo»\. Cobrado: \$400000 → \$300000\. Sin cobrar: \$0 → \$100000\./);
+  assert.match(h, /Octubre: [^<]*Queda primero «Del trabajo»\. No cambia ningún total de ese mes\./, 'no before → after when nothing changes');
+  assert.doesNotMatch(h, /Cobrado: /);
   assert.match(h, /Marzo: «Dél trabajo» \$1000 \(sin cobrar\), «Del trabajo» \$2000 \(cobrado\)\. Queda primero «Del trabajo»\. No cambia ningún total de ese mes\./);
   assert.match(h, /Agosto: hay más de un renglón llamado exactamente «Del trabajo»: no lo ordeno, revisalo en Mes\./);
   assert.doesNotMatch(h, /Junio/, 'a month already in order is not offered');
@@ -73,7 +78,7 @@ test('N2-B repair: the preview shows the rows, amounts, ticks and what changes i
 });
 test('N2-B repair: ordering changes only the order of the rows, keeps a copy first, and the money follows the intended semantics', function(){
   var a = app(), antes = plain(a.D);
-  assert.deepEqual(flujo(antes, 9), [100000, 300000, 0], 'before: the unticked 100.000 counts as cobrado (L-03d)');
+  assert.deepEqual(flujo(antes, 9), [0, 300000, 100000], 'before: since D1 the unticked 100.000 already stays pending (L-03d)');
   assert.equal(a.ordenarTrabajo(), true);
   var guardado = JSON.parse(a.ls.d[Y]);
   [2, 9].forEach(function(j){
@@ -99,7 +104,7 @@ test('N2-B repair: «Deshacer» puts back the previous order: every month byte-i
   assert.equal(JSON.stringify(a.D.meses), antes);
   assert.equal(JSON.stringify(JSON.parse(a.ls.d[Y]).meses), guardadoAntes, 'stored months byte-identical to before the repair');
   assert.equal(REP in a.ls.d, false);
-  assert.deepEqual(flujo(JSON.parse(a.ls.d[Y]), 9), [100000, 300000, 0], 'back to the unrepaired reading');
+  assert.deepEqual(flujo(JSON.parse(a.ls.d[Y]), 9), [0, 300000, 100000], 'the unrepaired order reads the same since D1');
 });
 test('N2-B repair: a stale tab is refused, nothing written; undo is refused if the month changed after ordering', function(){
   var a = app(), antes = JSON.stringify(a.ls.d), mem = JSON.stringify(a.D);
