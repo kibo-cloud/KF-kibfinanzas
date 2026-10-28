@@ -63,7 +63,14 @@ money effect of each item: `odd/tasks/stabilization-quick-sales.md` "S1 — Pend
       `tests/d2.parcial.test.js` (functions missing); GREEN 6/6. Mutations: undo without giving the part back → 2 fail; planned row
       not reduced → 2 fail. Inventory classified (`renglonLibre`, `pagoParcial`, `quitarMov` note). E2E +3 (button list, split,
       toast, undo). Motor goldens unchanged. `npm test` 921/921, `npm run test:e2e` 537/537.
-- [ ] D3 "(otro gasto)" counts toward the original row's tope.
+- [x] D3 "(otro gasto)" counts toward the original row's tope. Route: inline (tope display functions + tests). `gastadoConApartes`
+      adds to a row's tope consumption its ticked one-off rows of the same section: "<row> (otro gasto)", "(otro gasto N)" and the D2
+      "<row> (pago parcial)" rows (`baseAparte`: suffix + `esGastoAparte`, so an old unmarked "(otro gasto)" counts and a hand-typed
+      "(pago parcial)" without the mark does not). Used by `filaTope`, `pasadas` (over-cap notice) and the live bar update. Budget
+      alerts only: no total, balance or stored value changes; a future (programado) month still consumes nothing. Rationale for
+      including "(pago parcial)": it is the same category spend, and without it a partial payment would release tope that «Cambiar a»
+      keeps. RED: 0/4 in `tests/d3.topes.test.js`; GREEN 4/4; mutation (apart rows not added) → 3 fail. E2E +1 (tope bar after "No, es
+      otro gasto"). `npm test` 925/925, `npm run test:e2e` 538/538.
 - [ ] D4 L5 optional due day on rows/plans + "Qué vence esta semana".
 - [ ] D5 N1-B (b) or resolved-by-H1 proof.
 - [ ] D6 N3b-B prominent label + N4-A download action (verify whether already built).
@@ -85,9 +92,10 @@ trailers. No remote configured: push/PR are owner decisions. Forecast ~900-1300 
 - 2026-10-28: document created; decisions recorded. Engram mirror pending (memory session ambiguity).
 - D0 done (`6e52d22`, docs only).
 - D1 done (`05a0b75`): L-03d passes; 915 tests, 0 todo.
-- D2 done: partial payment split; 921 tests, E2E 537/537.
+- D2 done (`b1d71d2`): partial payment split; 921 tests, E2E 537/537.
+- D3 done: one-off rows count toward the tope; 925 tests, E2E 538/538.
 - GitHub: blocked: wrong GitHub account on this PC (owner, 2026-10-28); versions kept locally only (P11 and L10 notes updated).
 
 ## Next step
 
-D3.
+D4.

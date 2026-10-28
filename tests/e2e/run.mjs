@@ -1477,6 +1477,12 @@ try{
     check('D2 partial payment toast', await ev(`document.querySelector('#toast span').textContent`), 'Anoté ' + await ev('fARS(20000)') + ' como pago parcial de Super. Quedan ' + await ev('fARS(30000)') + ' pendientes');
     await tocarL3('#toast [data-act=quitarMov]');
     check('D2 undo of the partial payment restores exactly', await mesL3(9), antesL3);
+    // D3 (owner decision): the separate "(otro gasto)" row counts toward the tope of its row (budget alert only)
+    await ev(`D.meses[9].gastosVariables[0].tope = 40000; guardar(); true`); await nav(URL_APP); await sleep(800);
+    await gastoL3('20.000'); await tocarL3('#hoja [data-act=gastoAparte]');
+    check('D3 "(otro gasto)" consumes the tope of Super', await ev(`document.getElementById('tt-gastosVariables-0').textContent`), await ev('fARS(20000)') + ' de ' + await ev('fARS(40000)'));
+    await tocarL3('#toast [data-act=quitarMov]');
+    await ev(`D.meses[9].gastosVariables[0].tope = 0; guardar(); true`); await nav(URL_APP); await sleep(800);
     // future month of the model: N4 I-1 unchanged
     await ev(`document.querySelector('[data-act=mes][data-m="10"]').click(); true`); await sleep(1000);
     await gastoL3('20.000');

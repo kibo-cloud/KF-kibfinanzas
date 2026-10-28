@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-i7OVewB2iMJO7rGYBB+Ue96nH7qAfPy1vFKBffFcAPc=' 'sha256-5fLzrfylcaqXu9evpGKzRmm2KSE7aKobMKmHRhtIeow='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-i7OVewB2iMJO7rGYBB+Ue96nH7qAfPy1vFKBffFcAPc=' 'sha256-gZsxNZTVLY7z0ZxjceeTdJq8udFQzmorXa3kSnnUzWM='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -3462,7 +3462,7 @@ function barra(txt, pct, verde, id){
        + '<div class="pista"><i id="'+id+'" class="'+(verde?'verde':'')+'" style="width:'+w+'%"></i></div></div>';
 }
 function filaTope(k, i, it){
-  var tope = num(it.tope), gastado = gastadoVista(it, mes), pct = tope > 0 ? gastado / tope : 0;
+  var tope = num(it.tope), gastado = gastadoConApartes(D && D.meses[mes] && D.meses[mes][k], it, mes), pct = tope > 0 ? gastado / tope : 0;
   var pasado = gastado > tope;
   var txt = pasado ? 'Te pasaste por ' + fARS(gastado - tope) + ' del tope de ' + fARS(tope)
                    : fARS(gastado) + ' de ' + fARS(tope);
@@ -3482,7 +3482,7 @@ function pasadas(m){
   for(s=0;s<SECS.length;s++){
     k = SECS[s].k; if(!TOPEABLE[k]) continue;
     l = m[k];
-    for(i=0;i<l.length;i++){ if(num(l[i].tope) > 0 && gastadoVista(l[i], mes) > num(l[i].tope)) out.push(l[i].nombre); }
+    for(i=0;i<l.length;i++){ if(num(l[i].tope) > 0 && gastadoConApartes(l, l[i], mes) > num(l[i].tope)) out.push(l[i].nombre); }
   }
   return out;
 }
@@ -3856,6 +3856,17 @@ function datosRealizados(d, hoy){
 // (torta, topes, texto de la deuda, tildes) lo leen por acá; los datos guardados no se tocan y el motor no cambia (como datosRealizados)
 function esProgramado(d, j, hoy){ return mesDelModelo(d, j) && estadoMes(d.anio, j, hoy) === 'futuro'; }
 function gastadoVista(it, j){ return gastadoTope(esProgramado(D, j, hoyApp()) ? {monto: it.monto, pagado: false} : it, j); }
+/* D3 (owner-decisions-closure, opción b): lo anotado aparte ("<fila> (otro gasto)", L3) o como pago parcial ("<fila> (pago parcial)", D2) es
+   gasto de la misma categoría: consume el tope de <fila>. Solo avisos de tope; ningún saldo ni dato guardado cambia. */
+function baseAparte(it){   // el nombre del renglón del que salió un renglón aparte, o null
+  var m = /^(.*\S) \((?:otro gasto|pago parcial)(?: (?:[2-9]|[1-9]\d+))?\)$/.exec(String(it && it.nombre || ''));
+  return m && esGastoAparte(it) ? m[1] : null;
+}
+function gastadoConApartes(l, it, j){   // lo que consume el tope de it: lo suyo más sus renglones aparte de la misma sección
+  var g = gastadoVista(it, j), i;
+  for(i=0;l && i<l.length;i++) if(l[i] !== it && baseAparte(l[i]) === it.nombre) g += gastadoVista(l[i], j);
+  return g;
+}
 // en un mes programado solo se puede destildar lo que se marcó antes de tiempo; tildar espera a que llegue el mes
 function puedeAlternar(j, it){ return !(esProgramado(D, j, hoyApp()) && !estaPagado(j, it)); }
 // mes en rojo: en un mes del modelo, lo que muestra la tarjeta (Ingresos con los pases de Trabajo ya hechos − Gastos − Deudas) < 0, nunca
@@ -4636,7 +4647,7 @@ function refrescar(){
     for(var z=0;z<ll.length;z++){
       var bt = document.getElementById('tb-'+kk+'-'+z), tt = document.getElementById('tt-'+kk+'-'+z);
       if(!bt || !tt) continue;
-      var tp = num(ll[z].tope), gs = gastadoVista(ll[z], mes), ps = gs > tp;
+      var tp = num(ll[z].tope), gs = gastadoConApartes(ll, ll[z], mes), ps = gs > tp;
       bt.style.width = Math.max(0, Math.min(100, (tp>0?gs/tp:0)*100)) + '%';
       bt.className = ps ? 'mal' : '';
       tt.className = ps ? 'mal' : '';
