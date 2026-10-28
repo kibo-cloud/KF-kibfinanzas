@@ -39,7 +39,9 @@ money effect of each item: `odd/tasks/stabilization-quick-sales.md` "S1 — Pend
 
 ## Checklist
 
-- [ ] D0 Reconcile P1-P12 in `alpha-product-surface.md` with L1-L10 evidence (docs only).
+- [x] D0 Reconcile P1-P12 in `alpha-product-surface.md` with L1-L10 evidence (docs only). Route: inline (one doc). Ticked P1, P3-P9,
+      P12 with the citing section; P10 left open (dead `.fab` CSS still present, found by rg), P11 left open (owner deferred, no
+      destination); P8 marked superseded by this feature. Docs only: no test run needed.
 - [ ] D1 N2-B (b) engine allocation order + goldens report + L-03d green.
 - [ ] D2 L3 (b) partial payment split.
 - [ ] D3 "(otro gasto)" counts toward the original row's tope.

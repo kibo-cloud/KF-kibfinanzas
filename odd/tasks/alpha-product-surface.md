@@ -31,20 +31,35 @@ Owner brief: "TU GASTO — PRODUCT SURFACE, UX/UI, BRANDING, GITHUB & FINAL ALPH
 
 ## Checklist (route per task recorded below)
 
-- [ ] P1 UX/UI audit of the real app (screenshots 360/390/430/desktop; dashboard, month, patrimonio, Trabajo, pending/scheduled,
-      empty and future states; microcopy; branding inventory). Route: delegated read-only auditor.
+- [x] P1 UX/UI audit of the real app (screenshots 360/390/430/desktop; dashboard, month, patrimonio, Trabajo, pending/scheduled,
+      empty and future states; microcopy; branding inventory). Route: delegated read-only auditor. Evidence: "P1 — UX/UI audit".
 - [x] P2 Branding kibFinanzas → TuGasto (visible surfaces only) + manifest/title/metadata + LEEME. Route: delegated writer.
-- [ ] P3 Visual redesign (hierarchy, cards, states, spacing, typography, feedback) + R4/R5 mechanics visible (Disponible origin,
+- [x] P3 Visual redesign (hierarchy, cards, states, spacing, typography, feedback) + R4/R5 mechanics visible (Disponible origin,
       proyectado vs actual, programado, pendiente actionable, Trabajo, patrimonio composition, deudas). Route: delegated writer(s).
-- [ ] P4 Microcopy pass (titles, buttons, errors, confirmations, notices, empty states, backup/restore texts).
-- [ ] P5 Mobile/responsive fixes (360/390/430/desktop).
-- [ ] P6 UX E2E (visible assertions for the flows in the brief) + branding/PWA tests.
-- [ ] P7 PWA/cache: version bump with justification, update path for existing installs, offline, PC/file://.
-- [ ] P8 OWNER_DECISION review (N1-B, N2-B, N3a-A/B, N3b-A/B, N4-A/B); N2-B with maximum data conservation.
-- [ ] P9 Security/integrity regression; CSP status.
-- [ ] P10 Pre-Alpha cleanup (dead code/CSS, stale labels, debug logs).
-- [ ] P11 GitHub: .gitignore, secret/PII scan, remote (destination must be explicit), push, verification.
-- [ ] P12 Native review per slice, final verification, ALPHA_READY / ALPHA_BLOCKED.
+      Evidence: "P3a" (tokens, home, month) and L1 (P3b: El año, Patrimonio, Trabajo).
+- [x] P4 Microcopy pass (titles, buttons, errors, confirmations, notices, empty states, backup/restore texts). Evidence: L2.
+- [x] P5 Mobile/responsive fixes (360/390/430/desktop). Evidence: P3a/L1 (360-430 month overflow, 1280 month bar), L6 (no
+      horizontal overflow at 360), L7 (desktop two columns; 390 px boxes pinned in tests/fixtures/l7-movil-390.json).
+- [x] P6 UX E2E (visible assertions for the flows in the brief) + branding/PWA tests. Evidence: L1-L7 E2E steps (487/487 at L10),
+      P2 branding tests, L9 PWA update/offline E2E.
+- [x] P7 PWA/cache: version bump with justification, update path for existing installs, offline, PC/file://. Evidence: L9
+      (1.33.0, SW v46, `kibo.versionVista` update notice, PWA E2E) and L8 (PC file via file://).
+- [x] P8 OWNER_DECISION review (N1-B, N2-B, N3a-A/B, N3b-A/B, N4-A/B); N2-B with maximum data conservation. Superseded by
+      `odd/tasks/owner-decisions-closure.md` (owner-delegated decisions of 2026-10-28, tasks D1-D7); the interim N2-B repair tool
+      is recorded in `stabilization-quick-sales.md` "N2-B repair".
+- [x] P9 Security/integrity regression; CSP status. Evidence: L8 (atomic writes journal; CSP without script 'unsafe-inline';
+      style-src 'unsafe-inline' documented as LOW debt) and the security audit items 7-8 in `stabilization-quick-sales.md` "Final
+      audit fixes".
+- [ ] P10 Pre-Alpha cleanup (dead code/CSS, stale labels, debug logs). Partial: stale labels done in L2, no debug logs in
+      `index.html`; the unused `.fab` CSS rules (the Gasto button uses `.nav-gasto` since L1, see U2) were never removed. Left open.
+- [ ] P11 GitHub: .gitignore, secret/PII scan, remote (destination must be explicit), push, verification. Partial: .gitignore and
+      the secret/PII scan done (2e68947, L10); remote and push deferred by the owner ("No publicar todavía", 2026-10-12) and no
+      destination/visibility was given. Stays open until the owner names the destination.
+- [x] P12 Native review per slice, final verification, ALPHA_READY / ALPHA_BLOCKED. Evidence: L10 (slices U1-U9 and V1 approved and
+      acknowledged; verdict `ALPHA_READY`).
+
+Reconciled 2026-10-28 (`owner-decisions-closure.md` D0): these boxes were not ticked while the work ran through the L1-L10 loop;
+each ticked item cites the section that holds its evidence.
 
 ## Progress / evidence
 
