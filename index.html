@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-H+OlD/ltJ+1Bs9T0+iO4oKsPEYQvBLPqAfZlVMnrsNM=' 'sha256-NSEJbSFeY404QXZc3asgUxEfxypUaNrFactbaHtEbms='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-i7OVewB2iMJO7rGYBB+Ue96nH7qAfPy1vFKBffFcAPc=' 'sha256-5fLzrfylcaqXu9evpGKzRmm2KSE7aKobMKmHRhtIeow='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -2103,8 +2103,14 @@ function normalizar(d, hoy){
     m.movimientos = m.movimientos.filter(function(x){ return x && typeof x==='object'; }).map(function(x){
       var mo = {id:String(x.id||''), fecha:String(x.fecha||''), sec:String(x.sec||'gastosVariables'), nombre:String(x.nombre||''), monto:num(x.monto)};
       if(typeof x.pp === 'boolean') mo.pp = x.pp;   // pagado que tenía el renglón antes de este gasto: lo usa Deshacer
-      if(x.tipo === 'pago' || x.tipo === 'aparte') mo.tipo = x.tipo;   // L3: qué respondió el usuario (Deshacer)
+      if(x.tipo === 'pago' || x.tipo === 'aparte' || x.tipo === 'parcial') mo.tipo = x.tipo;   // L3: qué respondió el usuario (Deshacer)
       if(x.tipo === 'pago') mo.ma = num(x.ma);   // L3: monto que tenía el renglón antes de marcarlo pagado (Deshacer)
+      if(x.tipo === 'parcial'){   // D2: pago parcial; el renglón del plan que quedó con el resto (Deshacer le devuelve la parte)
+        if(typeof x.nueva === 'boolean') mo.nueva = x.nueva;
+        if(typeof x.rn === 'string') mo.rn = x.rn;
+        if(typeof x.rfo === 'number' && x.rfo >= 0 && Math.floor(x.rfo) === x.rfo) mo.rfo = x.rfo;
+        if(typeof x.rfn === 'number' && x.rfn >= 1 && Math.floor(x.rfn) === x.rfn) mo.rfn = x.rfn;
+      }
       if(typeof x.fi === 'number' && x.fi >= 0 && Math.floor(x.fi) === x.fi) mo.fi = x.fi;   // S2 M2: lugar del renglón que cambió (Deshacer)
       if(typeof x.fo === 'number' && x.fo >= 0 && Math.floor(x.fo) === x.fo) mo.fo = x.fo;   // S2 M2: cuál de los renglones con ese nombre (0 = el primero)
       if(typeof x.fn === 'number' && x.fn >= 1 && Math.floor(x.fn) === x.fn) mo.fn = x.fn;   // S2 M2: cuántos renglones tenían ese nombre
@@ -5560,10 +5566,12 @@ function filaDelGasto(){
 function gastoEsPago(){
   var it = filaDelGasto(); if(!it){ cerrarHoja(); return; }
   if(num(it.monto) === gr.monto){ marcarPago(false); return; }
+  var parte = gr.monto < num(it.monto);   // D2: un monto menor puede ser un pago parcial (el resto sigue pendiente)
   abrirHoja('<h3>¿Con qué monto lo marco?</h3>'   // sin cambios silenciosos: el usuario elige
     + '<div class="texto" style="margin-bottom:16px"><b>' + esc(it.nombre) + '</b> decía ' + fARS(num(it.monto)) + ' y anotaste ' + fARS(gr.monto) + '.</div>'
+    + (parte ? '<div class="fila" style="margin-bottom:8px"><button class="pri" data-act="pagoParcial">Pagué una parte: quedan ' + fARS(num(it.monto) - gr.monto) + ' pendientes</button></div>' : '')
     + '<div class="fila"><button data-act="pagoMonto" data-v="fila">Dejar ' + fARS(num(it.monto)) + '</button>'
-    + '<button class="pri" data-act="pagoMonto" data-v="gasto">Cambiar a ' + fARS(gr.monto) + '</button></div>'
+    + '<button' + (parte ? '' : ' class="pri"') + ' data-act="pagoMonto" data-v="gasto">Cambiar a ' + fARS(gr.monto) + '</button></div>'
     + '<div class="fila" style="margin-top:8px"><button data-act="cerrarHoja">Cancelar</button></div>');
 }
 function marcarPago(usarGasto){
@@ -5575,21 +5583,43 @@ function marcarPago(usarGasto){
   cerrarHoja(); tocar(); conScroll(renderMes);
   toast('Marqué ' + it.nombre + ' como pagado', 'Deshacer', 'quitarMov', id);
 }
-function gastoAparte(){
-  var it = filaDelGasto(); if(!it){ cerrarHoja(); return; }
-  var ls = D.meses[mes][gr.sec], fila = null, nueva = false, nombre = '', n, q;
-  for(n=1; !fila; n++){   // "Super (otro gasto)": se reusa si está tildado o vacío; uno pendiente nunca se mezcla (va "Super (otro gasto 2)")
-    nombre = it.nombre + (n === 1 ? ' (otro gasto)' : ' (otro gasto ' + n + ')');
+// "Super (otro gasto)" / "Super (pago parcial)": se reusa si está tildado o vacío; uno pendiente nunca se mezcla (va "Super (otro gasto 2)")
+function renglonLibre(ls, base, sufijo){   // {fila, nueva}; una fila nueva va al final, marcada aparte (plata ya gastada, no se copia)
+  var fila = null, nombre, n, q;
+  for(n=1; !fila; n++){
+    nombre = base + (n === 1 ? ' (' + sufijo + ')' : ' (' + sufijo + ' ' + n + ')');
     var hallada = null;
     for(q=0;q<ls.length;q++) if(ls[q].nombre === nombre){ hallada = ls[q]; break; }
-    if(!hallada){ fila = {nombre:nombre, monto:0, tope:0, frec:'', dias:[], pagado:false, aparte:true}; ls.push(fila); nueva = true; break; }   // la forma de un renglón normalizado
+    if(!hallada){ fila = {nombre:nombre, monto:0, tope:0, frec:'', dias:[], pagado:false, aparte:true}; ls.push(fila); return {fila: fila, nueva: true}; }   // la forma de un renglón normalizado
     if(hallada.pagado === true || !num(hallada.monto)) fila = hallada;
   }
+  return {fila: fila, nueva: false};
+}
+function gastoAparte(){
+  var it = filaDelGasto(); if(!it){ cerrarHoja(); return; }
+  var r = renglonLibre(D.meses[mes][gr.sec], it.nombre, 'otro gasto'), fila = r.fila, nueva = r.nueva;
   var pp = fila.pagado === true;
   sumarAItem(fila, gr.monto);   // vacío → queda tildado: plata ya gastada
   var id = anotarMov(fila, gr.monto, pp, nueva ? {tipo:'aparte'} : null);
   cerrarHoja(); tocar(); conScroll(renderMes);
   toast('Anoté ' + fARS(gr.monto) + ' en ' + fila.nombre + '. ' + it.nombre + ' sigue pendiente', 'Deshacer', 'quitarMov', id);
+}
+/* D2 (owner-decisions-closure, L3 pago parcial, opción b): "Sí" con un monto MENOR que el renglón pendiente. La parte pagada va a un renglón
+   tildado "<fila> (pago parcial)" (marcado aparte: plata ya gastada, no se copia al mes siguiente) y el renglón del plan queda con el resto,
+   sin tildar. Deshacer devuelve la parte al renglón del plan (buscado por nombre, lugar entre los del mismo nombre y cuántos había, como S2 M2)
+   y saca el renglón tildado si lo creó este pago. */
+function pagoParcial(){
+  var it = filaDelGasto(); if(!it){ cerrarHoja(); return; }
+  if(!(gr.monto > 0 && gr.monto < num(it.monto))){ cerrarHoja(); return; }
+  var ls = D.meses[mes][gr.sec], rfo = 0, rfn = 0, fi = ls.indexOf(it), q;
+  for(q=0;q<ls.length;q++) if(ls[q].nombre === it.nombre){ if(q < fi) rfo++; rfn++; }
+  var r = renglonLibre(ls, it.nombre, 'pago parcial'), fila = r.fila, pp = fila.pagado === true;
+  it.monto = Math.round((num(it.monto) - gr.monto) * 100) / 100;
+  sumarAItem(fila, gr.monto);   // vacío → queda tildado: plata ya gastada
+  fila.pagado = true;
+  var id = anotarMov(fila, gr.monto, pp, {tipo:'parcial', nueva:r.nueva, rn:it.nombre, rfo:rfo, rfn:rfn});
+  cerrarHoja(); tocar(); conScroll(renderMes);
+  toast('Anoté ' + fARS(gr.monto) + ' como pago parcial de ' + it.nombre + '. Quedan ' + fARS(num(it.monto)) + ' pendientes', 'Deshacer', 'quitarMov', id);
 }
 var borrado = null;
 function volverBorrado(){
@@ -5614,15 +5644,23 @@ function quitarMov(id){
     for(i=0;i<ls.length;i++) if(ls[i].nombre === mv.nombre) mismos.push(i);
     exacto = (typeof mv.fn !== 'number' || mismos.length === mv.fn) && mv.fo < mismos.length ? mismos[mv.fo] : -2;
   } else if(typeof mv.fi === 'number' && ls[mv.fi] && ls[mv.fi].nombre === mv.nombre) exacto = mv.fi;
+  var plan = null;   // D2: el renglón del plan de un pago parcial; si ya no se sabe cuál es, no se toca nada
+  if(mv.tipo === 'parcial'){
+    var delPlan = [];
+    for(i=0;i<ls.length;i++) if(ls[i].nombre === mv.rn) delPlan.push(i);
+    plan = typeof mv.rfo === 'number' && delPlan.length === mv.rfn && mv.rfo < delPlan.length ? ls[delPlan[mv.rfo]] : null;
+    if(!plan){ toast('No encontré el renglón para deshacer'); return; }
+  }
   for(i=0;i<ls.length;i++){
     if(exacto >= 0 ? i === exacto : exacto === -1 && ls[i].nombre === mv.nombre){
       hallado = true;
+      if(plan) plan.monto = Math.round((num(plan.monto) + num(mv.monto)) * 100) / 100;
       // L3 "Sí": se revierte SOLO ese pago (el cambio de monto que hizo y el tilde); otros gastos o ediciones posteriores del renglón quedan
       if(mv.tipo === 'pago' && typeof mv.pp === 'boolean'){ ls[i].monto = Math.max(0, num(ls[i].monto) - num(mv.monto) + num(mv.ma)); ls[i].pagado = mv.pp; break; }
       ls[i].monto = Math.max(0, num(ls[i].monto) - mv.monto);
       // si el gasto rápido tildó un renglón vacío y Deshacer lo deja vacío otra vez, vuelve a como estaba (los viejos sin pp no tocan nada)
       if(typeof mv.pp === 'boolean' && !(ls[i].monto > 0)) ls[i].pagado = mv.pp;
-      if(mv.tipo === 'aparte' && !(ls[i].monto > 0)) ls.splice(i, 1);   // L3 "No, es otro gasto": el renglón aparte que creó se va
+      if((mv.tipo === 'aparte' || (mv.tipo === 'parcial' && mv.nueva === true)) && !(ls[i].monto > 0)) ls.splice(i, 1);   // L3 "No, es otro gasto" / D2: el renglón aparte que creó se va
       break;
     }
   }
@@ -5950,6 +5988,7 @@ document.addEventListener('click', function(ev){
   if(a === 'anio'){ cambiarAnio(+b.getAttribute('data-v')); return; }
   if(a === 'gastoEsPago'){ gastoEsPago(); return; }
   if(a === 'gastoAparte'){ gastoAparte(); return; }
+  if(a === 'pagoParcial'){ pagoParcial(); return; }
   if(a === 'pagoMonto'){ marcarPago(b.getAttribute('data-v') === 'gasto'); return; }
   if(a === 'cerrarAviso'){ document.getElementById('avisos').innerHTML = ''; return; }
   if(a === 'posponerCopia'){ posponerCopia(); return; }

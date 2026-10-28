@@ -53,7 +53,16 @@ money effect of each item: `odd/tasks/stabilization-quick-sales.md` "S1 — Pend
       Rationale (tick): the decision row says "ticked exact row" because that is the L-03d case; the pase is added to the exact row
       whatever its tick, so the tick does not change which row holds it. Requiring the tick would leave [variant ticked, exact
       unticked] reading the pase from the variant and the repair still changing totals; L-03e pins that case.
-- [ ] D2 L3 (b) partial payment split.
+- [x] D2 L3 (b) partial payment split. Route: inline (quick-expense functions in index.html + tests). When "Sí" is answered with an
+      amount smaller than the pending row, the amount sheet adds «Pagué una parte: quedan $X pendientes» (primary; «Dejar» and
+      «Cambiar a» kept). `pagoParcial`: the typed part goes to a ticked row "<row> (pago parcial)" marked `aparte` (spent money,
+      not copied to the next month; reused when ticked or empty, like "(otro gasto)", via the new shared `renglonLibre`), the
+      planned row keeps the rest, unticked. Movement `{tipo:'parcial', nueva, rn, rfo, rfn}` (kept by `normalizar`, junk dropped):
+      undo gives the part back to the planned row found by name + place among same-named rows + count (S2 M2 rule), removes the row
+      it created, and refuses ("No encontré el renglón para deshacer") when the planned row is no longer identifiable. RED: 0/6 in
+      `tests/d2.parcial.test.js` (functions missing); GREEN 6/6. Mutations: undo without giving the part back → 2 fail; planned row
+      not reduced → 2 fail. Inventory classified (`renglonLibre`, `pagoParcial`, `quitarMov` note). E2E +3 (button list, split,
+      toast, undo). Motor goldens unchanged. `npm test` 921/921, `npm run test:e2e` 537/537.
 - [ ] D3 "(otro gasto)" counts toward the original row's tope.
 - [ ] D4 L5 optional due day on rows/plans + "Qué vence esta semana".
 - [ ] D5 N1-B (b) or resolved-by-H1 proof.
@@ -76,8 +85,9 @@ trailers. No remote configured: push/PR are owner decisions. Forecast ~900-1300 
 - 2026-10-28: document created; decisions recorded. Engram mirror pending (memory session ambiguity).
 - D0 done (`6e52d22`, docs only).
 - D1 done (`05a0b75`): L-03d passes; 915 tests, 0 todo.
+- D2 done: partial payment split; 921 tests, E2E 537/537.
 - GitHub: blocked: wrong GitHub account on this PC (owner, 2026-10-28); versions kept locally only (P11 and L10 notes updated).
 
 ## Next step
 
-D2.
+D3.

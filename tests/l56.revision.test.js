@@ -66,7 +66,7 @@ test('L5 review b: a fortnightly income on the 15th and the 30th, the 15th overd
 });
 
 // ── c: the separate quick-expense rows ──
-var F_GASTO = ['sumarGasto', 'quitarMov', 'esc', 'fARS', 'grupos', 'preguntaPago', 'preguntarPago', 'gastoEsPago', 'marcarPago', 'gastoAparte', 'filaDelGasto',
+var F_GASTO = ['sumarGasto', 'quitarMov', 'esc', 'fARS', 'grupos', 'preguntaPago', 'preguntarPago', 'gastoEsPago', 'marcarPago', 'gastoAparte', 'renglonLibre', 'filaDelGasto',
   'anotarMov', 'esGastoAparte', 'copiarAnterior', 'esRenglonTrabajo'];
 function gastoApp(raw, mes){
   var toasts = [];

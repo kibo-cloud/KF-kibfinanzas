@@ -10,7 +10,7 @@ var H = require('./fixtures/r45-harness');
 var M = la.loadMotor();
 function plain(x){ return JSON.parse(JSON.stringify(x)); }
 function filas(l){ return plain(l).map(function(it){ return {nombre: it.nombre, monto: it.monto, pagado: it.pagado}; }); }
-var FUNCS = ['sumarGasto', 'quitarMov', 'esc', 'fARS', 'grupos', 'preguntaPago', 'preguntarPago', 'gastoEsPago', 'marcarPago', 'gastoAparte', 'filaDelGasto', 'anotarMov'];
+var FUNCS = ['sumarGasto', 'quitarMov', 'esc', 'fARS', 'grupos', 'preguntaPago', 'preguntarPago', 'gastoEsPago', 'marcarPago', 'gastoAparte', 'renglonLibre', 'pagoParcial', 'filaDelGasto', 'anotarMov'];
 // a model year from October (desde 9); today 2026-10-15: September past, October current, November future
 function modelo(filas, j){
   var d = C.vacio(2026); C.arrastre(d, 9, 100000, 'declarado'); C.mes(d, j === undefined ? 9 : j, filas); return d;
@@ -117,7 +117,7 @@ test('U6 the answer refuses when the row at that index is no longer the one aske
     ['the row was deleted', function(a){ a.D.meses[9].gastosVariables.splice(0, 1); }],
     ['the month on screen changed', function(a){ a.mes = 8; }]
   ];
-  ['gastoEsPago', 'gastoAparte', 'marcarPago'].forEach(function(accion){
+  ['gastoEsPago', 'gastoAparte', 'marcarPago', 'pagoParcial'].forEach(function(accion){
     casos.forEach(function(c){
       var a = app(modelo({gastosVariables: [C.it('Super', 50000, false)]}));
       gasto(a, 20000);

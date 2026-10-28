@@ -11,7 +11,7 @@ var H = require('./fixtures/r45-harness');
 
 function plain(x){ return JSON.parse(JSON.stringify(x)); }
 function filas(l){ return plain(l).map(function(it){ return [it.nombre, it.monto, it.pagado]; }); }
-var FUNCS = ['sumarGasto', 'quitarMov', 'esc', 'fARS', 'grupos', 'preguntaPago', 'preguntarPago', 'gastoEsPago', 'marcarPago', 'gastoAparte',
+var FUNCS = ['sumarGasto', 'quitarMov', 'esc', 'fARS', 'grupos', 'preguntaPago', 'preguntarPago', 'gastoEsPago', 'marcarPago', 'gastoAparte', 'renglonLibre',
   'filaDelGasto', 'anotarMov', 'copiarAnterior', 'esGastoAparte'];
 function app(raw, mes){
   var toasts = [];

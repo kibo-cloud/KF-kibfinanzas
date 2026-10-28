@@ -287,7 +287,7 @@ test('D16-14 patrimonio bruto vs neto: bruto 2.925.000 - pasivos 300.000 = neto 
 function caso15(){
   var hojas = [], toasts = [];
   var raw = octubre(100000, {ingresos: [C.it('Sueldo', 500000, true)], gastosVariables: [C.it('Super', 50000, false)]});
-  var app = H.appVista(raw, null, null, null, {funcs: ['sumarGasto', 'quitarMov', 'esc', 'fARS', 'grupos', 'preguntaPago', 'preguntarPago', 'gastoEsPago', 'marcarPago', 'gastoAparte', 'filaDelGasto', 'anotarMov'], vars: ['gr'],
+  var app = H.appVista(raw, null, null, null, {funcs: ['sumarGasto', 'quitarMov', 'esc', 'fARS', 'grupos', 'preguntaPago', 'preguntarPago', 'gastoEsPago', 'marcarPago', 'gastoAparte', 'renglonLibre', 'filaDelGasto', 'anotarMov'], vars: ['gr'],
     globals: {oculto: false, PUNTOS: '..', document: {getElementById: function(){ return null; }},
       abrirHoja: function(h){ hojas.push(h); }, cerrarHoja: function(){}, tocar: function(){}, conScroll: function(){}, renderMes: function(){}, toast: function(t){ toasts.push(t); }}});
   app.hojas = hojas; app.toasts = toasts;

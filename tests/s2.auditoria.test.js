@@ -42,7 +42,7 @@ test('H2: the hero says "a hoy" for the current year and "al cierre de <año>" f
 });
 
 // ── M2: quick-expense undo reverts the exact row it changed, even with two rows of the same name ──
-var FUNCS_GASTO = ['sumarGasto', 'quitarMov', 'esc', 'fARS', 'grupos', 'preguntaPago', 'preguntarPago', 'gastoEsPago', 'marcarPago', 'gastoAparte', 'filaDelGasto', 'anotarMov'];
+var FUNCS_GASTO = ['sumarGasto', 'quitarMov', 'esc', 'fARS', 'grupos', 'preguntaPago', 'preguntarPago', 'gastoEsPago', 'marcarPago', 'gastoAparte', 'renglonLibre', 'filaDelGasto', 'anotarMov'];
 function appGasto(raw){
   var t = [];
   var a = H.appVista(raw, null, null, null, {funcs: FUNCS_GASTO, vars: ['gr'], globals: {oculto: false, PUNTOS: '..', document: {getElementById: function(){ return null; }},

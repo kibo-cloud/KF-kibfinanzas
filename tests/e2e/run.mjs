@@ -1447,7 +1447,7 @@ try{
     // "Sí" with a different amount: second question; keep the row amount; undo from the toast
     await gastoL3('20.000'); await tocarL3('#hoja [data-act=gastoEsPago]');
     check('L3 "Sí" with a different amount asks which amount (no silent change)', await hojaL3(), ['¿Con qué monto lo marco?',
-      'Super decía ' + await ev('fARS(50000)') + ' y anotaste ' + await ev('fARS(20000)') + '.', ['Dejar ' + await ev('fARS(50000)'), 'Cambiar a ' + await ev('fARS(20000)'), 'Cancelar']]);
+      'Super decía ' + await ev('fARS(50000)') + ' y anotaste ' + await ev('fARS(20000)') + '.', ['Pagué una parte: quedan ' + await ev('fARS(30000)') + ' pendientes', 'Dejar ' + await ev('fARS(50000)'), 'Cambiar a ' + await ev('fARS(20000)'), 'Cancelar']]);
     await tocarL3('#hoja [data-act=pagoMonto][data-v=fila]');
     check('L3 "Dejar": the row is ticked with its amount, no duplicate row', await mesL3(9), JSON.stringify([[['Super', 50000, true]], 1]));
     check('L3 toast with Deshacer', await ev(`[document.querySelector('#toast span').textContent, !!document.querySelector('#toast [data-act=quitarMov]')]`), ['Marqué Super como pagado', true]);
@@ -1471,6 +1471,12 @@ try{
     check('L3 "No" toast says the plan is still pending', await ev(`document.querySelector('#toast span').textContent`), 'Anoté ' + await ev('fARS(20000)') + ' en Super (otro gasto). Super sigue pendiente');
     await tocarL3('#toast [data-act=quitarMov]');
     check('L3 undo of "No" removes the separate row', await mesL3(9), antesL3);
+    // D2 (owner decision, partial payment): the typed part is a ticked row, the rest stays pending; undo restores exactly
+    await gastoL3('20.000'); await tocarL3('#hoja [data-act=gastoEsPago]'); await tocarL3('#hoja [data-act=pagoParcial]');
+    check('D2 partial payment: ticked part row, the planned row keeps the rest pending', await mesL3(9), JSON.stringify([[['Super', 30000, false], ['Super (pago parcial)', 20000, true]], 1]));
+    check('D2 partial payment toast', await ev(`document.querySelector('#toast span').textContent`), 'Anoté ' + await ev('fARS(20000)') + ' como pago parcial de Super. Quedan ' + await ev('fARS(30000)') + ' pendientes');
+    await tocarL3('#toast [data-act=quitarMov]');
+    check('D2 undo of the partial payment restores exactly', await mesL3(9), antesL3);
     // future month of the model: N4 I-1 unchanged
     await ev(`document.querySelector('[data-act=mes][data-m="10"]').click(); true`); await sleep(1000);
     await gastoL3('20.000');

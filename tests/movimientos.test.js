@@ -6,7 +6,7 @@ var loadApp = require('./load-app').loadApp;
 
 var hojas = [];
 var app = loadApp({
-  funcs: ['sumarGasto', 'quitarMov', 'esc', 'fARS', 'grupos', 'mesDelModelo', 'preguntaPago', 'preguntarPago', 'gastoEsPago', 'marcarPago', 'gastoAparte', 'filaDelGasto', 'anotarMov'],
+  funcs: ['sumarGasto', 'quitarMov', 'esc', 'fARS', 'grupos', 'mesDelModelo', 'preguntaPago', 'preguntarPago', 'gastoEsPago', 'marcarPago', 'gastoAparte', 'renglonLibre', 'filaDelGasto', 'anotarMov'],
   vars: ['gr'],
   globals: {
     oculto: false, PUNTOS: '..', document: {getElementById: function(){ return null; }},
