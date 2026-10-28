@@ -97,7 +97,17 @@ money effect of each item: `odd/tasks/stabilization-quick-sales.md` "S1 — Pend
       scheduled → 2 fail (D5 + H1 property); ahead months not subtracted → 2 fail. Inventory: `cuotasRealizadas` classified,
       `carryDiciembre` / `cuotasProgramadas` / `cuotasDeMas` notes updated. Motor goldens unchanged. `npm test` 933/933,
       `npm run test:e2e` 541/541.
-- [ ] D6 N3b-B prominent label + N4-A download action (verify whether already built).
+- [x] D6 N3b-B prominent label + N4-A download action (verify whether already built). Route: inline. Verified first: the label
+      existed only as muted text inside the row ("…, cotización sin cargar") plus a plain note; no download action existed, and an
+      unreadable Trabajo had no notice at all (read as empty, copied to quarantine only at the next save). Built what was missing:
+      N3b-B: amber "Cotización sin cargar" chip in the Patrimonio hero (model year, default price, dollars or crypto present) and on
+      the dollar / crypto rows, explanation note in amber; no number changes. N4-A: `revisarTrabajoIlegible` at start copies the
+      unreadable Trabajo text to quarantine (same `ponerEnCuarentena` the save used; nothing else written) and shows a notice with
+      «Descargar el texto» and «Restaurar una copia»; the year notice gets «Descargar el texto» too; `descargarCuarentena` saves the
+      kept text as is (`tugasto-apartado-<clave>-<fecha>.txt`, only `kibo.cuarentena.*` keys); `sinTaparCuarentena` keeps the Trabajo
+      notice under later notices. RED: 4/5 failed in `tests/d6.avisos.test.js`; GREEN 5/5. Mutation (no quarantine copy at start) →
+      1 fail. `tests/r5.patrimonio.test.js` label expectation updated (chip). E2E +2 (notice at start, download content).
+      `npm test` 938/938, `npm run test:e2e` 543/543.
 - [ ] D7 N4-B Ajustes quarantine rows (download / delete with confirmation).
 - [ ] D8 Version 1.34.0 + SW `kibfinanzas-offline-v47`, update path, full suites, docs (`CLAUDE.md`, S1 table rows marked resolved).
 
@@ -119,9 +129,10 @@ trailers. No remote configured: push/PR are owner decisions. Forecast ~900-1300 
 - D2 done (`b1d71d2`): partial payment split; 921 tests, E2E 537/537.
 - D3 done (`5789200`): one-off rows count toward the tope; 925 tests, E2E 538/538.
 - D4 done (`5e48300`): optional due day; 930 tests, E2E 541/541.
-- D5 done: N1-B (b) applied (H1 did not cover it); 933 tests, E2E 541/541.
+- D5 done (`61ba8c8`): N1-B (b) applied (H1 did not cover it); 933 tests, E2E 541/541.
+- D6 done: prominent label + download action; 938 tests, E2E 543/543.
 - GitHub: blocked: wrong GitHub account on this PC (owner, 2026-10-28); versions kept locally only (P11 and L10 notes updated).
 
 ## Next step
 
-D6.
+D7.

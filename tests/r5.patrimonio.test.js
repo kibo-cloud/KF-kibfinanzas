@@ -100,7 +100,7 @@ test('Patrimonio composition with the cotización the app ships (never loaded): 
   var raw = C.seccion2(false, false); raw.cotizacionUSD = 0; raw.cotizacionFecha = '';   // normalizar puts 1499 and no date
   var app = U.appUSD(raw), html = app.usd(), r = filas(html);
   assert.equal(app.D.cotizacionUSD, 1499, 'guard: the default of normalizar');
-  assert.deepEqual(r.usd, ['Dólares (US$ 1.000,00 a $1.499, cotización sin cargar)', '$1.499.000']);
+  assert.deepEqual(r.usd, ['Dólares (US$ 1.000,00 a $1.499) Cotización sin cargar', '$1.499.000'], 'D6 (N3b-B): the label is an amber chip now');
   assert.match(html, /Todavía no cargaste la cotización del dólar: dólares y cripto están calculados a \$1\.499, la que trae la app/);
   assert.doesNotMatch(html, /son una estimación/);
   assert.deepEqual(r.neto, ['Patrimonio neto', '$2.624.000']);

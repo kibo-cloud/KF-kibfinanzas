@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-IVBGKFwoF0+eKig2P3g1ax1P4E3DfO0OQJqZ/GKERoc=' 'sha256-gdx13NpPU5RWQDW9RpSXPGoQk0YwYRG2oEVk9Cae4qU='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-IVBGKFwoF0+eKig2P3g1ax1P4E3DfO0OQJqZ/GKERoc=' 'sha256-I6EuFUW1pToFIdhkxqmxvTOWtiTWZwjxJpKbcko6/FY='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -4271,7 +4271,7 @@ function htmlPatrimonio(p){
   for(i=0;i<f.filas.length;i++){
     x = f.filas[i]; det = '';
     if(x.estimado && x.falta) det = ' <small class="mudo">(' + fUSD(x.usd) + ', falta la cotización)</small>';
-    else if(x.estimado && x.usd) det = ' <small class="mudo">(' + fUSD(x.usd) + ' a ' + fARS(f.cotizacion) + (f.cotizacionPorDefecto ? ', cotización sin cargar' : ', estimado') + ')</small>';
+    else if(x.estimado && x.usd) det = ' <small class="mudo">(' + fUSD(x.usd) + ' a ' + fARS(f.cotizacion) + (f.cotizacionPorDefecto ? ')</small> <small class="est pend">Cotización sin cargar</small>' : ', estimado)</small>');   // D6 (N3b-B): a la vista
     h += '<div class="fila-in" data-pat="' + x.k + '"><label>' + etq[x.k] + det + '</label><span class="mudo">' + (x.falta ? 'sin cotización' : hARS(x.valor)) + '</span></div>';
   }
   h += '<div class="fila-in" data-pat="bruto"><label><b>Patrimonio bruto</b></label><span>' + hARS(f.bruto) + '</span></div>';
@@ -4284,7 +4284,7 @@ function htmlPatrimonio(p){
        + (suelto ? '<div class="fila-in" data-pat="deuda-suelta"><label></label><button class="mini" style="min-height:var(--tap)" data-act="quitarPlanSuelto" data-n="' + esc(dd.nombre) + '">Quitar plan</button></div>' : '');
   }
   h += '<div class="fila-in" data-pat="neto"><label><b>Patrimonio neto</b></label><span><b>' + hARS(f.neto) + '</b></span></div>';
-  h += '<div class="nota">' + (f.sinCotizacion
+  h += '<div class="nota' + (f.cotizacionPorDefecto ? ' ambar' : '') + '">' + (f.sinCotizacion
       ? 'Falta la cotización del dólar (arriba, en Cotización): los dólares y la cripto todavía no se suman.'
       : (f.cotizacionPorDefecto
         ? 'Todavía no cargaste la cotización del dólar: dólares y cripto están calculados a ' + fARS(f.cotizacion) + ', la que trae la app. Cargá la tuya arriba, en Cotización.'
@@ -4300,6 +4300,8 @@ function htmlHeroPatri(p){
   var sinCot = !!p.modelo && !(p.modelo.cotizacion > 0);
   var lbl = p.modelo ? (p.cierre ? 'Patrimonio neto al cierre de ' + p.anio : 'Patrimonio neto a hoy') : 'Todo junto al cierre del año';
   var chip = p.modelo ? (p.cierre ? '<span class="chip real">Al cierre</span>' : '<span class="chip real">A hoy</span>') : '<span class="chip prog">Cálculo simple</span>';
+  // D6 (N3b-B): con la cotización que trae la app (nunca cargada) y dólares o cripto en el total, se dice al lado del número
+  if(p.modelo && !sinCot && !p.modelo.cotizacionFecha && (num(p.modelo.usd) !== 0 || num(p.modelo.criptoUSD) !== 0)) chip += ' <span class="chip pend">Cotización sin cargar</span>';
   return '<div class="saldo hero" id="heroPatri" data-modo="' + (p.modelo ? 'hoy' : 'simple') + '">'
      +   '<div class="final"><small class="hero-lbl">' + lbl + '</small>'
      +     '<div class="final-fila"><div class="big ' + (p.patrimonioARS < 0 ? 'mal' : 'ok') + '" id="bigPatri">' + fARS(p.patrimonioARS) + '</div></div>'
@@ -4846,7 +4848,28 @@ function ponerEnCuarentena(clave, texto){   // true si este texto quedó guardad
 function avisoCuarentena(anio){
   var e = document.getElementById('avisos'); if(!e) return;
   e.innerHTML = '<div class="aviso" data-av="cuarentena"><p>No pude leer los datos de ' + esc(anio) + '. Los aparté tal cual para que no se pierdan, y ese año no se modifica.'
-    + ' Si tenés una copia de seguridad, restaurala.</p><div class="fila"><button class="mini on" data-act="restaurar">Restaurar una copia</button></div></div>';
+    + ' Si tenés una copia de seguridad, restaurala.</p><div class="fila"><button class="mini" data-act="cuarDescargar" data-k="' + esc(claveCuarentena(PREF + anio)) + '">Descargar el texto</button>'
+    + '<button class="mini on" data-act="restaurar">Restaurar una copia</button></div></div>';
+}
+/* D6 (N4-A, opciones a + c): un Trabajo guardado que no se puede leer se lee vacío y el próximo guardado escribe encima (antes de eso, su
+   texto va a cuarentena). Ahora se aparta apenas arranca la app y se avisa, con «Descargar el texto»; nada más cambia. true si avisó. */
+function revisarTrabajoIlegible(){
+  var st = revGuardada(LSTRAB), e = document.getElementById('avisos');
+  if(!st.roto) return false;
+  var k = claveCuarentena(LSTRAB), ok = ponerEnCuarentena(LSTRAB, st.texto);
+  if(e) e.innerHTML += '<div class="aviso" data-av="cuarentena-trabajo"><p>No pude leer los datos de Trabajo. Los aparté tal cual para que no se pierdan'
+    + (ok ? '' : ' (no entraron en el teléfono: hacé una copia de seguridad antes de cargar algo en Trabajo)') + '. Trabajo arranca vacío: lo que cargues se guarda aparte de ese texto.'
+    + ' Si tenés una copia de seguridad, restaurala.</p><div class="fila">' + (ok ? '<button class="mini" data-act="cuarDescargar" data-k="' + esc(k) + '">Descargar el texto</button>' : '')
+    + '<button class="mini on" data-act="restaurar">Restaurar una copia</button></div></div>';
+  return true;
+}
+function descargarCuarentena(k){   // D6 (N4-A) / D7: el texto apartado, tal cual, a un archivo; solo claves de cuarentena
+  var t = null;
+  if(String(k).indexOf(LSCUAR) !== 0) return false;
+  try{ t = localStorage.getItem(k); }catch(e){ t = null; }
+  if(t === null){ toast('Ese texto apartado ya no está en este teléfono'); return false; }
+  descargar(t, 'tugasto-apartado-' + String(k).slice(LSCUAR.length) + '-' + fechaArchivo() + '.txt', 'text/plain;charset=utf-8');
+  return true;
 }
 function escribirConRev(clave, obj){   // 'ok' | 'conflicto' (otra pestaña guardó antes: no se escribe) | 'error' (el navegador no deja guardar) | 'roto' (N4 I-3)
   var st = revGuardada(clave), mia = revValida(obj.rev) || 0, tenia = obj.rev;
@@ -4938,6 +4961,7 @@ function cargar(){
   else if(!hayDatos(D, tieneTrab()) && !aniosGuardados().length) avisoPrimeraVez(); else revisarCopia();
   var rg = revGuardada(PREF + D.anio);
   if(rg.roto){ ponerEnCuarentena(PREF + D.anio, rg.texto); avisoCuarentena(D.anio); }   // N4 I-3
+  revisarTrabajoIlegible();   // D6 (N4-A)
   if(navigator.storage && navigator.storage.persist) navigator.storage.persist()['catch'](function(){});
 }
 function cambiarAnio(a){
@@ -6062,6 +6086,7 @@ document.addEventListener('click', function(ev){
   if(a === 'recargarPag'){ location.reload(); return; }
   if(a === 'tema'){ D.ui.tema = b.getAttribute('data-v'); aplicarTema(); tocar(); renderAjustes(); return; }
   if(a === 'copia'){ hacerCopia(); return; }
+  if(a === 'cuarDescargar'){ descargarCuarentena(b.getAttribute('data-k')); return; }
   if(a === 'restaurar'){ document.getElementById('fileJson').click(); return; }
   if(a === 'imprimir'){ imprimir(); return; }
   if(a === 'anio'){ cambiarAnio(+b.getAttribute('data-v')); return; }
@@ -6307,8 +6332,10 @@ function aplicarTema(){
 }
 
 /* ═══ 13 · recuperación del buffer ══════════════════════════════ */
-function sinTaparCuarentena(e){   // N4 I-3: otro aviso nunca tapa el de datos ilegibles: se le agrega abajo
-  var q = e && e.querySelector ? e.querySelector('[data-av="cuarentena"]') : null; return q ? q.outerHTML : '';
+function sinTaparCuarentena(e){   // N4 I-3: otro aviso nunca tapa el de datos ilegibles (un año o, D6, Trabajo): se le agrega abajo
+  var q = e && e.querySelectorAll ? e.querySelectorAll('[data-av="cuarentena"], [data-av="cuarentena-trabajo"]') : [], h = '', i;
+  for(i=0;i<q.length;i++) h += q[i].outerHTML;
+  return h;
 }
 function aviso(html, cerrable){
   var e = document.getElementById('avisos');

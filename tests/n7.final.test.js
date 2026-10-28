@@ -21,7 +21,7 @@ function appCargar(ls, embebido, today){
   var g = {localStorage: ls, arrancado: false, T: null, navigator: {},
     document: {getElementById: function(id){ return id === 'datos' ? datos : id === 'avisos' ? avisos : null; }},
     aplicarTema: function(){}, render: function(){}, avisoSinGuardado: function(){}, vioBienvenida: function(){ return true; }, bienvenida: function(){},
-    avisoPrimeraVez: function(){}, revisarCopia: function(){}, avisoCuarentena: function(){}, tieneTrab: function(){ return false; }};
+    avisoPrimeraVez: function(){}, revisarCopia: function(){}, avisoCuarentena: function(){}, revisarTrabajoIlegible: function(){}, tieneTrab: function(){ return false; }};
   var app = la.loadApp({today: today || '2026-10-15', funcs: helpersPresentes(['cargar', 'anioActivo', 'recordarAnio', 'leerAnio', 'previoEnVivo', 'carryDiciembre', 'cuotasRealizadas', 'esProgramado', 'mesDelModelo', 'arrastreVivo', 'cuotasProgramadas', 'aniosGuardados', 'leerEmbebido', 'hayDatos',
     'revGuardada', 'revValida', 'claveCuarentena', 'ponerEnCuarentena', 'semillaExportada', 'anioValido'], la.SRC_FOR_TESTS),
     vars: ['PREF', 'LSANIO', 'M1', 'M2', 'LSCUAR', 'LSTRAB', 'sucio'], globals: g});

@@ -1018,6 +1018,21 @@ try{
     check('N4 I-3 e2e: the backup carries the raw text', await ev(`armarCopia().cuarentena[2026] === ${JSON.stringify(roto)}`), true);
   }
 
+  // ── D6 (N4-A): an unreadable Trabajo is set apart at start and named; «Descargar el texto» saves the kept text as is ──
+  {
+    const rotoT = '{"version":1,"facturas":[{"cliente":"Ana"';
+    await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); localStorage.setItem('kibo.anio','2026'); localStorage.setItem('kibo.trabajo', ${JSON.stringify(rotoT)}); true`);
+    await nav(URL_APP); await sleep(1000);
+    check('D6 N4-A the Trabajo notice shows at start and the text is already in quarantine',
+      await ev(`[!!document.querySelector('#avisos [data-av="cuarentena-trabajo"]'), localStorage.getItem('kibo.cuarentena.trabajo') === ${JSON.stringify(rotoT)}, localStorage.getItem('kibo.trabajo') === ${JSON.stringify(rotoT)}]`), [true, true, true]);
+    const bajada = await ev(`new Promise(function(resolve){ var o = URL.createObjectURL, capt = null, t0 = performance.now();
+      URL.createObjectURL = function(b){ capt = b; return o.call(URL, b); };
+      document.querySelector('#avisos [data-act=cuarDescargar]').click();
+      (function esperar(){ if(!capt && performance.now() - t0 < 5000) return setTimeout(esperar, 100); URL.createObjectURL = o;
+        if(!capt) return resolve(null); capt.text().then(function(t){ resolve([t, capt.type]); }); })(); })`);
+    check('D6 N4-A «Descargar el texto» saves the kept text as is', bajada, [rotoT, 'text/plain;charset=utf-8']);
+  }
+
   // ── P2 branding: the visible product name is TuGasto (title, header mark, Ajustes, exports, manifest, every tab) ──
   {
     await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); localStorage.setItem('kibo.anio','2026'); localStorage.setItem('kibo.datos.2026', ${JSON.stringify(JSON.stringify(legacy))});
