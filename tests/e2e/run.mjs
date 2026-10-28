@@ -1550,6 +1550,15 @@ try{
     ms2[9] = mes([it('Sueldo', 900000, true)], [it('Expensas', 70000, false)], [], []);
     await seedL5({anio: 2026, pagoExplicito: true, meses: ms2, arrastre: {desde: 9, inicial: {apertura: 100000, declarado: 100000, declaradoEl: '2026-10-01', origen: 'declarado'}}}, null);
     check('L5 nothing dated in the next 7 days and nothing overdue: no card', [await ev(`!!document.getElementById('vence')`), await ev(`!!document.getElementById('carrMes')`)], [false, true]);
+    // D4 (owner decision, L5 due day): a fixed expense gets "vence el día 9" from the section sheet; it is then due this week
+    await ev(`document.querySelector('#v-mes .sec[data-sec=gastosFijos] [data-act=vences]').click(); true`); await sleep(300);
+    check('D4 the sheet lists the fixed expenses with an empty day field', await ev(`[document.querySelector('#hoja h3').textContent, Array.prototype.map.call(document.querySelectorAll('#hoja input.vencein'), function(x){ return [x.value, x.placeholder]; })]`),
+      ['Días de vencimiento de gastos fijos', [['', 'Sin día']]]);
+    await ev(`(function(){ var x = document.querySelector('#hoja input.vencein'); x.value = '40'; document.querySelector('#hoja [data-act=vencesOk][data-v=ade]').click(); return true; })()`); await sleep(300);
+    check('D4 a day outside 1..31 is refused, nothing saved', [await toastTxt(), await ev(`D.meses[9].gastosFijos[0].vence === undefined`)], ['El día tiene que ser un número del 1 al 31 (o vacío)', true]);
+    await ev(`(function(){ var x = document.querySelector('#hoja input.vencein'); x.value = '9'; document.querySelector('#hoja [data-act=vencesOk][data-v=ade]').click(); return true; })()`); await sleep(500);
+    check('D4 saved: the row says its day and the card lists it as due this week', [await ev(`(document.querySelector('#v-mes .sec[data-sec=gastosFijos] .dvence') || {}).textContent`), await filasL5()],
+      ['Vence el día 9', [['Día 9', 'Expensas', 'A pagar', await $(70000)]]]);
   }
 
   // L6 (R6) "El año" analysis (hoy = 2026-10-04): October against September and the average of July-September; categories of ticked

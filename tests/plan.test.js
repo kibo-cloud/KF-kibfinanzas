@@ -12,7 +12,7 @@ function formulario(valores){
   return {getElementById: function(id){ return els[id] || null; }};
 }
 function app(valores){
-  return loadApp({funcs: ['sinSigno', 'cerosFuera', 'parseMonto', 'parseCantidad', 'parseEntero', 'parsePct', 'parcial', 'marcarErr', 'leerPlan'],
+  return loadApp({funcs: ['sinSigno', 'cerosFuera', 'parseMonto', 'parseCantidad', 'parseEntero', 'parsePct', 'parcial', 'marcarErr', 'leerPlan', 'leerDiaVence'],
                   globals: {document: formulario(valores)}});
 }
 var base = {plTotal: '100.000', plCuotas: '3', plRec: '10', plAntes: '0'};
@@ -37,5 +37,14 @@ test('saving rejects a trailing separator instead of storing 0', function(){
 
 test('saving accepts complete valid values', function(){
   var a = app(base);
-  assert.deepEqual(a.plain(a.leerPlan(true)), {total: 100000, cuotas: 3, recargo: 10, antes: 0});
+  assert.deepEqual(a.plain(a.leerPlan(true)), {total: 100000, cuotas: 3, recargo: 10, antes: 0, vence: 0}, 'no due-day field: no day (D4)');
+});
+
+test('D4 the optional due day of the plan: empty is no day, 1..31 is kept, anything else is refused on save', function(){
+  var a = app(con('plVence', '12'));
+  assert.equal(a.plain(a.leerPlan(true)).vence, 12);
+  var b = app(con('plVence', ''));
+  assert.equal(a.plain(b.leerPlan(true)).vence, 0);
+  var c = app(con('plVence', '40'));
+  assert.equal(c.plain(c.leerPlan(true)).mal, '40');
 });

@@ -13,11 +13,11 @@
   "vence": [16,705,358,97],
   "saldoMes": [16,814,358,351],
   "sec:ingresos": [16,1176,358,344],
-  "sec:gastosFijos": [16,1533,358,358],
-  "sec:gastosVariables": [16,1902,358,309],
-  "sec:ahorro": [16,2223,358,273],
-  "sec:deudas": [16,2507,358,209],
-  "sec:x0": [16,2728,358,114]
+  "sec:gastosFijos": [16,1533,358,406],
+  "sec:gastosVariables": [16,1950,358,309],
+  "sec:ahorro": [16,2271,358,273],
+  "sec:deudas": [16,2555,358,209],
+  "sec:x0": [16,2777,358,114]
  },
  "anio": {
   "header": [0,0,390,55],

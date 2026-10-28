@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-i7OVewB2iMJO7rGYBB+Ue96nH7qAfPy1vFKBffFcAPc=' 'sha256-gZsxNZTVLY7z0ZxjceeTdJq8udFQzmorXa3kSnnUzWM='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-IVBGKFwoF0+eKig2P3g1ax1P4E3DfO0OQJqZ/GKERoc=' 'sha256-pB8WG/7Sny60cHyzac5ApSFlId+APbLXzR9Zbuz64Mc='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -2086,6 +2086,7 @@ function normalizar(d, hoy){
         if(it && it.pagado === true) o.pagado = true;
         if(it && it.pagado === false) o.pagado = false;
         if(it && it.aparte === true) o.aparte = true;   // L3 review: el renglón lo creó "No, es otro gasto"
+        if(it && diaValido(it.vence)) o.vence = it.vence;   // D4: "vence el día N" (opcional; sin él, vence con el mes como siempre)
         // migración única por año: solo completa los pagado sin definir con la inferencia de antes (monto cargado y mes ya corrido)
         if(!d.pagoExplicito && o.pagado === undefined) o.pagado = o.monto > 0 && i <= mesTope(d.anio, refPago);
         return o;
@@ -2128,6 +2129,7 @@ function normalizar(d, hoy){
   Object.keys(pdOrig).forEach(function(k){
     var p = pdOrig[k] || {};
     d.planDeudas[k] = {recargo:num(p.recargo), total:num(p.total), cuotas:Math.max(0, Math.round(num(p.cuotas))), pagadasAntes:Math.max(0, Math.round(num(p.pagadasAntes)))};
+    if(diaValido(p.vence)) d.planDeudas[k].vence = p.vence;   // D4: día de vencimiento de las cuotas del plan (opcional)
   });
   if(!d.ui || typeof d.ui!=='object') d.ui = {};
   if(['auto','claro','oscuro'].indexOf(d.ui.tema)<0) d.ui.tema = 'auto';
@@ -2295,6 +2297,7 @@ function clave(x){
   return o;
 }
 function esRenglonTrabajo(n){ return clave(n) === clave(RENGLON_TRABAJO); }
+function diaValido(v){ return typeof v === 'number' && v >= 1 && v <= 31 && Math.floor(v) === v; }   // D4: un día del mes, entero de 1 a 31
 function planDe(d, nombre){ var k = String(nombre||'').trim(); return Object.prototype.hasOwnProperty.call(d.planDeudas, k) ? d.planDeudas[k] || null : null; }   // N5 S-1: solo un plan propio, nunca algo heredado ("constructor")
 function cuotaPaga(j, it){ return estaPagado(j, it) && num(it.monto) > 0; }   // una cuota cuenta como paga si está tildada Y tiene monto
 function estadoDeuda(d, nombre, i, hoy){
@@ -2628,6 +2631,7 @@ return {
   clave: clave,
   esRenglonTrabajo: esRenglonTrabajo,
   planDe: planDe,
+  diaValido: diaValido,
   cuotaPaga: cuotaPaga,
   estadoDeuda: estadoDeuda,
   totalConRecargo: totalConRecargo,
@@ -2681,6 +2685,7 @@ var SECS = TGMotor.SECS,
     clave = TGMotor.clave,
     esRenglonTrabajo = TGMotor.esRenglonTrabajo,
     planDe = TGMotor.planDe,
+    diaValido = TGMotor.diaValido,
     estadoDeuda = TGMotor.estadoDeuda,
     planDeCarga = TGMotor.planDeCarga,
     cargarCuotas = TGMotor.cargarCuotas,
@@ -3294,6 +3299,21 @@ function montosPorFecha(total, n, cubierto){
 }
 // facturas = [{id, nombre, saldo, vence:'YYYY-MM-DD'}] (las arma facturasAVencer desde Trabajo); devuelve los renglones ordenados:
 // atrasado primero, después por fecha, a igual fecha el monto mayor primero
+/* D4 (owner-decisions-closure, L5 opción b): un gasto fijo o variable puede tener su propio día de vencimiento (it.vence) y un plan de deuda
+   el de sus cuotas (planDeudas[n].vence). Campo opcional: sin él el renglón vence con el mes, como antes. */
+function diaVence(d, k, it){
+  if(k === 'ingresos' || !it) return 0;
+  if(diaValido(it.vence)) return it.vence;
+  var p = k === 'deudas' ? planDe(d, it.nombre) : null;
+  return p && diaValido(p.vence) ? p.vence : 0;
+}
+function leerDiaVence(s){   // el campo de la hoja: vacío = sin día (0); si no, un entero de 1 a 31; otra cosa, NaN
+  var t = String(s == null ? '' : s).trim();
+  if(t === '') return 0;
+  if(!/^\d{1,2}$/.test(t)) return NaN;
+  var n = +t;
+  return n >= 1 && n <= 31 ? n : NaN;
+}
 function vencimientos(d, j, hoy, facturas){
   if(!d || estadoMes(d.anio, j, hoy) !== 'actual') return [];
   var out = [], secs = ['ingresos', 'gastosFijos', 'gastosVariables', 'deudas'], dim = diasDelMes(d.anio, j);
@@ -3318,6 +3338,7 @@ function vencimientos(d, j, hoy, facturas){
     for(i=0;i<d.meses[j][k].length;i++){
       it = d.meses[j][k][i]; mo = falta(j, k, it); if(!(mo > 0)) continue;
       dias = k === 'ingresos' ? diasCobro(it, d.anio, j) : [];
+      var dv = k === 'ingresos' ? 0 : Math.min(diaVence(d, k, it), dim);   // D4: el día que el usuario puso (31 en un mes de 30 = el último)
       var base = {atrasado: false, tipo: tipo(k), nombre: String(it.nombre || ''), monto: mo, mes: j, k: k, i: i}, n;
       if(dias.length){
         // L5 review: cada fecha con lo de un cobro (como cobroTxt); cada día ya pasado sin tildar es un atrasado, y el próximo si cae en la semana
@@ -3330,6 +3351,9 @@ function vencimientos(d, j, hoy, facturas){
           else if(prox < 0) prox = q;
         }
         if(prox >= 0 && dias[prox] - hoy.dia <= DIAS_VENCE) out.push(con(base, {monto: cada[prox], fecha: isoDe(d.anio, j, dias[prox]), dia: dias[prox]}));
+      } else if(dv > 0){
+        if(dv < hoy.dia) out.push(con(base, {atrasado: true, era: dv, fecha: isoDe(d.anio, j, dv)}));
+        else if(dv - hoy.dia <= DIAS_VENCE) out.push(con(base, {fecha: isoDe(d.anio, j, dv), dia: dv}));
       } else if(dim - hoy.dia <= DIAS_VENCE) out.push(con(base, {fecha: isoDe(d.anio, j, dim), dia: dim, finDeMes: true}));
     }
   }
@@ -3546,6 +3570,44 @@ function abrirTopes(k){
      + '</div>';
   abrirHoja(h);
 }
+// D4: el día de vencimiento de cada gasto fijo (opcional), como los topes: solo este mes o de este mes en adelante (por nombre)
+function abrirVences(k){
+  var S = SECS.filter(function(x){ return x.k === k; })[0], l = D.meses[mes][k], h = '', i;
+  h += '<h3>Días de vencimiento de '+S.t.toLowerCase()+'</h3>'
+     + '<div class="texto" style="margin-bottom:12px">Qué día del mes vence cada uno, si querés. Lo ves en «Qué vence esta semana» desde una semana antes. Vacío: vence con el mes.</div>';
+  for(i=0;i<l.length;i++){
+    h += '<div class="item"><span class="nombre" style="padding:0 4px;font-size:15px">'+esc(l[i].nombre)+'</span>'
+       + '<input class="topein vencein" inputmode="numeric" enterkeyhint="done" data-i="'+i+'" value="'+(diaValido(l[i].vence) ? l[i].vence : '')+'" placeholder="Sin día" aria-label="Día de vencimiento"></div>';
+  }
+  h += '<div class="fila" style="margin-top:14px">'
+     + (mes < 11 ? '<button data-act="vencesOk" data-k="'+k+'" data-v="mes">Solo '+MESES[mes]+'</button>'
+                 + '<button class="pri" data-act="vencesOk" data-k="'+k+'" data-v="ade">De '+MESES[mes].toLowerCase()+' en adelante</button>'
+                 : '<button data-act="cerrarHoja">Cancelar</button><button class="pri" data-act="vencesOk" data-k="'+k+'" data-v="mes">Guardar</button>')
+     + '</div>';
+  abrirHoja(h);
+}
+function guardarVences(k, adelante){
+  var l = D.meses[mes][k], campos = document.querySelectorAll('#hoja input.vencein'), i, j, q, cambiados = 0, vals = [];
+  for(i=0;i<campos.length;i++){   // primero se lee todo: si algo no se entiende, no se guarda nada
+    vals[i] = leerDiaVence(campos[i].value);
+    if(isNaN(vals[i])){ marcarErr(campos[i], true); campos[i].focus(); toast('El día tiene que ser un número del 1 al 31 (o vacío)'); return; }
+  }
+  var poner = function(it, v){ if(v) it.vence = v; else delete it.vence; };
+  for(i=0;i<campos.length;i++){
+    var idx = +campos[i].getAttribute('data-i'), v = vals[i];
+    if(!l[idx]) continue;
+    if((diaValido(l[idx].vence) ? l[idx].vence : 0) !== v) cambiados++;
+    poner(l[idx], v);
+    if(adelante){
+      for(j=mes+1;j<12;j++){
+        var otra = D.meses[j][k];
+        for(q=0;q<otra.length;q++) if(otra[q].nombre === l[idx].nombre) poner(otra[q], v);
+      }
+    }
+  }
+  cerrarHoja(); tocar(); guardar(); conScroll(renderMes);
+  toast(cambiados ? (adelante ? 'Días guardados de ' + MESES[mes].toLowerCase() + ' en adelante' : 'Días guardados en ' + MESES[mes].toLowerCase()) : 'Sin cambios');
+}
 function guardarTopes(k, adelante){
   var l = D.meses[mes][k], campos = document.querySelectorAll('#hoja input.topein'), i, j, q, cambiados = 0, vals = [];
   for(i=0;i<campos.length;i++){   // primero se lee todo: si algo no se entiende, no se guarda nada
@@ -3643,6 +3705,7 @@ function seccion(S, m){
     if(TOPEABLE[S.k] && num(lista[i].tope) > 0){
       h += filaTope(S.k, i, lista[i]);
     }
+    if(S.k !== 'ingresos' && diaValido(lista[i].vence)) h += '<div class="nota dvence">Vence el día ' + lista[i].vence + '</div>';
     if(S.k === 'ingresos' && !vt){
       h += '<button class="dinfo' + (lista[i].frec ? '' : ' vacia') + '" data-act="cobro" data-i="' + i + '">'
          + (lista[i].frec ? esc(cobroTxt(lista[i])) : '¿Cada cuánto lo cobrás?') + '</button>';
@@ -3658,6 +3721,7 @@ function seccion(S, m){
   }
   h += '<button class="mas" data-act="add" data-k="'+S.k+'">+ Agregar en '+S.t.toLowerCase()+'</button>';
   if(TOPEABLE[S.k] && lista.length) h += '<button class="mas" data-act="topes" data-k="'+S.k+'">Poner topes</button>';
+  if(S.k === 'gastosFijos' && lista.length) h += '<button class="mas" data-act="vences" data-k="'+S.k+'">Días de vencimiento</button>';   // D4
   if(lista.length > 1) h += '<button class="mas" data-act="ordenar" data-k="'+S.k+'">Cambiar el orden</button>';
   h += '</div></div>';
   return h;
@@ -5805,7 +5869,10 @@ function abrirPlan(i){
     +   '<div class="campo"><label>Recargo % (opcional)</label><input type="text" id="plRec" inputmode="decimal" placeholder="sin recargo" value="'+(num(p.recargo)?String(p.recargo).replace('.',','):'')+'"></div>'
     + '</div>'
     + '<div class="nota" id="plCuota" style="padding:0 0 12px"></div>'
-    + '<div class="campo"><label>Cuotas que ya pagué antes de '+D.anio+'</label><input type="text" id="plAntes" inputmode="numeric" value="'+(p.pagadasAntes||'')+'"></div>'
+    + '<div class="tj-dos">'
+    +   '<div class="campo"><label>Cuotas que ya pagué antes de '+D.anio+'</label><input type="text" id="plAntes" inputmode="numeric" value="'+(p.pagadasAntes||'')+'"></div>'
+    +   '<div class="campo"><label>Vence el día (opcional)</label><input type="text" id="plVence" inputmode="numeric" placeholder="sin día" value="'+(diaValido(p.vence) ? p.vence : '')+'"></div>'
+    + '</div>'
     + '<div class="nota" style="padding:0 0 14px">Al guardar te ofrezco cargar las cuotas que faltan, de '+MESES[mes].toLowerCase()+' en adelante.</div>'
     + '<div class="fila">' + (planDe(D, it.nombre) ? '<button class="mal" data-act="quitarPlan">Quitar</button>' : '<button data-act="cerrarHoja">Cancelar</button>')
     + '<button class="pri" data-act="guardarPlan">Guardar</button></div>');
@@ -5832,7 +5899,7 @@ var planIdx = -1;
 // Si hay un texto que no se entiende devuelve {mal:texto}; el que se está escribiendo ("1.") cuenta como 0
 // solo en la vista previa: al guardar (alGuardar) también es un error, para no guardar un 0 que nadie escribió
 function leerPlan(alGuardar){
-  var defs = [['plTotal', parseMonto, 'total'], ['plCuotas', parseEntero, 'cuotas'], ['plRec', parsePct, 'recargo'], ['plAntes', parseEntero, 'antes']], i, out = {}, el, v;
+  var defs = [['plTotal', parseMonto, 'total'], ['plCuotas', parseEntero, 'cuotas'], ['plRec', parsePct, 'recargo'], ['plAntes', parseEntero, 'antes'], ['plVence', leerDiaVence, 'vence']], i, out = {}, el, v;
   for(i=0;i<defs.length;i++){
     el = document.getElementById(defs[i][0]); if(!el){ out[defs[i][2]] = 0; continue; }
     v = defs[i][1](el.value);
@@ -5854,6 +5921,7 @@ function guardarPlan(quitar){
     var c = lp.cuotas;
     if(!n || c <= 0){ alerta('Falta la cantidad de cuotas', 'Necesito al menos saber en cuántas cuotas es la deuda.'); return; }
     D.planDeudas[n] = {total:lp.total, cuotas:c, recargo:lp.recargo, pagadasAntes:Math.max(0, lp.antes)};
+    if(lp.vence) D.planDeudas[n].vence = lp.vence;   // D4: opcional
   }
   cerrarHoja(); tocar(); renderMes();
   if(!quitar) ofrecerCarga(n, mes);
@@ -6023,6 +6091,8 @@ document.addEventListener('click', function(ev){
   if(a === 'subir'){ moverOrden(+b.getAttribute('data-i'), -1); return; }
   if(a === 'bajar'){ moverOrden(+b.getAttribute('data-i'), 1); return; }
   if(a === 'ordenOk'){ guardarOrden(b.getAttribute('data-v') === 'ade'); return; }
+  if(a === 'vences'){ abrirVences(b.getAttribute('data-k')); return; }
+  if(a === 'vencesOk'){ guardarVences(b.getAttribute('data-k'), b.getAttribute('data-v') === 'ade'); return; }
   if(a === 'topesOk'){ guardarTopes(b.getAttribute('data-k'), b.getAttribute('data-v') === 'ade'); return; }
   if(a === 'quitarMov'){ quitarMov(b.getAttribute('data-id')); document.getElementById('toast').classList.remove('on'); return; }
   if(a === 'plan'){ abrirPlan(+b.getAttribute('data-i')); return; }

@@ -8,7 +8,7 @@ var C = require('./fixtures/r4-casos');
 var H = require('./fixtures/r45-harness');
 
 function plain(x){ return JSON.parse(JSON.stringify(x)); }
-var F_VENCE = ['vencimientos', 'montosPorFecha', 'diasCobro', 'isoDe', 'diasDelMes', 'cuandoVence', 'detalleVence', 'fARS', 'grupos', 'esc', 'fDia', 'cuantosPagos', 'esRenglonTrabajo'];
+var F_VENCE = ['vencimientos', 'diaVence', 'montosPorFecha', 'diasCobro', 'isoDe', 'diasDelMes', 'cuandoVence', 'detalleVence', 'fARS', 'grupos', 'esc', 'fDia', 'cuantosPagos', 'esRenglonTrabajo'];
 function vence(raw, today){
   return H.appVista(raw, null, null, today, {funcs: F_VENCE, vars: ['MESES', 'DIAS_VENCE', 'VENCE_MAX'], globals: {oculto: false, PUNTOS: '..'}});
 }

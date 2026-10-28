@@ -71,7 +71,19 @@ money effect of each item: `odd/tasks/stabilization-quick-sales.md` "S1 — Pend
       including "(pago parcial)": it is the same category spend, and without it a partial payment would release tope that «Cambiar a»
       keeps. RED: 0/4 in `tests/d3.topes.test.js`; GREEN 4/4; mutation (apart rows not added) → 3 fail. E2E +1 (tope bar after "No, es
       otro gasto"). `npm test` 925/925, `npm run test:e2e` 538/538.
-- [ ] D4 L5 optional due day on rows/plans + "Qué vence esta semana".
+- [x] D4 L5 optional due day on rows/plans + "Qué vence esta semana". Route: inline (one file + tests). New optional stored fields,
+      read with fallback: row `vence` and plan `planDeudas[n].vence` (whole day 1..31; `normalizar` keeps a valid one, drops anything
+      else, adds no key to rows/plans without it, so stored shapes and motor goldens are unchanged). `diaVence`: the row's own day,
+      else (installments) its plan's day. `vencimientos`: a dated row is listed from 7 days before its day ("Día N"), overdue once the
+      day passed ("Atrasado · era el día N"); a day past the month end means its last day; undated rows keep "Fin de mes". UI:
+      "Días de vencimiento" button in Gastos fijos (sheet like the topes one: «Solo <mes>» / «De <mes> en adelante» by name; empty =
+      no day; outside 1..31 refused, nothing saved), the row shows "Vence el día N"; the debt plan sheet has "Vence el día
+      (opcional)" (`leerPlan` reads it with `leerDiaVence`). Scope note: the button is only in Gastos fijos (rent, services); variable
+      rows keep no button (the field is still read if present), installments take the plan's day. RED: 0/4 in
+      `tests/d4.vence.test.js`; GREEN 4/4 (+1 plan test in `tests/plan.test.js`); mutation (plan day ignored) → 1 fail. Layout
+      fixture: `tests/fixtures/l7-movil-390.json` re-recorded with `L7_GRABAR=1` on purpose; the only change is the new button
+      (`sec:gastosFijos` height 358 → 406 and the next 4 sections moved down 48-49 px); every other box identical. E2E +4.
+      `npm test` 930/930, `npm run test:e2e` 541/541.
 - [ ] D5 N1-B (b) or resolved-by-H1 proof.
 - [ ] D6 N3b-B prominent label + N4-A download action (verify whether already built).
 - [ ] D7 N4-B Ajustes quarantine rows (download / delete with confirmation).
@@ -93,9 +105,10 @@ trailers. No remote configured: push/PR are owner decisions. Forecast ~900-1300 
 - D0 done (`6e52d22`, docs only).
 - D1 done (`05a0b75`): L-03d passes; 915 tests, 0 todo.
 - D2 done (`b1d71d2`): partial payment split; 921 tests, E2E 537/537.
-- D3 done: one-off rows count toward the tope; 925 tests, E2E 538/538.
+- D3 done (`5789200`): one-off rows count toward the tope; 925 tests, E2E 538/538.
+- D4 done: optional due day; 930 tests, E2E 541/541.
 - GitHub: blocked: wrong GitHub account on this PC (owner, 2026-10-28); versions kept locally only (P11 and L10 notes updated).
 
 ## Next step
 
-D4.
+D5.

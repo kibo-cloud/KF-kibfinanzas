@@ -7,7 +7,7 @@ var assert = require('node:assert/strict');
 var la = require('./load-app');
 var C = require('./fixtures/r4-casos');
 
-var FUNCS = ['vencimientos', 'montosPorFecha', 'diasCobro', 'isoDe', 'dos', 'diasDelMes', 'mesDelModelo', 'diasEntre', 'utcDe', 'esISO', 'cuandoVence', 'detalleVence',
+var FUNCS = ['vencimientos', 'diaVence', 'montosPorFecha', 'diasCobro', 'isoDe', 'dos', 'diasDelMes', 'mesDelModelo', 'diasEntre', 'utcDe', 'esISO', 'cuandoVence', 'detalleVence',
   'htmlVence', 'fARS', 'grupos', 'esc', 'fDia', 'cuantosPagos', 'repartoTrabajo', 'ctxModelo', 'cierreAnioAnterior', 'leerAnio', 'previoEnVivo', 'carryDiciembre', 'arrastreVivo', 'cuotasProgramadas', 'hoyISO', 'sumarDias'];
 function app(today){
   return la.loadApp({today: today, funcs: FUNCS, vars: ['MESES', 'DIAS_VENCE', 'VENCE_MAX', 'venceL', 'oculto', 'PUNTOS'], globals: {T: null}});
