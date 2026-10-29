@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-IVBGKFwoF0+eKig2P3g1ax1P4E3DfO0OQJqZ/GKERoc=' 'sha256-MGs3s6YM7pxYrg5WE1zgorNNmiezqKrzN87x1QjByQ4='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-IVBGKFwoF0+eKig2P3g1ax1P4E3DfO0OQJqZ/GKERoc=' 'sha256-ONCbm27QpP1zVMCe/g0vOa2PBPO1lELKoXKN7eIKOzg='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -328,12 +328,7 @@ tr.tot td:first-child{background:var(--card2)}
 .texto{font-size:14px;color:var(--txt2);line-height:1.5;padding:2px 4px}
 .texto b{color:var(--txt)}
 
-/* ── fab + nav ── */
-.fab{
-  position:fixed;right:16px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:45;
-  height:56px;padding:0 22px;border-radius:28px;background:var(--acc);color:var(--on-acc);
-  font-size:16px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.22);display:flex;align-items:center;gap:8px;
-}
+/* ── nav ── */
 nav{
   position:fixed;left:0;right:0;bottom:0;z-index:50;background:var(--nav);
   backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);
@@ -719,10 +714,7 @@ body:has(#primerUso) #avisos>.aviso:not([data-av]){display:none}
 .big.latido{animation:kfLatido .3s ease-out}
 .faj .ico{transition:transform .15s}
 .faj:active .ico{transform:scale(.9)}
-.fab{transition:transform .12s}
-.fab.fuera{transform:translateY(calc(100% + 110px))}   /* P3a: al bajar leyendo se corre para no tapar montos; vuelve al subir */
 .sec,#saldoMes{scroll-margin-top:72px}
-.fab:active{transform:scale(.92)}
 .mas:active,.acciones button:active{opacity:.55}
 
 /* ═══ 16 · terminaciones: curvas, relieve y respuesta al toque ══════
@@ -757,7 +749,7 @@ input,textarea{touch-action:manipulation}
 
 /* respuesta al toque: baja rápido, vuelve despacio */
 .tj-acc button,.tj-prod,.tj-linea,.tj-pasar,.tj-rec,.hoja .fila button,.chips button,.seg button,
-.mini,.acciones .btnlink,.toast button,.mas,#nav button,.item .x,.fab,.meses button{
+.mini,.acciones .btnlink,.toast button,.mas,#nav button,.item .x,.meses button{
   transition:transform var(--suelta) var(--curva),background .2s var(--curva),
              border-color .2s var(--curva),color .2s var(--curva),opacity .2s var(--curva);
 }
@@ -768,7 +760,6 @@ input,textarea{touch-action:manipulation}
 #nav button:active .np{transform:scale(.88);transition-duration:var(--toque)}
 .acciones .btnlink:active,.mas:active{background:var(--fill)}
 .np{transition:background .22s var(--curva),transform var(--suelta) var(--curva)}
-.fab:active{transform:scale(.93);transition-duration:var(--toque)}
 .meses button:active{transform:scale(.93);transition-duration:var(--toque)}
 button.tj-f{transition:background .2s var(--curva)}
 button.tj-f:active{background:var(--fill);transition-duration:var(--toque)}
@@ -777,8 +768,6 @@ button.tj-f:active{background:var(--fill);transition-duration:var(--toque)}
    La hoja mantiene su propia máquina de estados (arrastrando · vuelve · yendo): no se toca. */
 .hoja{box-shadow:var(--shadow-alto);overscroll-behavior:contain}
 .toast{box-shadow:var(--shadow-alto)}
-.fab{box-shadow:0 4px 10px -2px rgba(16,18,27,.16),0 12px 28px -8px rgba(16,18,27,.28)}
-.fab:active{box-shadow:0 2px 6px -2px rgba(16,18,27,.2)}
 
 /* aperturas y cierres con la misma curva */
 .velo{transition:background .24s var(--curva)}
@@ -930,7 +919,7 @@ body:has(#avisoCierre) #avisoVersion{display:none}
 .soloPrint{display:none}
 @media print{
   .soloPrint{display:block;font-weight:700;font-size:16px;margin:0 0 8px}
-  header,nav,.fab,.toast,.velo,#avisos,.meses{display:none!important}
+  header,nav,.toast,.velo,#avisos,.meses{display:none!important}
   body{background:#fff;color:#000;padding:0;font-size:12px}
   .vista{display:none!important} .vista#v-anio{display:block!important}
   .tabla,.chart,.rank,.sec{box-shadow:none;border:1px solid #ccc;break-inside:avoid}
@@ -2712,7 +2701,7 @@ function hoyApp(){ return hoyDe(new Date()); }
 var M1 = '/*DATOS_' + 'INICIO*/';
 var M2 = '/*DATOS_' + 'FIN*/';
 
-var APPVER   = '1.33.0';    // versión visible en Ajustes (LAB)
+var APPVER   = '1.34.0';    // versión visible en Ajustes (LAB)
 var PREF     = 'kibo.datos.', memoAnios = Object.create(null);        // kibo.datos.2026, kibo.datos.2027… · memoAnios: ver leerAnio (final audit 12)
 var LSANIO   = 'kibo.anio';
 var LSCOPIA  = 'kibo.ultimaCopia';

@@ -11,17 +11,17 @@ function leer(n){ return fs.readFileSync(path.join(RAIZ, n), 'utf8'); }
 var HTML = leer('index.html'), SW = leer('sw.js'), LEEME = leer('LEEME.md');
 var APPVER = /var APPVER\s*=\s*'([^']+)'/.exec(HTML)[1];
 
-test('APPVER is the first changelog entry of LEEME.md (v1.33.0 = the L1 to L8 product surface)', function(){
+test('APPVER is the first changelog entry of LEEME.md (v1.34.0 = the owner decisions closed)', function(){
   var primero = /## CHANGELOG\s+v([\d.]+) · /.exec(LEEME);
   assert.ok(primero, 'changelog entry found');
   assert.equal(primero[1], APPVER);
-  assert.equal(APPVER, '1.33.0');
+  assert.equal(APPVER, '1.34.0');
 });
 
-test('the service-worker cache name moved with the release (v45 was v1.32.0), keeping its prefix', function(){
+test('the service-worker cache name moved with the release (v46 was v1.33.0), keeping its prefix', function(){
   var v = /var VERSION = 'kibfinanzas-offline-v(\d+)'/.exec(SW);
   assert.ok(v, 'cache name found');
-  assert.equal(+v[1], 46);
+  assert.equal(+v[1], 47);
   assert.match(SW, /var PREFIJO = 'kibfinanzas-offline-';/);
 });
 

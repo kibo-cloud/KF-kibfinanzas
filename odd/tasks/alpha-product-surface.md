@@ -50,8 +50,9 @@ Owner brief: "TU GASTO — PRODUCT SURFACE, UX/UI, BRANDING, GITHUB & FINAL ALPH
 - [x] P9 Security/integrity regression; CSP status. Evidence: L8 (atomic writes journal; CSP without script 'unsafe-inline';
       style-src 'unsafe-inline' documented as LOW debt) and the security audit items 7-8 in `stabilization-quick-sales.md` "Final
       audit fixes".
-- [ ] P10 Pre-Alpha cleanup (dead code/CSS, stale labels, debug logs). Partial: stale labels done in L2, no debug logs in
-      `index.html`; the unused `.fab` CSS rules (the Gasto button uses `.nav-gasto` since L1, see U2) were never removed. Left open.
+- [x] P10 Pre-Alpha cleanup (dead code/CSS, stale labels, debug logs). Stale labels done in L2, no debug logs in `index.html`; the
+      unused `.fab` CSS rules (the Gasto button uses `.nav-gasto` since L1, see U2; `id="fab"` stays) removed in 1.34.0
+      (`owner-decisions-closure.md` D8).
 - [ ] P11 GitHub: .gitignore, secret/PII scan, remote (destination must be explicit), push, verification. Partial: .gitignore and
       the secret/PII scan done (2e68947, L10); remote and push deferred by the owner ("No publicar todavía", 2026-10-12), then
       blocked: wrong GitHub account on this PC (owner, 2026-10-28); versions kept locally only.
@@ -696,6 +697,6 @@ visible if published). No remote configured; push pending owner decision.
 Verdict: `ALPHA_READY` (product, technical and repository criteria met; publication deliberately deferred by the owner).
 Open OWNER_DECISION_REQUIRED (none blocking): N1-B, N2-B (MEDIUM, L-03d legacy two-row "Del trabajo"), N3a-A/B, N3b-A/B, N4-A/B,
 L3 partial payment + "(otro gasto)" vs topes, L5 optional due day for expenses/installments, GitHub destination/visibility.
-Update 2026-10-28: the owner decisions are closed in `owner-decisions-closure.md`; GitHub is blocked: wrong GitHub account on this PC (owner, 2026-10-28); versions kept locally only.
+Update 2026-10-28: the owner decisions are closed in `owner-decisions-closure.md` (shipped as 1.34.0); GitHub is blocked: wrong GitHub account on this PC (owner, 2026-10-28); versions kept locally only.
 Residual risks: MEDIUM N2-B; LOW restore without journal (repeatable), style-src 'unsafe-inline', V1 LOW advisories, quarantine copies
 accumulate (N4-B), undo info lost when a new backup is restored into an older app version.

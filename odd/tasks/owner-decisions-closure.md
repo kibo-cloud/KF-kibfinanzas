@@ -1,5 +1,7 @@
 # Owner decisions closure (TuGasto 1.34.0)
 
+Status: complete (D0-D8 done), pending native review of the feature range.
+
 ## Objective
 
 Close every open OWNER_DECISION_REQUIRED item left by `alpha-product-surface.md` (L10) and `stabilization-quick-sales.md` (S1),
@@ -121,7 +123,20 @@ money effect of each item: `odd/tasks/stabilization-quick-sales.md` "S1 — Pend
       `privacidad.html`. E2E +6 (empty state, list with names/sizes as text, download content, ask first, cancel keeps, confirm
       deletes only that copy). Layout fixture untouched (L7 does not measure Ajustes); motor goldens unchanged. `npm test` 942/942,
       `npm run test:e2e` 549/549.
-- [ ] D8 Version 1.34.0 + SW `kibfinanzas-offline-v47`, update path, full suites, docs (`CLAUDE.md`, S1 table rows marked resolved).
+- [x] D8 Version 1.34.0 + SW `kibfinanzas-offline-v47`, update path, full suites, docs (`CLAUDE.md`, S1 table rows marked resolved).
+      Route: delegated writer (release bookkeeping across 8 tracked files, pattern of `d58d815`). APPVER 1.33.0 → 1.34.0 (`index.html`;
+      `package.json` and `manifest.webmanifest` declare no version), SW cache `kibfinanzas-offline-v46` → `v47`, `tests/release.test.js`
+      (APPVER 1.34.0, cache 47) and the L9 E2E previous release (`PREV = { appver: '1.33.0', sw: 46 }`) moved together. Update path: the
+      existing L9 mechanism (the installed app notes `kibo.versionVista` and says "Actualizaste a la versión 1.34.0" once; the v46
+      cache is deleted on activate) carries it; the E2E installs a 1.33.0/v46 build and publishes this one. The app shows no in-app
+      changelog, so the user-facing summary is the `LEEME.md` CHANGELOG entry v1.34.0 (Spanish, app voice: pago parcial, otro gasto en
+      el tope, día de vencimiento, cuotas al pasar de año, cotización sin cargar, textos apartados, orden "Del trabajo"). APPVER
+      changes the app script: CSP hash updated in `index.html` and `privacidad.html` (policy text unchanged, so its date stays). P10:
+      the dead `.fab` CSS (class used nowhere; `id="fab"` on `.nav-gasto` kept, it is what tests and E2E use) removed (every `.fab`
+      rule and selector); P10 ticked in `alpha-product-surface.md`. Docs: S1 rows in `stabilization-quick-sales.md` cite D1-D7 or the decision
+      table, GitHub blocked locally; repo `CLAUDE.md` (untracked, not committed) updated to 1.34.0. Test-first exception: release
+      bookkeeping; `tests/release.test.js` failed on the old values only as the guard that moves with the bump. `npm test` 942/942,
+      `npm run test:e2e` 549/549, `tests/fixtures/` unchanged since `cdc385b`.
 
 ## Delivery
 
@@ -143,9 +158,11 @@ trailers. No remote configured: push/PR are owner decisions. Forecast ~900-1300 
 - D4 done (`5e48300`): optional due day; 930 tests, E2E 541/541.
 - D5 done (`61ba8c8`): N1-B (b) applied (H1 did not cover it); 933 tests, E2E 541/541.
 - D6 done (`554b934`): prominent label + download action; 938 tests, E2E 543/543.
-- D7 done (this commit): quarantine copies listed in Ajustes to download or delete with confirmation; 942 tests, E2E 549/549.
+- D7 done (`cdc385b`): quarantine copies listed in Ajustes to download or delete with confirmation; 942 tests, E2E 549/549.
 - GitHub: blocked: wrong GitHub account on this PC (owner, 2026-10-28); versions kept locally only (P11 and L10 notes updated).
+- D8 done (this commit): 1.34.0, SW v47, CSP hash, LEEME changelog, S1 rows resolved, P10 dead CSS removed; 942 tests, E2E 549/549.
+  Feature complete pending native review.
 
 ## Next step
 
-D8.
+Native review of the feature range (dd6a132..HEAD), then owner delivery (local only; no GitHub).

@@ -515,7 +515,7 @@ try{
   // ── L9: the INSTALLED app moves from the previous release to this one: only the new cache is left, the new APPVER is served, the update
   //    notice says the new version once, a reload without network opens it, and no CSP violation on any of those loads ──
   {
-    const PREV = { appver: '1.32.0', sw: 45 };   // the release this one replaces (moves with tests/release.test.js)
+    const PREV = { appver: '1.33.0', sw: 46 };   // the release this one replaces (moves with tests/release.test.js)
     const swSrc = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8'), swN = +/kibfinanzas-offline-v(\d+)'/.exec(swSrc)[1];
     // the app registers its worker on https only; this test origin is http://127.0.0.1 (a secure context), so only the COPY also allows it
     const conSW = (html) => { const n = html.replace("location.protocol === 'https:'", "(location.protocol === 'https:' || location.hostname === '127.0.0.1')"); if(n === html) throw new Error('service worker registration guard not found'); return conHashes(n); };
