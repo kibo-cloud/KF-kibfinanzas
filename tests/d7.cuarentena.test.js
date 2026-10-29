@@ -9,7 +9,7 @@ var H = require('./fixtures/r45-harness');
 
 function appCuar(store){
   var ls = H.fakeStorage(store), pedidos = [], toasts = [], render = [], nombres = {};
-  var a = la.loadApp({today: '2026-10-15', funcs: ['clavesCuarentena', 'nombreCuarentena', 'pesoCuarentena', 'pedirBorrarCuarentena', 'borrarCuarentena'],
+  var a = la.loadApp({today: '2026-10-15', funcs: ['clavesCuarentena', 'nombreCuarentena', 'pesoCuarentena', 'pedirBorrarCuarentena', 'borrarCuarentena', 'revGuardada', 'revValida'],
     vars: ['LSCUAR', 'LSTRAB', 'LSDIARIO', 'PREF'],
     globals: {localStorage: ls, tab: 'ajustes',
       document: {getElementById: function(id){ return id === 'cuarBorrarNom' ? (nombres[id] = {textContent: ''}) : null; }},

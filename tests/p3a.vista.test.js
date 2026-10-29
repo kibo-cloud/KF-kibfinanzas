@@ -11,7 +11,7 @@ var M = la.loadMotor();
 var SRC = la.SRC_FOR_TESTS;
 function existe(n){ return new RegExp('^function ' + n + '\\s*\\(', 'm').test(SRC); }
 var FUNCS = ['estadoHero', 'claseHero', 'subHero', 'chipT', 'chipsHero', 'etiquetaHero', 'htmlHero', 'barra', 'fPct', 'botonOjo', 'fARS', 'grupos', 'esc',
-  'lineasSaldo', 'seccion', 'abierta', 'filaTope', 'textoDeuda', 'cuotaAdelantada', 'esProgramado', 'gastadoVista', 'gastadoConApartes', 'baseAparte', 'esGastoAparte', 'datosRealizados', 'cobroTxt',
+  'lineasSaldo', 'seccion', 'notaVence', 'diaVence', 'abierta', 'filaTope', 'textoDeuda', 'cuotaAdelantada', 'esProgramado', 'gastadoVista', 'gastadoConApartes', 'baseAparte', 'esGastoAparte', 'datosRealizados', 'cobroTxt',
   'faltaSeccion', 'textoFalta', 'textoDelTrabajo', 'filasVer', 'secAhorro', 'notaCompra', 'notaRetiro', 'fUSD'].filter(existe);
 var VARS = ['MESES', 'oculto', 'PUNTOS', 'ICOSEC', 'MARCABLE', 'TOPEABLE', 'SECS', 'verFilas', 'SUB_APAGADO'];
 

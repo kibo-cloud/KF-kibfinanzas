@@ -11,7 +11,7 @@ var H = require('./fixtures/r45-harness');
 var M = la.loadMotor();
 var SRC = la.SRC_FOR_TESTS;
 function existe(n){ return new RegExp('^function ' + n + '\\s*\\(', 'm').test(SRC); }
-var FUNCS = ['seccion', 'abierta', 'fARS', 'grupos', 'esc', 'filaTope', 'textoDeuda', 'cuotaAdelantada', 'repartoTrabajo', 'esProgramado', 'gastadoVista', 'gastadoConApartes', 'baseAparte', 'esGastoAparte', 'datosRealizados',
+var FUNCS = ['seccion', 'notaVence', 'diaVence', 'abierta', 'fARS', 'grupos', 'esc', 'filaTope', 'textoDeuda', 'cuotaAdelantada', 'repartoTrabajo', 'esProgramado', 'gastadoVista', 'gastadoConApartes', 'baseAparte', 'esGastoAparte', 'datosRealizados',
   'htmlTorta', 'pasadas', 'textoTopes', 'puedeAlternar', 'fPct', 'faltaSeccion', 'textoFalta', 'textoDelTrabajo', 'filasVer'].filter(existe);
 var VARS = ['ICOSEC', 'MARCABLE', 'TOPEABLE', 'MESES', 'oculto', 'PUNTOS', 'TORTA_MAX', 'SECS', 'verFilas'].filter(function(v){ return new RegExp('^var ' + v + '\\s*=', 'm').test(SRC); });
 

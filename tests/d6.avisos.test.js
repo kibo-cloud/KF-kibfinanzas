@@ -61,7 +61,7 @@ test('D6 N4-A an unreadable Trabajo is set apart at start and named, with «Desc
 });
 
 test('D6 N4-A the year notice offers the download too; the Trabajo notice is added after it', function(){
-  var a = appCuar({'kibo.trabajo': 'x'});
+  var a = appCuar({'kibo.trabajo': 'x', 'kibo.datos.2026': '{roto'});   // D9 A3: the button is offered for the copy that holds this year's text
   a.avisoCuarentena(2026);
   assert.match(a.avisos.innerHTML, /data-act="cuarDescargar" data-k="kibo\.cuarentena\.2026">Descargar el texto</);
   assert.match(a.avisos.innerHTML, /data-act="restaurar"/, 'restore kept');

@@ -1,6 +1,6 @@
 # Owner decisions closure (TuGasto 1.34.0)
 
-Status: complete (D0-D8 done), pending native review of the feature range.
+Status: complete (D0-D9 done); native review unavailable on the full range, independent audit findings closed in D9.
 
 ## Objective
 
@@ -137,6 +137,40 @@ money effect of each item: `odd/tasks/stabilization-quick-sales.md` "S1 — Pend
       table, GitHub blocked locally; repo `CLAUDE.md` (untracked, not committed) updated to 1.34.0. Test-first exception: release
       bookkeeping; `tests/release.test.js` failed on the old values only as the guard that moves with the bump. `npm test` 942/942,
       `npm run test:e2e` 549/549, `tests/fixtures/` unchanged since `cdc385b`.
+- [x] D9 Audit findings A1–A10. Route: delegated writer (one file + tests; findings already located by the audit). Native review was
+      unavailable (`lens_context_budget_exceeded` on the full range); an independent high-effort audit of `dd6a132..130f8a0` produced
+      unverified candidates A1–A10. Each was first reproduced by a deterministic test in `tests/r6.auditoria.test.js` (one test per id):
+      RED 0/9, all nine reproduced, none "not reproduced"; GREEN 9/9.
+      A1 confirmed: `repartoTrabajo` (checkbox, "Falta", due list, "viene de Trabajo") still split pases in row order while D1's
+      `flujosMes` gives them to the single exact row first ([«Dél trabajo» 100.000 unticked, «Del trabajo» 300.000 ticked]: screen 100.000
+      covered / 100.000 above, engine 0 / 300.000). Fix: one motor helper `repartoPases(ingresos, pases)` (exported, aliased, classified in
+      the inventory) used by both; the test checks 7 L-03-like cases add up row by row to `flujosMes`. Goldens unchanged.
+      A2 confirmed: copying the month after a partial payment copied the leftover (60.000 instead of 100.000). Fix: optional row field
+      `montoPlan` set by the first partial payment, kept by `normalizar` (no key on rows without it), used by `copiarAnterior`, dropped
+      when undo makes the row whole again, when the user types a new amount, when the month copy overwrites the row and by `duplicar`.
+      A3 confirmed: «Descargar el texto» pointed at the base key although the text went to `.2`. Fix: `ponerEnCuarentena` returns the key
+      it used (or where the text already was; false on failure); both notices use it and show no button when nothing was kept.
+      A4 confirmed: 3 loads → 3 notices. Fix: the Trabajo notice replaces its previous copy (other notices stay).
+      A5 confirmed: undo after the rest was ticked showed the full amount paid. Fix: the movement keeps `rr` (leftover at split, kept by
+      `normalizar`); undo refuses with a toast when the planned row is ticked or its amount is not `rr` minus later partial parts of the
+      same row (so undoing an earlier part while a later one exists still works and adds up). Old movements without `rr`: tick check only.
+      A6 confirmed: a 1.33-created year (pagadasAntes 4 with November ticked ahead) is corrected to 3 by the live carry with no word.
+      Kept (owner decision N1-B b); Patrimonio's notice block (`avisoDerivaPrevio`) now names the plan and the ticked-ahead months
+      (`data-av="cuotasAdelante"`) until they arrive; `cuotasRealizadas` takes an optional array to report those months. LEEME 1.34.0
+      wording corrected (no longer "No se reescribe ningún dato guardado"). No migration.
+      A7 confirmed: after deleting the base copy, the same text was copied again to the base key. Fix: `ponerEnCuarentena` checks every
+      `base` / `base.N` slot first. Re-copying an unreadable source after delete is kept (data safety); the D7 delete confirmation says
+      "<Trabajo / El año N> todavía no se puede leer: la próxima vez que abras la app se vuelve a apartar." when that is the case.
+      A8 confirmed: installment rows showed no day although the plan had one. Fix: `notaVence` (uses `diaVence`) in `seccion`.
+      A9 confirmed: "40" said «No entendí «40» como número.». Fix: `leerPlan` reports the field; `textoMalPlan` says "El día tiene que ser
+      un número del 1 al 31 (o vacío)." (same words as the rows sheet) in the preview and on save.
+      Mutations (fix reverted, then restored): A1 → A1 fails; A2 → A2 fails; A5 → A5 fails (plus the expected CSP hash test each time).
+      Test lists updated for the new calls: `d6` (the year-notice test now stores an unreadable year, as the real flow does), `d7`
+      (`revGuardada`), `p3a` / `r5.mes` (`notaVence`, `diaVence`). CSP hashes updated in `index.html` and `privacidad.html`. Version
+      stays 1.34.0 / SW v47 (not yet delivered); the LEEME 1.34.0 entry lists the user-visible fixes. `npm test` 951/951,
+      `npm run test:e2e` 549/549, `tests/fixtures/` unchanged.
+      Follow-up (A10, not done on purpose): `abrirVences` / `guardarVences` duplicate `abrirTopes` / `guardarTopes`; a shared sheet would
+      remove the copy, but it is a refactor with no behavior change, left for a later task.
 
 ## Delivery
 
@@ -162,7 +196,9 @@ trailers. No remote configured: push/PR are owner decisions. Forecast ~900-1300 
 - GitHub: blocked: wrong GitHub account on this PC (owner, 2026-10-28); versions kept locally only (P11 and L10 notes updated).
 - D8 done (this commit): 1.34.0, SW v47, CSP hash, LEEME changelog, S1 rows resolved, P10 dead CSS removed; 942 tests, E2E 549/549.
   Feature complete pending native review.
+- D9 done (this commit): audit findings A1–A9 confirmed and fixed with tests, A10 recorded as follow-up; 951 tests, E2E 549/549.
 
 ## Next step
 
-Native review of the feature range (dd6a132..HEAD), then owner delivery (local only; no GitHub).
+Owner delivery of 1.34.0 (local only; no GitHub). Native review unavailable: lens_context_budget_exceeded on the full range;
+independent high-effort audit used instead.
