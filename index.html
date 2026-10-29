@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-pzNjKDvkerBEKJeZ6FNa6CWIE6xVibfNiPbn5gJQpe8=' 'sha256-npiED417Jy2VmtcJ9dYNFDcqiqCwL3oidr/Mb73IvVE='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-R4CAACo2c/5MSeMl3sIDfAxPrXI/uUqkEEOGMPl+GAo=' 'sha256-yX4p8hofIylqqRNXw2XyyNLNaGgwbNSvwtH8SdV6jP0='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -328,12 +328,7 @@ tr.tot td:first-child{background:var(--card2)}
 .texto{font-size:14px;color:var(--txt2);line-height:1.5;padding:2px 4px}
 .texto b{color:var(--txt)}
 
-/* ── fab + nav ── */
-.fab{
-  position:fixed;right:16px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:45;
-  height:56px;padding:0 22px;border-radius:28px;background:var(--acc);color:var(--on-acc);
-  font-size:16px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.22);display:flex;align-items:center;gap:8px;
-}
+/* ── nav ── */
 nav{
   position:fixed;left:0;right:0;bottom:0;z-index:50;background:var(--nav);
   backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);
@@ -719,10 +714,7 @@ body:has(#primerUso) #avisos>.aviso:not([data-av]){display:none}
 .big.latido{animation:kfLatido .3s ease-out}
 .faj .ico{transition:transform .15s}
 .faj:active .ico{transform:scale(.9)}
-.fab{transition:transform .12s}
-.fab.fuera{transform:translateY(calc(100% + 110px))}   /* P3a: al bajar leyendo se corre para no tapar montos; vuelve al subir */
 .sec,#saldoMes{scroll-margin-top:72px}
-.fab:active{transform:scale(.92)}
 .mas:active,.acciones button:active{opacity:.55}
 
 /* ═══ 16 · terminaciones: curvas, relieve y respuesta al toque ══════
@@ -757,7 +749,7 @@ input,textarea{touch-action:manipulation}
 
 /* respuesta al toque: baja rápido, vuelve despacio */
 .tj-acc button,.tj-prod,.tj-linea,.tj-pasar,.tj-rec,.hoja .fila button,.chips button,.seg button,
-.mini,.acciones .btnlink,.toast button,.mas,#nav button,.item .x,.fab,.meses button{
+.mini,.acciones .btnlink,.toast button,.mas,#nav button,.item .x,.meses button{
   transition:transform var(--suelta) var(--curva),background .2s var(--curva),
              border-color .2s var(--curva),color .2s var(--curva),opacity .2s var(--curva);
 }
@@ -768,7 +760,6 @@ input,textarea{touch-action:manipulation}
 #nav button:active .np{transform:scale(.88);transition-duration:var(--toque)}
 .acciones .btnlink:active,.mas:active{background:var(--fill)}
 .np{transition:background .22s var(--curva),transform var(--suelta) var(--curva)}
-.fab:active{transform:scale(.93);transition-duration:var(--toque)}
 .meses button:active{transform:scale(.93);transition-duration:var(--toque)}
 button.tj-f{transition:background .2s var(--curva)}
 button.tj-f:active{background:var(--fill);transition-duration:var(--toque)}
@@ -777,8 +768,6 @@ button.tj-f:active{background:var(--fill);transition-duration:var(--toque)}
    La hoja mantiene su propia máquina de estados (arrastrando · vuelve · yendo): no se toca. */
 .hoja{box-shadow:var(--shadow-alto);overscroll-behavior:contain}
 .toast{box-shadow:var(--shadow-alto)}
-.fab{box-shadow:0 4px 10px -2px rgba(16,18,27,.16),0 12px 28px -8px rgba(16,18,27,.28)}
-.fab:active{box-shadow:0 2px 6px -2px rgba(16,18,27,.2)}
 
 /* aperturas y cierres con la misma curva */
 .velo{transition:background .24s var(--curva)}
@@ -930,7 +919,7 @@ body:has(#avisoCierre) #avisoVersion{display:none}
 .soloPrint{display:none}
 @media print{
   .soloPrint{display:block;font-weight:700;font-size:16px;margin:0 0 8px}
-  header,nav,.fab,.toast,.velo,#avisos,.meses{display:none!important}
+  header,nav,.toast,.velo,#avisos,.meses{display:none!important}
   body{background:#fff;color:#000;padding:0;font-size:12px}
   .vista{display:none!important} .vista#v-anio{display:block!important}
   .tabla,.chart,.rank,.sec{box-shadow:none;border:1px solid #ccc;break-inside:avoid}
@@ -944,7 +933,7 @@ body:has(#avisoCierre) #avisoVersion{display:none}
 
 <header>
   <div class="wrap hd">
-    <h1 id="titulo" title="TuGasto"><span class="kf">TG</span><span class="anio"></span></h1>
+    <h1 id="titulo" title="TuGasto"><span class="kf">TuGasto</span><span class="anio"></span></h1>
     <div class="estado"><i class="dot" id="dot"></i><span id="txtEstado">Listo</span></div>
     <button class="btn-guardar" data-act="guardar">Guardar</button>
   </div>
@@ -2086,6 +2075,8 @@ function normalizar(d, hoy){
         if(it && it.pagado === true) o.pagado = true;
         if(it && it.pagado === false) o.pagado = false;
         if(it && it.aparte === true) o.aparte = true;   // L3 review: el renglón lo creó "No, es otro gasto"
+        if(it && diaValido(it.vence)) o.vence = it.vence;   // D4: "vence el día N" (opcional; sin él, vence con el mes como siempre)
+        if(it && typeof it.montoPlan === 'number' && isFinite(it.montoPlan) && it.montoPlan > 0) o.montoPlan = it.montoPlan;   // D9 A2: lo planeado antes de un pago parcial (opcional)
         // migración única por año: solo completa los pagado sin definir con la inferencia de antes (monto cargado y mes ya corrido)
         if(!d.pagoExplicito && o.pagado === undefined) o.pagado = o.monto > 0 && i <= mesTope(d.anio, refPago);
         return o;
@@ -2103,8 +2094,15 @@ function normalizar(d, hoy){
     m.movimientos = m.movimientos.filter(function(x){ return x && typeof x==='object'; }).map(function(x){
       var mo = {id:String(x.id||''), fecha:String(x.fecha||''), sec:String(x.sec||'gastosVariables'), nombre:String(x.nombre||''), monto:num(x.monto)};
       if(typeof x.pp === 'boolean') mo.pp = x.pp;   // pagado que tenía el renglón antes de este gasto: lo usa Deshacer
-      if(x.tipo === 'pago' || x.tipo === 'aparte') mo.tipo = x.tipo;   // L3: qué respondió el usuario (Deshacer)
+      if(x.tipo === 'pago' || x.tipo === 'aparte' || x.tipo === 'parcial') mo.tipo = x.tipo;   // L3: qué respondió el usuario (Deshacer)
       if(x.tipo === 'pago') mo.ma = num(x.ma);   // L3: monto que tenía el renglón antes de marcarlo pagado (Deshacer)
+      if(x.tipo === 'parcial'){   // D2: pago parcial; el renglón del plan que quedó con el resto (Deshacer le devuelve la parte)
+        if(typeof x.nueva === 'boolean') mo.nueva = x.nueva;
+        if(typeof x.rn === 'string') mo.rn = x.rn;
+        if(typeof x.rfo === 'number' && x.rfo >= 0 && Math.floor(x.rfo) === x.rfo) mo.rfo = x.rfo;
+        if(typeof x.rfn === 'number' && x.rfn >= 1 && Math.floor(x.rfn) === x.rfn) mo.rfn = x.rfn;
+        if(typeof x.rr === 'number' && isFinite(x.rr) && x.rr >= 0) mo.rr = x.rr;   // D9 A5: lo que le quedó al renglón del plan (Deshacer lo compara)
+      }
       if(typeof x.fi === 'number' && x.fi >= 0 && Math.floor(x.fi) === x.fi) mo.fi = x.fi;   // S2 M2: lugar del renglón que cambió (Deshacer)
       if(typeof x.fo === 'number' && x.fo >= 0 && Math.floor(x.fo) === x.fo) mo.fo = x.fo;   // S2 M2: cuál de los renglones con ese nombre (0 = el primero)
       if(typeof x.fn === 'number' && x.fn >= 1 && Math.floor(x.fn) === x.fn) mo.fn = x.fn;   // S2 M2: cuántos renglones tenían ese nombre
@@ -2122,6 +2120,7 @@ function normalizar(d, hoy){
   Object.keys(pdOrig).forEach(function(k){
     var p = pdOrig[k] || {};
     d.planDeudas[k] = {recargo:num(p.recargo), total:num(p.total), cuotas:Math.max(0, Math.round(num(p.cuotas))), pagadasAntes:Math.max(0, Math.round(num(p.pagadasAntes)))};
+    if(diaValido(p.vence)) d.planDeudas[k].vence = p.vence;   // D4: día de vencimiento de las cuotas del plan (opcional)
   });
   if(!d.ui || typeof d.ui!=='object') d.ui = {};
   if(['auto','claro','oscuro'].indexOf(d.ui.tema)<0) d.ui.tema = 'auto';
@@ -2289,6 +2288,7 @@ function clave(x){
   return o;
 }
 function esRenglonTrabajo(n){ return clave(n) === clave(RENGLON_TRABAJO); }
+function diaValido(v){ return typeof v === 'number' && v >= 1 && v <= 31 && Math.floor(v) === v; }   // D4: un día del mes, entero de 1 a 31
 function planDe(d, nombre){ var k = String(nombre||'').trim(); return Object.prototype.hasOwnProperty.call(d.planDeudas, k) ? d.planDeudas[k] || null : null; }   // N5 S-1: solo un plan propio, nunca algo heredado ("constructor")
 function cuotaPaga(j, it){ return estaPagado(j, it) && num(it.monto) > 0; }   // una cuota cuenta como paga si está tildada Y tiene monto
 function estadoDeuda(d, nombre, i, hoy){
@@ -2433,6 +2433,21 @@ function numOk(v){ return typeof v === 'number' && isFinite(v); }
 function acumularFlujo(o, monto, pagado, real){ if(!real) o.prog += monto; else if(pagado) o.real += monto; else o.pend += monto; }
 // desglose de un mes: realizado (tildado, mes pasado/actual), pendiente (sin tildar, pasado/actual) y programado (todo lo de un mes futuro);
 // transferencias realizadas si el mes es pasado/actual, programadas si es futuro; "Del trabajo" sale de ctx.pasesTrabajo (§7)
+// cuánto de los pases del mes cubre cada renglón de ingresos (0 en los que no son «Del trabajo»). La única regla, la usan flujosMes (la plata)
+// y repartoTrabajo (la pantalla). N2-B (b): los pases van primero al único renglón con el nombre exacto (donde renglonTrabajo los suma, tenga
+// o no tilde); los demás renglones «Del trabajo» (variantes de datos viejos) siguen en su orden. Con dos exactos, o ninguno, en orden, como antes.
+function repartoPases(ingresos, pases){
+  var out = [], exactos = [], resto = pases, i, abs, primero;
+  for(i=0;i<ingresos.length;i++){ out.push(0); if(String(ingresos[i].nombre || '').trim().toLowerCase() === RENGLON_TRABAJO.toLowerCase()) exactos.push(i); }
+  if(!(pases > 0)) return out;
+  primero = exactos.length === 1 ? exactos[0] : -1;
+  if(primero >= 0){ abs = Math.max(0, Math.min(num(ingresos[primero].monto), resto)); out[primero] = abs; resto -= abs; }
+  for(i=0;i<ingresos.length;i++){
+    if(i === primero || !esRenglonTrabajo(ingresos[i].nombre)) continue;
+    abs = Math.max(0, Math.min(num(ingresos[i].monto), resto)); out[i] = abs; resto -= abs;
+  }
+  return out;
+}
 function flujosMes(d, j, hoy, ctx){
   var m = d.meses[j], est = estadoMes(d.anio, j, hoy), real = est !== 'futuro', i, k, it, mo;
   var lp = (ctx && ctx.pasesTrabajo && ctx.pasesTrabajo[claveMes(d.anio, j)]) || [], trabReal = 0, trabProg = 0;
@@ -2440,13 +2455,13 @@ function flujosMes(d, j, hoy, ctx){
     mo = num(lp[i] && lp[i].monto); if(!(mo > 0)) continue;
     if(real && String(lp[i].fecha) <= hoy.iso) trabReal += mo; else trabProg += mo;
   }
-  var pases = trabReal + trabProg, resto = pases, filasTrab = 0;
+  var pases = trabReal + trabProg, filasTrab = 0, rep = repartoPases(m.ingresos, pases);
   var ing = {real:0, pend:0, prog:0}, gas = {real:0, pend:0, prog:0}, cuo = {real:0, pend:0, prog:0};
   for(i=0;i<m.ingresos.length;i++){
     it = m.ingresos[i]; mo = num(it.monto);
     if(esRenglonTrabajo(it.nombre)){   // el renglón es la proyección de los pases: lo que no cubren es ingreso común con su propio tilde
       filasTrab += mo;
-      if(pases > 0){ var abs = Math.max(0, Math.min(mo, resto)); resto -= abs; mo -= abs; }
+      mo -= rep[i];
     }
     acumularFlujo(ing, mo, estaPagado(j, it), real);
   }
@@ -2615,6 +2630,7 @@ return {
   clave: clave,
   esRenglonTrabajo: esRenglonTrabajo,
   planDe: planDe,
+  diaValido: diaValido,
   cuotaPaga: cuotaPaga,
   estadoDeuda: estadoDeuda,
   totalConRecargo: totalConRecargo,
@@ -2628,6 +2644,7 @@ return {
   criptoUSD: criptoUSD,
   patrimonio: patrimonio,
   estadoMes: estadoMes,
+  repartoPases: repartoPases,
   flujosMes: flujosMes,
   cadena: cadena,
   iniciarArrastre: iniciarArrastre,
@@ -2668,6 +2685,7 @@ var SECS = TGMotor.SECS,
     clave = TGMotor.clave,
     esRenglonTrabajo = TGMotor.esRenglonTrabajo,
     planDe = TGMotor.planDe,
+    diaValido = TGMotor.diaValido,
     estadoDeuda = TGMotor.estadoDeuda,
     planDeCarga = TGMotor.planDeCarga,
     cargarCuotas = TGMotor.cargarCuotas,
@@ -2675,6 +2693,7 @@ var SECS = TGMotor.SECS,
     hoyDe = TGMotor.hoyDe,
     cadena = TGMotor.cadena,
     flujosMes = TGMotor.flujosMes,
+    repartoPases = TGMotor.repartoPases,
     estadoMes = TGMotor.estadoMes,
     patrimonioNeto = TGMotor.patrimonioNeto,
     iniciarArrastre = TGMotor.iniciarArrastre,
@@ -2694,7 +2713,7 @@ function hoyApp(){ return hoyDe(new Date()); }
 var M1 = '/*DATOS_' + 'INICIO*/';
 var M2 = '/*DATOS_' + 'FIN*/';
 
-var APPVER   = '1.33.0';    // versión visible en Ajustes (LAB)
+var APPVER   = '1.34.1';    // versión visible en Ajustes (LAB)
 var PREF     = 'kibo.datos.', memoAnios = Object.create(null);        // kibo.datos.2026, kibo.datos.2027… · memoAnios: ver leerAnio (final audit 12)
 var LSANIO   = 'kibo.anio';
 var LSCOPIA  = 'kibo.ultimaCopia';
@@ -3072,16 +3091,13 @@ function tieneTilde(d, j, k, it){
   return !!r && r.exceso > 0;
 }
 // cuánto de un renglón "Del trabajo" de un mes del modelo cubren los pases de Trabajo y cuánto queda por encima ({pases, exceso}); el mismo
-// reparto que flujosMes (§7): los pases del mes cubren los renglones "Del trabajo" en orden. null si it no es un renglón "Del trabajo" del mes
+// reparto que flujosMes (§7; D9 A1: la misma función, repartoPases, con el renglón exacto primero). null si it no es un renglón "Del trabajo" del mes
 function repartoTrabajo(d, j, it){
-  var lp = ctxModelo(d, hoyApp()).pasesTrabajo[d.anio + '-' + dos(j + 1)] || [], resto = 0, ls = d.meses[j].ingresos, i, mo, abs;
-  for(i=0;i<lp.length;i++){ mo = num(lp[i] && lp[i].monto); if(mo > 0) resto += mo; }
-  for(i=0;i<ls.length;i++){
-    if(!esRenglonTrabajo(ls[i].nombre)) continue;
-    mo = num(ls[i].monto); abs = Math.max(0, Math.min(mo, resto)); resto -= abs;
-    if(ls[i] === it) return {pases: abs, exceso: mo - abs};
-  }
-  return null;
+  var lp = ctxModelo(d, hoyApp()).pasesTrabajo[d.anio + '-' + dos(j + 1)] || [], pases = 0, ls = d.meses[j].ingresos, i = ls.indexOf(it), q, mo, abs;
+  if(i < 0 || !esRenglonTrabajo(it.nombre)) return null;
+  for(q=0;q<lp.length;q++){ mo = num(lp[q] && lp[q].monto); if(mo > 0) pases += mo; }
+  abs = repartoPases(ls, pases)[i];
+  return {pases: abs, exceso: num(it.monto) - abs};
 }
 /* ═══ R5: el saldo del mes (D2, D5, D6, D7/Q8, D10, D17) ═══
    Solo presenta lo que ya calcula la cadena (cadena/flujosMes); no hay ninguna regla de plata nueva acá. */
@@ -3281,6 +3297,25 @@ function montosPorFecha(total, n, cubierto){
 }
 // facturas = [{id, nombre, saldo, vence:'YYYY-MM-DD'}] (las arma facturasAVencer desde Trabajo); devuelve los renglones ordenados:
 // atrasado primero, después por fecha, a igual fecha el monto mayor primero
+/* D4 (owner-decisions-closure, L5 opción b): un gasto fijo o variable puede tener su propio día de vencimiento (it.vence) y un plan de deuda
+   el de sus cuotas (planDeudas[n].vence). Campo opcional: sin él el renglón vence con el mes, como antes. */
+function diaVence(d, k, it){
+  if(k === 'ingresos' || !it) return 0;
+  if(diaValido(it.vence)) return it.vence;
+  var p = k === 'deudas' ? planDe(d, it.nombre) : null;
+  return p && diaValido(p.vence) ? p.vence : 0;
+}
+function notaVence(d, k, it){   // D9 A8: la nota del renglón usa el mismo día que «Qué vence esta semana» (una cuota sin día propio, el de su plan)
+  var n = diaVence(d, k, it);
+  return n ? '<div class="nota dvence">Vence el día ' + n + '</div>' : '';
+}
+function leerDiaVence(s){   // el campo de la hoja: vacío = sin día (0); si no, un entero de 1 a 31; otra cosa, NaN
+  var t = String(s == null ? '' : s).trim();
+  if(t === '') return 0;
+  if(!/^\d{1,2}$/.test(t)) return NaN;
+  var n = +t;
+  return n >= 1 && n <= 31 ? n : NaN;
+}
 function vencimientos(d, j, hoy, facturas){
   if(!d || estadoMes(d.anio, j, hoy) !== 'actual') return [];
   var out = [], secs = ['ingresos', 'gastosFijos', 'gastosVariables', 'deudas'], dim = diasDelMes(d.anio, j);
@@ -3305,6 +3340,7 @@ function vencimientos(d, j, hoy, facturas){
     for(i=0;i<d.meses[j][k].length;i++){
       it = d.meses[j][k][i]; mo = falta(j, k, it); if(!(mo > 0)) continue;
       dias = k === 'ingresos' ? diasCobro(it, d.anio, j) : [];
+      var dv = k === 'ingresos' ? 0 : Math.min(diaVence(d, k, it), dim);   // D4: el día que el usuario puso (31 en un mes de 30 = el último)
       var base = {atrasado: false, tipo: tipo(k), nombre: String(it.nombre || ''), monto: mo, mes: j, k: k, i: i}, n;
       if(dias.length){
         // L5 review: cada fecha con lo de un cobro (como cobroTxt); cada día ya pasado sin tildar es un atrasado, y el próximo si cae en la semana
@@ -3317,6 +3353,9 @@ function vencimientos(d, j, hoy, facturas){
           else if(prox < 0) prox = q;
         }
         if(prox >= 0 && dias[prox] - hoy.dia <= DIAS_VENCE) out.push(con(base, {monto: cada[prox], fecha: isoDe(d.anio, j, dias[prox]), dia: dias[prox]}));
+      } else if(dv > 0){
+        if(dv < hoy.dia) out.push(con(base, {atrasado: true, era: dv, fecha: isoDe(d.anio, j, dv)}));
+        else if(dv - hoy.dia <= DIAS_VENCE) out.push(con(base, {fecha: isoDe(d.anio, j, dv), dia: dv}));
       } else if(dim - hoy.dia <= DIAS_VENCE) out.push(con(base, {fecha: isoDe(d.anio, j, dim), dia: dim, finDeMes: true}));
     }
   }
@@ -3449,7 +3488,7 @@ function barra(txt, pct, verde, id){
        + '<div class="pista"><i id="'+id+'" class="'+(verde?'verde':'')+'" style="width:'+w+'%"></i></div></div>';
 }
 function filaTope(k, i, it){
-  var tope = num(it.tope), gastado = gastadoVista(it, mes), pct = tope > 0 ? gastado / tope : 0;
+  var tope = num(it.tope), gastado = gastadoConApartes(D && D.meses[mes] && D.meses[mes][k], it, mes), pct = tope > 0 ? gastado / tope : 0;
   var pasado = gastado > tope;
   var txt = pasado ? 'Te pasaste por ' + fARS(gastado - tope) + ' del tope de ' + fARS(tope)
                    : fARS(gastado) + ' de ' + fARS(tope);
@@ -3469,7 +3508,7 @@ function pasadas(m){
   for(s=0;s<SECS.length;s++){
     k = SECS[s].k; if(!TOPEABLE[k]) continue;
     l = m[k];
-    for(i=0;i<l.length;i++){ if(num(l[i].tope) > 0 && gastadoVista(l[i], mes) > num(l[i].tope)) out.push(l[i].nombre); }
+    for(i=0;i<l.length;i++){ if(num(l[i].tope) > 0 && gastadoConApartes(l, l[i], mes) > num(l[i].tope)) out.push(l[i].nombre); }
   }
   return out;
 }
@@ -3532,6 +3571,44 @@ function abrirTopes(k){
                  : '<button data-act="cerrarHoja">Cancelar</button><button class="pri" data-act="topesOk" data-k="'+k+'" data-v="mes">Guardar</button>')
      + '</div>';
   abrirHoja(h);
+}
+// D4: el día de vencimiento de cada gasto fijo (opcional), como los topes: solo este mes o de este mes en adelante (por nombre)
+function abrirVences(k){
+  var S = SECS.filter(function(x){ return x.k === k; })[0], l = D.meses[mes][k], h = '', i;
+  h += '<h3>Días de vencimiento de '+S.t.toLowerCase()+'</h3>'
+     + '<div class="texto" style="margin-bottom:12px">Qué día del mes vence cada uno, si querés. Lo ves en «Qué vence esta semana» desde una semana antes. Vacío: vence con el mes.</div>';
+  for(i=0;i<l.length;i++){
+    h += '<div class="item"><span class="nombre" style="padding:0 4px;font-size:15px">'+esc(l[i].nombre)+'</span>'
+       + '<input class="topein vencein" inputmode="numeric" enterkeyhint="done" data-i="'+i+'" value="'+(diaValido(l[i].vence) ? l[i].vence : '')+'" placeholder="Sin día" aria-label="Día de vencimiento"></div>';
+  }
+  h += '<div class="fila" style="margin-top:14px">'
+     + (mes < 11 ? '<button data-act="vencesOk" data-k="'+k+'" data-v="mes">Solo '+MESES[mes]+'</button>'
+                 + '<button class="pri" data-act="vencesOk" data-k="'+k+'" data-v="ade">De '+MESES[mes].toLowerCase()+' en adelante</button>'
+                 : '<button data-act="cerrarHoja">Cancelar</button><button class="pri" data-act="vencesOk" data-k="'+k+'" data-v="mes">Guardar</button>')
+     + '</div>';
+  abrirHoja(h);
+}
+function guardarVences(k, adelante){
+  var l = D.meses[mes][k], campos = document.querySelectorAll('#hoja input.vencein'), i, j, q, cambiados = 0, vals = [];
+  for(i=0;i<campos.length;i++){   // primero se lee todo: si algo no se entiende, no se guarda nada
+    vals[i] = leerDiaVence(campos[i].value);
+    if(isNaN(vals[i])){ marcarErr(campos[i], true); campos[i].focus(); toast('El día tiene que ser un número del 1 al 31 (o vacío)'); return; }
+  }
+  var poner = function(it, v){ if(v) it.vence = v; else delete it.vence; };
+  for(i=0;i<campos.length;i++){
+    var idx = +campos[i].getAttribute('data-i'), v = vals[i];
+    if(!l[idx]) continue;
+    if((diaValido(l[idx].vence) ? l[idx].vence : 0) !== v) cambiados++;
+    poner(l[idx], v);
+    if(adelante){
+      for(j=mes+1;j<12;j++){
+        var otra = D.meses[j][k];
+        for(q=0;q<otra.length;q++) if(otra[q].nombre === l[idx].nombre) poner(otra[q], v);
+      }
+    }
+  }
+  cerrarHoja(); tocar(); guardar(); conScroll(renderMes);
+  toast(cambiados ? (adelante ? 'Días guardados de ' + MESES[mes].toLowerCase() + ' en adelante' : 'Días guardados en ' + MESES[mes].toLowerCase()) : 'Sin cambios');
 }
 function guardarTopes(k, adelante){
   var l = D.meses[mes][k], campos = document.querySelectorAll('#hoja input.topein'), i, j, q, cambiados = 0, vals = [];
@@ -3630,6 +3707,7 @@ function seccion(S, m){
     if(TOPEABLE[S.k] && num(lista[i].tope) > 0){
       h += filaTope(S.k, i, lista[i]);
     }
+    h += notaVence(D, S.k, lista[i]);
     if(S.k === 'ingresos' && !vt){
       h += '<button class="dinfo' + (lista[i].frec ? '' : ' vacia') + '" data-act="cobro" data-i="' + i + '">'
          + (lista[i].frec ? esc(cobroTxt(lista[i])) : '¿Cada cuánto lo cobrás?') + '</button>';
@@ -3645,6 +3723,7 @@ function seccion(S, m){
   }
   h += '<button class="mas" data-act="add" data-k="'+S.k+'">+ Agregar en '+S.t.toLowerCase()+'</button>';
   if(TOPEABLE[S.k] && lista.length) h += '<button class="mas" data-act="topes" data-k="'+S.k+'">Poner topes</button>';
+  if(S.k === 'gastosFijos' && lista.length) h += '<button class="mas" data-act="vences" data-k="'+S.k+'">Días de vencimiento</button>';   // D4
   if(lista.length > 1) h += '<button class="mas" data-act="ordenar" data-k="'+S.k+'">Cambiar el orden</button>';
   h += '</div></div>';
   return h;
@@ -3843,6 +3922,17 @@ function datosRealizados(d, hoy){
 // (torta, topes, texto de la deuda, tildes) lo leen por acá; los datos guardados no se tocan y el motor no cambia (como datosRealizados)
 function esProgramado(d, j, hoy){ return mesDelModelo(d, j) && estadoMes(d.anio, j, hoy) === 'futuro'; }
 function gastadoVista(it, j){ return gastadoTope(esProgramado(D, j, hoyApp()) ? {monto: it.monto, pagado: false} : it, j); }
+/* D3 (owner-decisions-closure, opción b): lo anotado aparte ("<fila> (otro gasto)", L3) o como pago parcial ("<fila> (pago parcial)", D2) es
+   gasto de la misma categoría: consume el tope de <fila>. Solo avisos de tope; ningún saldo ni dato guardado cambia. */
+function baseAparte(it){   // el nombre del renglón del que salió un renglón aparte, o null
+  var m = /^(.*\S) \((?:otro gasto|pago parcial)(?: (?:[2-9]|[1-9]\d+))?\)$/.exec(String(it && it.nombre || ''));
+  return m && esGastoAparte(it) ? m[1] : null;
+}
+function gastadoConApartes(l, it, j){   // lo que consume el tope de it: lo suyo más sus renglones aparte de la misma sección
+  var g = gastadoVista(it, j), i;
+  for(i=0;l && i<l.length;i++) if(l[i] !== it && baseAparte(l[i]) === it.nombre) g += gastadoVista(l[i], j);
+  return g;
+}
 // en un mes programado solo se puede destildar lo que se marcó antes de tiempo; tildar espera a que llegue el mes
 function puedeAlternar(j, it){ return !(esProgramado(D, j, hoyApp()) && !estaPagado(j, it)); }
 // mes en rojo: en un mes del modelo, lo que muestra la tarjeta (Ingresos con los pases de Trabajo ya hechos − Gastos − Deudas) < 0, nunca
@@ -4183,7 +4273,7 @@ function htmlPatrimonio(p){
   for(i=0;i<f.filas.length;i++){
     x = f.filas[i]; det = '';
     if(x.estimado && x.falta) det = ' <small class="mudo">(' + fUSD(x.usd) + ', falta la cotización)</small>';
-    else if(x.estimado && x.usd) det = ' <small class="mudo">(' + fUSD(x.usd) + ' a ' + fARS(f.cotizacion) + (f.cotizacionPorDefecto ? ', cotización sin cargar' : ', estimado') + ')</small>';
+    else if(x.estimado && x.usd) det = ' <small class="mudo">(' + fUSD(x.usd) + ' a ' + fARS(f.cotizacion) + (f.cotizacionPorDefecto ? ')</small> <small class="est pend">Cotización sin cargar</small>' : ', estimado)</small>');   // D6 (N3b-B): a la vista
     h += '<div class="fila-in" data-pat="' + x.k + '"><label>' + etq[x.k] + det + '</label><span class="mudo">' + (x.falta ? 'sin cotización' : hARS(x.valor)) + '</span></div>';
   }
   h += '<div class="fila-in" data-pat="bruto"><label><b>Patrimonio bruto</b></label><span>' + hARS(f.bruto) + '</span></div>';
@@ -4196,7 +4286,7 @@ function htmlPatrimonio(p){
        + (suelto ? '<div class="fila-in" data-pat="deuda-suelta"><label></label><button class="mini" style="min-height:var(--tap)" data-act="quitarPlanSuelto" data-n="' + esc(dd.nombre) + '">Quitar plan</button></div>' : '');
   }
   h += '<div class="fila-in" data-pat="neto"><label><b>Patrimonio neto</b></label><span><b>' + hARS(f.neto) + '</b></span></div>';
-  h += '<div class="nota">' + (f.sinCotizacion
+  h += '<div class="nota' + (f.cotizacionPorDefecto ? ' ambar' : '') + '">' + (f.sinCotizacion
       ? 'Falta la cotización del dólar (arriba, en Cotización): los dólares y la cripto todavía no se suman.'
       : (f.cotizacionPorDefecto
         ? 'Todavía no cargaste la cotización del dólar: dólares y cripto están calculados a ' + fARS(f.cotizacion) + ', la que trae la app. Cargá la tuya arriba, en Cotización.'
@@ -4212,6 +4302,8 @@ function htmlHeroPatri(p){
   var sinCot = !!p.modelo && !(p.modelo.cotizacion > 0);
   var lbl = p.modelo ? (p.cierre ? 'Patrimonio neto al cierre de ' + p.anio : 'Patrimonio neto a hoy') : 'Todo junto al cierre del año';
   var chip = p.modelo ? (p.cierre ? '<span class="chip real">Al cierre</span>' : '<span class="chip real">A hoy</span>') : '<span class="chip prog">Cálculo simple</span>';
+  // D6 (N3b-B): con la cotización que trae la app (nunca cargada) y dólares o cripto en el total, se dice al lado del número
+  if(p.modelo && !sinCot && !p.modelo.cotizacionFecha && (num(p.modelo.usd) !== 0 || num(p.modelo.criptoUSD) !== 0)) chip += ' <span class="chip pend">Cotización sin cargar</span>';
   return '<div class="saldo hero" id="heroPatri" data-modo="' + (p.modelo ? 'hoy' : 'simple') + '">'
      +   '<div class="final"><small class="hero-lbl">' + lbl + '</small>'
      +     '<div class="final-fila"><div class="big ' + (p.patrimonioARS < 0 ? 'mal' : 'ok') + '" id="bigPatri">' + fARS(p.patrimonioARS) + '</div></div>'
@@ -4296,7 +4388,7 @@ function derivaAnioPrevio(d, hoy){
   Object.keys(d.planDeudas || {}).forEach(function(k){
     if(!prev.planDeudas || !Object.prototype.hasOwnProperty.call(prev.planDeudas, k)) return;
     if(!c.cuotas || !Object.prototype.hasOwnProperty.call(c.cuotas, k)) return;   // un plan que no se copió de diciembre
-    var e = estadoDeuda(prev, k, 11, hoy); if(e && suyo(d.planDeudas[k].pagadasAntes, c.cuotas[k]) && e.pagadas !== num(c.cuotas[k])) cuotas = true;
+    var e = cuotasRealizadas(prev, k, hoy); if(e !== null && suyo(d.planDeudas[k].pagadasAntes, c.cuotas[k]) && e !== num(c.cuotas[k])) cuotas = true;   // D5: la misma cuenta que copia duplicar
   });
   if(cuotas) out.push('cuotas');
   return out;
@@ -4315,6 +4407,19 @@ function avisoDerivaPrevio(d, hoy){
     var ms = x.meses.map(function(j){ return MESES[j].toLowerCase(); }).join(', ');
     h += '<div class="aviso" data-av="cuotasDeMas" role="status"><p>' + esc(x.nombre) + ': en ' + d.anio + ' hay ' + x.sobran + (x.sobran > 1 ? ' cuotas cargadas de más' : ' cuota cargada de más')
       + ' (cargadas en ' + ms + '): son más que las que le quedan al plan después de diciembre ' + (d.anio - 1) + '. No borré nada: revisalas antes de pagarlas.</p></div>';
+  });
+  // D9 A6 (N1-B b): una cuota tildada antes de que llegue su mes no pasa como pagada al año nuevo hasta que llega (un año creado con 1.33 la
+  // contaba; el arrastre en vivo la corrige): se dice, para que el cambio en las cuotas ya pagadas no sea silencioso
+  var prev = previoEnVivo(d), c = d.copiaDiciembre, own = Object.prototype.hasOwnProperty;
+  if(prev && c && c.cuotas) Object.keys(c.cuotas).forEach(function(k){
+    if(!own.call(d.planDeudas || {}, k) || !own.call(prev.planDeudas || {}, k)) return;
+    var ad = [];
+    cuotasRealizadas(prev, k, hoy, ad);
+    if(!ad.length) return;
+    var uno = ad.length === 1;
+    var ms = ad.map(function(j){ return MESES[j].toLowerCase(); }), lista = ms.length > 1 ? ms.slice(0, -1).join(', ') + ' y ' + ms[ms.length - 1] : ms[0];
+    h += '<div class="aviso" data-av="cuotasAdelante" role="status"><p>' + esc(k) + ': ' + (uno ? 'la cuota' : 'las cuotas') + ' de ' + lista + ' de ' + prev.anio
+      + (uno ? ' la tildaste' : ' las tildaste') + ' por adelantado. En ' + d.anio + (uno ? ' cuenta como pagada recién cuando llega ese mes.' : ' cuentan como pagadas recién cuando llega cada mes.') + '</p></div>';
   });
   return h;
 }
@@ -4514,6 +4619,7 @@ function renderAjustes(){
        + filaAj('csv', 'Copiar la copia como texto', {t:'Para pegarla en un mail o una nota'}, 'copiarAhora')
        + '</div>'
        + listaHistorial()
+       + '<h2 class="tit">Textos apartados</h2><div id="cuarLista"></div>'
        + '<div class="texto" style="margin-top:14px"><p>Año ' + D.anio + '. Último cambio: ' + (D.actualizado ? fechaCorta(D.actualizado) : 'todavía ninguno') + '.</p></div>'
        + '<div style="height:20px"></div>';
   } else {
@@ -4558,6 +4664,7 @@ function renderAjustes(){
   document.getElementById('v-ajustes').innerHTML = h;
   listarAnios();
   renderAlmacen();
+  pintarCuarentena();
 }
 function renderAlmacen(){
   var c = document.getElementById('almac'), mini = document.getElementById('almacMini');
@@ -4623,7 +4730,7 @@ function refrescar(){
     for(var z=0;z<ll.length;z++){
       var bt = document.getElementById('tb-'+kk+'-'+z), tt = document.getElementById('tt-'+kk+'-'+z);
       if(!bt || !tt) continue;
-      var tp = num(ll[z].tope), gs = gastadoVista(ll[z], mes), ps = gs > tp;
+      var tp = num(ll[z].tope), gs = gastadoConApartes(ll, ll[z], mes), ps = gs > tp;
       bt.style.width = Math.max(0, Math.min(100, (tp>0?gs/tp:0)*100)) + '%';
       bt.className = ps ? 'mal' : '';
       tt.className = ps ? 'mal' : '';
@@ -4744,21 +4851,114 @@ function revGuardada(clave){   // {hay, rev} del blob que está guardado ahora; 
    que borra claves propias la borra nunca; la copia de seguridad la lleva aparte (armarCopia: campo `cuarentena`). La app no la borra.
    N7: cada texto distinto se guarda: si la clave ya tiene otro texto, va a kibo.cuarentena.AAAA.2, .3… (el mismo texto no se repite). */
 function claveCuarentena(clave){ return LSCUAR + (clave === LSTRAB ? 'trabajo' : clave === LSDIARIO ? 'diario' : String(clave).slice(PREF.length)); }
-function ponerEnCuarentena(clave, texto){   // true si este texto quedó guardado (o ya estaba en alguna copia); nunca reemplaza ni borra una copia anterior
-  var base = claveCuarentena(clave), k, v, n;
+// la clave donde quedó este texto (o donde ya estaba), o false si no se pudo guardar; nunca reemplaza ni borra una copia anterior.
+// D9 A7: el texto se busca en TODAS las copias de esa base (base, base.2, base.3…), aunque el usuario haya borrado alguna, antes de elegir el primer lugar libre
+function ponerEnCuarentena(clave, texto){
+  var base = claveCuarentena(clave), k, n;
   try{
+    for(n=0;n<localStorage.length;n++){
+      k = localStorage.key(n);
+      if(k && (k === base || (k.indexOf(base + '.') === 0 && /^\d+$/.test(k.slice(base.length + 1)))) && localStorage.getItem(k) === texto) return k;
+    }
     for(n = 1; ; n++){
       k = n === 1 ? base : base + '.' + n;
-      v = localStorage.getItem(k);
-      if(v === texto) return true;
-      if(v === null){ localStorage.setItem(k, texto); return localStorage.getItem(k) === texto; }
+      if(localStorage.getItem(k) === null){ localStorage.setItem(k, texto); return localStorage.getItem(k) === texto ? k : false; }
     }
   }catch(e){ return false; }
 }
 function avisoCuarentena(anio){
   var e = document.getElementById('avisos'); if(!e) return;
+  var st = revGuardada(PREF + anio), k = st.roto ? ponerEnCuarentena(PREF + anio, st.texto) : false;   // D9 A3: la copia que tiene ESTE texto (si faltaba, se aparta ahora); si no entra, no hay qué bajar
   e.innerHTML = '<div class="aviso" data-av="cuarentena"><p>No pude leer los datos de ' + esc(anio) + '. Los aparté tal cual para que no se pierdan, y ese año no se modifica.'
-    + ' Si tenés una copia de seguridad, restaurala.</p><div class="fila"><button class="mini on" data-act="restaurar">Restaurar una copia</button></div></div>';
+    + ' Si tenés una copia de seguridad, restaurala.</p><div class="fila">' + (k ? '<button class="mini" data-act="cuarDescargar" data-k="' + esc(k) + '">Descargar el texto</button>' : '')
+    + '<button class="mini on" data-act="restaurar">Restaurar una copia</button></div></div>';
+}
+/* D6 (N4-A, opciones a + c): un Trabajo guardado que no se puede leer se lee vacío y el próximo guardado escribe encima (antes de eso, su
+   texto va a cuarentena). Ahora se aparta apenas arranca la app y se avisa, con «Descargar el texto»; nada más cambia. true si avisó. */
+function revisarTrabajoIlegible(){
+  var st = revGuardada(LSTRAB), e = document.getElementById('avisos');
+  if(!st.roto) return false;
+  var k = ponerEnCuarentena(LSTRAB, st.texto);   // D9 A3: la clave donde quedó (puede ser .2, .3…); false si no entró
+  var h = '<div class="aviso" data-av="cuarentena-trabajo"><p>No pude leer los datos de Trabajo. Los aparté tal cual para que no se pierdan'
+    + (k ? '' : ' (no entraron en el teléfono: hacé una copia de seguridad antes de cargar algo en Trabajo)') + '. Trabajo arranca vacío: lo que cargues se guarda aparte de ese texto.'
+    + ' Si tenés una copia de seguridad, restaurala.</p><div class="fila">' + (k ? '<button class="mini" data-act="cuarDescargar" data-k="' + esc(k) + '">Descargar el texto</button>' : '')
+    + '<button class="mini on" data-act="restaurar">Restaurar una copia</button></div></div>';
+  // D9 A4: cargar() corre otra vez al cambiar de año o restaurar: el aviso se reemplaza, no se apila
+  if(e) e.innerHTML = String(e.innerHTML).replace(/<div class="aviso" data-av="cuarentena-trabajo">[\s\S]*?<\/div><\/div>/g, '') + h;
+  return true;
+}
+function descargarCuarentena(k){   // D6 (N4-A) / D7: el texto apartado, tal cual, a un archivo; solo claves de cuarentena
+  var t = null;
+  if(String(k).indexOf(LSCUAR) !== 0) return false;
+  try{ t = localStorage.getItem(k); }catch(e){ t = null; }
+  if(t === null){ toast('Ese texto apartado ya no está en este teléfono'); return false; }
+  descargar(t, 'tugasto-apartado-' + String(k).slice(LSCUAR.length) + '-' + fechaArchivo() + '.txt', 'text/plain;charset=utf-8');
+  return true;
+}
+/* D7 (N4-B, opción b): Ajustes → Dónde viven tus datos lista cada texto apartado (kibo.cuarentena.*) para descargarlo o borrarlo. Borrar es
+   solo a pedido del usuario y después de confirmar; la app nunca borra uno sola, y acá no se puede borrar ninguna otra clave. */
+function clavesCuarentena(){
+  var out = [], i, k;
+  try{ for(i=0;i<localStorage.length;i++){ k = localStorage.key(i); if(k && k.indexOf(LSCUAR) === 0) out.push(k); } }catch(e){}
+  return out.sort();
+}
+function nombreCuarentena(k){   // texto para mostrar (va por textContent)
+  var s = String(k).slice(LSCUAR.length), m = /^(\d{4}|trabajo|diario)(?:\.(\d+))?$/.exec(s);
+  if(!m) return s;
+  return (m[1] === 'trabajo' ? 'Trabajo' : m[1] === 'diario' ? 'Diario' : 'Datos de ' + m[1]) + (m[2] ? ' · copia ' + m[2] : '');
+}
+function pesoCuarentena(t){ var n = String(t).length; return n < 1024 ? 'Menos de 1 KB' : Math.round(n / 1024) + ' KB'; }
+function borrarCuarentena(k){
+  if(String(k).indexOf(LSCUAR) !== 0) return false;
+  try{ localStorage.removeItem(k); return localStorage.getItem(k) === null; }catch(e){ return false; }
+}
+function pedirBorrarCuarentena(k){
+  var t = null, n;
+  if(String(k).indexOf(LSCUAR) !== 0) return false;
+  try{ t = localStorage.getItem(k); }catch(e){ t = null; }
+  if(t === null){ toast('Ese texto apartado ya no está en este teléfono'); return false; }
+  // D9 A7: si el texto de origen sigue guardado e ilegible, la app lo vuelve a apartar (para no perderlo): se dice antes de borrar
+  var m = /^(\d{4}|trabajo)(?:\.\d+)?$/.exec(String(k).slice(LSCUAR.length)), src = m ? (m[1] === 'trabajo' ? LSTRAB : PREF + m[1]) : '', st = src ? revGuardada(src) : null;
+  var vuelve = !!st && st.roto && st.texto === t;
+  confirmar('¿Borrar este texto apartado?', '<p>Se borra <b id="cuarBorrarNom"></b> de este teléfono y no se puede recuperar. Si lo querés guardar, descargalo antes.</p>'
+    + (vuelve ? '<p>' + (m[1] === 'trabajo' ? 'Trabajo' : 'El año ' + m[1]) + ' todavía no se puede leer: la próxima vez que abras la app se vuelve a apartar.</p>' : '')
+    + '<p>Tus datos de ahora no cambian.</p>', 'Borrar', function(){
+      toast(borrarCuarentena(k) ? 'Texto apartado borrado' : 'No pude borrarlo');
+      if(tab === 'ajustes') renderAjustes();
+    });
+  n = document.getElementById('cuarBorrarNom'); if(n) n.textContent = nombreCuarentena(k);
+  return true;
+}
+function pintarCuarentena(){   // llena #cuarLista con textContent: los nombres salen de claves guardadas
+  var c = document.getElementById('cuarLista'), ks, i, t, f, ico, tx, b, sm, l;
+  if(!c) return;
+  ks = clavesCuarentena(); c.textContent = '';
+  if(!ks.length){
+    f = document.createElement('div'); f.className = 'texto'; f.id = 'cuarVacia';
+    b = document.createElement('p'); b.textContent = 'No hay ninguno. Si un día la app no puede leer tus datos, guarda acá una copia tal cual para que no se pierdan.';
+    f.appendChild(b); c.appendChild(f); return;
+  }
+  l = document.createElement('div'); l.className = 'lista';
+  for(i=0;i<ks.length;i++){
+    try{ t = localStorage.getItem(ks[i]) || ''; }catch(e){ t = ''; }
+    f = document.createElement('div'); f.className = 'faj'; f.style.gap = '8px'; f.setAttribute('data-cuar', ks[i]);
+    ico = document.createElement('span'); ico.className = 'ico'; ico.innerHTML = ICO.copia;   // ícono fijo del código
+    tx = document.createElement('span'); tx.className = 'tx';
+    b = document.createElement('b'); b.textContent = nombreCuarentena(ks[i]);
+    sm = document.createElement('small'); sm.textContent = pesoCuarentena(t);
+    tx.appendChild(b); tx.appendChild(sm); f.appendChild(ico); f.appendChild(tx);
+    f.appendChild(botonCuarentena('cuarDescargar', 'Descargar', ks[i]));
+    f.appendChild(botonCuarentena('cuarBorrar', 'Borrar', ks[i]));
+    l.appendChild(f);
+  }
+  c.appendChild(l);
+  f = document.createElement('div'); f.className = 'texto'; f.style.marginTop = '8px';
+  b = document.createElement('p'); b.textContent = 'Son textos que la app no pudo leer y apartó tal cual. Viajan en tus copias de seguridad. Solo se borran si vos lo pedís.';
+  f.appendChild(b); c.appendChild(f);
+}
+function botonCuarentena(act, txt, k){
+  var bt = document.createElement('button'); bt.className = 'mini'; bt.setAttribute('data-act', act); bt.setAttribute('data-k', k); bt.textContent = txt;
+  return bt;
 }
 function escribirConRev(clave, obj){   // 'ok' | 'conflicto' (otra pestaña guardó antes: no se escribe) | 'error' (el navegador no deja guardar) | 'roto' (N4 I-3)
   var st = revGuardada(clave), mia = revValida(obj.rev) || 0, tenia = obj.rev;
@@ -4850,6 +5050,7 @@ function cargar(){
   else if(!hayDatos(D, tieneTrab()) && !aniosGuardados().length) avisoPrimeraVez(); else revisarCopia();
   var rg = revGuardada(PREF + D.anio);
   if(rg.roto){ ponerEnCuarentena(PREF + D.anio, rg.texto); avisoCuarentena(D.anio); }   // N4 I-3
+  revisarTrabajoIlegible();   // D6 (N4-A)
   if(navigator.storage && navigator.storage.persist) navigator.storage.persist()['catch'](function(){});
 }
 function cambiarAnio(a){
@@ -5208,7 +5409,7 @@ function duplicar(){
   }
   n.ahorroAnioAnterior = s[11].ahorroAcumulado;
   n.copiaDiciembre = {ahorro:s[11].ahorroAcumulado, aReponer:s[11].aReponer, usd:s[11].usdAcumulado, cuotas:Object.create(null)};   // S2 H1: qué se copió (el aviso compara contra esto)
-  Object.keys(n.planDeudas).forEach(function(k){ var e = estadoDeuda(D, k, 11, hoyApp()); if(e){ n.planDeudas[k].pagadasAntes = e.pagadas; n.copiaDiciembre.cuotas[k] = e.pagadas; } });
+  Object.keys(n.planDeudas).forEach(function(k){ var e = cuotasRealizadas(D, k, hoyApp()); if(e !== null){ n.planDeudas[k].pagadasAntes = e; n.copiaDiciembre.cuotas[k] = e; } });   // D5 (N1-B b): solo los meses ya llegados
   n.usdAnioAnterior = s[11].usdAcumulado;
   n.aReponerAnterior = s[11].aReponer;
   n.actualizado = '';
@@ -5217,7 +5418,7 @@ function duplicar(){
     delete m.cierreReal;   // la confirmación de un cierre es del año viejo
     for(j=0;j<SECS.length;j++){
       k = SECS[j].k;
-      for(var q=0;q<m[k].length;q++){ m[k][q].monto = 0; m[k][q].pagado = false; }
+      for(var q=0;q<m[k].length;q++){ m[k][q].monto = 0; m[k][q].pagado = false; delete m[k][q].montoPlan; }
     }
     m.ahorroMesARS = 0; m.ahorroMesUSD = 0; m.compraARS = 0; m.compraUSD = 0;
     m.retiroARS = 0; m.ventaUSD = 0; m.ventaARS = 0; m.reposicionARS = 0; m.movimientos = [];
@@ -5232,7 +5433,7 @@ function duplicar(){
     // S2 H1: en un año con modelo, las cuotas que el año viejo todavía tiene cargadas sin pagar ya tienen su mes: no se cargan otra vez acá.
     // pagadasAntes sigue siendo lo PAGADO (se corre solo para cargar, y la numeración de las cuotas sale bien)
     var antes = pp.pagadasAntes;
-    if(n.arrastre) pp.pagadasAntes = antes + cuotasProgramadas(previo, nn);
+    if(n.arrastre) pp.pagadasAntes = antes + cuotasProgramadas(previo, nn, hoyApp());
     cargadas += cargarCuotas(D, nn, 0, hoyApp()).poner;
     pp.pagadasAntes = antes;
   });
@@ -5553,10 +5754,12 @@ function filaDelGasto(){
 function gastoEsPago(){
   var it = filaDelGasto(); if(!it){ cerrarHoja(); return; }
   if(num(it.monto) === gr.monto){ marcarPago(false); return; }
+  var parte = gr.monto < num(it.monto);   // D2: un monto menor puede ser un pago parcial (el resto sigue pendiente)
   abrirHoja('<h3>¿Con qué monto lo marco?</h3>'   // sin cambios silenciosos: el usuario elige
     + '<div class="texto" style="margin-bottom:16px"><b>' + esc(it.nombre) + '</b> decía ' + fARS(num(it.monto)) + ' y anotaste ' + fARS(gr.monto) + '.</div>'
+    + (parte ? '<div class="fila" style="margin-bottom:8px"><button class="pri" data-act="pagoParcial">Pagué una parte: quedan ' + fARS(num(it.monto) - gr.monto) + ' pendientes</button></div>' : '')
     + '<div class="fila"><button data-act="pagoMonto" data-v="fila">Dejar ' + fARS(num(it.monto)) + '</button>'
-    + '<button class="pri" data-act="pagoMonto" data-v="gasto">Cambiar a ' + fARS(gr.monto) + '</button></div>'
+    + '<button' + (parte ? '' : ' class="pri"') + ' data-act="pagoMonto" data-v="gasto">Cambiar a ' + fARS(gr.monto) + '</button></div>'
     + '<div class="fila" style="margin-top:8px"><button data-act="cerrarHoja">Cancelar</button></div>');
 }
 function marcarPago(usarGasto){
@@ -5568,21 +5771,44 @@ function marcarPago(usarGasto){
   cerrarHoja(); tocar(); conScroll(renderMes);
   toast('Marqué ' + it.nombre + ' como pagado', 'Deshacer', 'quitarMov', id);
 }
-function gastoAparte(){
-  var it = filaDelGasto(); if(!it){ cerrarHoja(); return; }
-  var ls = D.meses[mes][gr.sec], fila = null, nueva = false, nombre = '', n, q;
-  for(n=1; !fila; n++){   // "Super (otro gasto)": se reusa si está tildado o vacío; uno pendiente nunca se mezcla (va "Super (otro gasto 2)")
-    nombre = it.nombre + (n === 1 ? ' (otro gasto)' : ' (otro gasto ' + n + ')');
+// "Super (otro gasto)" / "Super (pago parcial)": se reusa si está tildado o vacío; uno pendiente nunca se mezcla (va "Super (otro gasto 2)")
+function renglonLibre(ls, base, sufijo){   // {fila, nueva}; una fila nueva va al final, marcada aparte (plata ya gastada, no se copia)
+  var fila = null, nombre, n, q;
+  for(n=1; !fila; n++){
+    nombre = base + (n === 1 ? ' (' + sufijo + ')' : ' (' + sufijo + ' ' + n + ')');
     var hallada = null;
     for(q=0;q<ls.length;q++) if(ls[q].nombre === nombre){ hallada = ls[q]; break; }
-    if(!hallada){ fila = {nombre:nombre, monto:0, tope:0, frec:'', dias:[], pagado:false, aparte:true}; ls.push(fila); nueva = true; break; }   // la forma de un renglón normalizado
+    if(!hallada){ fila = {nombre:nombre, monto:0, tope:0, frec:'', dias:[], pagado:false, aparte:true}; ls.push(fila); return {fila: fila, nueva: true}; }   // la forma de un renglón normalizado
     if(hallada.pagado === true || !num(hallada.monto)) fila = hallada;
   }
+  return {fila: fila, nueva: false};
+}
+function gastoAparte(){
+  var it = filaDelGasto(); if(!it){ cerrarHoja(); return; }
+  var r = renglonLibre(D.meses[mes][gr.sec], it.nombre, 'otro gasto'), fila = r.fila, nueva = r.nueva;
   var pp = fila.pagado === true;
   sumarAItem(fila, gr.monto);   // vacío → queda tildado: plata ya gastada
   var id = anotarMov(fila, gr.monto, pp, nueva ? {tipo:'aparte'} : null);
   cerrarHoja(); tocar(); conScroll(renderMes);
   toast('Anoté ' + fARS(gr.monto) + ' en ' + fila.nombre + '. ' + it.nombre + ' sigue pendiente', 'Deshacer', 'quitarMov', id);
+}
+/* D2 (owner-decisions-closure, L3 pago parcial, opción b): "Sí" con un monto MENOR que el renglón pendiente. La parte pagada va a un renglón
+   tildado "<fila> (pago parcial)" (marcado aparte: plata ya gastada, no se copia al mes siguiente) y el renglón del plan queda con el resto,
+   sin tildar. Deshacer devuelve la parte al renglón del plan (buscado por nombre, lugar entre los del mismo nombre y cuántos había, como S2 M2)
+   y saca el renglón tildado si lo creó este pago. */
+function pagoParcial(){
+  var it = filaDelGasto(); if(!it){ cerrarHoja(); return; }
+  if(!(gr.monto > 0 && gr.monto < num(it.monto))){ cerrarHoja(); return; }
+  var ls = D.meses[mes][gr.sec], rfo = 0, rfn = 0, fi = ls.indexOf(it), q;
+  for(q=0;q<ls.length;q++) if(ls[q].nombre === it.nombre){ if(q < fi) rfo++; rfn++; }
+  var r = renglonLibre(ls, it.nombre, 'pago parcial'), fila = r.fila, pp = fila.pagado === true;
+  if(!(it.montoPlan > 0)) it.montoPlan = num(it.monto);   // D9 A2: copiar el mes copia lo planeado, no el resto
+  it.monto = Math.round((num(it.monto) - gr.monto) * 100) / 100;
+  sumarAItem(fila, gr.monto);   // vacío → queda tildado: plata ya gastada
+  fila.pagado = true;
+  var id = anotarMov(fila, gr.monto, pp, {tipo:'parcial', nueva:r.nueva, rn:it.nombre, rfo:rfo, rfn:rfn, rr:num(it.monto)});
+  cerrarHoja(); tocar(); conScroll(renderMes);
+  toast('Anoté ' + fARS(gr.monto) + ' como pago parcial de ' + it.nombre + '. Quedan ' + fARS(num(it.monto)) + ' pendientes', 'Deshacer', 'quitarMov', id);
 }
 var borrado = null;
 function volverBorrado(){
@@ -5607,15 +5833,33 @@ function quitarMov(id){
     for(i=0;i<ls.length;i++) if(ls[i].nombre === mv.nombre) mismos.push(i);
     exacto = (typeof mv.fn !== 'number' || mismos.length === mv.fn) && mv.fo < mismos.length ? mismos[mv.fo] : -2;
   } else if(typeof mv.fi === 'number' && ls[mv.fi] && ls[mv.fi].nombre === mv.nombre) exacto = mv.fi;
+  var plan = null;   // D2: el renglón del plan de un pago parcial; si ya no se sabe cuál es, no se toca nada
+  if(mv.tipo === 'parcial'){
+    var delPlan = [];
+    for(i=0;i<ls.length;i++) if(ls[i].nombre === mv.rn) delPlan.push(i);
+    plan = typeof mv.rfo === 'number' && delPlan.length === mv.rfn && mv.rfo < delPlan.length ? ls[delPlan[mv.rfo]] : null;
+    if(!plan){ toast('No encontré el renglón para deshacer'); return; }
+    // D9 A5: si el renglón del plan cambió después (se tildó, o su monto no es el que dejó este pago menos los pagos parciales que vinieron
+    // después), devolverle la parte lo dejaría mal: no se toca nada y se avisa
+    var resto = mv.rr, mp;
+    for(i=k+1;i<m.movimientos.length && typeof resto === 'number';i++){
+      mp = m.movimientos[i];
+      if(mp.tipo === 'parcial' && mp.sec === mv.sec && mp.rn === mv.rn && mp.rfo === mv.rfo && mp.rfn === mv.rfn) resto = Math.round((resto - num(mp.monto)) * 100) / 100;
+    }
+    if(plan.pagado === true || (typeof resto === 'number' && Math.round(num(plan.monto) * 100) !== Math.round(resto * 100))){
+      toast('No pude deshacer: ' + mv.rn + ' cambió después de ese pago parcial. Corregí los montos a mano.'); return;
+    }
+  }
   for(i=0;i<ls.length;i++){
     if(exacto >= 0 ? i === exacto : exacto === -1 && ls[i].nombre === mv.nombre){
       hallado = true;
+      if(plan){ plan.monto = Math.round((num(plan.monto) + num(mv.monto)) * 100) / 100; if(!(plan.montoPlan > num(plan.monto))) delete plan.montoPlan; }   // D9 A2: completo otra vez
       // L3 "Sí": se revierte SOLO ese pago (el cambio de monto que hizo y el tilde); otros gastos o ediciones posteriores del renglón quedan
       if(mv.tipo === 'pago' && typeof mv.pp === 'boolean'){ ls[i].monto = Math.max(0, num(ls[i].monto) - num(mv.monto) + num(mv.ma)); ls[i].pagado = mv.pp; break; }
       ls[i].monto = Math.max(0, num(ls[i].monto) - mv.monto);
       // si el gasto rápido tildó un renglón vacío y Deshacer lo deja vacío otra vez, vuelve a como estaba (los viejos sin pp no tocan nada)
       if(typeof mv.pp === 'boolean' && !(ls[i].monto > 0)) ls[i].pagado = mv.pp;
-      if(mv.tipo === 'aparte' && !(ls[i].monto > 0)) ls.splice(i, 1);   // L3 "No, es otro gasto": el renglón aparte que creó se va
+      if((mv.tipo === 'aparte' || (mv.tipo === 'parcial' && mv.nueva === true)) && !(ls[i].monto > 0)) ls.splice(i, 1);   // L3 "No, es otro gasto" / D2: el renglón aparte que creó se va
       break;
     }
   }
@@ -5651,7 +5895,7 @@ function esGastoAparte(it){
 function copiarAnterior(k){
   var act = D.meses[mes][k], ant = D.meses[mes-1][k], i, j, copiables = 0;
   // "Del trabajo" no se copia: lo cargan los pases. Si no queda nada con monto, se avisa sin tocar el mes
-  for(i=0;i<ant.length;i++) if(!(k === 'ingresos' && esRenglonTrabajo(ant[i].nombre)) && !esGastoAparte(ant[i]) && num(ant[i].monto)) copiables++;
+  for(i=0;i<ant.length;i++) if(!(k === 'ingresos' && esRenglonTrabajo(ant[i].nombre)) && !esGastoAparte(ant[i]) && (num(ant[i].monto) || ant[i].montoPlan > 0)) copiables++;
   if(!copiables){   // L3 review: lo de "Del trabajo" solo cuando había un "Del trabajo" para copiar
     var hayTrab = k === 'ingresos' && ant.some(function(x){ return esRenglonTrabajo(x.nombre) && num(x.monto); });
     toast(hayTrab ? 'No hay nada para copiar: “' + RENGLON_TRABAJO + '” lo cargás desde Trabajo' : 'No hay nada para copiar del mes anterior'); return;
@@ -5660,8 +5904,9 @@ function copiarAnterior(k){
     if(k === 'ingresos' && esRenglonTrabajo(ant[i].nombre)) continue;
     if(esGastoAparte(ant[i])) continue;   // L3 review: un gasto aparte ya está gastado, no es un plan para el mes que viene
     var hallado = false;
-    for(j=0;j<act.length;j++) if(act[j].nombre === ant[i].nombre){ act[j].monto = num(ant[i].monto); act[j].pagado = false; hallado = true; break; }
-    if(!hallado) act.push({nombre:ant[i].nombre, monto:num(ant[i].monto), pagado:false});
+    var plan = ant[i].montoPlan > 0 ? ant[i].montoPlan : num(ant[i].monto);   // D9 A2: después de un pago parcial, lo planeado (no el resto)
+    for(j=0;j<act.length;j++) if(act[j].nombre === ant[i].nombre){ act[j].monto = plan; act[j].pagado = false; delete act[j].montoPlan; hallado = true; break; }
+    if(!hallado) act.push({nombre:ant[i].nombre, monto:plan, pagado:false});
   }
   tocar(); renderMes();
   toast('Copié ' + MESES[mes-1].toLowerCase() + ' en ' + MESES[mes].toLowerCase());
@@ -5749,7 +5994,10 @@ function abrirPlan(i){
     +   '<div class="campo"><label>Recargo % (opcional)</label><input type="text" id="plRec" inputmode="decimal" placeholder="sin recargo" value="'+(num(p.recargo)?String(p.recargo).replace('.',','):'')+'"></div>'
     + '</div>'
     + '<div class="nota" id="plCuota" style="padding:0 0 12px"></div>'
-    + '<div class="campo"><label>Cuotas que ya pagué antes de '+D.anio+'</label><input type="text" id="plAntes" inputmode="numeric" value="'+(p.pagadasAntes||'')+'"></div>'
+    + '<div class="tj-dos">'
+    +   '<div class="campo"><label>Cuotas que ya pagué antes de '+D.anio+'</label><input type="text" id="plAntes" inputmode="numeric" value="'+(p.pagadasAntes||'')+'"></div>'
+    +   '<div class="campo"><label>Vence el día (opcional)</label><input type="text" id="plVence" inputmode="numeric" placeholder="sin día" value="'+(diaValido(p.vence) ? p.vence : '')+'"></div>'
+    + '</div>'
     + '<div class="nota" style="padding:0 0 14px">Al guardar te ofrezco cargar las cuotas que faltan, de '+MESES[mes].toLowerCase()+' en adelante.</div>'
     + '<div class="fila">' + (planDe(D, it.nombre) ? '<button class="mal" data-act="quitarPlan">Quitar</button>' : '<button data-act="cerrarHoja">Cancelar</button>')
     + '<button class="pri" data-act="guardarPlan">Guardar</button></div>');
@@ -5757,7 +6005,7 @@ function abrirPlan(i){
     var e = document.getElementById('plCuota');
     if(!e) return;
     var lt = leerPlan();
-    if(lt.mal){ e.className = 'nota mal'; e.innerHTML = 'No entendí «' + esc(lt.mal) + '» como número.'; return; }
+    if(lt.mal){ e.className = 'nota mal'; e.innerHTML = textoMalPlan(lt); return; }
     e.className = 'nota';
     var t = lt.total, c = lt.cuotas, r = lt.recargo;
     var tc = t * (1 + r/100);
@@ -5775,13 +6023,16 @@ var planIdx = -1;
 // lee los cuatro campos del plan por tipo: plata (total), entero (cuotas, ya pagadas) y porcentaje (recargo).
 // Si hay un texto que no se entiende devuelve {mal:texto}; el que se está escribiendo ("1.") cuenta como 0
 // solo en la vista previa: al guardar (alGuardar) también es un error, para no guardar un 0 que nadie escribió
+function textoMalPlan(lp){   // D9 A9: el día de vencimiento tiene su propio mensaje (como la hoja de días de los gastos fijos)
+  return lp.malCampo === 'vence' ? 'El día tiene que ser un número del 1 al 31 (o vacío).' : 'No entendí «' + esc(lp.mal) + '» como número.';
+}
 function leerPlan(alGuardar){
-  var defs = [['plTotal', parseMonto, 'total'], ['plCuotas', parseEntero, 'cuotas'], ['plRec', parsePct, 'recargo'], ['plAntes', parseEntero, 'antes']], i, out = {}, el, v;
+  var defs = [['plTotal', parseMonto, 'total'], ['plCuotas', parseEntero, 'cuotas'], ['plRec', parsePct, 'recargo'], ['plAntes', parseEntero, 'antes'], ['plVence', leerDiaVence, 'vence']], i, out = {}, el, v;
   for(i=0;i<defs.length;i++){
     el = document.getElementById(defs[i][0]); if(!el){ out[defs[i][2]] = 0; continue; }
     v = defs[i][1](el.value);
     if(isNaN(v)){
-      if(alGuardar || !parcial(el.value, defs[i][1])){ marcarErr(el, true); out.mal = el.value.trim(); return out; }
+      if(alGuardar || !parcial(el.value, defs[i][1])){ marcarErr(el, true); out.mal = el.value.trim(); out.malCampo = defs[i][2]; return out; }
       v = 0;
     }
     marcarErr(el, false); out[defs[i][2]] = v;
@@ -5794,10 +6045,11 @@ function guardarPlan(quitar){
   if(quitar){ delete D.planDeudas[n]; }
   else {
     var lp = leerPlan(true);
-    if(lp.mal){ errorEn('plCuota', 'No entendí «' + esc(lp.mal) + '» como número.'); return; }
+    if(lp.mal){ errorEn('plCuota', textoMalPlan(lp)); return; }
     var c = lp.cuotas;
     if(!n || c <= 0){ alerta('Falta la cantidad de cuotas', 'Necesito al menos saber en cuántas cuotas es la deuda.'); return; }
     D.planDeudas[n] = {total:lp.total, cuotas:c, recargo:lp.recargo, pagadasAntes:Math.max(0, lp.antes)};
+    if(lp.vence) D.planDeudas[n].vence = lp.vence;   // D4: opcional
   }
   cerrarHoja(); tocar(); renderMes();
   if(!quitar) ofrecerCarga(n, mes);
@@ -5824,7 +6076,7 @@ function quitarPlanSuelto(nombre){
 function conCuotasDeDiciembre(d, nombre, fn){
   var prev = previoEnVivo(d), p = planDe(d, nombre), antes;
   if(!prev || !p) return fn();
-  antes = p.pagadasAntes; p.pagadasAntes = antes + cuotasProgramadas(prev, nombre);
+  antes = p.pagadasAntes; p.pagadasAntes = antes + cuotasProgramadas(prev, nombre, hoyApp());
   try{ return fn(); }finally{ p.pagadasAntes = antes; }
 }
 function ofrecerCarga(nombre, desde){
@@ -5938,11 +6190,14 @@ document.addEventListener('click', function(ev){
   if(a === 'recargarPag'){ location.reload(); return; }
   if(a === 'tema'){ D.ui.tema = b.getAttribute('data-v'); aplicarTema(); tocar(); renderAjustes(); return; }
   if(a === 'copia'){ hacerCopia(); return; }
+  if(a === 'cuarDescargar'){ descargarCuarentena(b.getAttribute('data-k')); return; }
+  if(a === 'cuarBorrar'){ pedirBorrarCuarentena(b.getAttribute('data-k')); return; }
   if(a === 'restaurar'){ document.getElementById('fileJson').click(); return; }
   if(a === 'imprimir'){ imprimir(); return; }
   if(a === 'anio'){ cambiarAnio(+b.getAttribute('data-v')); return; }
   if(a === 'gastoEsPago'){ gastoEsPago(); return; }
   if(a === 'gastoAparte'){ gastoAparte(); return; }
+  if(a === 'pagoParcial'){ pagoParcial(); return; }
   if(a === 'pagoMonto'){ marcarPago(b.getAttribute('data-v') === 'gasto'); return; }
   if(a === 'cerrarAviso'){ document.getElementById('avisos').innerHTML = ''; return; }
   if(a === 'posponerCopia'){ posponerCopia(); return; }
@@ -5966,6 +6221,8 @@ document.addEventListener('click', function(ev){
   if(a === 'subir'){ moverOrden(+b.getAttribute('data-i'), -1); return; }
   if(a === 'bajar'){ moverOrden(+b.getAttribute('data-i'), 1); return; }
   if(a === 'ordenOk'){ guardarOrden(b.getAttribute('data-v') === 'ade'); return; }
+  if(a === 'vences'){ abrirVences(b.getAttribute('data-k')); return; }
+  if(a === 'vencesOk'){ guardarVences(b.getAttribute('data-k'), b.getAttribute('data-v') === 'ade'); return; }
   if(a === 'topesOk'){ guardarTopes(b.getAttribute('data-k'), b.getAttribute('data-v') === 'ade'); return; }
   if(a === 'quitarMov'){ quitarMov(b.getAttribute('data-id')); document.getElementById('toast').classList.remove('on'); return; }
   if(a === 'plan'){ abrirPlan(+b.getAttribute('data-i')); return; }
@@ -6104,6 +6361,7 @@ function aplicarInput(t, final){
   } else {
     if(it.monto === num(v)) return;
     it.monto = num(v);
+    delete it.montoPlan;   // D9 A2: el monto que escribe el usuario es el nuevo plan
   }
   tocar(); refrescar();
 }
@@ -6180,8 +6438,10 @@ function aplicarTema(){
 }
 
 /* ═══ 13 · recuperación del buffer ══════════════════════════════ */
-function sinTaparCuarentena(e){   // N4 I-3: otro aviso nunca tapa el de datos ilegibles: se le agrega abajo
-  var q = e && e.querySelector ? e.querySelector('[data-av="cuarentena"]') : null; return q ? q.outerHTML : '';
+function sinTaparCuarentena(e){   // N4 I-3: otro aviso nunca tapa el de datos ilegibles (un año o, D6, Trabajo): se le agrega abajo
+  var q = e && e.querySelectorAll ? e.querySelectorAll('[data-av="cuarentena"], [data-av="cuarentena-trabajo"]') : [], h = '', i;
+  for(i=0;i<q.length;i++) h += q[i].outerHTML;
+  return h;
 }
 function aviso(html, cerrable){
   var e = document.getElementById('avisos');
@@ -6954,7 +7214,8 @@ function htmlCobradoMes(r, nomMes){
     + '</div>';
 }
 /* S2 N2-B (a) (aviso provisorio, sin cambiar datos): datos viejos pueden tener dos renglones "Del trabajo" en un mes (el buscador anterior aceptaba
-   variantes); lo que pasás se reparte entre ellos en orden y puede contar un monto sin tildar. Se listan esos meses para revisarlos y juntarlos. */
+   variantes). Desde N2-B (b) lo que pasás va primero al único renglón con el nombre exacto; con dos exactos se reparte en orden. Se listan
+   esos meses para revisarlos y juntarlos. */
 function mesesTrabajoDoble(d){
   var out = [], j, q, n;
   for(j=0;j<12;j++){ n = 0; for(q=0;q<d.meses[j].ingresos.length;q++) if(esRenglonTrabajo(d.meses[j].ingresos[q].nombre)) n++; if(n > 1) out.push(j); }
@@ -6967,7 +7228,7 @@ function avisoTrabajoDoble(d){
   if(m.length){
     var puede = planOrdenTrabajo(d).some(function(p){ return p.ordenar; });
     h += '<div class="aviso" data-av="trabajo-doble" role="status"><p>En ' + listaY(m.map(function(j){ return MESES[j]; })) + ' de ' + d.anio + ' hay más de un renglón «' + RENGLON_TRABAJO + '» en Ingresos. '
-      + 'Lo que pasás desde Trabajo se reparte entre ellos: revisalos en Mes y dejá uno solo.</p>'
+      + 'Lo que pasás desde Trabajo cuenta primero en el renglón llamado exactamente «' + RENGLON_TRABAJO + '»: revisalos en Mes y dejá uno solo.</p>'
       + (puede ? '<div class="fila"><button class="mini on" data-act="tjDobleVer">Revisar y ordenar</button></div>' : '') + '</div>';
   }
   if(rep) h += '<div class="aviso" data-av="trabajo-orden" role="status"><p>Ordené los renglones «' + RENGLON_TRABAJO + '» de '
@@ -6976,9 +7237,9 @@ function avisoTrabajoDoble(d){
   return h;
 }
 /* S2 N2-B (reparación que elige el usuario, reversible): datos viejos pueden tener en un mes [variante «Dél trabajo» sin tildar, «Del trabajo»
-   exacto tildado]; el motor reparte los pases entre esos renglones EN ORDEN, así que la variante se queda con el pase y lo que el usuario no
-   tildó cuenta como cobrado. La reparación solo cambia el ORDEN (el exacto primero, donde estaba el primero de esos renglones): ningún
-   nombre, monto ni tilde cambia, y el motor no se toca. Solo un mes con un único renglón exacto y los demás variantes; si hay dos exactos
+   exacto tildado]. Antes de N2-B (b) el motor repartía los pases EN ORDEN y la variante se quedaba con el pase; desde N2-B (b) el motor ya
+   los da primero al exacto, así que ordenar no cambia ningún total: solo deja los renglones prolijos. La reparación solo cambia el ORDEN
+   (el exacto primero, donde estaba el primero de esos renglones): ningún nombre, monto ni tilde cambia. Solo un mes con un único renglón exacto y los demás variantes; si hay dos exactos
    (o ninguno) el mes se nombra y no se toca. Antes de escribir se guarda cómo estaban esos meses (LSREPARO, del teléfono: no viaja en la
    copia), para «Deshacer». */
 var LSREPARO = 'kibo.reparoTrabajo.';
@@ -7013,7 +7274,7 @@ function abrirOrdenTrabajo(){
     e = efectoOrdenTrabajo(D, p, hoy);
     h += '<p>' + nom + ': ' + p.filas.map(function(i){ var it = ls[i]; return '«' + esc(String(it.nombre).trim()) + '» ' + fARS(num(it.monto)) + (it.pagado ? ' (cobrado)' : ' (sin cobrar)'); }).join(', ')
       + '. Queda primero «' + RENGLON_TRABAJO + '». '
-      + (e ? 'Cobrado: ' + fARS(e.antes.cobrado) + ' → ' + fARS(e.despues.cobrado) + '. Sin cobrar: ' + fARS(e.antes.pendiente) + ' → ' + fARS(e.despues.pendiente) + '.' : 'No cambia ningún total de ese mes.')
+      + (e && (e.antes.cobrado !== e.despues.cobrado || e.antes.pendiente !== e.despues.pendiente) ? 'Cobrado: ' + fARS(e.antes.cobrado) + ' → ' + fARS(e.despues.cobrado) + '. Sin cobrar: ' + fARS(e.antes.pendiente) + ' → ' + fARS(e.despues.pendiente) + '.' : 'No cambia ningún total de ese mes.')
       + '</p>';
   });
   abrirHoja('<h3>Ordenar «' + RENGLON_TRABAJO + '»</h3><div class="texto" style="margin-bottom:16px">' + h
@@ -8225,7 +8486,7 @@ var LSESQ = 'kibo.esquema', LSPRE130 = 'kibo.respaldo.pre130', ESQUEMA = '1.30';
 var LSVERVISTA = 'kibo.versionVista';   // L9: la última APPVER que arrancó en este teléfono; del teléfono como kibo.esquema: no es clave propia, no viaja en la copia
 // claves de esta app (la copia y la restauración solo tocan estas; otra app del mismo sitio puede usar "kibo.algo"): kibo.datos.AAAA + estas
 var LSR4 = 'kibo.modeloSaldos', LSPRER4 = 'kibo.respaldo.pre-r4';   // marca "este teléfono ya empezó el modelo de saldos" y la copia de lo que había justo antes (como pre130)
-var LSCUAR = 'kibo.cuarentena.';   // N4 I-3: texto tal cual de un blob que no se pudo leer (kibo.cuarentena.AAAA, kibo.cuarentena.trabajo); es del teléfono, nunca se borra
+var LSCUAR = 'kibo.cuarentena.';   // N4 I-3: texto tal cual de un blob que no se pudo leer (kibo.cuarentena.AAAA, kibo.cuarentena.trabajo); es del teléfono, la app nunca la borra sola (D7: solo el usuario, desde Ajustes, confirmando)
 var LSDIARIO = 'kibo.diario';   // L8: diario de una escritura de dos blobs (pase); es del teléfono como la cuarentena: no viaja en la copia, ningún respaldo ni vuelta atrás la toca
 var LSAVCIERRE = 'kibo.avisoCierre';   // R5 (D10): mes cuyo aviso "¿Cerraste … con …?" se descartó con "Ahora no"; es del teléfono, no viaja en la copia
 var CLAVES_PROPIAS = [LSANIO, LSCOPIA, LSOCULTO, LSBIENV, LSHIST, LSTRAB, LSVISTA, LSR4, LSAVCIERRE, LSDATOSDESDE, LSCOPIAPOS];
@@ -8361,8 +8622,18 @@ function previoEnVivo(d){   // el año anterior guardado, si d sigue su diciembr
 }
 function carryDiciembre(prev, hoy){   // lo que diciembre de `prev` deja hoy: lo mismo que duplicar copia
   var s = serie(prev)[11], c = {ahorro:s.ahorroAcumulado, aReponer:s.aReponer, usd:s.usdAcumulado, cuotas:Object.create(null)};
-  Object.keys(prev.planDeudas).forEach(function(k){ var e = estadoDeuda(prev, k, 11, hoy); if(e) c.cuotas[k] = e.pagadas; });
+  Object.keys(prev.planDeudas).forEach(function(k){ var e = cuotasRealizadas(prev, k, hoy); if(e !== null) c.cuotas[k] = e; });
   return c;
+}
+/* D5 (owner-decisions-closure, N1-B opción b): las cuotas pagadas de un plan en el año, para pasarlas al siguiente. En un año del modelo
+   solo cuentan los meses que ya llegaron: una cuota tildada en un mes futuro es programada (N3b-A), como en todo el modelo, y no se toma
+   como pagada al crear el año siguiente antes de diciembre. En un año legacy cuentan los 12 meses, como siempre. null si no hay plan. */
+// D9 A6: `adelante` (opcional, un array) recibe los meses (0-11) con la cuota tildada antes de que lleguen, para decirlo en pantalla
+function cuotasRealizadas(d, nombre, hoy, adelante){
+  var e = estadoDeuda(d, nombre, 11, hoy), n = String(nombre || '').trim(), meses = adelante || [], j;
+  if(!e) return null;
+  for(j=0;j<12;j++) if(esProgramado(d, j, hoy) && d.meses[j].deudas.some(function(it){ return String(it.nombre || '').trim() === n && estaPagado(j, it) && num(it.monto) > 0; })) meses.push(j);   // la misma regla que cuotaPaga
+  return e.pagadas - meses.length;
 }
 // Cambia el año en memoria (lo llama leerAnio): campo y copia se mueven juntos, así lo guardado más tarde sigue diciendo "no lo tocó el usuario".
 // Un año creado antes de guardar la copia (1.32 / 1.33) adopta diciembre de hoy como copia: ningún número cambia ahora; desde ahí, los campos
@@ -8385,12 +8656,13 @@ function arrastreVivo(d, hoy){
   });
   return d;
 }
-// meses en que la cuota de ese plan está cargada y sin pagar (programada o vencida): el lugar de una cuota de verdad
-function cuotasProgramadas(d, nombre){
+// meses en que la cuota de ese plan está cargada y sin pagar (programada o vencida): el lugar de una cuota de verdad.
+// D5: con hoy, una cuota tildada en un mes del modelo que todavía no llegó también es programada (cuotasRealizadas no la cuenta como paga)
+function cuotasProgramadas(d, nombre, hoy){
   var n = String(nombre || '').trim(), c = 0;
   d.meses.forEach(function(m, j){
     var ls = m.deudas.filter(function(it){ return String(it.nombre || '').trim() === n; });
-    if(ls.some(function(it){ return num(it.monto) > 0; }) && !ls.some(function(it){ return estaPagado(j, it) && num(it.monto) > 0; })) c++;
+    if(ls.some(function(it){ return num(it.monto) > 0; }) && (!ls.some(function(it){ return estaPagado(j, it) && num(it.monto) > 0; }) || (hoy && esProgramado(d, j, hoy)))) c++;
   });
   return c;
 }
@@ -8403,8 +8675,8 @@ function cuotasDeMas(d){
     var p = d.planDeudas[k], meses = [];
     if(!p || !p.cuotas || !own.call(prev.planDeudas, k)) return;
     d.meses.forEach(function(m, j){ if(m.deudas.some(function(it){ return String(it.nombre || '').trim() === k && num(it.monto) > 0; })) meses.push(j); });
-    var e = estadoDeuda(prev, k, 11, hoyApp()), pagadas = Math.max(p.pagadasAntes, e ? e.pagadas : 0);   // lo pagado de verdad en el año viejo, o lo que dice el usuario si es más
-    var quedan = Math.max(0, p.cuotas - pagadas - cuotasProgramadas(prev, k));
+    var e = cuotasRealizadas(prev, k, hoyApp()), pagadas = Math.max(p.pagadasAntes, e !== null ? e : 0);   // D5: lo pagado en meses ya llegados   // lo pagado de verdad en el año viejo, o lo que dice el usuario si es más
+    var quedan = Math.max(0, p.cuotas - pagadas - cuotasProgramadas(prev, k, hoyApp()));
     if(meses.length > quedan) out.push({nombre:k, sobran:meses.length - quedan, meses:meses});
   });
   return out;
