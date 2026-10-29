@@ -1033,6 +1033,38 @@ try{
     check('D6 N4-A «Descargar el texto» saves the kept text as is', bajada, [rotoT, 'text/plain;charset=utf-8']);
   }
 
+  // ── D7 (N4-B): Ajustes → Dónde viven tus datos lists each quarantine copy to download or delete (delete only after confirming) ──
+  {
+    const c1 = '{"anio":2025,"meses":[ roto', c2 = '<b>otro</b> texto';
+    const datos7 = async () => { await ev(`document.querySelector('[data-act=tab][data-t=ajustes]').click(); true`); await sleep(300);
+      await ev(`document.querySelector('[data-act=ajVista][data-v=datos]').click(); true`); await sleep(400); };
+    const filas7 = () => ev(`Array.prototype.map.call(document.querySelectorAll('#cuarLista [data-cuar]'), function(f){ return [f.getAttribute('data-cuar'), f.querySelector('b').textContent, f.querySelector('small').textContent]; })`);
+    await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); localStorage.setItem('kibo.anio','2026'); true`);
+    await nav(URL_APP); await sleep(800); await datos7();
+    check('D7 N4-B no copies: the empty state is shown', await ev(`[!!document.getElementById('cuarVacia'), document.querySelectorAll('#cuarLista [data-cuar]').length]`), [true, 0]);
+    await ev(`localStorage.setItem('kibo.cuarentena.2025', ${JSON.stringify(c1)}); localStorage.setItem('kibo.cuarentena.trabajo.2', ${JSON.stringify(c2)}); true`);
+    await nav(URL_APP); await sleep(800); await datos7();
+    check('D7 N4-B every copy is listed with its name and size; names are text, not HTML', await filas7(),
+      [['kibo.cuarentena.2025', 'Datos de 2025', 'Menos de 1 KB'], ['kibo.cuarentena.trabajo.2', 'Trabajo · copia 2', 'Menos de 1 KB']]);
+    const bajada7 = await ev(`new Promise(function(resolve){ var o = URL.createObjectURL, capt = null, t0 = performance.now();
+      URL.createObjectURL = function(b){ capt = b; return o.call(URL, b); };
+      document.querySelector('#cuarLista [data-act=cuarDescargar][data-k="kibo.cuarentena.trabajo.2"]').click();
+      (function esperar(){ if(!capt && performance.now() - t0 < 5000) return setTimeout(esperar, 100); URL.createObjectURL = o;
+        if(!capt) return resolve(null); capt.text().then(function(t){ resolve([t, capt.type]); }); })(); })`);
+    check('D7 N4-B «Descargar» saves that copy as is', bajada7, [c2, 'text/plain;charset=utf-8']);
+    await ev(`document.querySelector('#cuarLista [data-act=cuarBorrar][data-k="kibo.cuarentena.2025"]').click(); true`); await sleep(400);
+    check('D7 N4-B «Borrar» asks first, naming the copy; nothing deleted yet',
+      await ev(`[document.querySelector('#hoja h3').textContent, document.getElementById('cuarBorrarNom').textContent, localStorage.getItem('kibo.cuarentena.2025') === ${JSON.stringify(c1)}]`),
+      ['¿Borrar este texto apartado?', 'Datos de 2025', true]);
+    await ev(`document.querySelector('#hoja [data-act=cerrarHoja]').click(); true`); await sleep(400);
+    check('D7 N4-B cancel keeps the copy', [await ev(`localStorage.getItem('kibo.cuarentena.2025') === ${JSON.stringify(c1)}`), (await filas7()).length], [true, 2]);
+    await ev(`document.querySelector('#cuarLista [data-act=cuarBorrar][data-k="kibo.cuarentena.2025"]').click(); true`); await sleep(400);
+    await ev(`document.querySelector('#hoja [data-act=confirmar]').click(); true`); await sleep(400);
+    check('D7 N4-B confirm deletes only that copy and the list updates',
+      [await ev(`[localStorage.getItem('kibo.cuarentena.2025'), localStorage.getItem('kibo.cuarentena.trabajo.2') === ${JSON.stringify(c2)}, localStorage.getItem('kibo.anio')]`), (await filas7()).map(f => f[0])],
+      [[null, true, '2026'], ['kibo.cuarentena.trabajo.2']]);
+  }
+
   // ── P2 branding: the visible product name is TuGasto (title, header mark, Ajustes, exports, manifest, every tab) ──
   {
     await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); localStorage.setItem('kibo.anio','2026'); localStorage.setItem('kibo.datos.2026', ${JSON.stringify(JSON.stringify(legacy))});

@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-IVBGKFwoF0+eKig2P3g1ax1P4E3DfO0OQJqZ/GKERoc=' 'sha256-I6EuFUW1pToFIdhkxqmxvTOWtiTWZwjxJpKbcko6/FY='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-IVBGKFwoF0+eKig2P3g1ax1P4E3DfO0OQJqZ/GKERoc=' 'sha256-MGs3s6YM7pxYrg5WE1zgorNNmiezqKrzN87x1QjByQ4='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -4604,6 +4604,7 @@ function renderAjustes(){
        + filaAj('csv', 'Copiar la copia como texto', {t:'Para pegarla en un mail o una nota'}, 'copiarAhora')
        + '</div>'
        + listaHistorial()
+       + '<h2 class="tit">Textos apartados</h2><div id="cuarLista"></div>'
        + '<div class="texto" style="margin-top:14px"><p>Año ' + D.anio + '. Último cambio: ' + (D.actualizado ? fechaCorta(D.actualizado) : 'todavía ninguno') + '.</p></div>'
        + '<div style="height:20px"></div>';
   } else {
@@ -4648,6 +4649,7 @@ function renderAjustes(){
   document.getElementById('v-ajustes').innerHTML = h;
   listarAnios();
   renderAlmacen();
+  pintarCuarentena();
 }
 function renderAlmacen(){
   var c = document.getElementById('almac'), mini = document.getElementById('almacMini');
@@ -4870,6 +4872,67 @@ function descargarCuarentena(k){   // D6 (N4-A) / D7: el texto apartado, tal cua
   if(t === null){ toast('Ese texto apartado ya no está en este teléfono'); return false; }
   descargar(t, 'tugasto-apartado-' + String(k).slice(LSCUAR.length) + '-' + fechaArchivo() + '.txt', 'text/plain;charset=utf-8');
   return true;
+}
+/* D7 (N4-B, opción b): Ajustes → Dónde viven tus datos lista cada texto apartado (kibo.cuarentena.*) para descargarlo o borrarlo. Borrar es
+   solo a pedido del usuario y después de confirmar; la app nunca borra uno sola, y acá no se puede borrar ninguna otra clave. */
+function clavesCuarentena(){
+  var out = [], i, k;
+  try{ for(i=0;i<localStorage.length;i++){ k = localStorage.key(i); if(k && k.indexOf(LSCUAR) === 0) out.push(k); } }catch(e){}
+  return out.sort();
+}
+function nombreCuarentena(k){   // texto para mostrar (va por textContent)
+  var s = String(k).slice(LSCUAR.length), m = /^(\d{4}|trabajo|diario)(?:\.(\d+))?$/.exec(s);
+  if(!m) return s;
+  return (m[1] === 'trabajo' ? 'Trabajo' : m[1] === 'diario' ? 'Diario' : 'Datos de ' + m[1]) + (m[2] ? ' · copia ' + m[2] : '');
+}
+function pesoCuarentena(t){ var n = String(t).length; return n < 1024 ? 'Menos de 1 KB' : Math.round(n / 1024) + ' KB'; }
+function borrarCuarentena(k){
+  if(String(k).indexOf(LSCUAR) !== 0) return false;
+  try{ localStorage.removeItem(k); return localStorage.getItem(k) === null; }catch(e){ return false; }
+}
+function pedirBorrarCuarentena(k){
+  var t = null, n;
+  if(String(k).indexOf(LSCUAR) !== 0) return false;
+  try{ t = localStorage.getItem(k); }catch(e){ t = null; }
+  if(t === null){ toast('Ese texto apartado ya no está en este teléfono'); return false; }
+  confirmar('¿Borrar este texto apartado?', '<p>Se borra <b id="cuarBorrarNom"></b> de este teléfono y no se puede recuperar. Si lo querés guardar, descargalo antes.</p>'
+    + '<p>Tus datos de ahora no cambian.</p>', 'Borrar', function(){
+      toast(borrarCuarentena(k) ? 'Texto apartado borrado' : 'No pude borrarlo');
+      if(tab === 'ajustes') renderAjustes();
+    });
+  n = document.getElementById('cuarBorrarNom'); if(n) n.textContent = nombreCuarentena(k);
+  return true;
+}
+function pintarCuarentena(){   // llena #cuarLista con textContent: los nombres salen de claves guardadas
+  var c = document.getElementById('cuarLista'), ks, i, t, f, ico, tx, b, sm, l;
+  if(!c) return;
+  ks = clavesCuarentena(); c.textContent = '';
+  if(!ks.length){
+    f = document.createElement('div'); f.className = 'texto'; f.id = 'cuarVacia';
+    b = document.createElement('p'); b.textContent = 'No hay ninguno. Si un día la app no puede leer tus datos, guarda acá una copia tal cual para que no se pierdan.';
+    f.appendChild(b); c.appendChild(f); return;
+  }
+  l = document.createElement('div'); l.className = 'lista';
+  for(i=0;i<ks.length;i++){
+    try{ t = localStorage.getItem(ks[i]) || ''; }catch(e){ t = ''; }
+    f = document.createElement('div'); f.className = 'faj'; f.style.gap = '8px'; f.setAttribute('data-cuar', ks[i]);
+    ico = document.createElement('span'); ico.className = 'ico'; ico.innerHTML = ICO.copia;   // ícono fijo del código
+    tx = document.createElement('span'); tx.className = 'tx';
+    b = document.createElement('b'); b.textContent = nombreCuarentena(ks[i]);
+    sm = document.createElement('small'); sm.textContent = pesoCuarentena(t);
+    tx.appendChild(b); tx.appendChild(sm); f.appendChild(ico); f.appendChild(tx);
+    f.appendChild(botonCuarentena('cuarDescargar', 'Descargar', ks[i]));
+    f.appendChild(botonCuarentena('cuarBorrar', 'Borrar', ks[i]));
+    l.appendChild(f);
+  }
+  c.appendChild(l);
+  f = document.createElement('div'); f.className = 'texto'; f.style.marginTop = '8px';
+  b = document.createElement('p'); b.textContent = 'Son textos que la app no pudo leer y apartó tal cual. Viajan en tus copias de seguridad. Solo se borran si vos lo pedís.';
+  f.appendChild(b); c.appendChild(f);
+}
+function botonCuarentena(act, txt, k){
+  var bt = document.createElement('button'); bt.className = 'mini'; bt.setAttribute('data-act', act); bt.setAttribute('data-k', k); bt.textContent = txt;
+  return bt;
 }
 function escribirConRev(clave, obj){   // 'ok' | 'conflicto' (otra pestaña guardó antes: no se escribe) | 'error' (el navegador no deja guardar) | 'roto' (N4 I-3)
   var st = revGuardada(clave), mia = revValida(obj.rev) || 0, tenia = obj.rev;
@@ -6087,6 +6150,7 @@ document.addEventListener('click', function(ev){
   if(a === 'tema'){ D.ui.tema = b.getAttribute('data-v'); aplicarTema(); tocar(); renderAjustes(); return; }
   if(a === 'copia'){ hacerCopia(); return; }
   if(a === 'cuarDescargar'){ descargarCuarentena(b.getAttribute('data-k')); return; }
+  if(a === 'cuarBorrar'){ pedirBorrarCuarentena(b.getAttribute('data-k')); return; }
   if(a === 'restaurar'){ document.getElementById('fileJson').click(); return; }
   if(a === 'imprimir'){ imprimir(); return; }
   if(a === 'anio'){ cambiarAnio(+b.getAttribute('data-v')); return; }
@@ -8380,7 +8444,7 @@ var LSESQ = 'kibo.esquema', LSPRE130 = 'kibo.respaldo.pre130', ESQUEMA = '1.30';
 var LSVERVISTA = 'kibo.versionVista';   // L9: la última APPVER que arrancó en este teléfono; del teléfono como kibo.esquema: no es clave propia, no viaja en la copia
 // claves de esta app (la copia y la restauración solo tocan estas; otra app del mismo sitio puede usar "kibo.algo"): kibo.datos.AAAA + estas
 var LSR4 = 'kibo.modeloSaldos', LSPRER4 = 'kibo.respaldo.pre-r4';   // marca "este teléfono ya empezó el modelo de saldos" y la copia de lo que había justo antes (como pre130)
-var LSCUAR = 'kibo.cuarentena.';   // N4 I-3: texto tal cual de un blob que no se pudo leer (kibo.cuarentena.AAAA, kibo.cuarentena.trabajo); es del teléfono, nunca se borra
+var LSCUAR = 'kibo.cuarentena.';   // N4 I-3: texto tal cual de un blob que no se pudo leer (kibo.cuarentena.AAAA, kibo.cuarentena.trabajo); es del teléfono, la app nunca la borra sola (D7: solo el usuario, desde Ajustes, confirmando)
 var LSDIARIO = 'kibo.diario';   // L8: diario de una escritura de dos blobs (pase); es del teléfono como la cuarentena: no viaja en la copia, ningún respaldo ni vuelta atrás la toca
 var LSAVCIERRE = 'kibo.avisoCierre';   // R5 (D10): mes cuyo aviso "¿Cerraste … con …?" se descartó con "Ahora no"; es del teléfono, no viaja en la copia
 var CLAVES_PROPIAS = [LSANIO, LSCOPIA, LSOCULTO, LSBIENV, LSHIST, LSTRAB, LSVISTA, LSR4, LSAVCIERRE, LSDATOSDESDE, LSCOPIAPOS];

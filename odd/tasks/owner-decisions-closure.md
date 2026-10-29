@@ -108,7 +108,19 @@ money effect of each item: `odd/tasks/stabilization-quick-sales.md` "S1 — Pend
       notice under later notices. RED: 4/5 failed in `tests/d6.avisos.test.js`; GREEN 5/5. Mutation (no quarantine copy at start) →
       1 fail. `tests/r5.patrimonio.test.js` label expectation updated (chip). E2E +2 (notice at start, download content).
       `npm test` 938/938, `npm run test:e2e` 543/543.
-- [ ] D7 N4-B Ajustes quarantine rows (download / delete with confirmation).
+- [x] D7 N4-B Ajustes quarantine rows (download / delete with confirmation). Route: delegated writer (one file + tests, quarantine
+      functions already mapped by D6). Ajustes → Dónde viven tus datos gets "Textos apartados": `clavesCuarentena` lists every
+      `kibo.cuarentena.*` key (sorted), `pintarCuarentena` paints one row per copy with DOM + `textContent` (name from
+      `nombreCuarentena`: "Datos de 2026", "… · copia N", "Trabajo", "Diario", anything else the key suffix as is; size from
+      `pesoCuarentena`) and «Descargar» (D6 `descargarCuarentena`) / «Borrar»; empty state "No hay ninguno…". «Borrar» runs
+      `pedirBorrarCuarentena`: the shared `confirmar` sheet ("¿Borrar este texto apartado?", name set by `textContent`, «Cancelar» /
+      «Borrar»); only the confirm action calls `borrarCuarentena`, which refuses any key outside `kibo.cuarentena.`. Nothing is
+      deleted automatically; the LSCUAR comment now says so. RED: 0/4 in `tests/d7.cuarentena.test.js` (functions missing); GREEN 4/4.
+      Mutations: delete before confirming → 1 fail (confirm test); prefix guard removed → 1 fail (only-quarantine test). Inventory: no
+      new function reads amounts, nothing to classify (inventory test green). CSP: app script hash updated in `index.html` and
+      `privacidad.html`. E2E +6 (empty state, list with names/sizes as text, download content, ask first, cancel keeps, confirm
+      deletes only that copy). Layout fixture untouched (L7 does not measure Ajustes); motor goldens unchanged. `npm test` 942/942,
+      `npm run test:e2e` 549/549.
 - [ ] D8 Version 1.34.0 + SW `kibfinanzas-offline-v47`, update path, full suites, docs (`CLAUDE.md`, S1 table rows marked resolved).
 
 ## Delivery
@@ -130,9 +142,10 @@ trailers. No remote configured: push/PR are owner decisions. Forecast ~900-1300 
 - D3 done (`5789200`): one-off rows count toward the tope; 925 tests, E2E 538/538.
 - D4 done (`5e48300`): optional due day; 930 tests, E2E 541/541.
 - D5 done (`61ba8c8`): N1-B (b) applied (H1 did not cover it); 933 tests, E2E 541/541.
-- D6 done: prominent label + download action; 938 tests, E2E 543/543.
+- D6 done (`554b934`): prominent label + download action; 938 tests, E2E 543/543.
+- D7 done (this commit): quarantine copies listed in Ajustes to download or delete with confirmation; 942 tests, E2E 549/549.
 - GitHub: blocked: wrong GitHub account on this PC (owner, 2026-10-28); versions kept locally only (P11 and L10 notes updated).
 
 ## Next step
 
-D7.
+D8.
