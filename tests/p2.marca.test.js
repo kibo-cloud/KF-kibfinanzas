@@ -45,7 +45,7 @@ test('P2 index.html names the product TuGasto in the title, the home-screen titl
   var h = leer('index.html');
   assert.match(h, /<title>TuGasto<\/title>/);
   assert.match(h, /<meta name="apple-mobile-web-app-title" content="TuGasto">/);
-  assert.match(h, /<h1 id="titulo" title="TuGasto"><span class="kf">TG<\/span>/);
+  assert.match(h, /<h1 id="titulo" title="TuGasto"><span class="kf">TuGasto<\/span>/);
   assert.match(h, /document\.title = 'TuGasto · ' \+ D\.anio;/);
   ["'tugasto-copia-' + fechaArchivo()", "'tugasto-' + D.anio + '.html'", "'tugasto-'+D.anio+'.csv'", "'tugasto-trabajo-' + fechaArchivo() + '.csv'",
    "l.push('TuGasto · Trabajo por mi cuenta", "'<div class=\"pie\">TuGasto v' + APPVER", "'<h3>Bienvenido a TuGasto</h3>'"]

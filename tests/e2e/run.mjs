@@ -515,7 +515,7 @@ try{
   // ── L9: the INSTALLED app moves from the previous release to this one: only the new cache is left, the new APPVER is served, the update
   //    notice says the new version once, a reload without network opens it, and no CSP violation on any of those loads ──
   {
-    const PREV = { appver: '1.33.0', sw: 46 };   // the release this one replaces (moves with tests/release.test.js)
+    const PREV = { appver: '1.34.0', sw: 47 };   // the release this one replaces (moves with tests/release.test.js)
     const swSrc = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8'), swN = +/kibfinanzas-offline-v(\d+)'/.exec(swSrc)[1];
     // the app registers its worker on https only; this test origin is http://127.0.0.1 (a secure context), so only the COPY also allows it
     const conSW = (html) => { const n = html.replace("location.protocol === 'https:'", "(location.protocol === 'https:' || location.hostname === '127.0.0.1')"); if(n === html) throw new Error('service worker registration guard not found'); return conHashes(n); };
@@ -1071,7 +1071,7 @@ try{
       localStorage.setItem('kibo.trabajo', JSON.stringify({version: 1, activo: true, modo: 'simple', facturas: [], cobros: [], pases: [], gastos: [], productos: [], tope: 0, rev: 1})); true`);   // Trabajo on, so its tab and CSV exist
     await nav(URL_APP); await sleep(800);
     check('P2 brand: document.title starts with "TuGasto"', await ev(`[document.title.indexOf('TuGasto') === 0, document.title]`), [true, 'TuGasto · 2026']);
-    check('P2 brand: the header shows the TG mark, titled TuGasto', await ev(`[document.querySelector('#titulo .kf').textContent, document.getElementById('titulo').title]`), ['TG', 'TuGasto']);
+    check('P2 brand: the header shows the TuGasto mark, titled TuGasto', await ev(`[document.querySelector('#titulo .kf').textContent, document.getElementById('titulo').title]`), ['TuGasto', 'TuGasto']);
     check('P2 brand: the manifest the page links is named TuGasto', await ev(`fetch(document.querySelector('link[rel=manifest]').href).then(function(r){ return r.json(); }).then(function(m){ return [m.name, m.short_name]; })`), ['TuGasto', 'TuGasto']);
     // every text node and every user-facing attribute of the rendered DOM, per tab: no old brand anywhere
     const viejaMarca = `(function(){ var out = [], re = /kib ?finanzas/i, mono = /\\bKF\\b/, t = function(s){ return re.test(s) || mono.test(s); };
