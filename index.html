@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Q6GV21L0SoxMRBKf2iapT+gDzN7JkcVkMbAuRS+X3Ww=' 'sha256-cwKJESP/SGOyK6y816aYSa08ykBQ6nWrSalh9ZeIwfo='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Q6GV21L0SoxMRBKf2iapT+gDzN7JkcVkMbAuRS+X3Ww=' 'sha256-Neq9+M2RitG0LY+p94FP8dBPJ+kZUjTbYJ3MnavZJ2w='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -624,12 +624,14 @@ nav button.on .np{background:var(--acc-soft)}
 .hero .tri{margin:12px 0 0;padding-top:12px;border-top:1px solid var(--sep)}
 /* 1.35: efectivo y digital debajo del total */
 .hero-medios{display:flex;gap:10px;margin-top:10px}
-.hero-medios .hm{flex:1;min-width:0;display:block;text-align:center;padding:8px 6px;border-radius:12px;background:var(--fill);color:var(--txt);min-height:var(--tap)}
+.hero-medios .hm{flex:1;min-width:0;display:block;text-align:center;padding:4px 6px;border-radius:12px;background:var(--fill);color:var(--txt);min-height:var(--tap)}
+.hero-medios .hm-pasar{flex:0 0 auto;min-width:var(--tap);color:var(--acc)}
+.hero-medios .hm small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hero-medios .hm.pide small{color:var(--acc);font-weight:600}
 .hero-medios .hm small{display:block;font-size:var(--fs-cap);color:var(--txt2)}
 .hero-medios .hm b{display:block;font-size:var(--fs-row);font-weight:600;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis}
 .hero-medios .hm b.mal{color:var(--neg)}
-.hero-acc{display:flex;justify-content:center;margin-top:2px}
-.item .md{width:34px;height:var(--tap);flex:0 0 auto;font-size:16px;line-height:1;padding:0;opacity:.5}
+.item .md{width:var(--tap);height:var(--tap);flex:0 0 auto;font-size:16px;line-height:1;padding:0;opacity:.5}
 .item .md.efe{opacity:1}
 .chips.gr-medio{margin-bottom:12px}
 .hero-proyectado{border-style:dashed}
@@ -3325,11 +3327,7 @@ function htmlAvisosSaldo(d, j, vm, hoy){
     + '<div class="fila"><button class="mini on" data-act="primerUsoOk">Guardar</button><button class="mini" data-act="primerUsoNo">Omitir</button></div></div>';
   if(j !== hoy.mes) return '';
   var a = avisoCierrePendiente(d, hoy, vm);
-  if(!a) return vm && muestraPreguntaEfectivo(d, hoy) ? '<div class="aviso hero-preg" id="preguntaEfectivo"><p><b>¿Cuánto efectivo tenés hoy?</b><br>'   // 1.35: una sola vez
-    + '<small>La plata en mano, de lo que tenés disponible. El resto queda como digital.</small></p>'
-    + '<input type="text" id="inEfectivoHoy" class="sdo-in" inputmode="decimal" placeholder="0" autocomplete="off" enterkeyhint="done">'
-    + '<div class="nota mal sdo-nota" id="notaEfectivoHoy"></div>'
-    + '<div class="fila"><button class="mini on" data-act="efectivoOk">Guardar</button><button class="mini" data-act="efectivoNo">Omitir</button></div></div>' : '';
+  if(!a) return '';
   return '<div class="aviso" id="avisoCierre"><p>¿Cerraste <b>' + MESES[a.mes] + '</b> con <b>' + fARS(a.valor) + '</b>?<br>'
     + '<small>Es lo que da con lo que registraste. Si tenías otra plata, corregilo.</small></p>'
     + '<div class="fila"><button class="mini on" data-act="avCierreOk" data-m="' + a.mes + '">Confirmar</button>'
@@ -3381,14 +3379,16 @@ function etiquetaHero(h, j){
    Solo presenta lo que calcula el motor (disponiblePorMedio): el número grande sigue siendo el total; debajo, cuánto es digital y cuánto
    efectivo (digital + efectivo = total). Un efectivo negativo se muestra tal cual: lo dicen los datos. */
 function mediosDelMes(d, j, vm, hoy){ return disponiblePorMedio(d, j, hoy, vm ? vm.ctx : ctxModelo(d, hoy)); }
+// una sola fila: Digital, Efectivo (en el año de hoy con saldo mes a mes se toca para decir cuánto tenés; mientras no lo dijiste, la celda
+// lo pregunta: es la pregunta de una vez, sin otro aviso arriba) y "Pasar efectivo ↔ digital"
 function htmlMedios(d, j, vm, hoy){
-  var v = mediosDelMes(d, j, vm, hoy), edita = puedeDeclararEfectivo(d, hoy);
+  var v = mediosDelMes(d, j, vm, hoy), edita = puedeDeclararEfectivo(d, hoy), pide = muestraPreguntaEfectivo(d, hoy);
   return '<div class="hero-medios" id="heroMedios">'
     +   '<div class="hm"><small>Digital</small><b id="heroDig"' + (v.digital < 0 ? ' class="mal"' : '') + '>' + fARS(v.digital) + '</b></div>'
-    +   (edita ? '<button class="hm" data-act="efectivoHoy">' : '<div class="hm">')
-    +     '<small>Efectivo</small><b id="heroEfe"' + (v.efectivo < 0 ? ' class="mal"' : '') + '>' + fARS(v.efectivo) + '</b>' + (edita ? '</button>' : '</div>')
-    + '</div>'
-    + '<div class="hero-acc"><button class="sdo-lnk" data-act="traspaso">Pasar efectivo ↔ digital</button></div>';
+    +   (edita ? '<button class="hm' + (pide ? ' pide' : '') + '" data-act="efectivoHoy"' + (pide ? ' id="preguntaEfectivo"' : '') + '>' : '<div class="hm">')
+    +     '<small>' + (pide ? 'Efectivo · ¿cuánto tenés?' : 'Efectivo') + '</small><b id="heroEfe"' + (v.efectivo < 0 ? ' class="mal"' : '') + '>' + fARS(v.efectivo) + '</b>' + (edita ? '</button>' : '</div>')
+    +   '<button class="hm hm-pasar" data-act="traspaso" aria-label="Pasar efectivo ↔ digital" title="Pasar efectivo ↔ digital"><small>Pasar</small><b aria-hidden="true">⇄</b></button>'
+    + '</div>';
 }
 // c = tilesMes del mes (la misma tarjeta de siempre); notas = las pistas de abajo; apagado = cálculo simple debajo de la pregunta del primer uso;
 // medios = 1.35, la fila Digital / Efectivo (htmlMedios); sin ella, la tarjeta de antes
@@ -6418,7 +6418,7 @@ document.addEventListener('click', function(ev){
   if(a === 'traspaso'){ abrirTraspaso(); return; }
   if(a === 'traspasoListo'){ cerrarHoja(); conScroll(renderMes); return; }
   if(a === 'efectivoHoy'){ abrirEfectivoHoy(); return; }
-  if(a === 'efectivoOk' || a === 'efectivoNo'){ efectivoHoy(a === 'efectivoNo'); return; }
+  if(a === 'efectivoNo'){ omitirEfectivo(); return; }
   if(a === 'efectivoHojaOk'){ guardarEfectivoHoja(); return; }
   if(a === 'ordenar'){ abrirOrden(b.getAttribute('data-k')); return; }
   if(a === 'subir'){ moverOrden(+b.getAttribute('data-i'), -1); return; }
@@ -6486,7 +6486,6 @@ document.addEventListener('input', function(ev){
 document.addEventListener('keydown', function(ev){
   var t = ev.target;
   if(ev.key === 'Enter' && t && t.id === 'inPrimerUso'){ ev.preventDefault(); primerUso(false); return; }
-  if(ev.key === 'Enter' && t && t.id === 'inEfectivoHoy'){ ev.preventDefault(); efectivoHoy(false); return; }
   if(ev.key === 'Enter' && t && t.id === 'tjBuscar'){ ev.preventDefault(); t.blur(); return; }
   if(ev.key === 'Enter' && t && t.classList && (t.classList.contains('monto') || t.classList.contains('nombre'))){ ev.preventDefault(); t.blur(); }
 });
@@ -9035,21 +9034,19 @@ function fijarEfectivoHoy(valor){
     return function(){ if(habia) ini.aperturaEfectivo = viejo; else delete ini.aperturaEfectivo; if(!tenia) delete ar.inicial; };
   });
 }
-function efectivoHoy(omitir){
-  var v = null, r;
-  if(!omitir){ r = leerMontoDe('inEfectivoHoy', false); if(!r.ok){ notaEn('notaEfectivoHoy', r.msg); return; } v = r.v; }
-  if(!fijarEfectivoHoy(v)){ if(!obsoleta) pildora('No se pudo guardar', true); return; }
-  conScroll(renderMes);
-  pildora(omitir ? 'Listo, todo como digital' : 'Efectivo guardado');
+function omitirEfectivo(){   // "Omitir" de la pregunta de una vez: efectivo inicial 0 (todo digital); se puede cambiar después tocando Efectivo
+  if(!fijarEfectivoHoy(null)){ if(!obsoleta) pildora('No se pudo guardar', true); else cerrarHoja(); return; }
+  cerrarHoja(); conScroll(renderMes); pildora('Listo, todo como digital');
 }
 function abrirEfectivoHoy(){
   var hoy = hoyApp(); if(!puedeDeclararEfectivo(D, hoy)) return;
-  var v = mediosDelMes(D, hoy.mes, vistaModelo(D, hoy), hoy).efectivo;
+  var v = mediosDelMes(D, hoy.mes, vistaModelo(D, hoy), hoy).efectivo, pide = muestraPreguntaEfectivo(D, hoy);
   abrirHoja('<h3>¿Cuánto efectivo tenés hoy?</h3>'
     + '<div class="texto" style="margin-bottom:12px">La plata en mano. Tu total no cambia: lo que no es efectivo queda como digital. No se crea ningún movimiento.</div>'
-    + '<input type="text" id="inEfectivoHoja" class="grande" inputmode="decimal" placeholder="0" autocomplete="off" enterkeyhint="done"' + attrExacto(v, montoEditable(v)) + '>'
+    + '<input type="text" id="inEfectivoHoja" class="grande" inputmode="decimal" placeholder="0" autocomplete="off" enterkeyhint="done"' + (pide ? ' value=""' : attrExacto(v, montoEditable(v))) + '>'
     + '<div class="nota mal" id="notaEfectivoHoja" style="padding:0 0 12px"></div>'
-    + '<div class="fila"><button data-act="cerrarHoja">Cancelar</button><button class="pri" data-act="efectivoHojaOk">Guardar</button></div>');
+    + '<div class="fila"><button data-act="cerrarHoja">Cancelar</button>' + (pide ? '<button data-act="efectivoNo">Omitir</button>' : '')
+    + '<button class="pri" data-act="efectivoHojaOk">Guardar</button></div>');
   var inp = document.getElementById('inEfectivoHoja');
   inp.addEventListener('keydown', function(ev){ if(ev.key === 'Enter'){ ev.preventDefault(); guardarEfectivoHoja(); } });
   inp.focus();

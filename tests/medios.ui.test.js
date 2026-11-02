@@ -32,7 +32,7 @@ test('hero row: Digital and Efectivo from the engine; the big number stays the t
   assert.ok(med.indexOf('<b id="heroDig">' + a.fARS(595000) + '</b>') > 0, med);
   assert.ok(med.indexOf('<b id="heroEfe">' + a.fARS(25000) + '</b>') > 0, med);
   assert.ok(med.indexOf('data-act="efectivoHoy"') > 0, 'the current year can declare its cash');
-  assert.ok(med.indexOf('data-act="traspaso"') > 0 && med.indexOf('Pasar efectivo ↔ digital') > 0);
+  assert.ok(med.indexOf('data-act="traspaso"') > 0 && med.indexOf('aria-label="Pasar efectivo ↔ digital"') > 0);
   var con = a.htmlHero(a.D, 9, vm, a.hoy, c, '', false, med), sin = a.htmlHero(a.D, 9, vm, a.hoy, c, '', false);
   assert.ok(con.indexOf('id="heroMedios"') > 0);
   assert.equal(sin.indexOf('heroMedios'), -1);
@@ -152,16 +152,19 @@ function almacen(raw, today){
 }
 function vmA(a){ return a.vistaModelo(a.D, a.hoy); }
 
-test('the cash question shows once: current month of a model year without a cash opening; never in a chained January or without a view', function(){
+test('the cash question shows once, in the hero Efectivo cell (no extra notice): a model year of today without a cash opening', function(){
   var a = almacen(modelo({ingresos: [C.it('Sueldo', 1000, true)]}));
-  var h = a.htmlAvisosSaldo(a.D, 9, vmA(a), a.hoy);
-  ['¿Cuánto efectivo tenés hoy?', 'id="inEfectivoHoy"', 'data-act="efectivoOk"', 'data-act="efectivoNo"'].forEach(function(t){ assert.ok(h.indexOf(t) >= 0, t); });
-  assert.equal(a.htmlAvisosSaldo(a.D, 8, vmA(a), a.hoy), '', 'only on the current month');
-  assert.equal(a.htmlAvisosSaldo(a.D, 9, null, a.hoy), '', 'no view model: nothing');
+  assert.equal(M.muestraPreguntaEfectivo(a.D, a.hoy), true);
+  assert.equal(a.htmlAvisosSaldo(a.D, 9, vmA(a), a.hoy), '', 'one notice at a time: the question is not a notice');
+  var v = appMes(modelo({ingresos: [C.it('Sueldo', 1000, true)]}), null, 9), med = v.htmlMedios(v.D, 9, v.vistaModelo(v.D, v.hoy), v.hoy);
+  assert.ok(med.indexOf('id="preguntaEfectivo"') > 0 && med.indexOf('Efectivo · ¿cuánto tenés?') > 0, med);
   var b = almacen(modelo({}, {aperturaEfectivo: 0}));
-  assert.equal(b.htmlAvisosSaldo(b.D, 9, vmA(b), b.hoy), '', 'answered (0 = Omitir)');
+  assert.equal(M.muestraPreguntaEfectivo(b.D, b.hoy), false, 'answered (0 = Omitir)');
+  var w = appMes(modelo({}, {aperturaEfectivo: 0}), null, 9);
+  assert.equal(w.htmlMedios(w.D, 9, w.vistaModelo(w.D, w.hoy), w.hoy).indexOf('preguntaEfectivo'), -1);
   var c = almacen(C.arrastre(C.vacio(2026), 9, 1000, 'arrastre'));
   assert.equal(M.muestraPreguntaEfectivo(c.D, c.hoy), false, 'a year that follows December brings its cash');
+  assert.equal(M.muestraPreguntaEfectivo(a.D, C.hoy('2027-01-05')), false, 'only the year of today');
 });
 
 test('declaring cash today writes the opening so today shows it; Omitir writes 0; the total never changes', function(){
