@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-xGWRpZ8JllUNVpna6+oi6/DPMw5ak0eQ+xwQUIUJkCI=' 'sha256-lsHchlR09CcLs4xlj+M3m3Hs/5HNdCicjrnc49M+Y/g='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Q6GV21L0SoxMRBKf2iapT+gDzN7JkcVkMbAuRS+X3Ww=' 'sha256-NzAaRCjrBBJB0IVjbZFo88dQbBIFQAZ1c5Sz2HyDqts='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -622,6 +622,16 @@ nav button.on .np{background:var(--acc-soft)}
 .chip-t .chip{font-size:var(--fs-cap);min-height:30px;padding:4px 12px;border-radius:15px}
 .chip-t:active .chip{opacity:.7}
 .hero .tri{margin:12px 0 0;padding-top:12px;border-top:1px solid var(--sep)}
+/* 1.35: efectivo y digital debajo del total */
+.hero-medios{display:flex;gap:10px;margin-top:10px}
+.hero-medios .hm{flex:1;min-width:0;display:block;text-align:center;padding:8px 6px;border-radius:12px;background:var(--fill);color:var(--txt);min-height:var(--tap)}
+.hero-medios .hm small{display:block;font-size:var(--fs-cap);color:var(--txt2)}
+.hero-medios .hm b{display:block;font-size:var(--fs-row);font-weight:600;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis}
+.hero-medios .hm b.mal{color:var(--neg)}
+.hero-acc{display:flex;justify-content:center;margin-top:2px}
+.item .md{width:34px;height:var(--tap);flex:0 0 auto;font-size:16px;line-height:1;padding:0;opacity:.5}
+.item .md.efe{opacity:1}
+.chips.gr-medio{margin-bottom:12px}
 .hero-proyectado{border-style:dashed}
 .hero-nota{padding:10px 2px 0;text-align:center}
 .hero-apagado{box-shadow:none;background:var(--card2)}
@@ -2602,6 +2612,15 @@ function patrimonioNeto(d, hoy, ctx){
    digital = total - efectivo: digital + efectivo da siempre el total. Lo que no dice efectivo es digital (como en Trabajo): ahorro, dólares,
    retiros y reposiciones del ahorro, y todo renglón sin medio. Un cierre real confirmado corrige el total; la diferencia queda en digital. ---- */
 function esEfectivo(x){ return !!x && x.medio === 'efectivo'; }
+function medioDe(it){ return esEfectivo(it) ? 'efectivo' : 'digital'; }
+function ponerMedio(it, med){ if(med === 'efectivo') it.medio = 'efectivo'; else delete it.medio; }   // digital = sin el campo
+// "¿Cuánto efectivo tenés hoy?" vale en el año de hoy que lleva el saldo mes a mes, desde su mes de arranque
+function puedeDeclararEfectivo(d, hoy){ var ar = d && d.arrastre; return !!ar && d.anio === hoy.anio && hoy.mes >= num(ar.desde); }
+// la pregunta de una vez: el año todavía no tiene efectivo inicial (ni lo trae del cierre de diciembre del año anterior)
+function muestraPreguntaEfectivo(d, hoy){
+  var ini = d && d.arrastre && d.arrastre.inicial;
+  return puedeDeclararEfectivo(d, hoy) && !(ini && ini.origen === 'arrastre') && !(ini && numOk(ini.aperturaEfectivo));
+}
 function traspasoMes(m){ return num(m.extraccionARS) - num(m.depositoARS); }   // de digital a efectivo (cajero) menos de efectivo a digital (depósito)
 // el efectivo de un mes del modelo, por las reglas de flujosMes: renglones en efectivo (de "Del trabajo", lo que sus pases no cubren),
 // pases de Trabajo en efectivo y traspasos (realizados en un mes pasado o en curso, programados en uno futuro)
@@ -2691,7 +2710,7 @@ function usaMedios(d){
 }
 function hayDatos(d, conTrabajo){   // "hay datos" = hay algo REGISTRADO (cargado), esté tildado o no
   if(conTrabajo) return true;
-  var flujo = ['ahorroMesARS','ahorroMesUSD','compraARS','compraUSD','retiroARS','ventaUSD','ventaARS','reposicionARS'];
+  var flujo = ['ahorroMesARS','ahorroMesUSD','compraARS','compraUSD','retiroARS','ventaUSD','ventaARS','reposicionARS','extraccionARS','depositoARS'];
   for(var i=0;i<12;i++){
     var m = d.meses[i], s, q;
     for(s=0;s<SECS.length;s++) for(q=0;q<m[SECS[s].k].length;q++) if(num(m[SECS[s].k][q].monto) > 0) return true;
@@ -2760,6 +2779,10 @@ return {
   hayDatos: hayDatos,
   sumarAItem: sumarAItem,
   esEfectivo: esEfectivo,
+  medioDe: medioDe,
+  ponerMedio: ponerMedio,
+  puedeDeclararEfectivo: puedeDeclararEfectivo,
+  muestraPreguntaEfectivo: muestraPreguntaEfectivo,
   cadenaMedios: cadenaMedios,
   disponiblePorMedio: disponiblePorMedio,
   aperturaEfectivoPara: aperturaEfectivoPara,
@@ -2814,6 +2837,10 @@ var SECS = TGMotor.SECS,
     hayDatos = TGMotor.hayDatos,
     sumarAItem = TGMotor.sumarAItem,
     esEfectivo = TGMotor.esEfectivo,
+    medioDe = TGMotor.medioDe,
+    ponerMedio = TGMotor.ponerMedio,
+    puedeDeclararEfectivo = TGMotor.puedeDeclararEfectivo,
+    muestraPreguntaEfectivo = TGMotor.muestraPreguntaEfectivo,
     cadenaMedios = TGMotor.cadenaMedios,
     disponiblePorMedio = TGMotor.disponiblePorMedio,
     aperturaEfectivoPara = TGMotor.aperturaEfectivoPara,
@@ -3297,7 +3324,12 @@ function htmlAvisosSaldo(d, j, vm, hoy){
     + '<div class="nota mal sdo-nota" id="notaPrimerUso"></div>'
     + '<div class="fila"><button class="mini on" data-act="primerUsoOk">Guardar</button><button class="mini" data-act="primerUsoNo">Omitir</button></div></div>';
   if(j !== hoy.mes) return '';
-  var a = avisoCierrePendiente(d, hoy, vm); if(!a) return '';
+  var a = avisoCierrePendiente(d, hoy, vm);
+  if(!a) return vm && muestraPreguntaEfectivo(d, hoy) ? '<div class="aviso hero-preg" id="preguntaEfectivo"><p><b>¿Cuánto efectivo tenés hoy?</b><br>'   // 1.35: una sola vez
+    + '<small>La plata en mano, de lo que tenés disponible. El resto queda como digital.</small></p>'
+    + '<input type="text" id="inEfectivoHoy" class="sdo-in" inputmode="decimal" placeholder="0" autocomplete="off" enterkeyhint="done">'
+    + '<div class="nota mal sdo-nota" id="notaEfectivoHoy"></div>'
+    + '<div class="fila"><button class="mini on" data-act="efectivoOk">Guardar</button><button class="mini" data-act="efectivoNo">Omitir</button></div></div>' : '';
   return '<div class="aviso" id="avisoCierre"><p>¿Cerraste <b>' + MESES[a.mes] + '</b> con <b>' + fARS(a.valor) + '</b>?<br>'
     + '<small>Es lo que da con lo que registraste. Si tenías otra plata, corregilo.</small></p>'
     + '<div class="fila"><button class="mini on" data-act="avCierreOk" data-m="' + a.mes + '">Confirmar</button>'
@@ -3345,15 +3377,30 @@ function chipsHero(h){
 function etiquetaHero(h, j){
   return h.modo === 'hoy' ? 'Tenés hoy' : h.modo === 'cerrado' ? 'Cerraste con' : h.modo === 'proyectado' ? 'Proyectado para ' + MESES[j] : 'Disponible final';
 }
-// c = tilesMes del mes (la misma tarjeta de siempre); notas = las pistas de abajo; apagado = cálculo simple debajo de la pregunta del primer uso
-function htmlHero(d, j, vm, hoy, c, notas, apagado){
+/* ═══ 1.35: efectivo y digital en la tarjeta principal ═══
+   Solo presenta lo que calcula el motor (disponiblePorMedio): el número grande sigue siendo el total; debajo, cuánto es digital y cuánto
+   efectivo (digital + efectivo = total). Un efectivo negativo se muestra tal cual: lo dicen los datos. */
+function mediosDelMes(d, j, vm, hoy){ return disponiblePorMedio(d, j, hoy, vm ? vm.ctx : ctxModelo(d, hoy)); }
+function htmlMedios(d, j, vm, hoy){
+  var v = mediosDelMes(d, j, vm, hoy), edita = puedeDeclararEfectivo(d, hoy);
+  return '<div class="hero-medios" id="heroMedios">'
+    +   '<div class="hm"><small>Digital</small><b id="heroDig"' + (v.digital < 0 ? ' class="mal"' : '') + '>' + fARS(v.digital) + '</b></div>'
+    +   (edita ? '<button class="hm" data-act="efectivoHoy">' : '<div class="hm">')
+    +     '<small>Efectivo</small><b id="heroEfe"' + (v.efectivo < 0 ? ' class="mal"' : '') + '>' + fARS(v.efectivo) + '</b>' + (edita ? '</button>' : '</div>')
+    + '</div>'
+    + '<div class="hero-acc"><button class="sdo-lnk" data-act="traspaso">Pasar efectivo ↔ digital</button></div>';
+}
+// c = tilesMes del mes (la misma tarjeta de siempre); notas = las pistas de abajo; apagado = cálculo simple debajo de la pregunta del primer uso;
+// medios = 1.35, la fila Digital / Efectivo (htmlMedios); sin ella, la tarjeta de antes
+function htmlHero(d, j, vm, hoy, c, notas, apagado, medios){
   var h = estadoHero(d, j, vm, hoy), sub = apagado ? SUB_APAGADO : subHero(h), fut = h.modo === 'proyectado';
   return '<div class="saldo hero hero-' + h.modo + (apagado ? ' hero-apagado' : '') + '" id="hero" data-modo="' + h.modo + '">'
      +   '<div class="final"><small class="hero-lbl">' + etiquetaHero(h, j) + '</small>'
      +     '<div class="final-fila"><div class="big ' + claseHero(h.modo, c.disponibleFinal, apagado) + '" id="bigFinal">' + fARS(c.disponibleFinal) + '</div>'
      +     botonOjo() + '</div>'
      +     '<div class="hero-sub" id="heroSub">' + sub + '</div>'
-     +     '<div class="hero-chips" id="heroChips">' + chipsHero(h) + '</div></div>'
+     +     '<div class="hero-chips" id="heroChips">' + chipsHero(h) + '</div>'
+     +     (medios || '') + '</div>'
      +   '<div class="tri">'
      +     '<div><small>' + (fut ? 'A cobrar' : 'Cobrado') + '</small><b>' + fARS(c.totalIngresos) + '</b></div>'
      +     '<div><small>' + (fut ? 'A pagar' : 'Pagado') + '</small><b>' + fARS(c.totalGastos) + '</b></div>'
@@ -3567,7 +3614,7 @@ function renderMes(){
            '<div class="nota ambar hero-nota" id="notaReponer" style="display:'+(aRep>0?'block':'none')+'">'
          +   'A reponer al ahorro: <b>'+fARS(aRep)+'</b></div>'
          + '<div class="nota ambar hero-nota" id="notaTopes" style="display:'+(topesM && !(aRep>0)?'block':'none')+'">'
-         +   textoTopes(m)+'</div>', primer)
+         +   textoTopes(m)+'</div>', primer, primer ? '' : htmlMedios(D, mes, vm, hoy))
      + '</div>'
      + '<div class="carr-slide"><div class="saldo" id="cardTorta">' + htmlTorta(m, c) + '</div></div>'
      + '</div>'
@@ -3813,6 +3860,7 @@ function seccion(S, m){
        +   '<input class="nombre" data-k="'+S.k+'" data-i="'+i+'" value="'+esc(lista[i].nombre)+'" aria-label="Nombre"'+(vt?' readonly':'')+'>'
        +   '<span class="mt-w">' + marca
        +   '<input class="monto" inputmode="decimal" enterkeyhint="done" data-k="'+S.k+'" data-i="'+i+'" value="'+fARS(lista[i].monto)+'" aria-label="Monto"'+(vt?' readonly':'')+'></span>'
+       +   (vt ? '' : '<button class="md' + (esEfectivo(lista[i]) ? ' efe' : '') + '" data-act="medio" data-k="'+S.k+'" data-i="'+i+'" aria-pressed="' + esEfectivo(lista[i]) + '" aria-label="' + (esEfectivo(lista[i]) ? 'En efectivo. Tocá para pasarlo a digital' : 'Digital. Tocá para pasarlo a efectivo') + '">' + (esEfectivo(lista[i]) ? '💵' : '💳') + '</button>')   // 1.35: efectivo o digital
        +   '<button class="x" data-act="'+(vt?'tjDelTrabajo':'del')+'" data-k="'+S.k+'" data-i="'+i+'" aria-label="Borrar">×</button>'
        + '</div>';
     if(marc && prog) hayProg = true;
@@ -3849,7 +3897,7 @@ function secMovimientos(m){
      + '<span class="sub">'+fARS(tot)+'</span><i class="chev"></i></button><div class="cuerpo">';
   for(i=0;i<mv.length;i++){
     var d = new Date(mv[i].fecha), f = isNaN(d) ? '' : (d.getDate()<10?'0':'')+d.getDate()+'/'+((d.getMonth()+1)<10?'0':'')+(d.getMonth()+1);
-    h += '<div class="item mov"><span class="fecha">'+f+'</span><span class="nom">'+esc(mv[i].nombre)+'</span>'
+    h += '<div class="item mov"><span class="fecha">'+f+'</span><span class="nom">'+esc(mv[i].nombre)+(esEfectivo(mv[i]) ? ' 💵' : '')+'</span>'
        + '<span class="monto">'+fARS(mv[i].monto)+'</span>'
        + '<button class="x" data-act="quitarMov" data-id="'+esc(mv[i].id)+'" aria-label="Deshacer">×</button></div>';
   }
@@ -4825,6 +4873,8 @@ function refrescar(){
   if(big){ big.textContent = fARS(c.disponibleFinal); big.className = 'big ' + claseHero(eh.modo, c.disponibleFinal, !!(hero && hero.classList.contains('hero-apagado'))); }
   var hs = document.getElementById('heroSub'); if(hs && !(hero && hero.classList.contains('hero-apagado'))) hs.innerHTML = subHero(eh);
   var hc = document.getElementById('heroChips'); if(hc) hc.innerHTML = chipsHero(eh);
+  var hdg = document.getElementById('heroDig'), hef = document.getElementById('heroEfe');   // 1.35: digital y efectivo del mes
+  if(hdg && hef){ var md = mediosDelMes(D, mes, vm, hoy); hdg.textContent = fARS(md.digital); hdg.className = md.digital < 0 ? 'mal' : ''; hef.textContent = fARS(md.efectivo); hef.className = md.efectivo < 0 ? 'mal' : ''; }
   pintarTorta();
   var tri = document.querySelectorAll('#v-mes .tri b');
   if(tri.length === 3){ tri[0].textContent = fARS(c.totalIngresos); tri[1].textContent = fARS(c.totalGastos); tri[2].textContent = fARS(c.ahorroMesARS); }
@@ -5799,10 +5849,12 @@ function gastoRapido(){
     h += '<button data-act="chip" data-sec="'+cats[i].sec+'" data-i="'+cats[i].i+'">'+esc(cats[i].nombre)+'</button>';
   }
   h += '</div>'
+     + '<div class="chips gr-medio" id="grMedio" role="group" aria-label="Cómo lo pagaste">'   // 1.35: si no elegís, va con el medio del renglón
+     +   '<button data-act="grMedio" data-v="digital">💳 Digital</button><button data-act="grMedio" data-v="efectivo">💵 Efectivo</button></div>'
      + '<div class="gr-monto"><span aria-hidden="true">$</span><input type="text" id="grMonto" class="grande" inputmode="decimal" placeholder="0" autocomplete="off" enterkeyhint="done" aria-label="Monto en pesos"></div>'
      + '<div class="fila"><button data-act="cerrarHoja">Cancelar</button>'
      + '<button class="pri" data-act="confirmarGasto">Sumar gasto</button></div>';
-  gr = {monto:0, cat:null, sec:'gastosVariables'};
+  gr = {monto:0, cat:null, sec:'gastosVariables', medio:null};
   abrirHoja(h);
   var inp = document.getElementById('grMonto');
   inp.focus();
@@ -5820,19 +5872,35 @@ function sumarGasto(){
   }
   if(!gr.monto){ var i = document.getElementById('grMonto'); if(i) i.focus(); return; }
   if(gr.cat === null){ toast('Tocá una categoría para saber dónde sumarlo'); return; }
-  var it = D.meses[mes][gr.sec][gr.cat], pp = it.pagado === true;
+  var it = D.meses[mes][gr.sec][gr.cat], pp = it.pagado === true, mp = medioDe(it), med = gr.medio || mp;
   if(preguntaPago(D, mes, it, hoyApp())){ preguntarPago(it); return; }   // L3 (D8): ¿es el pago de ese renglón pendiente?
+  if(num(it.monto) && med !== mp){ gastoEnOtroMedio(it, med); return; }   // 1.35: un renglón tiene un solo medio
   sumarAItem(it, gr.monto);
+  ponerMedio(it, med);   // 1.35: un renglón vacío toma el medio del gasto (Deshacer lo devuelve)
   // N4 I-1 (§1 Programado + N3b-A (a), "no se tilda por adelantado"): en un mes FUTURO del modelo el gasto rápido suma el monto pero no
   // tilda el renglón (queda programado); los meses pasado/actual y los años legacy siguen como siempre
   if(mesDelModelo(D, mes) && estadoMes(D.anio, mes, hoyApp()) === 'futuro') it.pagado = pp;
-  var id = anotarMov(it, gr.monto, pp);
+  var id = anotarMov(it, gr.monto, pp, null, med, mp);
   cerrarHoja(); tocar(); conScroll(renderMes);
   toast('Sumé ' + fARS(gr.monto) + ' a ' + it.nombre, 'Deshacer', 'quitarMov', id);
 }
-function anotarMov(it, monto, pp, extra){   // el gasto rápido queda en la lista del mes, con lo que Deshacer necesita para volver atrás
+// 1.35: un gasto en otro medio que el renglón (que ya tiene monto) va a un renglón aparte "<fila> (en efectivo)" / "<fila> (digital)", tildado
+// y con ese medio, como "No, es otro gasto": así cada renglón tiene un solo medio y los totales no cambian. Deshacer lo saca si lo creó
+function gastoEnOtroMedio(it, med){
+  var r = renglonLibre(D.meses[mes][gr.sec], it.nombre, med === 'efectivo' ? 'en efectivo' : 'digital', med), fila = r.fila, pp = fila.pagado === true, mp = medioDe(fila);
+  sumarAItem(fila, gr.monto); ponerMedio(fila, med);
+  if(mesDelModelo(D, mes) && estadoMes(D.anio, mes, hoyApp()) === 'futuro') fila.pagado = pp;   // como sumarGasto (N4 I-1)
+  var id = anotarMov(fila, gr.monto, pp, r.nueva ? {tipo:'aparte'} : null, med, mp);
+  cerrarHoja(); tocar(); conScroll(renderMes);
+  toast('Anoté ' + fARS(gr.monto) + (med === 'efectivo' ? ' en efectivo' : ' digital') + ' en ' + fila.nombre, 'Deshacer', 'quitarMov', id);
+}
+// el gasto rápido queda en la lista del mes, con lo que Deshacer necesita para volver atrás. 1.35: med = el medio del gasto ('efectivo' se
+// anota) y mp = el medio que tenía el renglón antes, si el gasto se lo cambió (Deshacer lo devuelve)
+function anotarMov(it, monto, pp, extra, med, mp){
   var id = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
   var mv = {id:id, fecha:new Date().toISOString(), sec:gr.sec, nombre:it.nombre, monto:monto, pp:pp};
+  if(med === 'efectivo') mv.medio = 'efectivo';
+  if((mp === 'efectivo' || mp === 'digital') && med && mp !== med) mv.mp = mp;
   var ls = D.meses[mes][gr.sec] || [], fi = ls.indexOf(it), q;
   if(fi >= 0){   // S2 M2: QUÉ renglón cambió, para que Deshacer no toque otro del mismo nombre
     mv.fi = fi;   // el lugar: solo una pista (lo leen las versiones anteriores); borrar u ordenar otros renglones lo corre
@@ -5879,31 +5947,33 @@ function gastoEsPago(){
 }
 function marcarPago(usarGasto){
   var it = filaDelGasto(); if(!it){ cerrarHoja(); return; }
-  var pp = it.pagado === true, ma = num(it.monto);
+  var pp = it.pagado === true, ma = num(it.monto), mp = medioDe(it), med = gr.medio || mp;
   if(usarGasto) it.monto = gr.monto;
   it.pagado = true;
-  var id = anotarMov(it, num(it.monto), pp, {tipo:'pago', ma:ma});
+  ponerMedio(it, med);   // 1.35: el renglón queda pagado con el medio del gasto
+  var id = anotarMov(it, num(it.monto), pp, {tipo:'pago', ma:ma}, med, mp);
   cerrarHoja(); tocar(); conScroll(renderMes);
   toast('Marqué ' + it.nombre + ' como pagado', 'Deshacer', 'quitarMov', id);
 }
 // "Super (otro gasto)" / "Super (pago parcial)": se reusa si está tildado o vacío; uno pendiente nunca se mezcla (va "Super (otro gasto 2)")
-function renglonLibre(ls, base, sufijo){   // {fila, nueva}; una fila nueva va al final, marcada aparte (plata ya gastada, no se copia)
-  var fila = null, nombre, n, q;
+function renglonLibre(ls, base, sufijo, medio){   // {fila, nueva}; una fila nueva va al final, marcada aparte (plata ya gastada, no se copia)
+  var fila = null, nombre, n, q;   // 1.35: con medio, un renglón tildado se reusa solo si es de ese medio (uno vacío, siempre)
   for(n=1; !fila; n++){
     nombre = base + (n === 1 ? ' (' + sufijo + ')' : ' (' + sufijo + ' ' + n + ')');
     var hallada = null;
     for(q=0;q<ls.length;q++) if(ls[q].nombre === nombre){ hallada = ls[q]; break; }
-    if(!hallada){ fila = {nombre:nombre, monto:0, tope:0, frec:'', dias:[], pagado:false, aparte:true}; ls.push(fila); return {fila: fila, nueva: true}; }   // la forma de un renglón normalizado
-    if(hallada.pagado === true || !num(hallada.monto)) fila = hallada;
+    if(!hallada){ fila = {nombre:nombre, monto:0, tope:0, frec:'', dias:[], pagado:false, aparte:true}; if(medio === 'efectivo') fila.medio = 'efectivo'; ls.push(fila); return {fila: fila, nueva: true}; }   // la forma de un renglón normalizado
+    if(!num(hallada.monto) || (hallada.pagado === true && (!medio || medioDe(hallada) === medio))) fila = hallada;
   }
   return {fila: fila, nueva: false};
 }
 function gastoAparte(){
   var it = filaDelGasto(); if(!it){ cerrarHoja(); return; }
-  var r = renglonLibre(D.meses[mes][gr.sec], it.nombre, 'otro gasto'), fila = r.fila, nueva = r.nueva;
-  var pp = fila.pagado === true;
+  var med = gr.medio || medioDe(it), r = renglonLibre(D.meses[mes][gr.sec], it.nombre, 'otro gasto', med), fila = r.fila, nueva = r.nueva;
+  var pp = fila.pagado === true, mp = medioDe(fila);
   sumarAItem(fila, gr.monto);   // vacío → queda tildado: plata ya gastada
-  var id = anotarMov(fila, gr.monto, pp, nueva ? {tipo:'aparte'} : null);
+  ponerMedio(fila, med);   // 1.35
+  var id = anotarMov(fila, gr.monto, pp, nueva ? {tipo:'aparte'} : null, med, mp);
   cerrarHoja(); tocar(); conScroll(renderMes);
   toast('Anoté ' + fARS(gr.monto) + ' en ' + fila.nombre + '. ' + it.nombre + ' sigue pendiente', 'Deshacer', 'quitarMov', id);
 }
@@ -5916,12 +5986,13 @@ function pagoParcial(){
   if(!(gr.monto > 0 && gr.monto < num(it.monto))){ cerrarHoja(); return; }
   var ls = D.meses[mes][gr.sec], rfo = 0, rfn = 0, fi = ls.indexOf(it), q;
   for(q=0;q<ls.length;q++) if(ls[q].nombre === it.nombre){ if(q < fi) rfo++; rfn++; }
-  var r = renglonLibre(ls, it.nombre, 'pago parcial'), fila = r.fila, pp = fila.pagado === true;
+  var med = gr.medio || medioDe(it), r = renglonLibre(ls, it.nombre, 'pago parcial', med), fila = r.fila, pp = fila.pagado === true, mp = medioDe(fila);
   if(!(it.montoPlan > 0)) it.montoPlan = num(it.monto);   // D9 A2: copiar el mes copia lo planeado, no el resto
   it.monto = Math.round((num(it.monto) - gr.monto) * 100) / 100;
   sumarAItem(fila, gr.monto);   // vacío → queda tildado: plata ya gastada
   fila.pagado = true;
-  var id = anotarMov(fila, gr.monto, pp, {tipo:'parcial', nueva:r.nueva, rn:it.nombre, rfo:rfo, rfn:rfn, rr:num(it.monto)});
+  ponerMedio(fila, med);   // 1.35: la parte pagada, con el medio del gasto
+  var id = anotarMov(fila, gr.monto, pp, {tipo:'parcial', nueva:r.nueva, rn:it.nombre, rfo:rfo, rfn:rfn, rr:num(it.monto)}, med, mp);
   cerrarHoja(); tocar(); conScroll(renderMes);
   toast('Anoté ' + fARS(gr.monto) + ' como pago parcial de ' + it.nombre + '. Quedan ' + fARS(num(it.monto)) + ' pendientes', 'Deshacer', 'quitarMov', id);
 }
@@ -5970,6 +6041,8 @@ function quitarMov(id){
       hallado = true;
       if(plan){ plan.monto = Math.round((num(plan.monto) + num(mv.monto)) * 100) / 100; if(!(plan.montoPlan > num(plan.monto))) delete plan.montoPlan; }   // D9 A2: completo otra vez
       // L3 "Sí": se revierte SOLO ese pago (el cambio de monto que hizo y el tilde); otros gastos o ediciones posteriores del renglón quedan
+      // 1.35: el medio que el gasto le cambió al renglón vuelve, si el renglón sigue con el medio del gasto (si lo cambiaste después, queda el tuyo)
+      if((mv.mp === 'efectivo' || mv.mp === 'digital') && medioDe(ls[i]) === medioDe(mv)) ponerMedio(ls[i], mv.mp);
       if(mv.tipo === 'pago' && typeof mv.pp === 'boolean'){ ls[i].monto = Math.max(0, num(ls[i].monto) - num(mv.monto) + num(mv.ma)); ls[i].pagado = mv.pp; break; }
       ls[i].monto = Math.max(0, num(ls[i].monto) - mv.monto);
       // si el gasto rápido tildó un renglón vacío y Deshacer lo deja vacío otra vez, vuelve a como estaba (los viejos sin pp no tocan nada)
@@ -6020,8 +6093,8 @@ function copiarAnterior(k){
     if(esGastoAparte(ant[i])) continue;   // L3 review: un gasto aparte ya está gastado, no es un plan para el mes que viene
     var hallado = false;
     var plan = ant[i].montoPlan > 0 ? ant[i].montoPlan : num(ant[i].monto);   // D9 A2: después de un pago parcial, lo planeado (no el resto)
-    for(j=0;j<act.length;j++) if(act[j].nombre === ant[i].nombre){ act[j].monto = plan; act[j].pagado = false; delete act[j].montoPlan; hallado = true; break; }
-    if(!hallado) act.push({nombre:ant[i].nombre, monto:plan, pagado:false});
+    for(j=0;j<act.length;j++) if(act[j].nombre === ant[i].nombre){ act[j].monto = plan; act[j].pagado = false; delete act[j].montoPlan; ponerMedio(act[j], medioDe(ant[i])); hallado = true; break; }   // 1.35: con su medio
+    if(!hallado){ var nu = {nombre:ant[i].nombre, monto:plan, pagado:false}; ponerMedio(nu, medioDe(ant[i])); act.push(nu); }
   }
   tocar(); renderMes();
   toast('Copié ' + MESES[mes-1].toLowerCase() + ' en ' + MESES[mes].toLowerCase());
@@ -6333,6 +6406,18 @@ document.addEventListener('click', function(ev){
     if(itp && puedeAlternar(mes, itp)){ alternarPago(mes, itp); tocar(); guardar(); conScroll(renderMes); }
     return;
   }
+  if(a === 'medio'){   // 1.35: el renglón pasa de digital a efectivo, o al revés (el total no cambia)
+    var km = b.getAttribute('data-k'), im = +b.getAttribute('data-i'), itm = D.meses[mes][km] && D.meses[mes][km][im];
+    if(itm){ ponerMedio(itm, esEfectivo(itm) ? 'digital' : 'efectivo'); tocar(); guardar(); conScroll(renderMes); toast((itm.nombre || 'El renglón') + (esEfectivo(itm) ? ': en efectivo' : ': digital')); }
+    return;
+  }
+  if(a === 'grMedio'){ gr.medio = b.getAttribute('data-v') === 'efectivo' ? 'efectivo' : 'digital'; marcarChips('grMedio', b); return; }
+  if(a === 'altaMedio'){ if(alta) alta.medio = b.getAttribute('data-v') === 'efectivo' ? 'efectivo' : 'digital'; marcarChips('altaMedio', b); return; }
+  if(a === 'traspaso'){ abrirTraspaso(); return; }
+  if(a === 'traspasoListo'){ cerrarHoja(); conScroll(renderMes); return; }
+  if(a === 'efectivoHoy'){ abrirEfectivoHoy(); return; }
+  if(a === 'efectivoOk' || a === 'efectivoNo'){ efectivoHoy(a === 'efectivoNo'); return; }
+  if(a === 'efectivoHojaOk'){ guardarEfectivoHoja(); return; }
   if(a === 'ordenar'){ abrirOrden(b.getAttribute('data-k')); return; }
   if(a === 'subir'){ moverOrden(+b.getAttribute('data-i'), -1); return; }
   if(a === 'bajar'){ moverOrden(+b.getAttribute('data-i'), 1); return; }
@@ -6370,6 +6455,8 @@ document.addEventListener('click', function(ev){
     var cs = document.querySelectorAll('#grChips button');
     for(var j=0;j<cs.length;j++) cs[j].classList.toggle('on', cs[j] === b);
     gr.cat = +b.getAttribute('data-i'); gr.sec = b.getAttribute('data-sec');
+    var itc = D.meses[mes][gr.sec] && D.meses[mes][gr.sec][gr.cat], bm = document.querySelectorAll('#grMedio button');   // 1.35: sin elegir, se ve el medio del renglón
+    if(!gr.medio && itc) for(var q2=0;q2<bm.length;q2++) bm[q2].classList.toggle('on', bm[q2].getAttribute('data-v') === medioDe(itc));
     if(gr.monto) sumarGasto();
     return;
   }
@@ -6397,6 +6484,7 @@ document.addEventListener('input', function(ev){
 document.addEventListener('keydown', function(ev){
   var t = ev.target;
   if(ev.key === 'Enter' && t && t.id === 'inPrimerUso'){ ev.preventDefault(); primerUso(false); return; }
+  if(ev.key === 'Enter' && t && t.id === 'inEfectivoHoy'){ ev.preventDefault(); efectivoHoy(false); return; }
   if(ev.key === 'Enter' && t && t.id === 'tjBuscar'){ ev.preventDefault(); t.blur(); return; }
   if(ev.key === 'Enter' && t && t.classList && (t.classList.contains('monto') || t.classList.contains('nombre'))){ ev.preventDefault(); t.blur(); }
 });
@@ -6493,10 +6581,12 @@ window.addEventListener('beforeunload', function(e){
 /* alta de categoría + propagación */
 var alta = null;
 function pedirNombre(k){
-  alta = {k:k, nombre:''};
+  alta = {k:k, nombre:'', medio:'digital'};
   var S = SECS.filter(function(s){ return s.k === k; })[0];
   abrirHoja('<h3>Nueva categoría en '+S.t.toLowerCase()+'</h3>'
     + '<input type="text" id="nuevoNom" placeholder="Nombre" autocomplete="off">'
+    + '<div class="chips gr-medio" id="altaMedio" role="group" aria-label="Cómo se paga">'   // 1.35
+    +   '<button class="on" data-act="altaMedio" data-v="digital">💳 Digital</button><button data-act="altaMedio" data-v="efectivo">💵 Efectivo</button></div>'
     + '<div class="fila"><button data-act="cerrarHoja">Cancelar</button>'
     + '<button class="pri" data-act="nuevoNombre">Agregar</button></div>');
   var i = document.getElementById('nuevoNom');
@@ -6508,7 +6598,8 @@ function crearItem(){
   var nom = (i ? i.value : '').trim();
   if(!nom){ if(i) i.focus(); return; }
   alta.nombre = nom;
-  D.meses[mes][alta.k].push({nombre:nom, monto:0, pagado:false});
+  var nuevo = {nombre:nom, monto:0, pagado:false}; ponerMedio(nuevo, alta.medio);   // 1.35
+  D.meses[mes][alta.k].push(nuevo);
   tocar(); renderMes();
   if(mes < 11){
     abrirHoja('<h3>¿También en los meses que siguen?</h3>'
@@ -6522,7 +6613,7 @@ function propagar(si){
     for(var i=mes+1;i<12;i++){
       var ls = D.meses[i][alta.k], existe = false;
       for(var j=0;j<ls.length;j++) if(ls[j].nombre === alta.nombre) existe = true;
-      if(!existe) ls.push({nombre:alta.nombre, monto:0, pagado:false});
+      if(!existe){ var nv = {nombre:alta.nombre, monto:0, pagado:false}; ponerMedio(nv, alta.medio); ls.push(nv); }
     }
     tocar();
   }
@@ -8924,6 +9015,52 @@ function primerUso(omitir){
   if(!activarSaldos(v)){ if(!obsoleta) pildora('No se pudo guardar', true); return; }
   conScroll(renderMes);
   pildora(omitir ? 'Listo, sin saldo inicial' : 'Saldo guardado');
+}
+/* 1.35: "¿Cuánto efectivo tenés hoy?" (null = Omitir: todo digital). Guarda arrastre.inicial.aperturaEfectivo por guardarModelo (pestaña vieja,
+   respaldo previo, vuelve atrás si no se pudo guardar). El total no cambia: solo cuánto de él es efectivo; no se crea ningún movimiento. */
+function fijarEfectivoHoy(valor){
+  if(!D || !D.arrastre) return false;
+  var hoy = hoyApp(), ap = valor === null ? 0 : aperturaEfectivoPara(D, hoy, ctxModelo(D, hoy), valor);
+  if(ap === null || !puedeDeclararEfectivo(D, hoy) || Math.abs(ap) > 1e13) return false;
+  var ar = D.arrastre, tenia = !!ar.inicial, ini = ar.inicial || {}, habia = Object.prototype.hasOwnProperty.call(ini, 'aperturaEfectivo'), viejo = ini.aperturaEfectivo;
+  return guardarModelo(function(){
+    ar.inicial = ini; ini.aperturaEfectivo = ap;
+    return function(){ if(habia) ini.aperturaEfectivo = viejo; else delete ini.aperturaEfectivo; if(!tenia) delete ar.inicial; };
+  });
+}
+function efectivoHoy(omitir){
+  var v = null, r;
+  if(!omitir){ r = leerMontoDe('inEfectivoHoy', false); if(!r.ok){ notaEn('notaEfectivoHoy', r.msg); return; } v = r.v; }
+  if(!fijarEfectivoHoy(v)){ if(!obsoleta) pildora('No se pudo guardar', true); return; }
+  conScroll(renderMes);
+  pildora(omitir ? 'Listo, todo como digital' : 'Efectivo guardado');
+}
+function abrirEfectivoHoy(){
+  var hoy = hoyApp(); if(!puedeDeclararEfectivo(D, hoy)) return;
+  var v = mediosDelMes(D, hoy.mes, vistaModelo(D, hoy), hoy).efectivo;
+  abrirHoja('<h3>¿Cuánto efectivo tenés hoy?</h3>'
+    + '<div class="texto" style="margin-bottom:12px">La plata en mano. Tu total no cambia: lo que no es efectivo queda como digital. No se crea ningún movimiento.</div>'
+    + '<input type="text" id="inEfectivoHoja" class="grande" inputmode="decimal" placeholder="0" autocomplete="off" enterkeyhint="done"' + attrExacto(v, montoEditable(v)) + '>'
+    + '<div class="nota mal" id="notaEfectivoHoja" style="padding:0 0 12px"></div>'
+    + '<div class="fila"><button data-act="cerrarHoja">Cancelar</button><button class="pri" data-act="efectivoHojaOk">Guardar</button></div>');
+  var inp = document.getElementById('inEfectivoHoja');
+  inp.addEventListener('keydown', function(ev){ if(ev.key === 'Enter'){ ev.preventDefault(); guardarEfectivoHoja(); } });
+  inp.focus();
+}
+function guardarEfectivoHoja(){
+  var r = leerMontoDe('inEfectivoHoja', false);
+  if(!r.ok){ notaEn('notaEfectivoHoja', r.msg); return; }
+  if(!fijarEfectivoHoy(r.v)){ if(!obsoleta) notaEn('notaEfectivoHoja', 'No se pudo guardar. Probá de nuevo.'); else cerrarHoja(); return; }
+  cerrarHoja(); conScroll(renderMes); pildora('Efectivo guardado');
+}
+// 1.35: "Pasar efectivo ↔ digital": lo que sacaste del cajero y lo que depositaste en el mes que estás viendo (campos del mes; el total no cambia)
+function abrirTraspaso(){
+  var m = D.meses[mes];
+  abrirHoja('<h3>Pasar efectivo ↔ digital</h3>'
+    + '<div class="texto" style="margin-bottom:12px">Lo que moviste en ' + MESES[mes] + '. Tu total no cambia: solo cuánto es efectivo y cuánto digital.</div>'
+    + '<div class="fila-in"><label>Saqué efectivo (de digital a efectivo)</label><input class="monto" inputmode="decimal" enterkeyhint="done" data-campo="extraccionARS" value="' + fARS(m.extraccionARS) + '"></div>'
+    + '<div class="fila-in"><label>Deposité efectivo (de efectivo a digital)</label><input class="monto" inputmode="decimal" enterkeyhint="done" data-campo="depositoARS" value="' + fARS(m.depositoARS) + '"></div>'
+    + '<div class="fila" style="margin-top:12px"><button class="pri" data-act="traspasoListo">Listo</button></div>');
 }
 // el monto para precargar una hoja de saldos: miles con punto y, si tiene centavos, coma y dos decimales (se lee de vuelta con parseMonto)
 function montoEditable(n){

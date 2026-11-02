@@ -51,7 +51,8 @@ money flow.
 - [x] T2 Engine: `disponiblePorMedio` in `TGMotor`, invariant total == disponible. Route: delegated.
       Evidence: tests/medios.motor.test.js RED 0/9 on T1, GREEN 9/9 (whole R4 corpus: old data cash 0 / digital = total;
       with cash marks cadena, flujosMes, pasivos, patrimonioNeto byte-equal). Goldens untouched and green.
-- [ ] T3 UI: hero with 3 values, selectors, transfer action, first-use cash prompt. Route: delegated.
+- [x] T3 UI: hero with 3 values, selectors, transfer action, first-use cash prompt. Route: delegated.
+      Evidence: tests/medios.ui.test.js RED 0/13 on T2, GREEN 13/13; npm test 980/982 (inventory + S-4, outside surface).
 - [ ] T4 Integration: Trabajo cash/pases, Undo, CSV, backup/restore, Version para PC. Route: delegated.
 - [ ] T5 Tests: unit + E2E for split, migration, backup round-trip; full suites green. Route: delegated.
 - [ ] T6 Release 1.35.0: versions bump, LEEME changelog, version folder. Route: inline/delegated.
@@ -81,6 +82,14 @@ money flow.
   A confirmed cierreReal corrects the total only (difference lands in digital). ctxModelo passes pase `forma` and
   `cierrePrevioEfectivo` (live December cash). Pending outside the writer surface: tests/inventario.data.js entries for
   efectivoMes / efectivoLegacy, and the privacidad.html CSP line.
+- T3: hero keeps the big total and adds Digital / Efectivo (Efectivo opens "¿Cuánto efectivo tenés hoy?" in the current
+  model year) plus "Pasar efectivo ↔ digital" (month fields extraccionARS / depositoARS). Each line row has a 💳/💵 toggle
+  (none on a "Del trabajo" row filled by pases); add-line and quick expense have Digital/Efectivo chips. Quick expense
+  without a choice follows the line medio; in the other medio than a line with an amount it goes to a separate
+  "<line> (en efectivo|digital)" row (aparte), so each line keeps one medio. Undo restores the line medio (`mp`) unless the
+  user changed it later. One-time cash question after the start-of-month notice; Omitir = 0. Helpers medioDe, ponerMedio,
+  puedeDeclararEfectivo, muestraPreguntaEfectivo live in TGMotor so test-loaded app functions keep resolving them.
+  Also pending inventory: gastoEnOtroMedio.
 
 ## Next step
 
