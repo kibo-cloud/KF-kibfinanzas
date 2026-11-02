@@ -1990,6 +1990,82 @@ try{
     await send('Emulation.clearDeviceMetricsOverride');
   }
 
+  // ── 1.35 cash / digital split (odd/tasks/cash-digital-split.md), by real clicks (hoy = 2026-10-04): the hero shows the total and, under
+  //    it, Digital and Efectivo; the one-time cash question in the Efectivo cell; the line toggle; "Pasar efectivo ↔ digital"; quick
+  //    expenses in cash and in digital (with Undo); backup -> restore keeps every cash field and the same three values ──
+  {
+    const ms = []; for(let i=0;i<12;i++) ms.push(mes([], [], [], []));
+    ms[9] = mes([it('Sueldo', 500000, true), Object.assign(it('Feria', 30000, true), {medio: 'efectivo'})], [it('Alquiler', 200000, true)], [Object.assign(it('Super', 10000, true), {medio: 'efectivo'})], []);
+    const yM = {anio: 2026, pagoExplicito: true, cotizacionUSD: 1500, meses: ms, arrastre: {desde: 9, inicial: {apertura: 100000, declarado: 100000, declaradoEl: '2026-10-01', origen: 'declarado'}}};
+    const seedM = async (year) => { await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); localStorage.setItem('kibo.ultimaCopia', new Date().toISOString()); localStorage.setItem('kibo.esquema', '1.35'); localStorage.setItem('kibo.anio','2026');
+      localStorage.setItem('kibo.datos.2026', ${JSON.stringify(JSON.stringify(year))}); true`); await nav(URL_APP); await sleep(1300); };
+    const clicM = async (sel, ms = 1400) => { await ev(`document.querySelector(${JSON.stringify(sel)}).click(); true`); await sleep(ms); };
+    const ponerM = (sel, v) => ev(`(function(){ var x=document.querySelector(${JSON.stringify(sel)}); x.value=${JSON.stringify(v)}; x.dispatchEvent(new Event('input',{bubbles:true})); return true; })()`);
+    const tres = () => ev(`[document.getElementById('bigFinal').textContent, document.getElementById('heroDig').textContent, document.getElementById('heroEfe').textContent]`);
+    const anio = () => ev(`JSON.parse(localStorage.getItem('kibo.datos.2026'))`);
+    const f = (n) => ev(`fARS(${n})`);
+    await seedM(yM);
+    check('1.35 hero: the big number is the total; Digital and Efectivo under it add up to it (cash: 30.000 - 10.000)',
+      await tres(), [await f(420000), await f(400000), await f(20000)]);
+    check('1.35 the cash question is asked once, inside the Efectivo cell (no extra notice); "Pasar efectivo ↔ digital" is there',
+      [await ev(`!!document.getElementById('preguntaEfectivo')`), await ev(`document.querySelector('#preguntaEfectivo small').textContent`), await ev(`document.querySelectorAll('.aviso').length`),
+       await ev(`document.querySelector('#heroMedios [data-act=traspaso]').getAttribute('aria-label')`)],
+      [true, 'Efectivo · ¿cuánto tenés?', 0, 'Pasar efectivo ↔ digital']);
+    await clicM('#preguntaEfectivo', 400);
+    check('1.35 the cash sheet: the question, Cancelar / Omitir / Guardar',
+      await ev(`[document.querySelector('#hoja h3').textContent, Array.prototype.map.call(document.querySelectorAll('#hoja .fila button'), function(b){ return b.textContent; })]`),
+      ['¿Cuánto efectivo tenés hoy?', ['Cancelar', 'Omitir', 'Guardar']]);
+    await ponerM('#inEfectivoHoja', '50.000'); await clicM('[data-act=efectivoHojaOk]');
+    check('1.35 declaring 50.000 in cash: the opening is derived (50.000 - 20.000 of October), the total does not move, the question is gone',
+      [(await anio()).arrastre.inicial.aperturaEfectivo, ...(await tres()), await ev(`!!document.getElementById('preguntaEfectivo')`)],
+      [30000, await f(420000), await f(370000), await f(50000), false]);
+    // the line toggle: Sueldo to cash and back
+    await clicM('[data-act=medio][data-k=ingresos][data-i="0"]');
+    check('1.35 the toggle moves Sueldo to cash: saved, cash 550.000 and digital negative (shown as it is, in red), total unchanged',
+      [(await anio()).meses[9].ingresos[0].medio, ...(await tres()), await ev(`document.getElementById('heroDig').className`),
+       await ev(`document.querySelector('[data-act=medio][data-k=ingresos][data-i="0"]').getAttribute('aria-pressed')`)],
+      ['efectivo', await f(420000), await f(-130000), await f(550000), 'mal', 'true']);
+    await clicM('[data-act=medio][data-k=ingresos][data-i="0"]');
+    check('1.35 toggled back to digital: the field is gone', [(await anio()).meses[9].ingresos[0].medio === undefined, ...(await tres())], [true, await f(420000), await f(370000), await f(50000)]);
+    // "Pasar efectivo ↔ digital": 15.000 from the ATM
+    await clicM('#heroMedios [data-act=traspaso]', 400);
+    check('1.35 the transfer sheet: both directions for the month', await ev(`[document.querySelector('#hoja h3').textContent, document.querySelectorAll('#hoja input[data-campo=extraccionARS], #hoja input[data-campo=depositoARS]').length]`),
+      ['Pasar efectivo ↔ digital', 2]);
+    await ev(`(function(){ var x = document.querySelector('#hoja input[data-campo=extraccionARS]'); x.focus(); x.value = '15000'; x.dispatchEvent(new Event('input', {bubbles: true})); x.blur(); return true; })()`); await sleep(200);
+    await clicM('[data-act=traspasoListo]');
+    check('1.35 15.000 taken out of the ATM: cash +15.000, digital -15.000, the total unchanged, saved on the month',
+      [(await anio()).meses[9].extraccionARS, ...(await tres())], [15000, await f(420000), await f(355000), await f(65000)]);
+    // quick expense in cash on the cash line, and Undo
+    await clicM('[data-act=gastoRapido]', 400);
+    await ponerM('#grMonto', '2000'); await clicM('#grMedio [data-v=efectivo]', 200);
+    await ev(`Array.prototype.filter.call(document.querySelectorAll('#grChips button'), function(b){ return b.textContent === 'Super'; })[0].click(); true`); await sleep(1400);
+    const mvM = (await anio()).meses[9].movimientos[0];
+    check('1.35 a 2.000 quick expense in cash on Super: cash -2.000, the movement says cash',
+      [mvM && mvM.medio, (await anio()).meses[9].gastosVariables[0].monto, ...(await tres())], ['efectivo', 12000, await f(418000), await f(355000), await f(63000)]);
+    await clicM('#toast [data-act=quitarMov]');
+    check('1.35 Undo of the cash expense: back to the same three values', await tres(), [await f(420000), await f(355000), await f(65000)]);
+    // quick expense in digital on the cash line: a separate "(digital)" row, the cash pocket untouched
+    await clicM('[data-act=gastoRapido]', 400);
+    await ponerM('#grMonto', '3000'); await clicM('#grMedio [data-v=digital]', 200);
+    await ev(`Array.prototype.filter.call(document.querySelectorAll('#grChips button'), function(b){ return b.textContent === 'Super'; })[0].click(); true`); await sleep(1400);
+    const gv = (await anio()).meses[9].gastosVariables;
+    check('1.35 a digital expense on a cash line goes to "Super (digital)", digital: one medio per line',
+      [gv.map(function(x){ return [x.nombre, x.monto, x.medio || 'digital']; }), ...(await tres())],
+      [[['Super', 10000, 'efectivo'], ['Super (digital)', 3000, 'digital']], await f(417000), await f(352000), await f(65000)]);
+    // backup -> another phone state -> restore: every cash field and the three values come back
+    const antesM = await tres(), copiaM = await ev(`JSON.stringify(armarCopia())`);
+    await seedM(Object.assign({}, yM, {arrastre: undefined}));
+    await ev(`restaurarTexto(${JSON.stringify(copiaM)}); pendiente(); true`); await sleep(500); await nav(URL_APP); await sleep(1300);
+    const gR = await anio();
+    check('1.35 backup -> restore: the cash opening, the transfer, every line medio and the quick-expense medio come back, and the same three values',
+      [gR.arrastre.inicial.aperturaEfectivo, gR.meses[9].extraccionARS, gR.meses[9].ingresos[1].medio, gR.meses[9].gastosVariables[0].medio, ...(await tres())],
+      [30000, 15000, 'efectivo', 'efectivo', ...antesM]);
+    // the year of today without the month-to-month balance: the first-use question comes first and the dimmed card has no Digital / Efectivo
+    await seedM(Object.assign({}, yM, {arrastre: undefined}));
+    check('1.35 while the first-use question is pending there is no Digital / Efectivo row and no cash question',
+      [await ev(`!!document.getElementById('primerUso')`), await ev(`!!document.getElementById('heroMedios')`), await ev(`!!document.getElementById('preguntaEfectivo')`)], [true, false, false]);
+  }
+
   check('no uncaught page errors', pageErrs, []);
 }catch(e){ fails++; results.push('ERROR ' + e.message); }
 finally{
