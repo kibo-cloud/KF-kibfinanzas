@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-R4CAACo2c/5MSeMl3sIDfAxPrXI/uUqkEEOGMPl+GAo=' 'sha256-yX4p8hofIylqqRNXw2XyyNLNaGgwbNSvwtH8SdV6jP0='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-7nzS9EfJzwGdTKMFSdm1Zp+DtZqXBrJmLkSm46RawHw=' 'sha256-fMV8kc3tlIeFSi8EoawWac8XZ5671mYA53tcaxL4IPk='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -2077,6 +2077,7 @@ function normalizar(d, hoy){
         if(it && it.aparte === true) o.aparte = true;   // L3 review: el renglón lo creó "No, es otro gasto"
         if(it && diaValido(it.vence)) o.vence = it.vence;   // D4: "vence el día N" (opcional; sin él, vence con el mes como siempre)
         if(it && typeof it.montoPlan === 'number' && isFinite(it.montoPlan) && it.montoPlan > 0) o.montoPlan = it.montoPlan;   // D9 A2: lo planeado antes de un pago parcial (opcional)
+        if(it && it.medio === 'efectivo') o.medio = 'efectivo';   // 1.35: el renglón se paga/cobra en efectivo (opcional; sin él, digital)
         // migración única por año: solo completa los pagado sin definir con la inferencia de antes (monto cargado y mes ya corrido)
         if(!d.pagoExplicito && o.pagado === undefined) o.pagado = o.monto > 0 && i <= mesTope(d.anio, refPago);
         return o;
@@ -2090,6 +2091,8 @@ function normalizar(d, hoy){
     m.ventaUSD = num(m.ventaUSD);         // dólares que vendí
     m.ventaARS = num(m.ventaARS);         // pesos que me dieron por esos dólares
     m.reposicionARS = num(m.reposicionARS); // pesos que devolví al ahorro
+    medioMesValido(m, 'extraccionARS');   // 1.35: pesos que pasé de digital a efectivo (cajero); opcional, nunca cambia el total
+    medioMesValido(m, 'depositoARS');     // 1.35: pesos que pasé de efectivo a digital (depósito); opcional, nunca cambia el total
     if(!Array.isArray(m.movimientos)) m.movimientos = [];
     m.movimientos = m.movimientos.filter(function(x){ return x && typeof x==='object'; }).map(function(x){
       var mo = {id:String(x.id||''), fecha:String(x.fecha||''), sec:String(x.sec||'gastosVariables'), nombre:String(x.nombre||''), monto:num(x.monto)};
@@ -2106,6 +2109,8 @@ function normalizar(d, hoy){
       if(typeof x.fi === 'number' && x.fi >= 0 && Math.floor(x.fi) === x.fi) mo.fi = x.fi;   // S2 M2: lugar del renglón que cambió (Deshacer)
       if(typeof x.fo === 'number' && x.fo >= 0 && Math.floor(x.fo) === x.fo) mo.fo = x.fo;   // S2 M2: cuál de los renglones con ese nombre (0 = el primero)
       if(typeof x.fn === 'number' && x.fn >= 1 && Math.floor(x.fn) === x.fn) mo.fn = x.fn;   // S2 M2: cuántos renglones tenían ese nombre
+      if(x.medio === 'efectivo') mo.medio = 'efectivo';   // 1.35: el gasto fue en efectivo (sin el campo, digital)
+      if(x.mp === 'efectivo' || x.mp === 'digital') mo.mp = x.mp;   // 1.35: medio que tenía el renglón antes de que este gasto lo cambiara (Deshacer)
       return mo;
     });
     m.metaAhorroPct = m.metaAhorroPct==null ? 0.10 : num(m.metaAhorroPct);
@@ -2131,7 +2136,11 @@ function normalizar(d, hoy){
   if(rv === null) delete d.rev; else d.rev = rv;
   return d;
 }
+// 1.35: un campo de mes opcional de efectivo/digital: se guarda solo si es un número positivo; si no, se quita (un año sin efectivo queda igual que antes)
+function medioMesValido(m, k){ var v = num(m[k]); if(v > 0) m[k] = v; else delete m[k]; }
 // Validación de los campos del modelo de saldos (nivel año y mes; nunca por ítem: las versiones viejas los pierden). Un campo mal formado se descarta.
+// 1.35: `medio` por renglón y por gasto rápido SÍ es por ítem: la 1.34 y anteriores lo pierden al guardar (por eso el respaldo previo, kibo.respaldo.pre-medios).
+var EFECTIVO_MAX = 1e13;   // 1.35: tope de cordura del efectivo inicial declarado (diez billones de pesos); más que eso es un dato roto
 var ORIGENES_ARRASTRE = ['declarado', 'omitido', 'arrastre'];
 function numEstricto(v){   // número finito o texto numérico completo; cualquier otra cosa (incluido '' y 'abc') no es un número
   var n = typeof v === 'number' ? v : (typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN);
@@ -2152,6 +2161,7 @@ function validarArrastre(a){
     if(typeof ini.declaradoEl === 'string') i.declaradoEl = ini.declaradoEl;
     if(ORIGENES_ARRASTRE.indexOf(ini.origen) >= 0) i.origen = ini.origen;
     if((n = numEstricto(ini.calculadoOrigen)) !== null) i.calculadoOrigen = n;
+    if((n = numEstricto(ini.aperturaEfectivo)) !== null && Math.abs(n) <= EFECTIVO_MAX) i.aperturaEfectivo = n;   // 1.35: efectivo al arrancar (digital = apertura - esto); sin él, 0
     o.inicial = i;
   }
   return o;
@@ -4633,6 +4643,7 @@ function renderAjustes(){
        + '<div class="anios" id="anios"></div>'
        + (respaldoPrevio() && diasDelRespaldo() <= 30 ? filaAj('volver', 'Volver a como estaba antes de actualizar', {t:'Se guardó al actualizar la app. Se borra solo a los 30 días'}, 'volver130') : '')
        + (respaldoR4() && diasDelRespaldoR4() <= 30 ? filaAj('volverR4', 'Volver a como estaba antes del saldo mes a mes', {t:'Se guardó antes de que la app empezara a llevar tu saldo de un mes al otro. Se borra solo a los 30 días'}, 'volverR4') : '')
+       + (respaldoMedios() && diasDelRespaldoMedios() <= 30 ? filaAj('volver', 'Volver a como estaba antes de efectivo y digital', {t:'Se guardó antes de que la app separara el efectivo de lo digital. Se borra solo a los 30 días'}, 'volverMedios') : '')
        + filaAj('anio', 'Crear el año ' + (D.anio+1), {t:'Con las mismas categorías y el cierre de ' + D.anio + ' como saldo inicial'}, 'duplicar')
        + '</div>';
     h += '<h2 class="tit">Exportar</h2><div class="lista">'
@@ -5422,6 +5433,7 @@ function duplicar(){
     }
     m.ahorroMesARS = 0; m.ahorroMesUSD = 0; m.compraARS = 0; m.compraUSD = 0;
     m.retiroARS = 0; m.ventaUSD = 0; m.ventaARS = 0; m.reposicionARS = 0; m.movimientos = [];
+    delete m.extraccionARS; delete m.depositoARS;   // 1.35: lo que pasaste entre efectivo y digital es del año viejo (el medio de cada renglón sí se copia)
   }
   if(revGuardada(PREF + n.anio).hay){ alerta('Ese año ya existe', 'El ' + n.anio + ' ya está guardado en este teléfono. Cambiá de año desde Ajustes en vez de crearlo de nuevo.'); return; }
   var viejo = D.anio, previo = D, mesPrevio = mes, obsPrevia = obsoleta, lsPrevio = hayLS;
@@ -6187,6 +6199,7 @@ document.addEventListener('click', function(ev){
   if(a === 'duplicar'){ duplicar(); return; }
   if(a === 'volver130'){ volverAntesDe130(); return; }
   if(a === 'volverR4'){ volverAntesDeR4(); return; }
+  if(a === 'volverMedios'){ volverAntesDeMedios(); return; }
   if(a === 'recargarPag'){ location.reload(); return; }
   if(a === 'tema'){ D.ui.tema = b.getAttribute('data-v'); aplicarTema(); tocar(); renderAjustes(); return; }
   if(a === 'copia'){ hacerCopia(); return; }
@@ -6621,6 +6634,7 @@ function normTrab(t){
     o.pases.push({id:String(p.id || tjId()), fecha:pf, monto:Math.max(0, Math.round(num(p.monto))),
       anio: Math.round(num(p.anio)) || +pf.slice(0,4), mes: p.mes == null ? +pf.slice(5,7) - 1 : Math.min(11, Math.max(0, Math.round(num(p.mes)))),
       creada:String(p.creada || '')});
+    if(p.forma === 'efectivo') o.pases[o.pases.length - 1].forma = 'efectivo';   // 1.35: pasado en efectivo (sin el campo, transferencia = digital)
   }
   var gs = Array.isArray(t.gastos) ? t.gastos : [];
   for(i=0;i<gs.length;i++){
@@ -8481,8 +8495,10 @@ function accionTj(a, b){
 /* ═══ 13b · seguro de actualización ═════════════════════════════════
    Al pasar de una versión anterior a la 1.30 se guarda una copia cruda de lo
    que había, por las dudas. No convierte ni reescribe nada: los años siguen
-   exactamente como estaban, y los campos nuevos se leen con valor por defecto. */
-var LSESQ = 'kibo.esquema', LSPRE130 = 'kibo.respaldo.pre130', ESQUEMA = '1.30';
+   exactamente como estaban, y los campos nuevos se leen con valor por defecto.
+   1.35 (efectivo y digital): al pasar de un esquema 1.30 a este se guarda otra copia cruda, kibo.respaldo.pre-medios, 30 días y con
+   una acción para volver (como el respaldo de antes del saldo mes a mes): la 1.34 y anteriores pierden el medio de cada renglón. */
+var LSESQ = 'kibo.esquema', LSPRE130 = 'kibo.respaldo.pre130', ESQUEMA = '1.35', LSPREMEDIOS = 'kibo.respaldo.pre-medios';
 var LSVERVISTA = 'kibo.versionVista';   // L9: la última APPVER que arrancó en este teléfono; del teléfono como kibo.esquema: no es clave propia, no viaja en la copia
 // claves de esta app (la copia y la restauración solo tocan estas; otra app del mismo sitio puede usar "kibo.algo"): kibo.datos.AAAA + estas
 var LSR4 = 'kibo.modeloSaldos', LSPRER4 = 'kibo.respaldo.pre-r4';   // marca "este teléfono ya empezó el modelo de saldos" y la copia de lo que había justo antes (como pre130)
@@ -8503,22 +8519,57 @@ function cuarentenaAntesDeBorrar(claves){
   }
   return true;
 }
-function seguroActualizacion(){
+function seguroActualizacion(){   // true solo al venir de antes de la 1.30 (avisa la actualización); de 1.30 a 1.35 guarda su copia en silencio
   try{
-    if(localStorage.getItem(LSESQ) === ESQUEMA) return false;
+    var previo = localStorage.getItem(LSESQ);
+    if(previo === ESQUEMA) return false;
     var datos = {}, hay = false, i, k;
     for(i=0;i<localStorage.length;i++){
       k = localStorage.key(i);
       if(!claveMia(k)) continue;
       datos[k] =localStorage.getItem(k); hay = true;
     }
-    if(hay && !localStorage.getItem(LSPRE130)){
-      try{ localStorage.setItem(LSPRE130, JSON.stringify({version:'anterior a 1.30', fecha:new Date().toISOString(), datos:datos})); }
-      catch(e){}   // si no entra, seguimos igual: nada de lo que ya está se toca
+    if(previo === null){   // antes de la 1.30 no se anotaba el esquema
+      if(hay && !localStorage.getItem(LSPRE130)){
+        try{ localStorage.setItem(LSPRE130, JSON.stringify({version:'anterior a 1.30', fecha:new Date().toISOString(), datos:datos})); }
+        catch(e){}   // si no entra, seguimos igual: nada de lo que ya está se toca
+      }
+    } else if(hay && !localStorage.getItem(LSPREMEDIOS)){   // 1.35: antes del primer guardado que pueda llevar efectivo/digital
+      try{ localStorage.setItem(LSPREMEDIOS, JSON.stringify({version:'anterior a efectivo y digital', fecha:new Date().toISOString(), datos:datos})); }
+      catch(e){}   // igual que la de 1.30: si no entra, nada de lo que ya está se toca
     }
     try{ localStorage.setItem(LSESQ, ESQUEMA); }catch(e){}
-    return hay;
+    return previo === null && hay;
   }catch(e){ return false; }
+}
+function respaldoMedios(){
+  try{ var r = JSON.parse(localStorage.getItem(LSPREMEDIOS) || 'null'); return r && r.datos ? r : null; }catch(e){ return null; }
+}
+function diasDelRespaldoMedios(){
+  var r = respaldoMedios(); if(!r || !r.fecha) return 0;
+  return Math.floor((Date.now() - new Date(r.fecha).getTime()) / 864e5);
+}
+function vencerRespaldoMedios(){   // a los 30 días se borra solo, como los otros respaldos
+  if(!respaldoMedios() || diasDelRespaldoMedios() <= 30) return false;
+  try{ localStorage.removeItem(LSPREMEDIOS); }catch(e){ return false; }
+  return true;
+}
+function volverAntesDeMedios(){
+  var r = respaldoMedios(); if(!r) return;
+  confirmar('Volver a como estaba antes de efectivo y digital',
+    'Se restaura todo tal cual estaba el ' + r.fecha.slice(8,10) + '/' + r.fecha.slice(5,7) + ', antes de que la app separara el efectivo de lo digital. <b>Lo que cargaste desde entonces se pierde</b>, incluido lo de la pestaña Trabajo. Hacé una copia de seguridad antes, si no la tenés.',
+    'Restaurar', function(){
+      try{
+        var i, k, borrar = [], empezo = false;
+        for(i=0;i<localStorage.length;i++){ k = localStorage.key(i); if(claveMia(k)) borrar.push(k); }   // kibo.esquema queda: el arranque no vuelve a copiar
+        if(!cuarentenaAntesDeBorrar(borrar)){ pildora('No pude apartar los datos que no se pueden leer, así que no cambié nada. Hacé una copia de seguridad y probá de nuevo.', true); return; }
+        empezo = true;   // L8: el respaldo se borra último, así una vuelta atrás cortada se puede repetir igual
+        for(i=0;i<borrar.length;i++) localStorage.removeItem(borrar[i]);
+        for(k in r.datos) if(r.datos.hasOwnProperty(k) && claveMia(k)) localStorage.setItem(k, r.datos[k]);   // solo claves propias
+        localStorage.removeItem(LSPREMEDIOS);
+      }catch(e){ pildora(empezo ? 'No se pudo terminar de restaurar. El respaldo sigue guardado: tocá de nuevo esta opción para terminarlo.' : 'No se pudo restaurar. No cambié nada: probá de nuevo.', true); return; }
+      location.reload();
+    });
 }
 function respaldoPrevio(){
   try{ var r = JSON.parse(localStorage.getItem(LSPRE130) || 'null'); return r && r.datos ? r : null; }catch(e){ return null; }
@@ -8885,6 +8936,7 @@ T = leerTrab();
 var abonosNuevos = generarAbonos();
 if(respaldoPrevio() && diasDelRespaldo() > 30){ try{ localStorage.removeItem(LSPRE130); }catch(e){} }
 vencerRespaldoR4();
+vencerRespaldoMedios();
 aplicarModo();
 if(abonosNuevos) setTimeout(function(){ toast((abonosNuevos === 1 ? 'Se generó 1 abono' : 'Se generaron ' + abonosNuevos + ' abonos') + ' en Trabajo'); }, 900);
 var nuevaVersion = versionNueva();   // se anota siempre; avisa una sola vez
