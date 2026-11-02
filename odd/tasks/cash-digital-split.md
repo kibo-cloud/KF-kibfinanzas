@@ -58,7 +58,13 @@ money flow.
 - [x] T5 Tests: unit + E2E for split, migration, backup round-trip; full suites green. Route: delegated.
       Evidence: npm test 986/988 (the 2 failures need files outside the writer surface, see Progress); npm run test:e2e
       562/562 (549 before + 13 new "1.35" checks). L7 390 px fixture re-recorded (L7_GRABAR=1): only the month hero grew 57 px.
-- [ ] T6 Release 1.35.0: versions bump, LEEME changelog, version folder. Route: inline/delegated.
+- [x] T6 Release 1.35.0: versions bump, LEEME changelog, version folder. Route: inline (parent).
+      Evidence: tests/release.test.js RED 4/6, GREEN; CSP hashes resynced in index.html and privacidad.html;
+      npm test 988/988; npm run test:e2e 562/562 exit 0; commit 5861680; versiones/TuGasto v1.35.0 (APPVER 1.35.0, sw v49).
+      Native review lineage review-f22ad1e9c135b3fc (base 0fd5f46, one lens reliability, consent granted): approved,
+      acknowledged, authority burned. Advisory follow-ups (non-blocking): F1 usaMedios ignores cash Trabajo pases, so a year
+      whose only cash is a cash pase hides the CSV Efectivo/Digital columns (index.html:2702-2712); F2 ctxModelo has no null
+      guard on leerAnio(d.anio - 1) (index.html:8854-8856).
 
 ## Acceptance criteria
 
@@ -109,4 +115,5 @@ money flow.
 
 ## Next step
 
-Parent: sync privacidad.html CSP + inventario entries, then T6 release 1.35.0 (owner decides delivery).
+Owner tests 1.35.0 on the phone. Then optional 1.35.1 for advisory follow-ups F1 and F2. Push/merge: owner decides.
+Engram mirror `odd/cash-digital-split/tasks`: pending (Engram save failed: multiple active runtime sessions).
