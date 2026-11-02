@@ -48,7 +48,9 @@ money flow.
       schema bump with pre-migration snapshot. Route: delegated (writer trigger, 2+ files).
       Evidence: tests/medios.datos.test.js RED 8/9 on base, GREEN 9/9; npm test 959/960 (only S-4: privacidad.html
       CSP line is outside the writer surface, synced by the parent).
-- [ ] T2 Engine: `disponiblePorMedio` in `TGMotor`, invariant total == disponible. Route: delegated.
+- [x] T2 Engine: `disponiblePorMedio` in `TGMotor`, invariant total == disponible. Route: delegated.
+      Evidence: tests/medios.motor.test.js RED 0/9 on T1, GREEN 9/9 (whole R4 corpus: old data cash 0 / digital = total;
+      with cash marks cadena, flujosMes, pasivos, patrimonioNeto byte-equal). Goldens untouched and green.
 - [ ] T3 UI: hero with 3 values, selectors, transfer action, first-use cash prompt. Route: delegated.
 - [ ] T4 Integration: Trabajo cash/pases, Undo, CSV, backup/restore, Version para PC. Route: delegated.
 - [ ] T5 Tests: unit + E2E for split, migration, backup round-trip; full suites green. Route: delegated.
@@ -74,6 +76,11 @@ money flow.
   `kibo.respaldo.pre-medios` (30 days, Ajustes "Volver a como estaba antes de efectivo y digital"); pre-1.30 phones keep
   the pre130 path. Deviation: snapshot at schema upgrade (earlier than the first cash write) instead of the lazy R4 marker,
   so no new own key was needed in CLAVES_PROPIAS.
+- T2: TGMotor gains esEfectivo, cadenaMedios, disponiblePorMedio, aperturaEfectivoPara, usaMedios (internal efectivoMes,
+  efectivoLegacy, cadenaEfectivo, efectivoInicial). Cash is its own chain by the flujosMes/cadena rules; digital = total - cash.
+  A confirmed cierreReal corrects the total only (difference lands in digital). ctxModelo passes pase `forma` and
+  `cierrePrevioEfectivo` (live December cash). Pending outside the writer surface: tests/inventario.data.js entries for
+  efectivoMes / efectivoLegacy, and the privacidad.html CSP line.
 
 ## Next step
 

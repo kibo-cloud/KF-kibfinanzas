@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-7nzS9EfJzwGdTKMFSdm1Zp+DtZqXBrJmLkSm46RawHw=' 'sha256-fMV8kc3tlIeFSi8EoawWac8XZ5671mYA53tcaxL4IPk='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-xGWRpZ8JllUNVpna6+oi6/DPMw5ak0eQ+xwQUIUJkCI=' 'sha256-lsHchlR09CcLs4xlj+M3m3Hs/5HNdCicjrnc49M+Y/g='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -2596,6 +2596,99 @@ function patrimonioNeto(d, hoy, ctx){
     cotizacion: cot, cotizacionFecha: d.cotizacionFecha || '', estimado: true
   };
 }
+/* ---- 1.35: efectivo y digital (odd/tasks/cash-digital-split.md). Funciones puras que NO cambian calc, flujosMes, cadena, pasivos ni
+   patrimonioNeto. El total de cada mes es el de la tarjeta: calc().disponibleFinal en un mes legacy; cierre (pasado), a hoy (en curso) o
+   proyectado (futuro) en un mes del modelo. El efectivo lleva su propia cadena con las mismas reglas de flujosMes/cadena y
+   digital = total - efectivo: digital + efectivo da siempre el total. Lo que no dice efectivo es digital (como en Trabajo): ahorro, dólares,
+   retiros y reposiciones del ahorro, y todo renglón sin medio. Un cierre real confirmado corrige el total; la diferencia queda en digital. ---- */
+function esEfectivo(x){ return !!x && x.medio === 'efectivo'; }
+function traspasoMes(m){ return num(m.extraccionARS) - num(m.depositoARS); }   // de digital a efectivo (cajero) menos de efectivo a digital (depósito)
+// el efectivo de un mes del modelo, por las reglas de flujosMes: renglones en efectivo (de "Del trabajo", lo que sus pases no cubren),
+// pases de Trabajo en efectivo y traspasos (realizados en un mes pasado o en curso, programados en uno futuro)
+function efectivoMes(d, j, hoy, ctx){
+  var m = d.meses[j], real = estadoMes(d.anio, j, hoy) !== 'futuro', i, k, it, mo;
+  var lp = (ctx && ctx.pasesTrabajo && ctx.pasesTrabajo[claveMes(d.anio, j)]) || [], pases = 0, tReal = 0, tProg = 0;
+  for(i=0;i<lp.length;i++){
+    mo = num(lp[i] && lp[i].monto); if(!(mo > 0)) continue;
+    pases += mo;
+    if(lp[i].forma !== 'efectivo') continue;
+    if(real && String(lp[i].fecha) <= hoy.iso) tReal += mo; else tProg += mo;
+  }
+  var rep = repartoPases(m.ingresos, pases), ing = {real:0, pend:0, prog:0}, sal = {real:0, pend:0, prog:0}, secs = ['gastosFijos', 'gastosVariables', 'deudas'];
+  for(i=0;i<m.ingresos.length;i++){
+    it = m.ingresos[i]; if(!esEfectivo(it)) continue;
+    mo = num(it.monto); if(esRenglonTrabajo(it.nombre)) mo -= rep[i];
+    acumularFlujo(ing, mo, estaPagado(j, it), real);
+  }
+  for(k=0;k<secs.length;k++) for(i=0;i<m[secs[k]].length;i++){ it = m[secs[k]][i]; if(esEfectivo(it)) acumularFlujo(sal, num(it.monto), estaPagado(j, it), real); }
+  return {realizado: real, resultado: ing.real - sal.real, pendiente: ing.pend - sal.pend, resultadoProg: ing.prog - sal.prog,
+          trabajoRealizado: tReal, trabajoProgramado: tProg, traspaso: traspasoMes(m)};
+}
+// el efectivo de un mes legacy, por las reglas de calc(): lo tildado en efectivo ("Del trabajo" siempre cuenta: lo que cubren los pases
+// en efectivo es efectivo y el resto sigue el medio del renglón) y los traspasos. Sin saldo inicial: es el resultado del mes, como calc()
+function efectivoLegacy(d, j, ctx){
+  var m = d.meses[j], lp = (ctx && ctx.pasesTrabajo && ctx.pasesTrabajo[claveMes(d.anio, j)]) || [], pe = 0, t = 0, i, k, it, mo, cub, rep;
+  var secs = ['gastosFijos', 'gastosVariables', 'deudas'];
+  for(i=0;i<lp.length;i++){ mo = num(lp[i] && lp[i].monto); if(mo > 0 && lp[i].forma === 'efectivo') pe += mo; }
+  rep = repartoPases(m.ingresos, pe);
+  for(i=0;i<m.ingresos.length;i++){
+    it = m.ingresos[i]; mo = num(it.monto); cub = esRenglonTrabajo(it.nombre) ? rep[i] : 0;
+    t += cub;
+    if(esEfectivo(it) && (estaPagado(j, it) || esRenglonTrabajo(it.nombre))) t += mo - cub;
+  }
+  for(k=0;k<secs.length;k++) for(i=0;i<m[secs[k]].length;i++){ it = m[secs[k]][i]; if(esEfectivo(it) && estaPagado(j, it)) t -= num(it.monto); }
+  return t + traspasoMes(m);
+}
+function medios(total, efe){ return {efectivo: cerosFuera(efe), digital: cerosFuera(total - efe), total: total}; }
+// el efectivo con el que arranca el mes de arranque: el declarado (aperturaEfectivo); si no hay, el de diciembre del año anterior cuando el
+// año sigue ese cierre en vivo (ctx.cierrePrevioEfectivo); si no, 0 (los datos de antes de 1.35 son todo digital)
+function efectivoInicial(d, e, ctx){
+  var ini = (d.arrastre && d.arrastre.inicial) || {};
+  if(numOk(ini.aperturaEfectivo)) return ini.aperturaEfectivo;
+  if(e.origenApertura === 'anioAnterior' && numOk(ctx && ctx.cierrePrevioEfectivo)) return ctx.cierrePrevioEfectivo;
+  return 0;
+}
+function cadenaEfectivo(d, hoy, ctx, apFija){
+  var cad = cadena(d, hoy, ctx), desde = cad.resumen.desde, out = [], prev = null, j, e, f, ap, cierre, proy, x;
+  for(j=0;j<12;j++){
+    e = cad.meses[j];
+    if(e.legacy){ out.push(medios(e.calc.disponibleFinal, efectivoLegacy(d, j, ctx))); continue; }
+    f = efectivoMes(d, j, hoy, ctx);
+    ap = j === desde ? (numOk(apFija) ? apFija : efectivoInicial(d, e, ctx)) : prev.cierre;
+    cierre = ap + f.resultado + (f.realizado ? f.trabajoRealizado + f.traspaso : 0);   // como cierreCalc
+    if(e.estado === 'pasado') proy = cierre;
+    else if(e.estado === 'actual') proy = cierre + f.pendiente + f.trabajoProgramado;   // como el proyectado del mes en curso
+    else proy = (j === desde ? ap : prev.proyectado) + f.resultadoProg + f.trabajoProgramado + f.traspaso;
+    x = e.estado === 'futuro' ? medios(e.proyectado, proy) : medios(e.estado === 'pasado' ? e.cierre : e.cierreCalc, cierre);
+    x.cierreEfectivo = cerosFuera(cierre);   // lo que pasa al mes siguiente (y a enero del año que sigue)
+    out.push(x); prev = {cierre: cierre, proyectado: proy};
+  }
+  return out;
+}
+// los 12 meses de un año: {efectivo, digital, total} por mes (total = la tarjeta del mes); en un mes del modelo, además cierreEfectivo
+function cadenaMedios(d, hoy, ctx){ return cadenaEfectivo(d, hoy, ctx, null); }
+function disponiblePorMedio(d, j, hoy, ctx){ return cadenaMedios(d, hoy, ctx)[j]; }
+// "¿Cuánto efectivo tenés hoy?": el efectivo con el que arrancó el mes de arranque para que hoy dé lo declarado (como iniciarArrastre con
+// el disponible). null si el año no lleva el saldo mes a mes, no es el de hoy, todavía no arrancó o lo declarado no es un número
+function aperturaEfectivoPara(d, hoy, ctx, declarado){
+  if(!d || !d.arrastre || d.anio !== hoy.anio || !numOk(declarado)) return null;
+  var desde = cadena(d, hoy, ctx).resumen.desde;
+  if(hoy.mes < desde) return null;
+  var c0 = cadenaEfectivo(d, hoy, ctx, 0)[hoy.mes];
+  return cerosFuera(Math.round((declarado - c0.efectivo) * 100) / 100);
+}
+// ¿el año usa efectivo? (algún renglón o gasto en efectivo, un traspaso o un efectivo inicial distinto de 0). Sin esto, todo se ve como antes
+function usaMedios(d){
+  var i, s, q, m, ini = d && d.arrastre && d.arrastre.inicial;
+  if(ini && numOk(ini.aperturaEfectivo) && ini.aperturaEfectivo !== 0) return true;
+  for(i=0;i<12;i++){
+    m = d.meses[i];
+    if(num(m.extraccionARS) || num(m.depositoARS)) return true;
+    for(s=0;s<SECS.length;s++) for(q=0;q<m[SECS[s].k].length;q++) if(esEfectivo(m[SECS[s].k][q])) return true;
+    for(q=0;q<m.movimientos.length;q++) if(esEfectivo(m.movimientos[q])) return true;
+  }
+  return false;
+}
 function hayDatos(d, conTrabajo){   // "hay datos" = hay algo REGISTRADO (cargado), esté tildado o no
   if(conTrabajo) return true;
   var flujo = ['ahorroMesARS','ahorroMesUSD','compraARS','compraUSD','retiroARS','ventaUSD','ventaARS','reposicionARS'];
@@ -2665,7 +2758,12 @@ return {
   gastadoTope: gastadoTope,
   datosTorta: datosTorta,
   hayDatos: hayDatos,
-  sumarAItem: sumarAItem
+  sumarAItem: sumarAItem,
+  esEfectivo: esEfectivo,
+  cadenaMedios: cadenaMedios,
+  disponiblePorMedio: disponiblePorMedio,
+  aperturaEfectivoPara: aperturaEfectivoPara,
+  usaMedios: usaMedios
 };
 })();
 </script>
@@ -2714,7 +2812,12 @@ var SECS = TGMotor.SECS,
     gastadoTope = TGMotor.gastadoTope,
     datosTorta = TGMotor.datosTorta,
     hayDatos = TGMotor.hayDatos,
-    sumarAItem = TGMotor.sumarAItem;
+    sumarAItem = TGMotor.sumarAItem,
+    esEfectivo = TGMotor.esEfectivo,
+    cadenaMedios = TGMotor.cadenaMedios,
+    disponiblePorMedio = TGMotor.disponiblePorMedio,
+    aperturaEfectivoPara = TGMotor.aperturaEfectivoPara,
+    usaMedios = TGMotor.usaMedios;
 
 // La única fuente de la fecha de evaluación en la app: el motor no lee el reloj, recibe `hoy` en cada llamada.
 function hoyApp(){ return hoyDe(new Date()); }
@@ -8649,9 +8752,12 @@ function ctxModelo(d, hoy){
   var pt = {}, ctx = {pasesTrabajo: pt}, cp = cierreAnioAnterior(d, hoy), i, p, k;
   if(T && T.pases) for(i=0;i<T.pases.length;i++){
     p = T.pases[i]; k = p.anio + '-' + dos(p.mes + 1);
-    (pt[k] = pt[k] || []).push({fecha:p.fecha, monto:p.monto});
+    (pt[k] = pt[k] || []).push(p.forma === 'efectivo' ? {fecha:p.fecha, monto:p.monto, forma:'efectivo'} : {fecha:p.fecha, monto:p.monto});   // 1.35: el medio del pase va al efectivo o a digital
   }
-  if(cp !== null) ctx.cierrePrevio = cp;
+  if(cp !== null){   // 1.35: con el cierre de diciembre del año anterior viene también su efectivo (cp no es null: ese año está y lleva el saldo)
+    ctx.cierrePrevio = cp; p = leerAnio(d.anio - 1, true);
+    ctx.cierrePrevioEfectivo = cadenaMedios(p, hoy, ctxModelo(p, hoy))[11].cierreEfectivo;
+  }
   return ctx;
 }
 function cierreAnioAnterior(d, hoy){   // cierre de diciembre del año anterior, en vivo, solo si el año arranca de ese cierre y el anterior tiene modelo; si no, manda el arrastre guardado
