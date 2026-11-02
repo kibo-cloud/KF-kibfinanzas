@@ -53,7 +53,8 @@ money flow.
       with cash marks cadena, flujosMes, pasivos, patrimonioNeto byte-equal). Goldens untouched and green.
 - [x] T3 UI: hero with 3 values, selectors, transfer action, first-use cash prompt. Route: delegated.
       Evidence: tests/medios.ui.test.js RED 0/13 on T2, GREEN 13/13; npm test 980/982 (inventory + S-4, outside surface).
-- [ ] T4 Integration: Trabajo cash/pases, Undo, CSV, backup/restore, Version para PC. Route: delegated.
+- [x] T4 Integration: Trabajo cash/pases, Undo, CSV, backup/restore, Version para PC. Route: delegated.
+      Evidence: tests/medios.integracion.test.js RED 4/6 on T3 (CSV columns missing), GREEN 6/6; npm test 986/988.
 - [ ] T5 Tests: unit + E2E for split, migration, backup round-trip; full suites green. Route: delegated.
 - [ ] T6 Release 1.35.0: versions bump, LEEME changelog, version folder. Route: inline/delegated.
 
@@ -90,6 +91,10 @@ money flow.
   user changed it later. One-time cash question after the start-of-month notice; Omitir = 0. Helpers medioDe, ponerMedio,
   puedeDeclararEfectivo, muestraPreguntaEfectivo live in TGMotor so test-loaded app functions keep resolving them.
   Also pending inventory: gastoEnOtroMedio.
+- T4: "Pasar a lo personal" has Transferencia/Efectivo chips (hidden #psForma read by destinoPase); a cash pase shows 💵 in
+  the list, "Cómo" in its sheet and in the Trabajo CSV (new 4th column). The year CSV adds Saqué efectivo, Deposité
+  efectivo, Efectivo, Digital only when usaMedios(D) (legacy/pinned CSVs stay byte-identical). Backup, restore and
+  "Versión para PC" needed no code: normalizar/normTrab keep the fields (round trip tested). duplicar clears the transfers.
 
 ## Next step
 

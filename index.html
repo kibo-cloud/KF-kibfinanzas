@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Q6GV21L0SoxMRBKf2iapT+gDzN7JkcVkMbAuRS+X3Ww=' 'sha256-NzAaRCjrBBJB0IVjbZFo88dQbBIFQAZ1c5Sz2HyDqts='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Q6GV21L0SoxMRBKf2iapT+gDzN7JkcVkMbAuRS+X3Ww=' 'sha256-cwKJESP/SGOyK6y816aYSa08ykBQ6nWrSalh9ZeIwfo='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -5544,13 +5544,15 @@ function csvTexto(v){   // celda de texto: sin ; ni saltos, y con ' adelante si 
   return (/^[=+\-@\t\r]/.test(s) ? "'" : '') + s.replace(/[;\r\n]/g, ' ');
 }
 function exportarCSV(){
-  var s = serieVista(D, hoyApp()), l = [], i;
+  var s = serieVista(D, hoyApp()), l = [], i, hoy = hoyApp(), cm = usaMedios(D) ? cadenaMedios(D, hoy, ctxModelo(D, hoy)) : null;   // 1.35: efectivo y digital, solo si el año los usa
   var c = csvTexto;
-  l.push(['Mes','Ingresos','Gastos fijos','Gastos variables','Gastos','Ahorro ARS','Pesos a dólares','Dólares comprados','Pagado a','Saqué del ahorro','Dólares vendidos','Repuse','A reponer','Deudas','Disponible final','Ahorro acumulado','USD del mes','USD acumulado'].join(';'));
+  l.push(['Mes','Ingresos','Gastos fijos','Gastos variables','Gastos','Ahorro ARS','Pesos a dólares','Dólares comprados','Pagado a','Saqué del ahorro','Dólares vendidos','Repuse','A reponer','Deudas','Disponible final','Ahorro acumulado','USD del mes','USD acumulado']
+    .concat(cm ? ['Saqué efectivo','Deposité efectivo','Efectivo','Digital'] : []).join(';'));
   for(i=0;i<12;i++){
     var x = s[i];
     l.push([MESES[i], x.totalIngresos, x.subtotalFijos, x.subtotalVariables, x.totalGastos,
             x.ahorroMesARS, x.compraARS, x.compraUSD, Math.round(x.cotizacionPagada*100)/100, x.sacadoARS, x.ventaUSD, x.reposicionARS, x.aReponer, x.totalDeudas, x.disponibleFinal, x.ahorroAcumulado, x.usdMes, x.usdAcumulado]
+           .concat(cm ? [num(D.meses[i].extraccionARS), num(D.meses[i].depositoARS), cm[i].efectivo, cm[i].digital] : [])
            .map(function(v,k){ return k===0 ? c(v) : String(v).replace('.',','); }).join(';'));
   }
   descargar('\ufeff' + l.join('\r\n'), 'tugasto-'+D.anio+'.csv', 'text/csv;charset=utf-8');
@@ -7633,7 +7635,7 @@ function renderTrabajo(){
       for(i=0;i<pa.length && i<30;i++){
         progP = pa[i].fecha > hoyISO() && paseAlModelo(pa[i], anios);   // el mismo criterio que resumenTrab (Q4)
         hpa += '<button class="tj-f" data-act="tjVerPase" data-id="' + esc(pa[i].id) + '"><span class="tx">'
-          + '<b>A Ingresos de ' + MESES[pa[i].mes] + (pa[i].anio !== anioHoy ? ' ' + pa[i].anio : '') + '</b><small>' + (progP ? 'Programado para el ' : '') + fDia(pa[i].fecha) + '</small></span>'
+          + '<b>A Ingresos de ' + MESES[pa[i].mes] + (pa[i].anio !== anioHoy ? ' ' + pa[i].anio : '') + (pa[i].forma === 'efectivo' ? ' 💵' : '') + '</b><small>' + (progP ? 'Programado para el ' : '') + fDia(pa[i].fecha) + '</small></span>'
           + '<span class="mt' + (progP ? ' mudo' : '') + '">' + fARS(pa[i].monto) + '</span></button>';
       }
       h += plegTj('tjPases', 'Lo que pasaste a lo personal', fARS(pp.ya) + (pp.programado ? '<small class="sub-cap">programado ' + fARS(pp.programado) + '</small>' : ''), hpa, false);
@@ -8335,8 +8337,8 @@ function csvTrabajo(){
   l.push(['Fecha','Tipo','Qué','Monto en pesos','Dólares','Cotización','Programado'].join(';'));
   for(i=0;i<gs.length;i++) l.push([fDiaLargo(gs[i].fecha), nombreCat(gs[i].cat), c(gs[i].concepto), n(gs[i].monto), gs[i].moneda === 'USD' ? n(gs[i].usd) : '', gs[i].moneda === 'USD' ? n(gs[i].cotiz) : '', gs[i].fecha > hoyC ? 'Sí' : ''].join(';'));
   l.push(''); l.push('PASADO A LO PERSONAL');
-  l.push(['Fecha','Monto','Fue a'].join(';'));
-  for(i=0;i<ps.length;i++) l.push([fDiaLargo(ps[i].fecha), n(ps[i].monto), 'Ingresos de ' + MESES[ps[i].mes] + ' ' + ps[i].anio].join(';'));
+  l.push(['Fecha','Monto','Fue a','Cómo'].join(';'));
+  for(i=0;i<ps.length;i++) l.push([fDiaLargo(ps[i].fecha), n(ps[i].monto), 'Ingresos de ' + MESES[ps[i].mes] + ' ' + ps[i].anio, ps[i].forma === 'efectivo' ? 'Efectivo' : 'Transferencia'].join(';'));
   l.push(''); l.push('RESUMEN AL ' + fDiaLargo(hoyISO()));
   l.push(['Cobrado hasta hoy', n(r.cobrado)].join(';'));
   l.push(['Gastos hasta hoy', n(r.gastado)].join(';'));
@@ -8482,7 +8484,7 @@ function fechaPaseDefecto(){
   var dim = new Date(Date.UTC(D.anio, mes + 1, 0)).getUTCDate();
   return D.anio + '-' + dos(mes + 1) + '-' + dos(Math.min(+h.slice(8,10), dim));
 }
-function destinoPase(){ var fe = val('psFecha'); if(!esISO(fe)) fe = hoyISO(); return {fecha:fe, anio:+fe.slice(0,4), mes:+fe.slice(5,7) - 1}; }
+function destinoPase(){ var fe = val('psFecha'); if(!esISO(fe)) fe = hoyISO(); return {fecha:fe, anio:+fe.slice(0,4), mes:+fe.slice(5,7) - 1, forma: val('psForma') === 'efectivo' ? 'efectivo' : ''}; }   // 1.35: forma, cómo lo pasás
 function anioExiste(a){ return a === D.anio || !!leerAnio(a); }
 /* S2 M1: en un año con modelo, un pase con fecha de un mes anterior a arrastre.desde haría aparecer o desaparecer plata: sale de Trabajo pero
    esos meses no llegan al disponible (el saldo de arranque ya cuenta lo que tenías). Antes que cambiar el saldo, se bloquea (preferencia del
@@ -8520,6 +8522,9 @@ function abrirPase(){
   abrirHoja('<h3>Pasar a lo personal</h3>'
     + '<input type="text" id="psMonto" class="grande tj-in" inputmode="decimal" placeholder="0" autocomplete="off">'
     + '<div class="chips"><button data-act="tjPaseTodo">Todo: ' + fARS(r.paraPasar) + '</button></div>'
+    + '<div class="chips gr-medio" id="psFormaCh" role="group" aria-label="Cómo lo pasás">'   // 1.35: en efectivo va al efectivo; si no, a digital
+    +   '<button class="on" data-act="tjPaseForma" data-v="transferencia">💳 Transferencia</button><button data-act="tjPaseForma" data-v="efectivo">💵 Efectivo</button></div>'
+    + '<input type="hidden" id="psForma" value="transferencia">'
     + campoTj('Fecha', '<input type="date" id="psFecha" class="tj-in" value="' + fechaPaseDefecto() + '">')
     + '<div class="nota" id="psNota" style="padding:0 0 14px"></div>'
     + '<div class="fila"><button data-act="cerrarHoja">Cancelar</button><button class="pri" data-act="tjGuardarPase">Pasar</button></div>');
@@ -8547,6 +8552,7 @@ function guardarPase(){
   var avAntes = avisoPaseAntes(d);
   if(avAntes){ errorEn('psNota', avAntes); return; }   // S2 M1: antes del saldo mes a mes no se pasa (sin «Pasar igual»)
   var p = {id:tjId(), fecha:d.fecha, monto:m, anio:d.anio, mes:d.mes, creada:new Date().toISOString()};
+  if(d.forma === 'efectivo') p.forma = 'efectivo';   // 1.35: sin el campo, transferencia (digital)
   if(aplicarPase(p, 1, sumarPaseT(p)) !== true){ errorEn('psNota', obsoleta ? 'Hay cambios hechos en otra pestaña. Recargá antes de pasar.' : 'No pude sumarlo al mes. Probá de nuevo.'); return; }
   tjAntes = null;
   cerrarHoja(); renderTrabajo();
@@ -8587,7 +8593,7 @@ function verPase(id){
   var p = null, i; for(i=0;i<T.pases.length;i++) if(T.pases[i].id === id) p = T.pases[i];
   if(!p) return;
   abrirHoja('<h3>Pasado a lo personal</h3><div class="tj-det">'
-    + renglon('Monto', fARS(p.monto)) + renglon('Fecha', fDia(p.fecha))
+    + renglon('Monto', fARS(p.monto)) + renglon('Fecha', fDia(p.fecha)) + renglon('Cómo', p.forma === 'efectivo' ? 'Efectivo' : 'Transferencia')
     + renglon('Fue a', 'Ingresos de ' + MESES[p.mes] + ' ' + p.anio + ' · ' + RENGLON_TRABAJO)
     + '</div><div class="fila"><button class="mal" data-act="tjBorrarPase" data-id="' + esc(p.id) + '">Borrar</button>'
     + '<button data-act="cerrarHoja">Listo</button></div>');
@@ -8654,6 +8660,7 @@ function accionTj(a, b){
     return;
   }
   if(a === 'tjGuardarPase'){ guardarPase(); return; }
+  if(a === 'tjPaseForma'){ var hf = document.getElementById('psForma'); if(hf) hf.value = v === 'efectivo' ? 'efectivo' : 'transferencia'; marcarChips('psFormaCh', b); return; }
   if(a === 'tjDeshacerPase'){ quitarPase(id, false); return; }
   if(a === 'tjDobleVer'){ abrirOrdenTrabajo(); return; }   // S2 N2-B
   if(a === 'tjDobleOrdenar'){ cerrarHoja(); ordenarTrabajo(); return; }
