@@ -115,5 +115,9 @@ money flow.
 
 ## Next step
 
-Owner tests 1.35.0 on the phone. Then optional 1.35.1 for advisory follow-ups F1 and F2. Push/merge: owner decides.
+1.35.0 is complete and verified; the only step left is publishing it to GitHub
+(`https://github.com/kibo-cloud/KF-kibfinanzas`, confirmed by the owner 2026-11-02). Blocked locally: adding the
+`origin` remote was denied by the permission classifier; the owner adds the remote (or grants `git remote`/`git push`)
+and the branch GitHub Pages serves is confirmed with `git ls-remote --heads origin` before pushing. Then the owner tests
+1.35.0 on the phone. Optional 1.35.1 for advisory follow-ups F1 and F2.
 Engram mirror `odd/cash-digital-split/tasks`: pending (Engram save failed: multiple active runtime sessions).
