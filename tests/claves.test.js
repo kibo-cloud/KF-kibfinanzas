@@ -48,7 +48,7 @@ test('pre-1.30 snapshot copies only the app keys (S3)', function(){
   assert.deepEqual(Object.keys(r.datos).sort(), Object.keys(PROPIAS).sort());
   assert.equal(r.datos['kibo.otraApp'], undefined);
   assert.equal(ls.d['kibo.otraApp'], 'ajeno');
-  assert.equal(ls.d['kibo.esquema'], '1.30');
+  assert.equal(ls.d['kibo.esquema'], '1.35');   // 1.35: the cash / digital schema (tests/medios.datos.test.js)
 });
 
 test('volverAntesDe130 deletes and restores only the app keys; a foreign kibo.* key survives (S3)', function(){
