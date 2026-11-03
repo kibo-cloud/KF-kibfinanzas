@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Q6GV21L0SoxMRBKf2iapT+gDzN7JkcVkMbAuRS+X3Ww=' 'sha256-SMvRtdX616AMplXIENUYrrYzvgjxtF203yeZ/2d8CHQ='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Q6GV21L0SoxMRBKf2iapT+gDzN7JkcVkMbAuRS+X3Ww=' 'sha256-ygj7f9WHLAoDNa07yzCgdcStYN9AHj3hYwTnSAXa+7c='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -634,6 +634,8 @@ nav button.on .np{background:var(--acc-soft)}
 .item .md{width:var(--tap);height:var(--tap);flex:0 0 auto;font-size:16px;line-height:1;padding:0;opacity:.5}
 .item .md.efe{opacity:1}
 .chips.gr-medio{margin-bottom:12px}
+.seg.gr-tabs{margin-bottom:12px}
+.gr-vacio{margin:4px 0 0;color:var(--txt2);font-size:15px}
 .hero-proyectado{border-style:dashed}
 .hero-nota{padding:10px 2px 0;text-align:center}
 .hero-apagado{box-shadow:none;background:var(--card2)}
@@ -2855,7 +2857,7 @@ function hoyApp(){ return hoyDe(new Date()); }
 var M1 = '/*DATOS_' + 'INICIO*/';
 var M2 = '/*DATOS_' + 'FIN*/';
 
-var APPVER   = '1.35.1';    // versión visible en Ajustes (LAB)
+var APPVER   = '1.35.2';    // versión visible en Ajustes (LAB)
 var PREF     = 'kibo.datos.', memoAnios = Object.create(null);        // kibo.datos.2026, kibo.datos.2027… · memoAnios: ver leerAnio (final audit 12)
 var LSANIO   = 'kibo.anio';
 var LSCOPIA  = 'kibo.ultimaCopia';
@@ -5835,28 +5837,47 @@ function confirmar(t, cuerpo, etiqueta, accion){
 }
 var pendiente = null;
 
+// 1.35.2: las filas de una sección para el gasto rápido, las más usadas este mes primero (el resto queda como estaba)
+function grFilas(m, sec){
+  var l = m[sec] || [], r = [], usos = Object.create(null), q;   // N5 S-1: llaves = nombres del usuario
+  for(q=0;q<m.movimientos.length;q++){ var nm = m.movimientos[q].nombre; usos[nm] = (usos[nm]||0) + 1; }
+  for(q=0;q<l.length;q++) r.push({nombre:l[q].nombre, sec:sec, i:q, n:usos[l[q].nombre] || 0});
+  r.sort(function(a,b){ return b.n - a.n || a.i - b.i; });
+  return r;
+}
+function grChipsHtml(m, sec){
+  var cats = grFilas(m, sec), h = '';   // 1.35.1: todas las filas, sin tope
+  if(!cats.length) return '<p class="texto gr-vacio">No tenés gastos ' + (sec === 'gastosFijos' ? 'fijos' : 'variables') + ' este mes.</p>';
+  for(var i=0;i<cats.length;i++) h += '<button data-act="chip" data-sec="'+cats[i].sec+'" data-i="'+cats[i].i+'">'+esc(cats[i].nombre)+'</button>';
+  return h;
+}
+function grPestana(m, sec, etq, actual){
+  var on = sec === actual;
+  return '<button data-act="grTab" data-v="' + sec + '" role="tab" aria-selected="' + on + '" aria-controls="grChips"' + (on ? ' class="on"' : '') + '>' + etq + ' (' + (m[sec] || []).length + ')</button>';
+}
+// 1.35.2: cambiar de pestaña rehace solo los chips; el monto escrito y el medio elegido quedan, el chip elegido se borra
+function grVerPestana(sec){
+  sec = sec === 'gastosFijos' ? 'gastosFijos' : 'gastosVariables';
+  gr.cat = null; gr.sec = sec;
+  var ts = document.querySelectorAll('#grTabs button'), i;
+  for(i=0;i<ts.length;i++){ var on = ts[i].getAttribute('data-v') === sec; ts[i].classList.toggle('on', on); ts[i].setAttribute('aria-selected', on ? 'true' : 'false'); }
+  var c = document.getElementById('grChips'); if(c) c.innerHTML = grChipsHtml(D.meses[mes], sec);
+  if(!gr.medio){ var bm = document.querySelectorAll('#grMedio button'); for(i=0;i<bm.length;i++) bm[i].classList.remove('on'); }   // el medio que se veía era el del chip
+}
 function gastoRapido(){
   if(tab !== 'mes') irATab('mes');   // L1: Gasto vive en la barra de abajo; el gasto se suma en el mes que estás viendo
   var m = D.meses[mes];
-  var todas = [], usos = Object.create(null), q;   // N5 S-1: llaves = nombres del usuario
-  for(q=0;q<m.gastosVariables.length;q++) todas.push({nombre:m.gastosVariables[q].nombre, sec:'gastosVariables', i:q, n:0});
-  for(q=0;q<m.gastosFijos.length;q++) todas.push({nombre:m.gastosFijos[q].nombre, sec:'gastosFijos', i:q, n:0});
-  for(q=0;q<m.movimientos.length;q++){ var nm = m.movimientos[q].nombre; usos[nm] = (usos[nm]||0) + 1; }
-  for(q=0;q<todas.length;q++) todas[q].n = usos[todas[q].nombre] || 0;
-  todas.sort(function(a,b){ return b.n - a.n; });   // las más usadas primero, el resto queda como estaba
-  var cats = todas;   // 1.35.1: todas las categorías; con un tope de 12 los gastos nuevos (sin usos, al final) no tenían botón
+  var sec = m.gastosVariables.length || !m.gastosFijos.length ? 'gastosVariables' : 'gastosFijos';   // 1.35.2: Variables, o Fijos si no hay variables
   var h = '<h3>Gasto rápido · '+MESES[mes]+'</h3>'
-        + '<div class="chips" id="grChips">';
-  for(var i=0;i<cats.length;i++){
-    h += '<button data-act="chip" data-sec="'+cats[i].sec+'" data-i="'+cats[i].i+'">'+esc(cats[i].nombre)+'</button>';
-  }
-  h += '</div>'
+     + '<div class="seg gr-tabs" id="grTabs" role="tablist" aria-label="Tipo de gasto">'
+     +   grPestana(m, 'gastosVariables', 'Variables', sec) + grPestana(m, 'gastosFijos', 'Fijos', sec) + '</div>'
+     + '<div class="chips" id="grChips" role="tabpanel">' + grChipsHtml(m, sec) + '</div>'
      + '<div class="chips gr-medio" id="grMedio" role="group" aria-label="Cómo lo pagaste">'   // 1.35: si no elegís, va con el medio del renglón
      +   '<button data-act="grMedio" data-v="digital">💳 Digital</button><button data-act="grMedio" data-v="efectivo">💵 Efectivo</button></div>'
      + '<div class="gr-monto"><span aria-hidden="true">$</span><input type="text" id="grMonto" class="grande" inputmode="decimal" placeholder="0" autocomplete="off" enterkeyhint="done" aria-label="Monto en pesos"></div>'
      + '<div class="fila"><button data-act="cerrarHoja">Cancelar</button>'
      + '<button class="pri" data-act="confirmarGasto">Sumar gasto</button></div>';
-  gr = {monto:0, cat:null, sec:'gastosVariables', medio:null};
+  gr = {monto:0, cat:null, sec:sec, medio:null};
   abrirHoja(h);
   var inp = document.getElementById('grMonto');
   inp.focus();
@@ -6453,6 +6474,7 @@ document.addEventListener('click', function(ev){
   if(a === 'quitarPlanSuelto'){ quitarPlanSuelto(b.getAttribute('data-n')); return; }
   if(a === 'colAyuda'){ var ka = b.getAttribute('data-k'); ayudaAbierta[ka] = !ayudaAbierta[ka]; plegarAnim(b.parentNode, !ayudaAbierta[ka]); return; }
   if(a === 'gastoRapido' || a === 'rapido'){ gastoRapido(); return; }   // el FAB (P3a: único botón "Gasto"; 'rapido' queda para el atajo)
+  if(a === 'grTab'){ grVerPestana(b.getAttribute('data-v')); return; }
   if(a === 'chip'){
     var cs = document.querySelectorAll('#grChips button');
     for(var j=0;j<cs.length;j++) cs[j].classList.toggle('on', cs[j] === b);

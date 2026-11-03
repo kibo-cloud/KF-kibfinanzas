@@ -62,23 +62,27 @@ test('refrescar keeps the income «cobro» buttons and updates only the debt pla
   assert.match(deu[0].textContent, /^Cuota \d de 6/);
 });
 
-test('gastoRapido offers a chip for every variable and fixed expense of the month, most used first (no 12-chip cap)', function(){
+test('gastoRapido offers a chip for every variable and fixed expense of the month, most used first (no 12-chip cap; 1.35.2: one tab each)', function(){
   var vars = ['Super', 'Verdulería', 'Farmacia', 'Nafta', 'Salidas', 'Regalos', 'Peluquería', 'Mascota'];
   var fijos = ['Alquiler', 'Luz', 'Gas', 'Internet', 'Celular', 'Gimnasio'];
   var d = C.vacio(2026); C.arrastre(d, 9, 100000, 'declarado');
   C.mes(d, 9, {gastosVariables: vars.map(function(n){ return C.it(n, 0, false); }), gastosFijos: fijos.map(function(n){ return C.it(n, 0, false); })});
-  var hojas = [], input = {value: '', focus: function(){}, addEventListener: function(){}};
-  var app = H.appVista(d, null, null, null, {funcs: ['gastoRapido', 'esc'], vars: ['gr', 'MESES'],
+  var hojas = [], input = {value: '', focus: function(){}, addEventListener: function(){}}, panel = {innerHTML: ''};
+  var app = H.appVista(d, null, null, null, {funcs: ['gastoRapido', 'grFilas', 'grChipsHtml', 'grPestana', 'grVerPestana', 'esc'], vars: ['gr', 'MESES'],
     globals: {tab: 'mes', irATab: function(){}, abrirHoja: function(h){ hojas.push(h); },
-      document: {getElementById: function(id){ return id === 'grMonto' ? input : null; }}}});
+      document: {getElementById: function(id){ return id === 'grMonto' ? input : id === 'grChips' ? panel : null; }, querySelectorAll: function(){ return []; }}}});
   app.mes = 9;
   app.D.meses[9].movimientos = [{nombre: 'Mascota'}, {nombre: 'Mascota'}, {nombre: 'Gimnasio'}];   // usage counts for the order
   app.gastoRapido();
   assert.equal(hojas.length, 1);
   var chips = [], re = /<button data-act="chip" data-sec="(\w+)" data-i="(\d+)">([^<]*)<\/button>/g, m;
   while((m = re.exec(hojas[0]))) chips.push([m[3], m[1], +m[2]]);
+  var primeros = chips.slice(0, 2).map(function(c){ return c[0]; });
+  app.grVerPestana('gastosFijos');   // 1.35.2: the fixed rows live in the Fijos tab
+  re.lastIndex = 0; while((m = re.exec(panel.innerHTML))) chips.push([m[3], m[1], +m[2]]);
   assert.equal(chips.length, vars.length + fijos.length, 'before: only the first 12 got a chip');
   vars.forEach(function(n, i){ assert.ok(chips.some(function(c){ return c[0] === n && c[1] === 'gastosVariables' && c[2] === i; }), n + ' has a chip'); });
   fijos.forEach(function(n, i){ assert.ok(chips.some(function(c){ return c[0] === n && c[1] === 'gastosFijos' && c[2] === i; }), n + ' has a chip'); });
-  assert.deepEqual(chips.slice(0, 3).map(function(c){ return c[0]; }), ['Mascota', 'Gimnasio', 'Super'], 'most used first, then the stable order');
+  assert.deepEqual(primeros, ['Mascota', 'Super'], 'most used first, then the stable order (Variables tab)');
+  assert.equal(chips[vars.length][0], 'Gimnasio', 'most used first in the Fijos tab');
 });

@@ -51,6 +51,7 @@ el .apk. Del zip que te da, copiá assetlinks.json a una carpeta
 
 ## CHANGELOG
 
+v1.35.2 · 2026-11-03 — Gasto rápido separado en pestañas Variables y Fijos: tocás una u otra para ver solo esos gastos, con los que más usaste este mes primero. Al cambiar de pestaña no se borra el monto que escribiste ni cómo lo pagaste.
 v1.35.1 · 2026-11-03 — Arreglos. En Mes, los ingresos ya no muestran líneas de cuotas de deudas («Cuota 5 de 6…») después de editar un monto. Gasto rápido ahora muestra todos tus gastos variables y fijos, no solo los 12 más usados: los que agregaste último también tienen su botón.
 v1.35.0 · 2026-11-02 — Efectivo y digital. Arriba de Mes, debajo de lo que tenés, ves cuánto es Digital y cuánto es Efectivo; la primera vez la app te pregunta cuánto efectivo tenés hoy (o lo omitís). Cada renglón se marca 💳 digital o 💵 efectivo con un toque, y al agregar un renglón o anotar un gasto rápido elegís de dónde sale. «Pasar» mueve plata entre efectivo y digital (sacar del cajero o depositar) sin cambiar el total. En Trabajo, lo que pasás a lo personal puede ser transferencia o efectivo. El CSV del año suma las columnas Efectivo y Digital cuando las usás, y el de Trabajo dice cómo se cobró. Tus datos de antes quedan como digitales, con el efectivo en 0: el total no cambia. Antes de actualizar se guarda una copia, y en Ajustes podés volver a como estaba antes de efectivo y digital.
 v1.34.1 · 2026-10-29 — Arriba a la izquierda ahora dice TuGasto completo en lugar de TG.

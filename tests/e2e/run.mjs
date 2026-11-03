@@ -1536,6 +1536,28 @@ try{
     check('L3 future month: no question, amount added, row stays programado', [await hojaL3(), await mesL3(10)], [null, JSON.stringify([[['Super', 70000, false]], 1])]);
     await ev(`document.querySelector('[data-act=mes][data-m="9"]').click(); true`); await sleep(400);
   }
+  // 1.35.2: the quick expense sheet has two tabs, Variables and Fijos; switching keeps the typed amount and a fixed expense lands in its row
+  {
+    const ms = []; for(let i=0;i<12;i++) ms.push(mes([], [], [], []));
+    ms[9] = mes([it('Sueldo', 500000, true)], [it('Alquiler', 0, false), it('Luz', 0, false)], [it('Super', 0, false)], []);
+    const y = {anio: 2026, pagoExplicito: true, meses: ms, arrastre: {desde: 9, inicial: {apertura: 100000, declarado: 100000, declaradoEl: '2026-10-01', origen: 'declarado'}}};
+    await ev(`localStorage.clear(); localStorage.setItem('kibo.bienvenida','1'); localStorage.setItem('kibo.ultimaCopia', new Date().toISOString()); localStorage.setItem('kibo.esquema', '1.30'); localStorage.setItem('kibo.anio','2026');
+      localStorage.setItem('kibo.datos.2026', ${JSON.stringify(JSON.stringify(y))}); true`);
+    await nav(URL_APP); await sleep(800);
+    const tabsGR = () => ev(`Array.prototype.map.call(document.querySelectorAll('#grTabs [role=tab]'), function(b){ return [b.textContent, b.getAttribute('aria-selected'), b.classList.contains('on')]; })`);
+    const chipsGR = () => ev(`Array.prototype.map.call(document.querySelectorAll('#grChips button'), function(b){ return [b.textContent, b.getAttribute('data-sec')]; })`);
+    await ev(`document.querySelector('[data-act=gastoRapido]').click(); true`); await sleep(400);
+    check('1.35.2 the sheet opens on Variables, with counts', await tabsGR(), [['Variables (1)', 'true', true], ['Fijos (2)', 'false', false]]);
+    check('1.35.2 Variables shows only variable chips', await chipsGR(), [['Super', 'gastosVariables']]);
+    await ev(`(function(){ var x = document.getElementById('grMonto'); x.value = '5.000'; x.dispatchEvent(new Event('input', {bubbles: true})); return true; })()`);
+    await ev(`document.querySelector('#grTabs [data-v=gastosFijos]').click(); true`); await sleep(200);
+    check('1.35.2 Fijos: only fixed chips, the tab is selected, the amount stays',
+      [await tabsGR(), await chipsGR(), await ev(`document.getElementById('grMonto').value`)],
+      [[['Variables (1)', 'false', false], ['Fijos (2)', 'true', true]], [['Alquiler', 'gastosFijos'], ['Luz', 'gastosFijos']], '5.000']);
+    await ev(`Array.prototype.filter.call(document.querySelectorAll('#grChips button'), function(b){ return b.textContent === 'Luz'; })[0].click(); true`); await sleep(600);
+    check('1.35.2 a fixed expense from the Fijos tab lands in its row', await ev(`JSON.stringify([D.meses[9].gastosFijos.map(function(r){ return [r.nombre, r.monto]; }), D.meses[9].movimientos.length, document.getElementById('velo').classList.contains('on')])`),
+      JSON.stringify([[['Alquiler', 0], ['Luz', 5000]], 1, false]));
+  }
 
   // L5 "Qué vence esta semana" (hoy = 2026-10-04): the card under the hero of the current month lists overdue rows of past model months,
   // income collection days, rows without a day only near the month end, and Trabajo invoices by due date; each row jumps to its place.
