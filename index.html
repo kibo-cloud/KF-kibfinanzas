@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Q6GV21L0SoxMRBKf2iapT+gDzN7JkcVkMbAuRS+X3Ww=' 'sha256-zVOg7oXbc08eY785z0zTfB5nh5HZKNZ7Oa6MgLPDgBI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Q6GV21L0SoxMRBKf2iapT+gDzN7JkcVkMbAuRS+X3Ww=' 'sha256-SMvRtdX616AMplXIENUYrrYzvgjxtF203yeZ/2d8CHQ='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>TuGasto</title>
@@ -2855,7 +2855,7 @@ function hoyApp(){ return hoyDe(new Date()); }
 var M1 = '/*DATOS_' + 'INICIO*/';
 var M2 = '/*DATOS_' + 'FIN*/';
 
-var APPVER   = '1.35.0';    // versión visible en Ajustes (LAB)
+var APPVER   = '1.35.1';    // versión visible en Ajustes (LAB)
 var PREF     = 'kibo.datos.', memoAnios = Object.create(null);        // kibo.datos.2026, kibo.datos.2027… · memoAnios: ver leerAnio (final audit 12)
 var LSANIO   = 'kibo.anio';
 var LSCOPIA  = 'kibo.ultimaCopia';
@@ -4881,7 +4881,7 @@ function refrescar(){
   puntual('bGa', c.pctGastos); puntual('bAh', c.pctAhorro);
   var ns = document.getElementById('notaSug');
   if(ns) ns.textContent = 'Con esa meta te tocaría ahorrar ' + fARS(c.ahorroSugerido) + ' este mes.';
-  var dis = document.querySelectorAll('.dinfo');
+  var dis = document.querySelectorAll('.dinfo[data-act="plan"]');   // 1.35.1: solo deudas; el .dinfo de ingresos es el botón de cobro
   for(i=0;i<dis.length;i++){ var di = D.meses[mes].deudas[+dis[i].getAttribute('data-i')]; if(di) dis[i].textContent = textoDeuda(di.nombre, mes); }
   var nc = document.getElementById('notaCompra');
   if(nc){ var ac = serie(D)[mes].ahorroAcumulado; nc.textContent = notaCompra(m, ac); nc.className = 'nota' + (ac<0?' mal':''); }
@@ -5844,7 +5844,7 @@ function gastoRapido(){
   for(q=0;q<m.movimientos.length;q++){ var nm = m.movimientos[q].nombre; usos[nm] = (usos[nm]||0) + 1; }
   for(q=0;q<todas.length;q++) todas[q].n = usos[todas[q].nombre] || 0;
   todas.sort(function(a,b){ return b.n - a.n; });   // las más usadas primero, el resto queda como estaba
-  var cats = todas.slice(0, 12);
+  var cats = todas;   // 1.35.1: todas las categorías; con un tope de 12 los gastos nuevos (sin usos, al final) no tenían botón
   var h = '<h3>Gasto rápido · '+MESES[mes]+'</h3>'
         + '<div class="chips" id="grChips">';
   for(var i=0;i<cats.length;i++){
